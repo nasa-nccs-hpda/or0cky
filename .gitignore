@@ -1,0 +1,26 @@
+.DS_Store
+.#*
+#*
+#*#
+a.out
+*.o
+*.build
+*.mod
+*.stamp
+*.pyc
+*~
+build/*
+*.png
+*.pdf
+*.nc
+*.pik
+spack-build.*
+spconfig.py
+agents
+bak
+evals
+examples
+knowledge
+prompts
+skills
+rocke3d_jax copy
