@@ -1,0 +1,12 @@
+CDN=CD4X500S.ext.nc                 ! surf.drag coefficient
+VEG=V72x46_EntMM16_lc_max_trimmed_scaled_nocrops.ext.nc   ! veg. fractions
+LAIMAX=V72x46_EntMM16_lai_max_trimmed_scaled_ext.nc
+HITEent=V72x46_EntMM16_height_trimmed_scaled_ext.nc
+LAI=V72x46_EntMM16_lai_trimmed_scaled_ext.nc
+CROPS=CROPS_and_pastures_Pongratz_to_Hurtt_72x46N_nocasp.nc ! crops history
+IRRIG=Irrig72x46_1848to2100_FixedFuture_v3.nc
+SOIL=S72x460098M.ext.nc                ! soil bdy.conds
+TOP_INDEX=top_index_72x46_a.ij.ext.nc  ! only used if #define DO_TOPMODEL_RUNOFF
+soil_textures=soil_textures_top30cm
+SOILCARB_global=soilcarb_top30cm_4x5.nc
+GLMELT=GLMELT_4X5.OCN.nc   ! glacial melt distribution

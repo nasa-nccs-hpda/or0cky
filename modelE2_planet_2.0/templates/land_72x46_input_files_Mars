@@ -1,0 +1,28 @@
+/* !!! Important: this file assumes that PFT_MODEL=ENT is set in the rundeck.  */
+
+! This file contains Martian orography and defines the surface to be 100% land.
+! Nominal longitudes might be shifted 180 degrees.
+!TOPO=planet/Mars/marstopo.nc
+TOPO=planet/Mars/marstopo_cap13K_s.nc
+
+! If file ROUGHL is present, the variable top_dev in TOP_INDEX will only affect
+! snow masking and its precise value is probably not crucial.
+TOP_INDEX=planet/desert_world/stdev_72x46_desertworld.nc
+
+! The presence of this file causes the model to read roughness length from
+! it rather than computing roughness from topographic standard deviation
+! as in Model II.  This allows users to control this field directly.
+! Units: meters.
+ROUGHL=planet/desert_world/z0m_72x46_desertworld.nc
+
+! Soil textures file (array q).  Sand (imt=1) is a reasonable texture to start with.
+! Arrays sl and qk do not matter for dry conditions.  dz is layer thickness.
+SOIL=planet/desert_world/soil_allsand.nc
+
+! In modelE, the percentages of bright and dark soil are read from
+! the vegetation file.  The ratio of the two soils is chosen to
+! to set the albedo of dry soil to TES observed values. 
+! !!! keep in mind that the format of this file depends on
+! !!! PFT_MODEL setting in the rundeck
+VEG=planet/Mars/veg_Mars_TES_albedo_EntPFT_72x46.nc
+

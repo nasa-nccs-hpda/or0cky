@@ -1,0 +1,15 @@
+! parameters set for coupled ocean runs:
+KOCEAN=1            ! ocn is prognostic
+OBottom_drag=1      !  Drags at the ocean bottom (NO drags -> OBottom_drag=0)
+OCoastal_drag=1     !  Drags at the ocean coasts (NO drags -> OCoastal_drag=0)
+OTIDE = 0           !  Ocean tides are not used
+variable_lk=1
+init_flake=1
+ocean_use_qus=1     ! Advection uses the quadratic upstream scheme
+DTO=112.5
+ocean_use_tdmix=1  ! tdmix scheme for meso mixing
+ocean_use_gmscz=1  ! vertically variation of meso diffusivity, option 1
+ocean_kvismult=2.  ! mult. factor for meso diffusivity
+ocean_enhance_shallow_kmeso=1 ! stronger meso mixing in shallow water
+ocean_use_tdiss=1  ! simple tidally induced diapycnal diffusivity
+

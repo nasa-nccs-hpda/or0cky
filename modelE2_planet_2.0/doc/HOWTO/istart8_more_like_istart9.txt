@@ -1,0 +1,71 @@
+
+There are occasions when one wants to use ISTART=8 to start the model
+up from a previous run's rsf file but avoid some initializations, so
+that the model acts more like it's a continuation of a run (like ISTART=9.)
+It is not always easy to remember how to do this, so below let's compile
+a list of things the user has to do to get the prognostic variables
+at least to be the same as they would be with an ISTART=9 setup. Much of
+this is taken from Reto Ruedy's emails and commit notes:
+
+    NINT Case
+    =========
+
+___ set parameter: keep_params=1
+
+___ set parameter: init_topog_related=0
+
+___ set parameter: init_flake=0
+
+___ set parameter: niprnt=1 [Only needed if you want to print out the
+    initial conditions and create the PARTIAL acc file.]
+
+___ The radiation must be called at the same times as in the original run.
+    This should be automatic if nrad=1; with nrad=5, it is automatic for a
+    365-day year if you start at the same calendar day as the original run.
+
+Reto notes that, even so: "only the prognostic variables have the same
+values; some diagnostics may be slightly different (unless all diagnostics
+were called at that starting point also in the original run)." He thinks that
+diagnostics could be made to agree by setting their "printing" frequencies
+all to 1 timstep, but that would slow the computation down with little gain.
+
+    Tracer Run Case
+    ===============
+
+___ all of the settings above for NINT, of course, because most tracers
+    have some interaction with the background weather.
+
+___ set parameter: allowSomeChemReinit=0 [Only relevant if you have the Shindell
+    chemistry compiled; tells the model to skip some initializations. Namely:
+    setting of H2O and Q in the stratosphere consistent with CH4, applying
+    only a portion of the chemistry change in the first 30 timesteps of a run,
+    initializing some non-tracer species and intra-family proportions, reading
+    default albedo-related variable from file. On E2.x branches, that last bit
+    also requires keep_params=1.]
+
+___ set parameter: initial_GHG_setup=0 [Only relevant on E2.x branches and
+    earlier.]
+
+___ set parameter list: itime_tr0. For example: itime_tr0=-1,-1,... out to ntm,
+    to prevent tracers from reinitializing when itime = itime_tr0(n) or from
+    skipping tracer code because it thinks your tracer has not reached it's
+    turn on time yet. The -1 suggestion helps because itime should never be negative
+    so itime should always be > itime_tr0. Obviously, if you use a tracer that
+    should in fact not be turned on yet in your run or depends on itime_tr0 in a
+    more complicated way (bomb isotopes?) then set this as needed. For OMA tracers,
+    I think the only dependence is the GLT chemistry diagnostic tracer, and if you
+    set this incorrectly and don't care about it, the change in values will not
+    affect any other model variables. The GLT issue only matters on E2.x branches
+    and earlier.]
+    Note: on E3 branches or later one can set e.g.:
+      default_itime_tr0=-1  ! default
+      GLT_itime_tr0=12345   ! exception
+    instead of a long comma separated string of numbers.
+
+As noted above for NINT, diagnostics may still differ vs. an ISTART=9 start. Also,
+the 'Water' tracer still currently exhibits differences, as does many tracers-in-
+surface-reservior variables. I.e. something about the tracer interaction with the
+surface hydrology is still affected by the ISTART choice, and while this doesn't
+seem to affect atmospheric tracer values as a whole, it seems to matter for 'Water'
+tracer.
+

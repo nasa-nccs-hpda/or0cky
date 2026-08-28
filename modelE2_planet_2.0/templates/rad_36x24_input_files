@@ -1,0 +1,14 @@
+! Begin NINT E2.1 input files
+
+BC_dep=BC.Dry+Wet.depositions.ann_36x24.nc
+DUSTaer=dust_mass_CakmurMillerJGR06_36x24x20x7x12_unlim.nc
+TAero_SUL=SUL_Koch2008_kg_m2_36x24x20_1890-2000h.nc
+TAero_SSA=SSA_Koch2008_kg_m2_36x24x20h.nc
+TAero_NIT=NIT_Bauer2008_kg_m2_36x24x20_1890-2000h.nc
+TAero_OCA=OCA_Koch2008_kg_m2_36x24x20_1890-2000h.nc
+TAero_BCA=BCA_Koch2008_kg_m2_36x24x20_1890-2000h.nc
+TAero_BCB=BCB_Koch2008_kg_m2_36x24x20_1890-2000h.nc
+
+O3file=o3_2005_shindelltrop_36x24x49_1850-1997_ple.nc
+
+! End NINT E2.1 input files

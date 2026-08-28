@@ -1,0 +1,27 @@
+___ What should the real reference height (hr) be set to?? The online example uses 80km,
+    but I have used 0 km in the code.
+
+___ Similarly, what is a logical setting for nvert. The online example uses 40 layers,
+    with no explanation. I am using LM, but in some sense it seems like it should be
+    larger for lower resolution models, not smaller, no?? E.g. some sort of scaling
+    like LM*89/65 (see note in code on tops of the 102L vs. 40L model.)
+
+___ very fundamentally, am I sure that these lat and lons returned are the correct thing
+    to use for mapping? IF so, is it the apex or the quasi-dipole lat that is to be
+    used? So far assumed quasi-dipole.
+
+___ the apex_setup call for the test.f example online used nvert=40,
+    mxlat = 3*nvert+1, mxlon = 5*nvert+1, mxalt = nvert+1, but I am not
+    but no explanation why those relationships for the horizontal to the
+    vertical. For now, I am trying:
+    integer, parameter :: mxlat=JM, mxlon=IM, mxalt=nvert+1
+    nvert is LM so far, see above.
+
+___ what do we do when we are running outside the valid timefram of the input/apex model?
+    (See if CMIP6 doc has guidance on this.)
+
+___ clear liscence with Igor or someone.
+
+___ there is a newer version of apex.F90 online I found late in the process, but
+    not sure that it was a big change... IF updating make sure you are using the right
+    coeff inputs that goes with the version.

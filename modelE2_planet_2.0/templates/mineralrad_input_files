@@ -1,0 +1,5 @@
+
+! mineral dependent Mie parameters
+lutdust=SoilDustMineralsInputs/Tab.Min.Stp.MieHomSK.obiso_etal_acp2023a.nc
+lutmine=SoilDustMineralsInputs/Tab.Min.Stp.MieHetNK.obiso_etal_acp2023a.nc
+

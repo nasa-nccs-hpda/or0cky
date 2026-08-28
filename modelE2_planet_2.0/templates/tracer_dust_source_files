@@ -1,0 +1,2 @@
+TRDUST_COM TRDUST TRDUST_DRV        ! dust tracer specific code
+MinDusRadSW                         ! one-type dust: ellipsoids; minerals: radiative prop.

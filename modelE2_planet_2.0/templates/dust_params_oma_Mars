@@ -1,0 +1,16 @@
+!--------- dust aerosol parameters for Mars ----------------
+#include "dust_params_general"
+vegetationERS=0              ! switch off vegetation proxy filter [on: >=1]
+                             ! ERS file needed for >=1
+
+!! OMA with model winds
+! for imDust=0:
+scaleDustEmission=1.22677828025 ! from scaling to the global mean of observed dust AOD
+fracClayPDFscheme=0.0177771056404 ! clay emission parameter from calibration
+fracSiltPDFscheme=0.0523608361104 ! silt emission parameter from calibration
+   !fracClayPDFscheme = 0.0181021293733[1] * 0.997[2] * 0.985[3]
+   !fracSiltPDFscheme = 0.0531582092491[1] * 1.000[2] * 0.985[3]
+   ![1] emission parameters used for calibration run E20170309TomaF40climIM0_001
+   ![2] size distribution factors derived from calibration
+   ![3] total emitted mass factor derived from calibration
+!-----------------------------------------------------------

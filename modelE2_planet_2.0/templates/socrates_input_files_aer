@@ -1,0 +1,7 @@
+! Input files for planet radiation (SOCRATES)
+solar_spec='sun'
+spectral_file_lw='sp_lw_ga7/sp_lw_ga7_dsa'
+spectral_file_sw='sp_sw_ga7/sp_sw_ga7_dsa'
+aer_opt_prop_lw='sp_lw_ga7/aer_lw_ga7.nc'
+aer_opt_prop_sw='sp_sw_ga7/aer_sw_ga7.nc'
+aer_opt_prop_diag='sp_diag/aer_diag_std.nc'

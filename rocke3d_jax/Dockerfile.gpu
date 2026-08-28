@@ -1,0 +1,43 @@
+# Dockerfile for ROCKE-3D JAX Porting (GPU-Enabled)
+# ================================================
+# Build and run with:
+#   docker build -t rocke3d-jax-gpu -f Dockerfile.gpu .
+#   docker run --gpus all -it rocke3d-jax-gpu
+#
+# For NVIDIA GPU support, ensure:
+#   - NVIDIA Container Toolkit is installed on the host
+#   - Docker has GPU access (nvidia-docker2)
+
+# Base image: CUDA 12.1 + Python 3.9
+FROM nvidia/cuda:12.1.1-base-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV JAX_PLATFORMS=cuda
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3 \
+    python3-pip \
+    python3-dev \
+    git \
+    wget \
+    gfortran \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install JAX with CUDA support
+RUN pip install --upgrade pip && \
+    pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html && \
+    pip install numpy scipy
+
+# Clone ROCKE-3D JAX repository (or copy files)
+WORKDIR /workspace
+COPY . .
+
+# Install additional dependencies (if any)
+RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+# Set default command
+CMD ["bash"]

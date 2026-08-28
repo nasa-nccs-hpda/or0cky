@@ -1,0 +1,13 @@
+! --- CH4 tracer specific settings: ---
+!    important:
+use_rad_ch4=0      ! use rad code CH4, shut off sfc sources
+CH4_nBBsources=0 ! if non-zero make sure last-CH4_nBBsources-listed CH4 emissions files are the desired
+                 ! ones to mix through PBL
+!    rarer settings:
+! Lmax_rad_CH4=0   ! CH4 levels used in rad code default is LM
+fix_CH4_chemistry=0    ! for setting fixed methane value for chemistry:
+scale_ch4_IC_file=1.d0 ! multiplicative factor on CH4 IC file (fix_CH4_chemistry=-1)
+! For SSPs, following E2.1 methane growth rate tuning,
+! scale the CH4 ocean, lake, misc. ground source:
+scale_CH4MGOL=2.0
+! --- end of CH4 tracers specific settings ---

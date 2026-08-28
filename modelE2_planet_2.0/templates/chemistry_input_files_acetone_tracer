@@ -1,0 +1,18 @@
+!-----------------------------------------------
+!  resolution-independent chemistry input files:
+!-----------------------------------------------
+JPLRX=giss2/JPL2011_E3acetOn3a
+JPLPH=giss2/ds4_photlist_T25_acetone__g
+RATJ=giss2/ratj.giss_25_acetone__g_meta
+SPECFJ=giss2/jv_spec_X68d_so2_acetone_meta.dat
+ATMFJ=chem_files/jv_atms.dat
+LNOxCDF=lightning/light_dist.ott2010.dat
+! these to scale various initial conditions:
+trICratOth=giss2/IC/trICratOth.nc
+trICratN=giss2/IC/trICratN.nc
+trICratN2O=giss2/IC/trICratN2O.nc
+trICratCOt=giss2/IC/trICratCOt.nc
+trICratCOs=giss2/IC/trICratCOs.nc
+trICratCFC=giss2/IC/trICratCFC.nc
+trICch4=giss2/IC/trICch4.nc
+!-----------------------------------------------

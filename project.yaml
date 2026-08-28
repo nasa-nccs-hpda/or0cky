@@ -1,0 +1,12 @@
+name: imvi
+description: Project workspace for IMVI agent resources and knowledge.
+status: draft
+owners: []
+
+# Add repository-relative paths after the corresponding entries exist.
+models: []
+skills: []
+knowledge: []
+integrations:
+  - integrations/nasa-mantle
+agents: []

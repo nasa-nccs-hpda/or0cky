@@ -1,0 +1,10 @@
+CDN=CD8X10.modelE.nc                  ! surf.drag coefficient
+VEG=V8X10.modelE.nc                ! veg. fractions
+!CROPS=CROPS2007_72X46N.cor4_nocasp
+SOIL=S8X10.modelE.nc
+TOP_INDEX=top_index_8x10.ij.nc
+ZVAR=ZVAR8X10.nc
+! probably need these (should convert to 36x24)
+soil_textures=soil_textures_top30cm
+SOILCARB_global=soilcarb_top30cm_8x10.nc
+!GLMELT=GLMELT_4X5.OCN

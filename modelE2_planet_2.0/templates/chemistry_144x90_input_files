@@ -1,0 +1,10 @@
+!-----------------------------------------------
+!  3D chemistry input files:
+!-----------------------------------------------
+N2O_IC=giss2/IC/N2O_IC_M23_4x5_6.17_conc_2x2.5_conc.nc
+CFC_IC=giss2/IC/CFC_IC_M23_4x5_6.17_conc_2x2.5_conc.nc
+CH4_IC=giss2/IC/CH4_IC_M23_4x5_6.17_conc_2x2.5_conc.nc
+Ox_IC=giss2/IC/Ox_init_cond_M23_4x5_conc_2x2.5_conc.nc
+CO_IC=giss2/IC/CO_init_cond_M23_conc_2x2.5_conc.nc
+ALB_IC=giss2/ALBIJ1_IC_144x90_from_ANN1854_of_M40cadiOK0.nc
+!! OFFLINE_AERO=giss2/uncoupledAero_E14TomaOCNf10_4av_decadal_F40 ! only for coupled_chem.eq.0

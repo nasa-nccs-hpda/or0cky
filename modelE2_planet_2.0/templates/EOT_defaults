@@ -1,0 +1,6 @@
+! Equation of time has 3 options:
+!   'F' - off
+!   'T' - on
+!   'N' - uses "naive" EOT formula that neglects obliquity (initial implementation)
+! Note: the default value of EOT is 'F' for Earth and 'T' for non-Earth.
+! EOT='T'

@@ -1,0 +1,10 @@
+RADN1=sgpgxg.table8                           ! rad.tables and history files
+RADN3=miescatpar.abcdv2
+
+RH_QG_Mie=oct2003.relhum.nr.Q633G633.table
+!RADN7=STRATAER.VOL.1850-2014_CMIP6_hdr ! no volcanic aerosols
+!RADN8=cloud.epsilon4.72x46 ! map of CLDEPS only applicable to modern Earth
+
+!ISCCP=ISCCP.tautables
+GHG=GHG.CMIP6.1-2014.txt  !  GreenHouse Gases for CMIP6 runs up to 2014
+!dH2O=dH2O_by_CH4_monthly ! no stratospheric generation of H2O by CH4

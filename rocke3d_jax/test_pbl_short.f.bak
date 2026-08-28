@@ -1,0 +1,62 @@
+C Minimal Fortran test for find_dpsim
+      PROGRAM TEST_PBL_SHORT
+      IMPLICIT NONE
+      INTEGER, PARAMETER :: N = 5
+      REAL*8 :: find_dpsim
+      REAL*8, DIMENSION(N) :: zet, zet0, dpsim_out
+      INTEGER :: i
+      INTRINSIC :: LOG, ATAN
+      CALL RANDOM_SEED()
+      DO i = 1, N
+        CALL RANDOM_NUMBER(zet(i))
+        CALL RANDOM_NUMBER(zet0(i))
+        zet(i) = zet(i) * 2.0d0 - 1.0d0
+        zet0(i) = zet0(i) * 2.0d0 - 1.0d0
+      END DO
+      DO i = 1, N
+        dpsim_out(i) = find_dpsim(zet(i), zet0(i))
+      END DO
+      OPEN(UNIT=10, FILE='test_pbl_short_output.txt', STATUS='REPLACE')
+      WRITE(10, *) 'dpsim:'
+      DO i = 1, N
+        WRITE(10, *) dpsim_out(i)
+      END DO
+      CLOSE(10)
+      PRINT *, 'Output saved to test_pbl_short_output.txt'
+      END PROGRAM TEST_PBL_SHORT
+
+      REAL*8 FUNCTION find_dpsim(zet, zet0)
+      IMPLICIT NONE
+      REAL*8, INTENT(IN) :: zet, zet0
+      REAL*8, PARAMETER :: gamams = 4.7d0
+      REAL*8, PARAMETER :: gamamu = 16.0d0
+      REAL*8, PARAMETER :: zet1 = 1.0d0
+      REAL*8, PARAMETER :: slope1 = 5.0d0
+      REAL*8, PARAMETER :: by3 = 1.0d0 / 3.0d0
+      REAL*8, PARAMETER :: zetm = -1.0d0
+      LOGICAL :: stable
+      REAL*8 :: x, x0, xm
+      REAL*8 :: term1, term3, term4, term5
+      stable = zet >= 0.0d0
+      IF (stable .AND. zet <= zet1) THEN
+        find_dpsim = -gamams * (zet - zet0)
+      ELSE IF (stable) THEN
+        find_dpsim = -gamams * (zet1 - zet0) + zet1 * (slope1 - gamams) * &
+               LOG(zet / zet1) - slope1 * (zet - zet1)
+      ELSE IF (zet > zetm) THEN
+        x = (1.0d0 - gamamu * zet)**0.25d0
+        x0 = (1.0d0 - gamamu * zet0)**0.25d0
+        term1 = LOG((1 + x)**3 * (1 + x**2))
+        term3 = 2.0d0 * ATAN(x)
+        find_dpsim = term1 - term3
+      ELSE
+        x = (1.0d0 - gamamu * zet)**0.25d0
+        x0 = (1.0d0 - gamamu * zet0)**0.25d0
+        xm = (1.0d0 - gamamu * zetm)**0.25d0
+        term1 = LOG((1 + xm)**3 * (1 + xm**2))
+        term3 = 2.0d0 * ATAN(xm)
+        term4 = LOG(zet / zetm)
+        term5 = 1.140125d0 * ((-zet)**by3 - (-zetm)**by3)
+        find_dpsim = term1 - term3 + term4 - term5
+      END IF
+      END FUNCTION find_dpsim

@@ -1,0 +1,10 @@
+!-----------------------------------------------
+!  3D chemistry input files:
+!-----------------------------------------------
+N2O_IC=AR5_C90/N2O_IC_from_2x2.5_C90_Dec_2009
+CFC_IC=AR5_C90/CFC_IC_from_2x2.5_C90_Dec_2009 
+! CH4_IC not read if fix_ch4_chemistry==0
+CH4_IC=AR5_C90/CH4_IC_from_2x2.5_C90_Dec_2009
+Ox_IC=AR5_C90/Ox_IC_from_2x2.5_C90_Dec_2009
+CO_IC=AR5_C90/CO_IC_from_2x2.5_C90_Dec_2009
+!! OFFLINE_AERO=giss2/uncoupledAero_E14TomaOCNf10_4av_decadal_C90 ! only for coupled_chem.eq.0

@@ -1,0 +1,22 @@
+# object files, .mod files, libraries
+*.o
+*.mod
+*.smod
+*.a
+
+# dependency files
+.depend
+.current_options
+.current_srcs
+/.depend_subdirs
+/.liblist
+/libmodel.a
+/notes
+libsocrates.a
+.depend_tmp.old
+socrates/.current_options
+
+# error logs and other random output
+*.ERR
+*.i
+*.i90

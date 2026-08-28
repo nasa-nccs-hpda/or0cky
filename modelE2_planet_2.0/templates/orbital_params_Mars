@@ -1,0 +1,23 @@
+!--------------------
+! The following block is used to control both the orbit _and_ the
+! calendar in the case on non-Earth configurations.  If the
+! 'planetName' parameter is set to anything other than 'Earth', then a
+! calendar is derived from the specified orbital parameters.  Each
+! orbital parameter has a default value corresponding to Earth, and
+! the planet calendar will be exactly the same as the usual
+! Julian_no_leap calendar if one uses those defaults.
+!--------------------
+planetName = 'Mars' ! Construct a calendar suitable for Mars orbit
+! The following sets the various orbital parameters
+! source: http://en.wikipedia.org/wiki/Mars
+quantizeYearLength = 'F'
+eccentricity = 0.093
+obliquity = 25.19d0 ! degrees
+longitudeAtPeriapsis = 251.0! degrees
+siderealOrbitalPeriod  = 59354294.4 ! seconds
+siderealRotationPeriod = 88642.6848 ! seconds
+meanDistance = 1.52366231 ! AU
+! The Mars year starts at the vernal equinox
+date_of_vernal_equinox='jan01'
+!--------------------
+

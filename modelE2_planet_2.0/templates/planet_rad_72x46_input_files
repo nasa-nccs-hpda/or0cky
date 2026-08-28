@@ -1,0 +1,15 @@
+! Begin NINT E2.1 input files
+
+BCdalbsn=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/BCdalbsn
+DUSTaer=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/DUST
+TAero_SUL=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/SUL
+TAero_SSA=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/SSA
+TAero_NIT=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/NIT
+TAero_OCA=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/OCA
+TAero_BCA=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/BCA
+TAero_BCB=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/BCB
+
+O3file=cmip6_nint_inputs_E14TomaOCNf10_4av_decadal/72x46/O3
+Ox_ref=o3_2010_shindell_72x46x49_April1850.nc
+
+! End NINT E2.1 input files

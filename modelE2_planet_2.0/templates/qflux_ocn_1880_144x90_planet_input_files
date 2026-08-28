@@ -1,0 +1,7 @@
+
+ZSIFAC=ZSIfac_144x90.1876-1885avg.CMIP6.nc  ! climatological sea ice thickness
+TOPO=Z2HX2fromZ1QX1N.BS1.nc               ! ocean fraction and surface topography
+!! Q-flux ocean: use the next line instead, set KOCEAN=1
+OHT=zero_OHT_144x90_100m.nc         ! ocean horizontal heat transports
+!! OCNML is not used if KOCEAN=0, but needed in and to prepare for q-flux model
+OCNML=zero_OCNML_144x90_100m.nc     ! mixed layer depth (needed for post processing)

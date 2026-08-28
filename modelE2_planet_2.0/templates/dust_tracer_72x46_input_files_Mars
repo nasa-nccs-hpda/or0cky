@@ -1,0 +1,4 @@
+! files for dust tracers
+DSRC=Ginoux_source_v2009_VegMask_72x46_mars   ! preferred dust sources
+LKTAB=log_dust_emission_60ms-1 ! look up table for emission calculations
+LKTAB1=table_wspdf             ! look up table for wind speed probabilities

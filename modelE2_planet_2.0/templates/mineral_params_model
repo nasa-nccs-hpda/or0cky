@@ -1,0 +1,39 @@
+!--------- mineralogical dust aerosol parameters----------------
+#include "dust_params_general"
+
+#include "mineral_params_general"
+
+!! OMA-Mineral (only dust minerals are interactive):
+! for imDust=3 (AeroCom size distribution and geography - "ATA")
+!scaleDustEmission=0.210544738677 ! scales total dust emission
+  !scaleDustEmission = 0.209705915017[1] * 1.004[2]
+  ![1]: emission parameter used for calibration run E2p1_20190328TminF40climATA_001
+  ![2]: total emitted mass factor derived from calibration run
+! for imDust=0(=4) and soil mineral fraction method ("SMF")
+!scaleDustEmission=0.211115084821 ! scales total dust emission
+  !scaleDustEmission = 0.21742027273[1] * 0.971[2]
+  ![1]: emission parameter used for calibration run E2p1_20190725TminF40climSMF_003
+  ![2]: total emitted mass factor derived from calibration run
+! for imDust=0(=4) and aerosol mineral fraction method ("AMF")
+scaleDustEmission=0.773632066226 ! scales total dust emission
+  !scaleDustEmission = 0.769017958475[1] * 1.006[2]
+  ![1]: emission parameter used for calibration run E2p1_20190328TminF40climAMF_001
+  ![2]: total emitted mass factor derived from calibration run
+! for imDust=0(=4) and aerosol mineral fraction method + mod. feldspar ("FEL")
+!scaleDustEmission=0.71210680834 ! scales total dust emission
+  !scaleDustEmission = 0.651515835627[1] * 1.093[2]
+  ![1]: emission parameter used for calibration run E2p1_20190328TminF40climFEL_001
+  ![2]: total emitted mass factor derived from calibration run
+! for imDust=5 (same as imDust=4, but with AeroCom source geography - "AMA"):
+!scaleDustEmission=0.845230117055 ! scales total dust emission
+  !scaleDustEmission = 0.813503481285[1] * 1.039[2]
+  ![1]: emission parameter used for calibration run E2p1_20190328TminF40climAMA_001
+  ![2]: total emitted mass factor derived from calibration run
+!for imDust=3-5 (also set as default in the model)
+  !fracClayPDFscheme=1.0
+  !fracSiltPDFscheme=1.0
+!------------------------------------------------------
+!! all versions:
+! for imDust=1 (prescribed AeroCom emissions):
+!scaleDustEmission=1.0
+!----------------------------------------------------------------

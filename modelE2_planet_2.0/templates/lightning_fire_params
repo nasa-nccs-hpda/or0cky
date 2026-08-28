@@ -1,0 +1,7 @@
+! Lightning parameterization and tuning
+lightning_param=1          ! 1 = Cloud Top Height; 2 = Upward Convective Mass Flux; 3 = Convective Precipitation
+tune_lt_land=2.5d0
+tune_lt_sea= 5.8d0
+FLASH_PERTURB=1.0d0        ! 1.1 = 10% increase in lightning flash rate globally
+! pyrE
+anthropogenic_fire_model=1 ! set to zero if you have no population density

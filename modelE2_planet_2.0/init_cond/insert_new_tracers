@@ -1,0 +1,116 @@
+# /path/to/bash/if/needed
+#
+# Special-purpose script to increase the number of atmos. tracers (ntm) in
+# prognostic restart-file arrays having this dimension ($vars_to_expand).
+# The shell variable $new_positions specifies the indices of the new
+# tracers.  The new tracers are set to zero.  ntm-sized arrays not
+# listed in $vars_to_expand are omitted from $new_rsf.
+# Note: your $PATH should contain the location of the NCO package.
+#
+#
+# Change these as appropriate
+#
+infile=your_rsf.nc
+new_rsf=your_new_rsf.nc
+new_positions="35 36 37 66"
+vars_to_expand="trlake trsi trsi_atm tr_w_ij tr_wsn_ij trsnowli trlndi trdwnimp gtracer trabl_ocn01 trabl_ice01 trabl_gla01 trabl_lnd01"
+
+ntm=`ncdump -h $infile | egrep "ntm =" | egrep -v ":" | gawk '{print $3}'`
+all_ntm_vars=`ncdump -h $infile | egrep -i "ntm,|ntm\)" | sed 's/(/ /' | gawk '{print $2}'`
+
+#
+# sanity check
+#
+for vname in $vars_to_expand; do
+  xxx=''
+  for vnamex in $all_ntm_vars; do
+    if [[ $vname = $vnamex ]]; then xxx=$vname; fi
+  done
+  if [[ $xxx = '' ]]; then
+    echo "$vname is not present or is not dimensioned by ntm"
+    exit
+  fi
+done
+
+rm -f expanded_arrays.nc
+
+for vname in $vars_to_expand; do
+
+orig_dim_order=`ncdump -h $infile | egrep "double ${vname}\(" | sed 's/, /,/g;s/(/ /;s/)/ /' | gawk '{print $3}'`
+
+#
+# create an array of zeros for this variable
+#
+ncwa -h -O -F -y ttl -v $vname -a ntm -d ntm,1,1 $infile zeros.nc
+ncdiff -h -O zeros.nc zeros.nc zeros.nc
+
+#
+# create temporary per-tracer files and a list of them, inserting the
+# filename containing the array of zeros at the appropriate positions
+# in the list
+# 
+#
+flist=''
+n=0
+ntm_new=0
+for nnn in $new_positions; do
+  if [[ $((ntm_new+1)) -eq $nnn ]]; then
+    flist=${flist}" zeros.nc"
+    ntm_new=$((ntm_new+1))
+  fi
+done
+while [[ $n -lt $ntm ]]; do
+  n=$((n+1))
+  ntm_new=$((ntm_new+1))
+  echo "extracting tracer $n from $vname"
+  outfile=${vname}${n}.nc
+  ncwa -h -O -F -y ttl -v $vname -a ntm -d ntm,$n,$n $infile ${outfile}
+  flist=${flist}" "${outfile}
+  for nnn in $new_positions; do
+    if [[ $((ntm_new+1)) -eq $nnn ]]; then
+      flist=${flist}" zeros.nc"
+      ntm_new=$((ntm_new+1))
+    fi
+  done
+done
+
+echo "new number of tracers: "${ntm_new}
+
+#
+# concatenate the list of per-tracer temporary files
+#
+ncecat -h -O ${flist} ${vname}.nc
+
+#
+# get rid of the record dimension created by concatenation and restore
+# original dimension ordering
+#
+ncdump -h ${vname}.nc | sed "s/record = UNLIMITED/record = ${ntm_new}/" > tmp.cdl
+ncgen -b tmp.cdl -o ${vname}_new.nc
+nccopy_new ${vname}.nc ${vname}_new.nc ${vname}
+ncrename -h -O -d record,ntm ${vname}_new.nc ${vname}_new.nc
+ncpdq -h -O -a $orig_dim_order ${vname}_new.nc ${vname}.nc
+
+#
+# remove temporary files
+#
+rm -f ${flist} tmp.cdl ${vname}_new.nc
+
+#
+# collect into a file containing all expanded arrays
+#
+ncks -a -h -A -v $vname ${vname}.nc expanded_arrays.nc
+rm -f ${vname}.nc
+
+done # end loop over variables
+
+#
+# remove all ntm-dimensioned arrays from the restart file,
+# then append the expanded ones
+#
+all_ntm_vars=`echo $all_ntm_vars | sed 's/ /,/g'`
+cmd="ncks -a -h -O -v $all_ntm_vars -x $infile $new_rsf"
+echo $cmd; $cmd
+cmd="ncks -a -h -A expanded_arrays.nc $new_rsf"
+echo $cmd; $cmd
+rm -f expanded_arrays.nc

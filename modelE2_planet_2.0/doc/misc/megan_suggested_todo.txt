@@ -1,0 +1,105 @@
+Below are suggestions for further improvements or checking on the MEGAN biogenic
+emissions scheme as coded in modelE. Fairly random order. [G.Faluvegi, Summer,
+2017]
+================================================================================
+
+==> Like the Hammoz implementation, we have not yet called a canopy model to get
+    the gamma_TLD & gamma_TLI -- we're calling the MEGAN routines directly to get
+    these. (Right now there's a database parameter use_canopy_model, which could
+    eventually get a call sync_param to turn this option on. If this gets implemented
+    we need a CCE tuning parameter. See comments in the code about it and also:
+    See Guenther, 2012 page 1475. and Guenther 2006, p. 3190).
+
+==> In the routine subroutine biogenicEmissions_drv, instead of using an array
+    'species' to define the (list of) species, get a better programmer to loop over
+    pointers to the biogenic_species objects instead. Current situation would become
+    cumbersome with more than a couple species.
+
+==> the T_daily_megan that we are passing to gamma_a (aging) routine is supposed
+    to be temperature near "canopy top", while the SAT_daily_megan we are passing
+    to gamma_tld routine looks like surface air temperature. However, in the hammoz
+    model, they seem to pass both routines the same temperature. Think about this.
+    *BUT* their notes say that they neglect the canopy, and that that should be
+    studied/improved.
+    Therefore, if the exporting of the canopy temperature from GHY_DRV is NOT RIGHT,
+    (for some reason) then a good "initial stab" at a fix would be to replace the
+    section that sets T_daily_megan with the line:
+    T_daily_megan=SAT_daily_megan
+    (or, indeed, not use T_daily_megan at all.)
+    Current code proceeds under the assumption we'll get some sort of canopy 
+    temperature from Ent.
+
+==> If the use of PPFD_megan=par_direct*ConvertSunPPFD+par_diffuse*ConvertShadePPFD
+    (quantities from Ent) is not appropriate and we have no others we can export,
+    perhaps use something like this from the rad code?:
+    ALB(I,J,_appropriate_band)*(SRDN(I,J)+teeny)*COSZ1(I,J)?
+
+==> We need to consider that, in the section of code in the gamma_a routine like this:
+      Fgro = 1.d0 - Fnew - Fmat
+      Fold = 0.d0
+    the hammoz model noted that:
+    "if t <= tm (by definition tm>ti) then there will never be grown leaves, because
+    Fnew+Fmat = 1."
+
+==> We could consider putting the call to gamma_lai inside species_loop (loop over
+    species) and conditionally calling gamma_LAIbidir instead, if current species is
+    bidirectional. That gamma_LAIbidir routine exists, but is currently never called.
+    Nor does it seem to be used in the hammoz model, nor in my copy of MEGAN2.1. code.
+    Possibly relevant to: ethanol, acetaldehyde, formaldehyde, acetic acid, formic
+    acid...?
+
+==> We could consider upgrading gamma_s (the soil moisture routine), like hammoz model
+    did. This is already almost entirely coded -- just commented out! If someone
+    switches to it, note that we need to pass the volumetric soil moisture. There are
+    additional notes in our code about this.
+
+==> It worries me that the hamoz model (and even MEGAN's emproc.F) doesn't seem to
+    apply the CO2 gamma -- even for Isoprene. Shouldn't we find out why?
+
+==> Consider if Ptoa is something that we can get from GCM instead of the formula in
+    gamma_p routine. Note that the hammoz model seems to get its own.
+
+==> Note that Guenther 2012, page 1474, says the MEGAN 2.1 EFs are net primary emissions,
+    not the net flux to atmosphere, as it doesn't remove, e.g. the in-canopy deposition
+    Think about this, once we see the size of sources: It should only matter a few
+    percent, but, e.g., does our depositon schemes adequately compensate for this?
+
+==> I *think* that the arrays {SAT,T,PPFD,LAI}%{step(i,j),day(i,j),first(i,j),marker(i,j)}
+    could maybe become scalars (like SAT%step), if all the running averages are in sync
+    for all i,j space. In which case they would need to be updated outside of the megan.F90
+    code -- before the i,j loop that calls it.
+
+==> It is worth thinking about the fact that the final emissions formula as coded:
+
+    species(n)%source(I,J)=convertUnits * bulk_EF * gamma_LAI * gamma_AGE *
+       gamma_SM * gamma_CO2 * ( (1.d0-species(n)%ldf) * gamma_tli +
+       species(n)%ldf * gamma_PPFD*gamma_tld)
+
+    supercedes Guenther 2012. That paper would have used separate the light dependency 
+    portions of T and PDDF and would have looked more like what's below. (But both
+    the hammoz model and MEGAN 2.1 codes seem to use more like what we did above.)
+
+    species(n)%source(I,J)=convertUnits * bulk_EF * gamma_LAI * gamma_AGE *
+       gamma_SM * gamma_CO2 * ( (1.d0-species(n)%ldf) * gamma_tli +
+       species(n)%ldf * gamma_tld ) * ( (1.d0-species(n)%ldf) +
+       species(n)%ldf * gamma_PPFD )
+
+==> Note: found it very hard to confirm the indicies of the megan species, because I
+    couldn't find the INDEX1 function referenced in the MEFAN code. However, the
+    file TXT2IOAPI/INCLDIR/SPC_MGN.EXT: might be listing them. I am going on that
+    assumption for e.g. looking up cceo parameter in:
+    INCLDIR/EACO.EXT (for example, Isoprene is the first one):
+    DATA CT1(1),Cceo (1) /95.0, 2.0/
+    DATA TDF_SPC(1),TDF_PRM(1),TDF_MAP(1)/'ISOP', 0.13 , 1/
+    These seem to be what hammoz model uses (e.g. see their cafac variable) and
+    match G 2012 Tables as well. 
+
+==> A suface air density is used to convert CO2 units. It would seem to make sense to
+    use: rho=atmsrf%rhoavg(i,j)
+    but upon model startup (at least cold startup) this appears to be zero so would
+    cause a divide-by-zero. Working around by using:
+    rho=100.d0*pedn(1,i,j)/(rgas*atmsrf%tsavg(i,j))
+    instead.
+
+
+

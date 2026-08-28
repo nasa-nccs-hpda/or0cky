@@ -1,0 +1,9 @@
+! Initial atmospheric temperature, specific humidity, wind, surface pressure.
+! If rundeck parameter initial_psurf_from_topo=1, initial surface pressure is
+! reset to be consistent with orography.
+!!AIC=planet/Mars/AIC.coldmars_t170.nc
+AIC=planet/Mars/AIC_M40_p10mb_t273K_q2e-04.nc
+
+! Initial soil temperature, relative wetness, and snow depth.
+SOILIC=planet/desert_world/soilic_drysoil.nc
+

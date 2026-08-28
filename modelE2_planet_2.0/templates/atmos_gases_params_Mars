@@ -1,0 +1,18 @@
+l_uniform_ghg=1 ! deactivates prescribed GHG distributions
+! scaling factor for CO2 amounts.  Increase by the ratio of 95% molar CO2 to
+! whatever concentration is in the GHG file (which has ppmv units)
+!co2x=1.
+co2x=3333.
+
+! zero-out some constituents not present in Mars spectral files
+O3X=0. ! turn off O3, to turn on delete this line and add O3file
+N2OX=0.
+CFC11X=0.
+CFC12X=0.
+CH4X=0.
+XGHGX=0.
+YGHGX=0.
+O2X=0. ! No O2 in socrates files
+H2OstratX=1.
+wsn_max=0.   ! restrict snow depth to 2 m-h2o (if 0. snow depth is NOT restricted)
+

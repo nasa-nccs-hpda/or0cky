@@ -1,0 +1,4 @@
+
+! dust particles shaped as triaxial ellipsoids
+lutdust=SoilDustOneTypeInputs/Tab.Dus.Stp.EllHomSK.nc
+

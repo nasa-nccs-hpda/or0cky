@@ -1,0 +1,6 @@
+! scaling factor for solar brightness is now from mean distance.
+s0x=1.00
+
+! -1 uses Thekaekara solar spectrum, so no RADN9 input file required
+KSOLAR=-1
+
