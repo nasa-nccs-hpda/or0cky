@@ -470,32 +470,18 @@ c
 
 !@var {lmd,nsized} number of {layers, size classes} in DUSTaer input file
 #if !defined(MININT_RADSW)
-      integer :: lmd,nsized
-#else
-      integer :: hhz, ssx, eez, nsized
-#endif
-
-!@var DUSTaerstream interface for reading and time-interpolating DUSTaer files
-!@+   See usage notes in timestream_mod
-#if !defined(MININT_RADSW)
+      integer :: lmd, nsized
       type(timestream) :: DUSTaerstream
+      real*8, dimension(:), allocatable :: redust, rodust, plbdust
 #else
-      type(timestream) :: MIOX_stream
-      type(timestream) :: MHOS_stream
-      type(timestream) :: MACC_stream
+      integer :: hhz, ssx, eez, nsized_minint
+      type(timestream) :: MIOX_stream, MHOS_stream, MACC_stream
+      real*8, dimension(:), allocatable :: redust_minint, rodust_minint
 #endif
 
 !@var is_initialized whether the DUSTaer stream has been initialized
 !@+   and various arrays allocated
       logical :: is_initialized=.false.
-
-!@var plbdust nominal edge pressures of DUSTaer file layers
-!@var {re,ro}dust radii of DUSTaer file size classes
-#if !defined(MININT_RADSW)
-      real*8, dimension(:), allocatable :: redust, rodust, plbdust
-#else
-      real*8, dimension(:), allocatable :: redust
-#endif
 
       contains
 

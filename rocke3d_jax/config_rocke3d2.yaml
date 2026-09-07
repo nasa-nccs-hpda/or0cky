@@ -1,0 +1,177 @@
+# ROCKE-3D 2.0 Configuration File
+# Based on Tsigaridis et al. (2025), GMD
+# https://gmd.copernicus.org/articles/18/5825/2025/
+
+# Template Configuration Naming Convention: P2{S|G}{A|x|N}{p|q|o}{M40|F40}
+# Example: P2SNoM40 = ROCKE-3D 2.0, SOCRATES, anoxic, dynamic ocean, medium resolution
+
+# ======================================================================
+# Model Version
+# ======================================================================
+model_version: "ROCKE-3D 2.0"
+
+# ======================================================================
+# Radiation Scheme
+# ======================================================================
+# Options: "GISS" (Earth-optimized), "SOCRATES" (generalized)
+radiation_scheme: "SOCRATES"
+
+# ======================================================================
+# Atmosphere
+# ======================================================================
+# Options: "A" (Earth 1850), "x" (ROCKE-3D 1.0), "N" (anoxic)
+atmosphere: "N"
+
+# Atmospheric Composition (mole fractions)
+# For Earth 1850 (A):
+#   CO2: 280 ppm, CH4: 800 ppb, N2O: 280 ppb, O2: 0.2095, Ar: 0.0093
+# For ROCKE-3D 1.0 (x):
+#   Same as A but without aerosols, O3, and stratospheric H2O
+# For anoxic (N):
+#   CO2: 280 ppm, CH4: 800 ppb, N2O: 280 ppb, O2: 0.0, Ar: 0.0, N2: 0.7808
+atmospheric_composition:
+  CO2: 280e-6    # ppm
+  CH4: 800e-9    # ppb
+  N2O: 280e-9    # ppb
+  O2: 0.0        # anoxic
+  Ar: 0.0        # anoxic
+  N2: 0.7808     # balance
+
+# ======================================================================
+# Ocean Configuration
+# ======================================================================
+# Options: "p" (prescribed), "q" (Q-flux=0), "o" (dynamic)
+ocean_config: "o"
+
+# Ocean Parameters
+# For prescribed (p):
+#   sst_file: "path/to/sst.nc"
+#   sea_ice_file: "path/to/sea_ice.nc"
+# For Q-flux=0 (q):
+#   q_flux: 0.0  # W/m² (no heat transport)
+# For dynamic (o):
+#   ocean_depth: 3800.0  # meters (default for Earth)
+#   ocean_resolution: "M40"  # 4x5° (medium) or "F40" (fine)
+ocean_parameters:
+  ocean_depth: 3800.0  # meters
+  ocean_resolution: "M40"
+
+# ======================================================================
+# Resolution
+# ======================================================================
+# Options: "M40" (medium: 4x5° atmosphere, 4x5° ocean, 13 layers)
+#          "F40" (fine: 2x2.5° atmosphere, 1x1.25° ocean, 40 layers)
+resolution: "M40"
+
+# Atmospheric Resolution
+atmospheric_resolution:
+  lat: 4.0    # degrees
+  lon: 5.0    # degrees
+  levels: 20  # vertical layers
+
+# Ocean Resolution (if dynamic)
+ocean_resolution:
+  lat: 4.0    # degrees
+  lon: 5.0    # degrees
+  levels: 13  # vertical layers
+
+# ======================================================================
+# Planetary Parameters
+# ======================================================================
+# Based on Table 4 in Tsigaridis et al. (2025)
+planet:
+  name: "Earth-like"
+  radius: 6.371e6  # meters
+  gravity: 9.81    # m/s²
+  rotation_period: 86400.0  # seconds (1 Earth day)
+  orbital_period: 365.0     # days
+  eccentricity: 0.0
+  obliquity: 23.44  # degrees
+  solar_constant: 1360.0   # W/m²
+
+# ======================================================================
+# Model Physics
+# ======================================================================
+# PBL (Planetary Boundary Layer)
+pbl:
+  scheme: "Monin-Obukhov"  # or "Louis"
+  z0m: 0.01  # roughness length for momentum (m)
+  z0h: 0.01  # roughness length for heat (m)
+
+# FLUXES (Surface Fluxes)
+fluxes:
+  momentum_flux: true
+  heat_flux: true
+  moisture_flux: true
+
+# RADIATION
+radiation:
+  # For SOCRATES: spectral_file: "ga7_dsa"
+  # For GISS: use built-in Earth parameters
+  spectral_file: "ga7_dsa"  # Default for SOCRATES
+  cloud_scheme: "U00a_U00b"  # Cloud balancing parameters
+
+# DRYCNV (Dry Convection)
+drycnv:
+  enabled: true
+  mixing_scheme: "adjustment"  # or "mass_flux"
+
+# LAKES
+lakes:
+  enabled: true
+  dynamic: true  # Generalized for arbitrary topography
+  bathymetry: "conical"  # or "prescribed"
+
+# SEAICE
+seaice:
+  enabled: true
+  thermodynamics: "brine_pocket"  # BP formulation
+  layers: 2  # mass layers
+
+# SURFACE
+surface:
+  albedo: "variable"  # or "fixed"
+  vegetation: false   # Disable for non-Earth
+
+# ======================================================================
+# Time Stepping
+# ======================================================================
+# Physics time step (DTsrc)
+time_stepping:
+  DTsrc: 1800.0  # seconds (30 minutes)
+  NRAD: 5        # Radiation called every 5 physics steps
+  NIsurf: 1      # Surface exchange frequency
+
+# ======================================================================
+# Spinup and Equilibration
+# ======================================================================
+# For dynamic ocean: 1000+ years may be needed
+spinup:
+  years: 100     # Spinup duration (years)
+  restart_file: null  # Path to restart file (if any)
+
+# ======================================================================
+# Output
+# ======================================================================
+output:
+  diagnostics:
+    - "tsurf"       # Surface air temperature (K)
+    - "oicefr"      # Ocean ice fraction (%)
+    - "pcldt"       # Total cloud fraction (%)
+    - "net_rad_planet"  # Net planetary radiation (W/m²)
+    - "srnf_toa"   # Net stellar radiation at TOA (W/m²)
+    - "plan_alb"   # Planetary albedo (%)
+  frequency: "annual"  # Output frequency: "daily", "monthly", "annual"
+  directory: "./output"
+
+# ======================================================================
+# Balancing Parameters (Table 3 in Tsigaridis et al. 2025)
+# ======================================================================
+# These are used to achieve radiative balance (net_rad_planet ~ 0)
+# Values depend on radiation_scheme, atmosphere, and ocean_config
+balancing:
+  # For P2SNoM40 (SOCRATES, anoxic, dynamic ocean, M40)
+  U00a: 0.85      # Cloud optical depth scaling
+  U00b: 0.60      # Critical relative humidity for cloud formation
+  WMUI_multiplier: 1.0
+  radiusl_multiplier: 1.0

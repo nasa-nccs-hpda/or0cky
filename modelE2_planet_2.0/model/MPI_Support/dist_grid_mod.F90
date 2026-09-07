@@ -162,6 +162,8 @@ MODULE dist_grid_mod
 #ifdef USE_ESMF
       TYPE (ESMF_Grid) :: ESMF_GRID
 #endif
+      INTEGER :: NPES_WORLD
+      INTEGER :: rank
       INTEGER :: NPES_USED
       ! Parameters for Global domain
       INTEGER :: IM_WORLD        ! Number of Longitudes
@@ -2225,7 +2227,7 @@ MODULE dist_grid_mod
 ! ----------------------------------------------------------------------
       integer function getLogUnit()
 ! ----------------------------------------------------------------------
-        use FileManager, only: openUnit
+        use FILEMANAGER, only: openunit
         character(len=40) :: logFileName
 
         integer, parameter :: UNINITIALIZED = -1
@@ -2233,7 +2235,7 @@ MODULE dist_grid_mod
 
         if (logUnit == UNINITIALIZED) then
           write(logFileName,'(a,i4.4)') 'debug.', rank
-          call openUnit(logFileName, logUnit, qbin=.false., qold=.false.)
+          call openunit(logFileName, logUnit, qbin=.false., qold=.false.)
         end if
 
         getLogUnit = logUnit

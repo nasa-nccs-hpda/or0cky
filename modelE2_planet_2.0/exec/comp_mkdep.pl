@@ -6,6 +6,9 @@
 
 $verbose = 0;
 
+# Exclude socrates from dependencies
+@ARGV = grep { $_ ne 'socrates' && $_ ne 'socrates_dir' } @ARGV;
+
 %mod_provided = ();
 %mod_needed = ();
 %comp_depends = ();

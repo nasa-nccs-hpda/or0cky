@@ -8,9 +8,10 @@
       !* COUPLED RUNS - Replace with values from GCM constants*!
       !use Name_of_GCM_constants_module  
 
-      use TimeConstants_mod, only: sday=>SECONDS_PER_DAY
       implicit none
       save
+
+      real*8, parameter :: sday = 86400.d0
 
 #define OFFLINE 1
       !************************************************************************

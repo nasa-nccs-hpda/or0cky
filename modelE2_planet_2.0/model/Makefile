@@ -3,6 +3,11 @@
 .SUFFIXES:
 .PHONY: FORCE
 
+MODEL_E_ROOT ?= $(shell dirname $(MODEL_DIR))
+DECKS_DIR = $(MODEL_E_ROOT)/decks
+RUN = test_rocke3d
+CONFIG_DIR = $(MODEL_E_ROOT)/config
+
 AVAILABLE_COMPONENTS = profiler MPI_Support Ent giss_LSM shared solvers dd2d tracers CS_Support apex
 ifdef SOCRATESPATH
 AVAILABLE_COMPONENTS += socrates
@@ -76,9 +81,10 @@ FSRCS = $(filter %.f, $(FFFLIST))
 F90SRCS = $(filter %.F90, $(FFFLIST))
 CSRCS = $(filter %.c, $(FFFLIST))
 
-include $(CONFIG_DIR)/base.mk
+CONFIG_DIR = $(MODEL_E_ROOT)/config
+sinclude $(CONFIG_DIR)/base.mk
 #sinclude $(DEPENDFILE)
-include $(CONFIG_DIR)/rules.mk
+sinclude $(CONFIG_DIR)/rules.mk
 INCS += -I$(MODEL_DIR)/shared
 ifdef SOCRATESPATH
 INCS += -I$(MODEL_DIR)/socrates
@@ -172,3 +178,5 @@ etags: $(COMPONENTS)
 	@echo "Creating TAGS file"
 	@ctags -e --fortran-kinds=+i `for i in . $^ ; do c=$$i perl -e 'while(<>){ /(\S+\.f\b|\S+\.fh|\S+\.F90)/ and $$a{$$1}=1; } foreach $$k (keys %a){ $$k=~s/^/$$ENV{c}\// if ($$k!~/^\//); print "$$k ";}' < $$i/.depend ; done`
 	@echo "done"
+DECKS_DIR = /home/gtamkin/_ilab-agentic-ai/ilab-agentic-ai/projects/imvi/modelE2_planet_2.0/model/decks
+RUN = test_rocke3d

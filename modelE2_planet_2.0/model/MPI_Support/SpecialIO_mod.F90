@@ -7,8 +7,10 @@ module SpecialIO_mod
   use dist_grid_mod
   use GatherScatter_mod
   use MpiSupport_mod
+#ifdef NEW_IO
   use pario_fbsa, only : BACKSPACE_PARALLEL,REWIND_PARALLEL,SKIP_PARALLEL
   use pario_fbsa, only : DREAD_PARALLEL,DREAD8_PARALLEL,DWRITE8_PARALLEL
+#endif
 
   implicit none
   private
@@ -77,11 +79,129 @@ module SpecialIO_mod
   interface WRITEI8_PARALLEL
     module procedure WRITEI8_PARALLEL_3D
   end interface
+
+#ifndef NEW_IO
+  interface DREAD_PARALLEL
+    module procedure DREAD_PARALLEL_2D
+    module procedure DREAD_PARALLEL_3D
+  end interface
+
+  interface DREAD8_PARALLEL
+    module procedure DREAD8_PARALLEL_3D
+  end interface
+
+  interface DWRITE8_PARALLEL
+    module procedure DWRITE8_PARALLEL_3D
+  end interface
+#endif
   
 #ifdef USE_MPI
   include 'mpif.h'
 #endif
 contains
+
+#ifndef NEW_IO
+  subroutine BACKSPACE_PARALLEL(iunit)
+    integer, intent(in) :: iunit
+    if (am_i_root()) backspace(iunit)
+  end subroutine BACKSPACE_PARALLEL
+
+  subroutine REWIND_PARALLEL(iunit)
+    integer, intent(in) :: iunit
+    if (am_i_root()) rewind(iunit)
+  end subroutine REWIND_PARALLEL
+
+  subroutine SKIP_PARALLEL(iunit)
+    integer, intent(in) :: iunit
+    if (am_i_root()) read(iunit)
+  end subroutine SKIP_PARALLEL
+
+  subroutine DREAD_PARALLEL_2D(grd_dum, iunit, name, avar, recs_to_skip)
+    type (dist_grid), intent(in) :: grd_dum
+    integer, intent(in) :: iunit
+    character(len=*), intent(in) :: name
+    real*8, intent(out) :: avar(:,:)
+    integer, intent(in), optional :: recs_to_skip
+    real*4 :: ain(grd_dum%IM_WORLD, grd_dum%JM_WORLD)
+    real*8 :: aout(grd_dum%IM_WORLD, grd_dum%JM_WORLD)
+    integer :: n, rc
+
+    if (am_i_root()) then
+      if (present(recs_to_skip)) then
+        do n = 1, recs_to_skip
+          read(iunit, iostat=rc)
+        end do
+      end if
+      read(iunit, iostat=rc) ain
+      aout = ain
+    else
+      rc = 0
+    end if
+    call scatterReal8(grd_dum, aout, avar, shape(avar), 2)
+    call checkReadStatus(rc, name, 'DREAD_PARALLEL_2D')
+  end subroutine DREAD_PARALLEL_2D
+
+  subroutine DREAD_PARALLEL_3D(grd_dum, iunit, name, avar, recs_to_skip)
+    type (dist_grid), intent(in) :: grd_dum
+    integer, intent(in) :: iunit
+    character(len=*), intent(in) :: name
+    real*8, intent(out) :: avar(:,:,:)
+    integer, intent(in), optional :: recs_to_skip
+    real*4 :: ain(grd_dum%IM_WORLD, grd_dum%JM_WORLD, size(avar,3))
+    real*8 :: aout(grd_dum%IM_WORLD, grd_dum%JM_WORLD, size(avar,3))
+    integer :: n, rc
+
+    if (am_i_root()) then
+      if (present(recs_to_skip)) then
+        do n = 1, recs_to_skip
+          read(iunit, iostat=rc)
+        end do
+      end if
+      read(iunit, iostat=rc) ain
+      aout = ain
+    else
+      rc = 0
+    end if
+    call scatterReal8(grd_dum, aout, avar, shape(avar), 2)
+    call checkReadStatus(rc, name, 'DREAD_PARALLEL_3D')
+  end subroutine DREAD_PARALLEL_3D
+
+  subroutine DREAD8_PARALLEL_3D(grd_dum, iunit, name, avar, recs_to_skip)
+    type (dist_grid), intent(in) :: grd_dum
+    integer, intent(in) :: iunit
+    character(len=*), intent(in) :: name
+    real*8, intent(out) :: avar(:,:,:)
+    integer, intent(in), optional :: recs_to_skip
+    real*8 :: aglob(grd_dum%IM_WORLD, grd_dum%JM_WORLD, size(avar,3))
+    integer :: n, rc
+
+    if (am_i_root()) then
+      if (present(recs_to_skip)) then
+        do n = 1, recs_to_skip
+          read(iunit, iostat=rc)
+        end do
+      end if
+      read(iunit, iostat=rc) aglob
+    else
+      rc = 0
+    end if
+    call scatterReal8(grd_dum, aglob, avar, shape(avar), 2)
+    call checkReadStatus(rc, name, 'DREAD8_PARALLEL_3D')
+  end subroutine DREAD8_PARALLEL_3D
+
+  subroutine DWRITE8_PARALLEL_3D(grd_dum, iunit, name, buf)
+    type (dist_grid), intent(in) :: grd_dum
+    integer, intent(in) :: iunit
+    character(len=*), intent(in) :: name
+    real*8, intent(in) :: buf(:,:,:)
+    real*8 :: buf_glob(grd_dum%IM_WORLD, grd_dum%JM_WORLD, size(buf,3))
+    integer :: rc
+
+    call gatherReal8(grd_dum, buf, buf_glob, shape(buf), 2, .false.)
+    if (am_i_root()) write(iunit, iostat=rc) buf_glob
+    call checkWriteStatus(rc, name, 'DWRITE8_PARALLEL_3D')
+  end subroutine DWRITE8_PARALLEL_3D
+#endif
   
   SUBROUTINE MREAD_PARALLEL_2D (grd_dum,IUNIT,NAME,M,AVAR)
 !@sum MREAD_PARALLEL  Parallel version of UTILDBL.f:MREAD for (im,jm) arrays

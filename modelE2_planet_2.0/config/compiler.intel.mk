@@ -8,7 +8,7 @@ CMP_MOD = $(SCRIPTS_DIR)/compare_module_file.pl -compiler INTEL-ifort-9-0-on-LIN
 FFLAGS = -fpp -O2 -ftz         -convert big_endian 
 F90FLAGS = -fpp -O2 -ftz        -convert big_endian -free 
 LFLAGS = -O2 -ftz
-CPPFLAGS += -DCOMPILER_Intel8 -DCONVERT_BIGENDIAN
+CPPFLAGS += -DCOMPILER_Intel8 -DCONVERT_BIGENDIAN -I/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/include
 F90_VERSION = $(shell $(F90) -v 2>&1)
 ifeq ($(MP),YES)
 FFLAGS += -openmp

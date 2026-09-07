@@ -279,7 +279,7 @@ contains
       planetParams = PlanetaryParams() ! read from rundeck
       rotationPeriod = planetParams%getSiderealRotationPeriod()
       orbitalPeriod = planetParams%getSiderealOrbitalPeriod()
-      omega = 2*pi/rotationPeriod
+      omega = 2*TWOPI/rotationPeriod
       omega2 = 2*omega
 
       rotationsPerYear = orbitalPeriod / rotationPeriod

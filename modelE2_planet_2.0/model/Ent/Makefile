@@ -70,10 +70,14 @@ ifndef CONFIG_DIR
        CONFIG_DIR := $(GISSCLIM_DIR)/config
 endif
 
+CONFIG_DIR = ../../config
 include $(CONFIG_DIR)/base.mk
+override EXTERNAL_CPP := YES
 #dependencies (should be done later automatically):
 #sinclude $(DEPENDFILE)
 include $(CONFIG_DIR)/rules.mk
+override FFLAGS := $(filter-out -fpp,$(FFLAGS))
+export EXTERNAL_CPP
 
 ifeq ($(PFT_MODEL),ENT)
 CPPFLAGS += -DPFT_MODEL_ENT

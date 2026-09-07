@@ -185,13 +185,15 @@ cddd      endif
       real*8, save :: a1c=1.d30, f1c=-1.d30
       real*8 :: a1e, f1e
       real*8, parameter :: alpha=.08d0 !Intrinsic quantum efficiency for CO2 uptake
-#ifdef PS_BVOC
-      logical, parameter :: need_isoprene = .true.
-#else
-      logical, parameter :: need_isoprene = .false.
-#endif
+      logical :: need_isoprene
       integer, save :: counter = 0
       counter = counter + 1
+
+#ifdef PS_BVOC
+      need_isoprene = .true.
+#else
+      need_isoprene = .false.
+#endif
 
       !write(888,*) "counter=", counter
       Rd = Rdark(pspar%Vcmax)
@@ -221,8 +223,8 @@ cddd      endif
             a1c = pspar%Vcmax
             f1c = pspar%Kc*(1.d0 + O2pres/pspar%Ko) * 1.d06/Pa !umol/mol
            !NK DEBUG
-            !call ci_cubic (ca,rh,gb,Pa,Rd,a1c,f1c,pspar,Axxx)
-            call ci_cubic(ca,rh,gb,Pa,Rd,a1c,f1c,pspar,Ac)
+            !call ci_cubic_analytical (ca,rh,gb,Pa,Rd,a1c,f1c,pspar,Axxx)
+            call ci_cubic_analytical(ca,rh,gb,Pa,Rd,a1c,f1c,pspar,Ac)
             !if ( Ac >= -Rd ) write(578,*) Axxx, Ac, Ac - Axxx
             !write(888,*) "Ac", ca,rh,gb,Pa,Rd,a1,f1,pspar,Ac
          else !C4 photosynthesis
@@ -250,8 +252,8 @@ cddd      endif
         if ( a1e < a1c .or. 
      &       f1e > f1c .or.
      &       need_isoprene ) then
-            !call ci_cubic (ca,rh,gb,Pa,Rd,a1e,f1e,pspar,Axxx)
-          call ci_cubic(ca,rh,gb,Pa,Rd,a1e,f1e,pspar,Ae)
+            !call ci_cubic_analytical (ca,rh,gb,Pa,Rd,a1e,f1e,pspar,Axxx)
+          call ci_cubic_analytical(ca,rh,gb,Pa,Rd,a1e,f1e,pspar,Ae)
             !write(888,*) "Ae", ca,rh,gb,Pa,Rd,a1,f1,pspar,Ae 
 cddd        call ci_cubic1(ca,rh,gb,Pa,Rd,a1,f1,pspar,Axxx)
 cddd        write(579,*) Ae, Axxx
@@ -787,8 +789,8 @@ cddd      end subroutine Ci_Js
 !=================================================
 
 #ifndef USE_NR_SOLVER_FOR_FBB
-      subroutine ci_cubic(ca,rh,gb,Pa,Rd,a1,f1,pspar,A)
-!@sum ci_cubic Analytical solution for cubic equation of coupled
+      subroutine ci_cubic_analytical(ca,rh,gb,Pa,Rd,a1,f1,pspar,A)
+!@sum ci_cubic_analytical Analytical solution for cubic equation of coupled
 !@+   Ball-Berry/Farquhar stomatal conductance/photosynthesis.
 !@+   Version that uses analytical equation solution.
 !@+   Solves for Anet.
@@ -903,11 +905,11 @@ cddd      Rs = 1.d0 / ( b)
 cddd      ci = cs - A*Rs
 cddd      !!print *,"q ", ci, cs, A, Rs, Ra
 cddd      ! just in case, check consistency
-cddd      if ( ci < 0.d0 ) call stop_model("ci_cubic: q: ci<0",255)
-cddd      if ( cs < 0.d0 ) call stop_model("ci_cubic: q: cs<0",255)
+cddd      if ( ci < 0.d0 ) call stop_model("ci_cubic_analytical: q: ci<0",255)
+cddd      if ( cs < 0.d0 ) call stop_model("ci_cubic_analytical: q: cs<0",255)
 cddd      !!print *,'QQQQ ',A,ci
 
-      end subroutine ci_cubic
+      end subroutine ci_cubic_analytical
 
 
 !=================================================
@@ -1378,8 +1380,8 @@ cddd      end function calc_ci
 !-----------------------------------------------------------------------------
 
 #ifdef USE_NR_SOLVER_FOR_FBB
-      subroutine ci_cubic(ca,rh,gb,Pa,Rd,a1,f1,pspar,A)
-!@sum ci_cubic Numerical solution for cubic equation of coupled
+      subroutine ci_cubic_nr(ca,rh,gb,Pa,Rd,a1,f1,pspar,A)
+!@sum ci_cubic_nr Numerical solution for cubic equation of coupled
 !@+   Ball-Berry/Farquhar stomatal conductance/photosynthesis.
 !@+   Solves for Atot.
 !@+   Version that uses Newton-Raphson solver
@@ -1445,7 +1447,7 @@ cddd      endif
      &     , numit)
       !write(577,*) numit
 
-      end subroutine ci_cubic
+      end subroutine ci_cubic_nr
 
 cddd      subroutine A_eqn(A, f, df,  Ra, b, K, gamol,  ca, a1, f1, Rd )
 cddd      real*8 A, f, df

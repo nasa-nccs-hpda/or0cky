@@ -78,5 +78,8 @@ endif
 include $(CONFIG_DIR)/base.mk
 include $(CONFIG_DIR)/rules.mk
 
+# Override CPP to include containers and netcdf directories
+CPP = /lib/cpp -P -traditional -I$(shell pwd)/containers -I/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/include
+
 
 

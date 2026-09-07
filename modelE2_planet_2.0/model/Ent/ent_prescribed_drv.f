@@ -13,6 +13,7 @@
       use ent_const
       use ent_pfts
       use ent_prescr_veg
+      use ent_mod, only: PTRACE, N_PFT, N_CASA_LAYERS, NPOOLS, NLIVE
 
       implicit none
       private

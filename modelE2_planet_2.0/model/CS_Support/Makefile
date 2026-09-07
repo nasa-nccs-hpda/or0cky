@@ -13,6 +13,7 @@ ifndef CONFIG_DIR
        CONFIG_DIR := $(GISSCLIM_DIR)/config
 endif
 
+CONFIG_DIR = ../../config
 include $(CONFIG_DIR)/base.mk
 include $(CONFIG_DIR)/rules.mk
 

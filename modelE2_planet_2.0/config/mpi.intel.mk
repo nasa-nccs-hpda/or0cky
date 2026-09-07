@@ -8,6 +8,7 @@
 ifneq (${MPIDIR},)
 FFLAGS += -I${MPIDIR}/include
 F90FLAGS += -I${MPIDIR}/include
+CPPFLAGS += -I${MPIDIR}/include
 LIBS += -L${MPIDIR}/lib
 endif
 

@@ -47,10 +47,10 @@ NO_COMMAND = @echo "*****  This architecture is not supported "; \
              echo "*****  You have COMPILER=$(COMPILER)" ; exit 1;
 F90 = $(NO_COMMAND)
 CC ?= cc
-FMAKEDEP = $(NO_COMMAND)
+FMAKEDEP = /home/gtamkin/_ilab-agentic-ai/ilab-agentic-ai/projects/imvi/modelE2_planet_2.0/exec/sfmakedepend
 CMP_MOD = cmp -s
 SETUP = $(SCRIPTS_DIR)/setup_e.pl
-CPP = $(NO_COMMAND)
+CPP = /lib/cpp -P -traditional
 LIBS =
 INCS =
 F90_VERSION = 'Unknown compiler version'
@@ -98,10 +98,6 @@ ifeq ($(FVCORE),YES)
   MPI = YES
 endif
 
-ifeq ($(FVCUBED),YES)
-  ESMF = YES
-endif
-
 ifeq ($(COSP_SIM),YES)
    CPPFLAGS += -DCOSP_SIM
    FFLAGS += -$(I)COSP_SIM
@@ -121,6 +117,9 @@ include $(CONFIG_DIR)/machine.$(MACHINE).mk
 ifneq ($(COMPILER),)
   include $(CONFIG_DIR)/compiler.$(COMPILER).mk
 endif
+
+# Override FMAKEDEP to use the sfmakedepend script in exec directory
+FMAKEDEP = /home/gtamkin/_ilab-agentic-ai/ilab-agentic-ai/projects/imvi/modelE2_planet_2.0/exec/sfmakedepend
 
 ### HACK !! - add source dir to CPPFLAGS
 #ifneq ($(SRC_DIR),)

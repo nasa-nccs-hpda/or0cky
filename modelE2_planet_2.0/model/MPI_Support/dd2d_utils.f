@@ -1094,8 +1094,6 @@ c      enddo
 
       end function isInLocalSubdomain
 
-      end module dd2d_utils
-
       subroutine gather4D(grid,local_arr,global_arr
      &     ,i1,i2,j1,j2,nl,nk,nt,has_halo
      &     ,i1g,i2g,j1g,j2g,am_i_gsroot,comm_gs,nproc_comm
@@ -1103,7 +1101,6 @@ c      enddo
      &     ,buf1d_local_size,buf1d_tile_size,bufij_tile_size
      &     ,buf1d_local,buf1d_tile,bufij_tile
      &     )
-      use dd2d_utils, only : dist_grid
       implicit none
 #ifndef SERIAL_MODE
       include 'mpif.h'
@@ -1222,7 +1219,6 @@ c
      &     ,buf1d_local_size,buf1d_tile_size,bufij_tile_size
      &     ,buf1d_local,buf1d_tile,bufij_tile
      &     )
-      use dd2d_utils, only : dist_grid
       implicit none
 #ifndef SERIAL_MODE
       include 'mpif.h'
@@ -1345,7 +1341,6 @@ c copy the the local receive buffer into the local array
      &     ,buf1d_local_size,buf1d_tile_size,bufij_tile_size
      &     ,buf1d_local,buf1d_tile,bufij_tile
      &     )
-      use dd2d_utils, only : dist_grid
       implicit none
 #ifndef SERIAL_MODE
       include 'mpif.h'
@@ -1482,7 +1477,6 @@ c
      &     ,buf1d_local_size,buf1d_tile_size,bufij_tile_size
      &     ,buf1d_local,buf1d_tile,bufij_tile
      &     )
-      use dd2d_utils, only : dist_grid
       implicit none
 #ifndef SERIAL_MODE
       include 'mpif.h'
@@ -1700,3 +1694,5 @@ c
       end subroutine sendrecv4D
 
 #endif /* not SERIAL_MODE */
+
+      end module dd2d_utils

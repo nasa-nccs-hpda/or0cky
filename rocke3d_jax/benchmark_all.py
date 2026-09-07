@@ -10,7 +10,16 @@ Usage:
 """
 
 import os
-os.environ["JAX_PLATFORMS"] = "cpu"  # Force JAX to use CPU backend
+os.environ["JAX_PLATFORMS"] = "cuda"  # Force JAX to use CPU backend
+
+
+import jax
+
+# Automatically detects Slurm environment parameters
+jax.distributed.initialize()
+
+# Verify total device count across nodes
+print(f"Total visible devices: {jax.device_count()}")
 
 import sys
 sys.path.insert(0, '.')
@@ -24,7 +33,7 @@ from pbl import simil_jit
 
 
 def dry_convection_numpy(T, Q, PK, PDSIG, deltx=0.608):
-    """NumPy implementation of dry convection (Fortran-like, CPU baseline)."""
+    """NumPy implementation of dry convection (Fortran-like, GPU baseline)."""
     T_out = np.copy(T)
     Q_out = np.copy(Q)
     TV = T_out * (1 + Q_out * deltx)
@@ -49,7 +58,7 @@ def dry_convection_numpy(T, Q, PK, PDSIG, deltx=0.608):
 
 
 def simil_numpy(z, z0m, z0h, z0q, lmonin, ustar, tstar, qstar, tg, qg):
-    """NumPy implementation of simil (Fortran-like, CPU baseline)."""
+    """NumPy implementation of simil (Fortran-like, GPU baseline)."""
     kappa = 0.4
     gamamu = 16.0
     by3 = 1.0 / 3.0
@@ -134,13 +143,13 @@ def benchmark_module(name, jax_func, numpy_func, input_generator, grid_sizes, it
         _ = numpy_func(*inputs_np)
         _ = jax_func(*inputs)
         
-        # Benchmark NumPy (CPU)
+        # Benchmark NumPy (GPU)
         start_time = time.time()
         for _ in range(iterations):
             _ = numpy_func(*inputs_np)
         numpy_time = (time.time() - start_time) / iterations
         
-        # Benchmark JAX (CPU)
+        # Benchmark JAX (GPU)
         start_time = time.time()
         for _ in range(iterations):
             _ = jax_func(*inputs)
@@ -149,8 +158,8 @@ def benchmark_module(name, jax_func, numpy_func, input_generator, grid_sizes, it
         # Compute speedup
         speedup = numpy_time / jax_time
         
-        print(f"NumPy (CPU) time:  {numpy_time:.6f} seconds")
-        print(f"JAX (CPU) time:    {jax_time:.6f} seconds")
+        print(f"NumPy (GPU) time:  {numpy_time:.6f} seconds")
+        print(f"JAX (GPU) time:    {jax_time:.6f} seconds")
         print(f"Speedup (JAX/NumPy): {speedup:.2f}x")
 
 

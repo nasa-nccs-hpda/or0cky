@@ -7,6 +7,8 @@ HOMEDIR = $(wildcard ~)
 MODELERC ?= $(HOMEDIR)/.modelErc
 sinclude $(MODELERC)
 
+# Set SCRIPTS_DIR to the exec directory
+SCRIPTS_DIR ?= /home/gtamkin/_ilab-agentic-ai/ilab-agentic-ai/projects/imvi/modelE2_planet_2.0/exec
 
 # the name for main target:
 THIS := $(shell basename `pwd`)
