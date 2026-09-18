@@ -25,3 +25,7 @@ prompts
 skills
 rocke3d_jax copy
 *.tgz
+*.tgz.*
+*.tar.xz
+*.tar.xz.*
+_modelE2_planet_2.0

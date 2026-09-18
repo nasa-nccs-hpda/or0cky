@@ -1,2 +1,0 @@
-ADD_TEST_SUITE(Test_Placeholder_mod_suite)
-ADD_TEST_SUITE(Test_Geom_B_mod_suite)
