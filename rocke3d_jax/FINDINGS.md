@@ -1,6 +1,6 @@
 # ROCKE-3D JAX vs. Fortran Performance Findings
 
-**Last Updated**: 2026-09-07
+**Last Updated**: 2026-09-18
 **Status**: ✅ **All benchmarks completed**
 
 ---
@@ -60,6 +60,21 @@ This report compares the **performance** and **numerical accuracy** of the **ori
   - **PBL**: **4.77×–192.28×** speedup (scales with grid size).
   - **DRYCNV**: **8.95×–253.34×** speedup (scales with grid size).
 - **Scaling**: JAX speedup **increases with grid size** (due to GPU parallelism).
+
+---
+
+## 🌍 **2b. Global Grid Numerical Agreement (2D Single-Layer Fields)**
+
+In addition to the 1D-column comparison above, `visualize_2d_global_maps.ipynb` computes pixel-wise Fortran−JAX differences over the **full 180×360 global grid** for four single-layer fields (temperature, pressure, heat flux, solar flux), rounded to 3 decimal places to remove floating-point noise.
+
+| **Field**              | **Min Diff** | **Max Diff** | **Mean Diff** | **Non-Zero Pixels (of 64,800)** |
+|-------------------------|--------------|--------------|----------------|-----------------------------------|
+| Temperature (K)         | 0.000000     | 0.000000     | 0.000000       | 0                                  |
+| Pressure (hPa)          | 0.000000     | 0.000000     | 0.000000       | 0                                  |
+| Heat Flux (W/m²)        | 0.000000     | 0.000000     | 0.000000       | 0                                  |
+| Solar Flux (W/m²)       | 0.000000     | 0.000000     | 0.000000       | 0                                  |
+
+**JAX and Fortran match exactly (to 3 decimal places) at every pixel across the full global grid** for these fields — a substantially tighter result than the ~2.3% figure from the 1D-column PBL similarity functions (`dpsim`/`dpsih`) above, which remains the outlier module rather than the norm. Difference maps in `outputs/difference_*_2d_map.html` use a diverging RdYlBu scale fixed at ±0.001 to make this level of agreement visible.
 
 ---
 
