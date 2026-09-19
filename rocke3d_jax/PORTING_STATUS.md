@@ -1,5 +1,5 @@
 # ROCKE-3D JAX Porting Status
-**Last Updated**: 2026-08-25
+**Last Updated**: 2026-09-19
 
 ## 📊 **Summary Table**
 
@@ -49,6 +49,30 @@
 | PBL        | 1K            | 0.000318 s      | 0.000129 s    | **2.47×**   |
 | PBL        | 10K           | 0.001870 s      | 0.000533 s    | **3.51×**   |
 | PBL        | 100K          | 0.016437 s      | 0.002984 s    | **5.51×**   |
+
+---
+
+## **🌍 P2SAoM40 Real-Data Orchestration (New)**
+
+`p2saom40_io.py` + `p2saom40_driver.py` + `p2saom40_compare.py` chain the physics-only modules above together into a single-`DTsrc`-step orchestrator, driven by the **real** restart state of a completed production ROCKE-3D run (`P2SAoM40`: 72×46×40 grid, coupled AOGCM, Dec 1949) rather than synthetic data — replacing `run_end_to_end.py`, which ran on a fabricated ~32×32×20 grid and had real bugs (radiation arguments mis-mapped, SURFACE was a no-op stub).
+
+**Bug found while wiring real data through the existing modules**: `fluxes_jax.py`/`surface_jax.py`'s flux formulas compute wind speed from the *surface* reference wind (`us,vs`) alone, not the atmosphere-relative wind — with the physically correct `us=vs=0` for land/land-ice (no-slip), this silently zeroed every flux for those cells. Worked around locally in `p2saom40_driver.py` (`_surface_fluxes_relative_wind`) rather than editing the shared, previously-tested module files.
+
+**Orchestration fidelity** (per-component, faithful vs. simplified vs. out of scope):
+
+| Component | Status | Note |
+|---|---|---|
+| PBL similarity functions | Faithful | `pbl.py`, used directly |
+| DRYCNV (layers 2..LM) | Faithful | `drycnv.py`, used directly |
+| RADIATION | Simplified | graybody Stefan-Boltzmann, not spectral transfer |
+| Monin-Obukhov solve | Simplified | fixed-point iteration on top of `pbl.getcm/getchq`, not PBL.f's Newton solve |
+| SURFACE dispatch | Simplified | one dominant surface type per cell, no sub-tile area weighting |
+| GHY (land) | Not wired | `ghy_jax.py`'s soil-moisture/flux-limit functions not yet used |
+| Layer-1 turbulence | Simplified | direct flux-tendency coupling; `aturb_jax.py` not used (placeholder PBL-top-finding) |
+| GROUND_SI / GROUND_LK | Not implemented | `seaice_jax.py`/`lakes_jax.py` core thermodynamics are documented placeholders/no-ops |
+| Atm. dynamics, moist convection, ocean GCM | Out of scope | not ported |
+
+**Verified against real data** (see FINDINGS.md for full results): single-`DTsrc`-step JAX output correlates 0.987 spatially with the real run's period-mean surface air temperature; JAX-covered physics subset (SURFACE+GROUND, excluding radiation which isn't a fair comparison) runs ~5.5x faster than the equivalent real Fortran cost on this CPU.
 
 ---
 

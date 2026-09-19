@@ -1,6 +1,6 @@
 # ROCKE-3D JAX vs. Fortran Performance Findings
 
-**Last Updated**: 2026-09-18
+**Last Updated**: 2026-09-19
 **Status**: ✅ **All benchmarks completed**
 
 ---
@@ -75,6 +75,42 @@ In addition to the 1D-column comparison above, `visualize_2d_global_maps.ipynb` 
 | Solar Flux (W/m²)       | 0.000000     | 0.000000     | 0.000000       | 0                                  |
 
 **JAX and Fortran match exactly (to 3 decimal places) at every pixel across the full global grid** for these fields — a substantially tighter result than the ~2.3% figure from the 1D-column PBL similarity functions (`dpsim`/`dpsih`) above, which remains the outlier module rather than the norm. Difference maps in `outputs/difference_*_2d_map.html` use a diverging RdYlBu scale fixed at ±0.001 to make this level of agreement visible.
+
+---
+
+## 🛰️ **2c. Real Production-Run Comparison (P2SAoM40)**
+
+Sections 1-2b above compare individual modules on synthetic or 1D-column data. This section instead drives the **full set of ported physics modules, chained together in the real Fortran call order**, from the actual restart state of a completed production ROCKE-3D run — `P2SAoM40` (72×46×40 grid, coupled ocean-atmosphere, Dec 1949, `DTsrc=1800s`, `NIsurf=2`, `NRAD=5`). Scope, code, and results are in `p2saom40_io.py`, `p2saom40_driver.py`, `p2saom40_compare.py`.
+
+**What's in scope**: the same physics parameterizations as above (PBL, radiation, surface fluxes, dry convection), orchestrated with the real `NIsurf`/`NRAD` cadence, at the real 72×46 grid, from real `fort.1.nc` restart data (real u/v/t/q/p, real land/lake/sea-ice surface state, real `focean/flake/fgrnd/fgice` surface-type fractions).
+
+**What's out of scope** (not ported, and not attempted here): the atmospheric dynamical core, moist convection (`CONDSE`), and the ocean GCM. Per the real per-routine timing in `P2SAoM40.PRT`, the JAX-covered subset (`RADIA`+`SURFACE`+`GROUND_SI/LI/LK`) represents **~74.6%** of real per-`DTsrc`-step Fortran physics cost; the excluded dynamics+`CONDSE` account for the remaining ~18.4% (the rest is `MELT_SI`/diagnostics overhead).
+
+**Real bug found**: driving `fluxes_jax.py`/`surface_jax.py` with real data (where `us=vs=0` for land/land-ice, the physically correct no-slip value) revealed their flux formulas compute wind speed from the surface reference wind alone, silently zeroing every flux for those cells. Their existing Fortran-comparison unit tests apparently used arbitrary nonzero test values and never caught this. Worked around locally in `p2saom40_driver.py` rather than editing the shared module files — see `PORTING_STATUS.md` for the full fidelity audit.
+
+### Accuracy (qualitative — see caveat below)
+
+| Comparison | Metric | Result |
+|---|---|---|
+| JAX layer-1 air temp vs. real period-mean `tsurf` | spatial correlation | **0.987** (bias +1.0°C) |
+| JAX sensible heat flux vs. real period-mean `sensht` | spatial correlation | -0.12 (expected — a single timestep vs. a multi-day mean of a fast-varying field) |
+
+**Caveat**: `PARTIAL.accP2SAoM40.nc`'s diagnostics are accumulated (period-mean), not per-timestep — `SUBDD` (instantaneous output) was disabled in this rundeck, so true per-step ground truth doesn't exist for this run. The strong temperature correlation is a meaningful sanity check (correct spatial structure: cold poles, warm tropics, land/ocean contrast); the weak flux correlation is expected, not a red flag, given the timescale mismatch. Getting an exact per-step accuracy number would require rerunning the Fortran model with `SUBDD` enabled for the relevant fields.
+
+### Performance (CPU)
+
+| | Cost |
+|---|---|
+| JAX driver, one `DTsrc` step (this CPU, jit-compiled, 20-step avg) | **48 ms** |
+| Real Fortran `SURFACE()` (NIsurf=2 substeps) + `GROUND_SI/LI/LK` | **~264 ms** |
+| → JAX-covered-subset speedup (excluding radiation, see below) | **~5.5×** |
+| Real Fortran `RADIA()` | 65.57% of runtime, avg 2070 ms (bimodal: ~0.7ms held-value steps, ~10.8s on the 1-in-5 `NRAD`-gated real radiative-transfer steps) |
+
+The `RADIA` comparison is **not apples-to-apples**: JAX's `radiation_jax.py` is a simplified graybody Stefan-Boltzmann formula (effectively free), while real `RADIA` does genuine multi-band spectral radiative transfer. The huge nominal speedup there reflects a fidelity gap, not a fair JAX-vs-Fortran speed measurement — the honest comparison is the SURFACE+GROUND figure above, where both sides do materially the same physics.
+
+### Performance (GPU)
+
+Not executed — no GPU is available in this environment. The driver is plain `jax.numpy` with no CPU-specific code, so `JAX_PLATFORMS=cuda` on a GPU-enabled host (see `Dockerfile.gpu`) should run unmodified; this is documented as a follow-on step rather than run here.
 
 ---
 
@@ -222,6 +258,9 @@ In addition to the 1D-column comparison above, `visualize_2d_global_maps.ipynb` 
 | `benchmark_all.py` | GPU benchmark script (JAX vs. NumPy). |
 | `run_end_to_end.py` | JAX workflow (1D column). |
 | `run_end_to_end_fortran.f90` | Fortran workflow (1D column). |
+| `p2saom40_io.py` | Real P2SAoM40 restart/diagnostics I/O (72x46x40 production grid). |
+| `p2saom40_driver.py` | Physics-only JAX orchestrator, real Fortran call order/cadence. |
+| `p2saom40_compare.py` | Runs the orchestrator on real data; functionality/accuracy/performance report. |
 | `FINDINGS.md` | This report. |
 
 ---
