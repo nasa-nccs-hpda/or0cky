@@ -1,5 +1,5 @@
 # ROCKE-3D JAX Porting Status
-**Last Updated**: 2026-09-19
+**Last Updated**: 2026-09-20
 
 ## 📊 **Summary Table**
 
@@ -80,7 +80,7 @@
 
 1. **Direct Fortran Validation**: Replace placeholder outputs in Fortran test drivers with actual subroutine calls.
 2. **Hybrid Workflow**: Integrate JAX modules into Fortran (via Python C API).
-3. **GPU/TPU Benchmarking**: Test on NVIDIA GPUs or Google TPUs (expected: **20–30× speedup**).
+3. **GPU/TPU Benchmarking**: ✅ Done for DRYCNV + PBL kernels at the real P2SAoM40 grid (2026-09-20, run interactively on a SLURM GPU node — see FINDINGS.md §2d): DRYCNV 30.3× faster than JAX-CPU (2.3× faster than real Fortran-CPU), matching the "expected 20–30×" estimate; PBL only 3.3× faster than JAX-CPU (6.3× faster than Fortran-CPU) — smaller than expected since PBL's cost is dispatch-bound, not compute-bound, at this problem size. Still open: the full chained orchestrator (`p2saom40_driver.py`, section above) has not been run on GPU.
 4. **Full Model Validation**: Run ROCKE-3D with JAX modules and validate climate statistics.
 
 ---
@@ -92,6 +92,7 @@
 - **Test Files**: Same directory (e.g., `test_pbl_jax.py`)
 - **Benchmark Suite**: `benchmark_all.py`
 - **Comparison Script**: `compare_fortran_jax.py`
+- **P2SAoM40 kernel-level CPU+GPU comparison (2026-09-20)**: `compare_generate_inputs.py`, `compare_fortran.f90`, `compare_jax.py`, `compare_run_gpu_interactive.py`, `compare_submit_gpu.sbatch`, `compare_report.py` — real ifort-compiled Fortran vs. real JAX, DRYCNV+PBL, same shared inputs on every leg; results in `compare_data/summary.json`, writeup in FINDINGS.md §2d
 
 ---
 

@@ -1,0 +1,6 @@
+{
+  "drycnv_mean_seconds": 0.00127197,
+  "pbl_mean_seconds": 0.0003703,
+  "device": "fortran_cpu",
+  "iterations": 100
+}

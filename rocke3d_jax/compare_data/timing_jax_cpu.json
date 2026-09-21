@@ -1,0 +1,9 @@
+{
+  "device": "cpu",
+  "jax_devices": [
+    "TFRT_CPU_0"
+  ],
+  "drycnv_mean_seconds": 0.017090320587158203,
+  "pbl_mean_seconds": 0.00019533872604370116,
+  "iterations": 100
+}

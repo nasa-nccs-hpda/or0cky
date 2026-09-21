@@ -1,0 +1,9 @@
+{
+  "device": "gpu",
+  "jax_devices": [
+    "cuda:0"
+  ],
+  "drycnv_mean_seconds": 0.000563802719116211,
+  "pbl_mean_seconds": 5.9189796447753904e-05,
+  "iterations": 100
+}

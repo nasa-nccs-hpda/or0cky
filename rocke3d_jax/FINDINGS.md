@@ -1,7 +1,7 @@
 # ROCKE-3D JAX vs. Fortran Performance Findings
 
-**Last Updated**: 2026-09-19
-**Status**: ✅ **All benchmarks completed**
+**Last Updated**: 2026-09-20
+**Status**: ✅ **All benchmarks completed** (see 2d for the first real GPU run, kernel-level)
 
 ---
 
@@ -111,6 +111,44 @@ The `RADIA` comparison is **not apples-to-apples**: JAX's `radiation_jax.py` is 
 ### Performance (GPU)
 
 Not executed — no GPU is available in this environment. The driver is plain `jax.numpy` with no CPU-specific code, so `JAX_PLATFORMS=cuda` on a GPU-enabled host (see `Dockerfile.gpu`) should run unmodified; this is documented as a follow-on step rather than run here.
+
+---
+
+## 🎮 **2d. Kernel-Level CPU + GPU Comparison (P2SAoM40 grid, real GPU run)**
+
+**2026-09-20.** A separate, narrower comparison than 2c above: instead of the full chained orchestrator, this directly times **real compiled Fortran** (`compare_fortran.f90`, `ifort -O2`, same toolchain that built the actual P2SAoM40 model) against JAX for just the **DRYCNV** and **PBL similarity** kernels, at P2SAoM40's real grid (72×46×40, confirmed from that run's own restart file). Same shared random inputs (fixed seed) fed to every leg, so outputs are directly diffable. Code: `compare_generate_inputs.py`, `compare_fortran.f90`, `compare_jax.py`, `compare_run_gpu_interactive.py`, `compare_report.py` — all in this directory.
+
+Unlike section 2c's GPU status, **the GPU leg here was actually run** (interactively, on a SLURM-allocated GPU node, via `compare_run_gpu_interactive.py` — no sbatch job needed).
+
+**Real bug found (in this project's own existing benchmark files, not introduced here)**: `simil_numpy`, the "Fortran-like" reference used by `benchmark_all.py`/`benchmark_all_cpu.py`, only implements the *unstable* branch of `find_dpsih` — it silently omits the entire *stable* branch (`zet>=0`, roughly half of all points for typical `lmonin` ranges), and sets `dpsiq = dpsih` instead of computing `dpsiq` from its own `getchq` call with `z0q`, as the real `pbl.py`'s `simil()` does. Translating `simil_numpy` directly into Fortran (the first version of `compare_fortran.f90`) reproduced this gap and showed apparent max differences up to ~1.26×10⁴ against the real JAX `simil_jit` — not a JAX bug, but an incomplete reference. Fixed by re-deriving `compare_fortran.f90`'s PBL routine from `pbl.py`'s actual three-branch `find_dpsim`/`find_dpsih`. **Any future accuracy work should treat `simil_numpy` as unreliable** rather than as ground truth.
+
+A second, unrelated bug was found and fixed in the comparison harness itself: `numpy.ndarray.tofile()` always writes in C order regardless of the array's memory layout, so `np.asfortranarray(arr).tofile(...)` does **not** produce Fortran-order bytes despite appearances — it silently corrupted the shared 3-D DRYCNV inputs between the Fortran and JAX legs (1-D PBL arrays were unaffected, since order is irrelevant for 1-D). Fixed with `arr.tobytes(order='F')` in `compare_generate_inputs.py`.
+
+### Timing (mean seconds/call, 100 calls, same shared inputs)
+
+| Kernel | Fortran (CPU, ifort -O2) | JAX (CPU) | JAX (GPU) | JAX-GPU vs Fortran-CPU | JAX-GPU vs JAX-CPU |
+|---|---|---|---|---|---|
+| DRYCNV | 1.272 ms | 17.09 ms (13.4× **slower**) | 0.564 ms | **2.3× faster** | 30.3× faster |
+| PBL similarity | 0.370 ms | 0.195 ms (1.9× faster) | 0.059 ms | **6.3× faster** | 3.3× faster |
+
+JAX-GPU beats real Fortran-CPU on both kernels, resolving PORTING_STATUS.md's "Next Steps" item 3 (GPU/TPU benchmarking) for these two kernels specifically — the "expected 20–30×" estimate there was almost exactly right for DRYCNV (30.3×) but PBL's speedup is much smaller (3.3× over JAX-CPU), since its per-call cost is already tiny/dispatch-bound rather than compute-bound, leaving less for GPU parallelism to exploit at this problem size.
+
+### Accuracy vs. Fortran reference (max abs diff; same inputs on every leg)
+
+| Field | CPU | GPU |
+|---|---|---|
+| drycnv T | 8.79e-05 | 9.98e-05 |
+| drycnv Q | 3.70e-09 | 3.81e-09 |
+| pbl u | 4.41e-04 | 1.02e-03 |
+| pbl t | 1.46e-03 | 2.77e-03 |
+| pbl q | 1.19e-04 | 3.24e-04 |
+| pbl dpsim | 1.11e-04 | 1.09e-03 |
+| pbl dpsih | 8.14e-04 | 1.14e-03 |
+| pbl dpsiq | 1.26e-03 | 1.09e-03 |
+
+All differences are floating-point-level (output scales are 10¹–10³) on both devices — GPU is consistently a bit larger than CPU, consistent with a different float reduction order, not an algorithmic difference. This is the corrected, complete-branch validation; it supersedes any accuracy inference drawn from `simil_numpy` elsewhere in this repo.
+
+**Scope note**: this is a kernel-level comparison (DRYCNV + PBL only), not the full physics chain in section 2c (which also covers RADIATION/SURFACE/GROUND and remains CPU-only, GPU not yet run). Slide: see `compare_data/` in this directory for the raw JSON, or ask for the current comparison Artifact link.
 
 ---
 
