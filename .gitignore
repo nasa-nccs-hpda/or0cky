@@ -11,7 +11,7 @@ a.out
 *~
 build/*
 *.png
-*.pdf
+#*.pdf
 *.nc
 *.pik
 spack-build.*
