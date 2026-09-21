@@ -1,0 +1,15 @@
+{
+  "v": 4,
+  "title": "ROCKE-3D → JAX: Status",
+  "order": ["bottom-line", "performance", "next-steps"],
+  "sections": {
+    "s1": {"description": "Bottom line: goal, headline numbers, current state", "start": "bottom-line"},
+    "s2": {"description": "Real Fortran vs JAX performance, CPU and GPU", "start": "performance"},
+    "s3": {"description": "Recommendation on remaining scope and open items", "start": "next-steps"}
+  },
+  "faces": {
+    "ibm-plex-sans": {"family": "IBM Plex Sans", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"},
+    "jetbrains-mono": {"family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"}
+  },
+  "createdOnFiles": {"v": 1, "at": "2026-09-21T14:00:00Z"}
+}

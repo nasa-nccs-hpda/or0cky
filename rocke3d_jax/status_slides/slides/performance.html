@@ -1,0 +1,70 @@
+<section id="performance" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:32px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">Performance</p>
+    <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Real Fortran vs. JAX &mdash; CPU and GPU</h1>
+  </div>
+
+  <div style="display:flex; gap:48px; flex:1">
+    <div style="flex:1; background:#1E293B; border-radius:24px; padding:44px; display:flex; flex-direction:column; gap:32px">
+      <h3 style="font-size:32px; font-weight:600; color:#F8FAFC">Kernel-level, measured (mean of 100 calls)</h3>
+
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <p style="font-size:26px; font-weight:600; color:#F8FAFC">DRYCNV</p>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">Fortran-CPU</p>
+          <div style="width:37px; height:30px; background:#38BDF8; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">1.27 ms</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">JAX-CPU</p>
+          <div style="width:500px; height:30px; background:#F97316; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">17.1 ms &mdash; 13.4&times; slower</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">JAX-GPU</p>
+          <div style="width:17px; height:30px; background:#4ADE80; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">0.56 ms &mdash; 2.3&times; faster than Fortran</p>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <p style="font-size:26px; font-weight:600; color:#F8FAFC">PBL similarity</p>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">Fortran-CPU</p>
+          <div style="width:500px; height:30px; background:#38BDF8; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">0.37 ms</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">JAX-CPU</p>
+          <div style="width:264px; height:30px; background:#F97316; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">0.20 ms &mdash; 1.9&times; faster</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <p style="width:150px; font-size:21px; color:#94A3B8">JAX-GPU</p>
+          <div style="width:80px; height:30px; background:#4ADE80; border-radius:6px"></div>
+          <p style="font-family:'JetBrains Mono', monospace; font-size:21px; color:#E2E8F0">0.06 ms &mdash; 6.3&times; faster than Fortran</p>
+        </div>
+      </div>
+
+      <p style="font-size:20px; color:#64748B">Same shared inputs on every leg. Grid: P2SAoM40's real 72&times;46&times;40.</p>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; gap:28px">
+      <div style="background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:18px">
+        <h3 style="font-size:30px; font-weight:600; color:#F8FAFC">Full physics chain (CPU only)</h3>
+        <p style="font-size:22px; color:#94A3B8">PBL + radiation + surface + ground, driven by P2SAoM40's real restart state, chained in the real per-timestep order.</p>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:700; color:#4ADE80">~5.5&times; faster</p>
+        <p style="font-size:20px; color:#94A3B8">~48 ms/step (JAX) vs. ~264 ms/step (real Fortran). Radiation excluded &mdash; JAX's radiation is a simplified graybody stand-in, not real spectral transfer; including it would overstate the result.</p>
+        <p style="font-size:22px; color:#F97316; font-weight:600">GPU: not yet measured for this full chain.</p>
+      </div>
+
+      <div style="background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:14px; flex:1; justify-content:center">
+        <h3 style="font-size:28px; font-weight:600; color:#F8FAFC">Reading this honestly</h3>
+        <p style="font-size:22px; color:#E2E8F0">JAX-CPU is <b>not</b> a blanket win &mdash; it loses DRYCNV outright to Fortran on CPU (small-array dispatch overhead dominates at this grid size).</p>
+        <p style="font-size:22px; color:#4ADE80; font-weight:600">GPU is where JAX wins decisively on both kernels tested. That's the real case for this port.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="position:absolute; left:128px; bottom:64px; font-size:22px; color:#64748B">Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py (kernel-level) &middot; p2saom40_driver.py (full chain) &middot; STATUS.md</p>
+</section>

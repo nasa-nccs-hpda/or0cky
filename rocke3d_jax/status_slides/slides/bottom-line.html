@@ -1,0 +1,37 @@
+<section id="bottom-line" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:40px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">ROCKE-3D &rarr; JAX &middot; Status as of 2026-09-21</p>
+    <h1 style="font-size:68px; font-weight:700; line-height:1.1; color:#F8FAFC">Where Things Stand</h1>
+    <p style="font-size:28px; color:#94A3B8; width:1500px">Use an AI coding agent to autonomously convert ROCKE-3D (NASA GISS's Fortran GCM) to Python/JAX, and measure accuracy, CPU/GPU performance, conversion cost, and gotchas &mdash; validated against real production restart data (P2SAoM40).</p>
+  </div>
+
+  <div style="display:flex; gap:28px">
+    <div style="flex:1; background:#1E293B; border-left:6px solid #4ADE80; border-radius:10px; padding:32px 28px; display:flex; flex-direction:column; gap:10px">
+      <p style="font-family:'JetBrains Mono', monospace; font-size:52px; font-weight:700; color:#F8FAFC">14 / 17</p>
+      <p style="font-size:22px; color:#E2E8F0; font-weight:600">Modules faithfully ported</p>
+      <p style="font-size:19px; color:#94A3B8">Validated directly against real Fortran. 3 remain placeholders &mdash; recommendation on next slide.</p>
+    </div>
+    <div style="flex:1; background:#1E293B; border-left:6px solid #4ADE80; border-radius:10px; padding:32px 28px; display:flex; flex-direction:column; gap:10px">
+      <p style="font-family:'JetBrains Mono', monospace; font-size:52px; font-weight:700; color:#F8FAFC">1e-9&ndash;1e-3</p>
+      <p style="font-size:22px; color:#E2E8F0; font-weight:600">Accuracy vs. real Fortran</p>
+      <p style="font-size:19px; color:#94A3B8">PBL + DRYCNV, same inputs, CPU and GPU &mdash; floating-point-level agreement, not algorithmic.</p>
+    </div>
+    <div style="flex:1; background:#1E293B; border-left:6px solid #4ADE80; border-radius:10px; padding:32px 28px; display:flex; flex-direction:column; gap:10px">
+      <p style="font-family:'JetBrains Mono', monospace; font-size:52px; font-weight:700; color:#F8FAFC">2.3&ndash;6.3&times;</p>
+      <p style="font-size:22px; color:#E2E8F0; font-weight:600">GPU speedup vs. real Fortran</p>
+      <p style="font-size:19px; color:#94A3B8">Measured, not estimated &mdash; first real GPU run, 2026-09-20 (kernel-level).</p>
+    </div>
+    <div style="flex:1; background:#1E293B; border-left:6px solid #F97316; border-radius:10px; padding:32px 28px; display:flex; flex-direction:column; gap:10px">
+      <p style="font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:700; color:#F8FAFC">Mixed on CPU</p>
+      <p style="font-size:22px; color:#E2E8F0; font-weight:600">JAX is not a blanket CPU win</p>
+      <p style="font-size:19px; color:#94A3B8">Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU &mdash; see next slide.</p>
+    </div>
+  </div>
+
+  <div style="background:#1E293B; border-radius:10px; padding:28px 32px; display:flex; align-items:center; gap:20px">
+    <p style="font-size:24px; color:#94A3B8; width:280px; font-weight:600">The comparison that matters:</p>
+    <p style="font-size:24px; color:#E2E8F0">Every number on this slide is <b style="color:#4ADE80">JAX vs. the real production Fortran model</b> &mdash; not JAX vs. a second Python reimplementation. NumPy-relative comparisons exist elsewhere in this project's history but are dropped from this summary as answering the wrong question.</p>
+  </div>
+
+  <p style="position:absolute; left:128px; bottom:64px; font-size:22px; color:#64748B">Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &middot; historical record kept as-is in FINDINGS.md / PORTING_STATUS.md / EXECUTIVE_SUMMARY.md</p>
+</section>
