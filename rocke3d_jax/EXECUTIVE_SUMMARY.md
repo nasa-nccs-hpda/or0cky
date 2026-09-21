@@ -1,8 +1,28 @@
 # **Executive Summary: ROCKE-3D JAX Porting Project**
 *Prepared for: NASA Management & Stakeholders*
-*Date: September 1, 2026 (last content revision: September 19, 2026 — see Revision Note below)*
+*Date: September 1, 2026 (last content revision: September 21, 2026 — see Revision Notes below)*
 *Project Lead: GitHub Copilot (Autonomous Execution)*
 *Paper Alignment: [Tsigaridis et al. (2025), GMD](https://gmd.copernicus.org/articles/18/5825/2025/)*
+
+> **Revision Note (2026-09-21)**: Added an explicit answer to "is 14/17 (not
+> 17/17) faithful modules appropriate?" — yes, as a prioritization (SEAICE/LAKES
+> thermodynamics are genuinely harder than the columnar physics already
+> validated); the actual mistake was reporting it as "17/17 complete," not the
+> ratio itself. The 3 placeholder modules are now tracked as explicit technical
+> debt with a concrete plan — see `PORTING_STATUS.md`, "Regression Tracking for
+> Placeholder Modules" — rather than left as an implicit gap. `PORTING_STATUS.md`'s
+> summary table also no longer shows SEAICE/LAKES/ATURB with the same unqualified
+> "✅ Passed" as the genuinely faithful modules.
+
+> **Revision Note (2026-09-20)**: The first **measured** (not estimated) GPU
+> number now exists — DRYCNV+PBL kernels only, run on a real SLURM GPU node
+> (see the new section under "Real Production-Data Validation" below and
+> `FINDINGS.md` §2d). This does **not** mean "GPU figures throughout" are
+> resolved: the broader ~20–30× GPU estimate (full physics subset —
+> RADIA+SURFACE+GROUND) remains unmeasured, and this update also clarifies a
+> distinction that was previously easy to conflate — see "How the P2SAoM40
+> data is actually used" below for exactly which results use real P2SAoM40
+> restart data as input/validation vs. which only borrow its grid size.
 
 > **Revision Note (2026-09-19)**: Driving the ported modules with real production
 > restart data (the P2SAoM40 run, see new section below) surfaced two things this
@@ -32,8 +52,8 @@ Accelerate **NASA’s ROCKE-3D climate model** by porting its **Fortran-based ph
 
 ## **📊 Key Achievements**
 
-### **✅ Modules Ported (17/17)**
-All **core physics modules** of ROCKE-3D have been successfully ported to JAX:
+### **✅ Modules Ported: 17/17 Interface-Complete, 14/17 Physically Faithful**
+All **core physics modules** of ROCKE-3D have JAX implementations; 14 of the 17 are faithful, physically-validated ports (see note below on the other 3):
 
 | **Category**               | **Modules** | **Status** | **Impact** |
 |----------------------------|-------------|------------|------------|
@@ -45,6 +65,8 @@ All **core physics modules** of ROCKE-3D have been successfully ported to JAX:
 | **Common Utilities**       | CONSTANT, ATM_COM, PBL_COM, RAD_COM, SEAICE_COM, LAKES_COM, SOMTQ_COM, GEOM | ✅ Complete | Shared variables & constants |
 
 **Note on "Complete"**: all 17 modules have JAX implementations and pass their own unit tests, but "complete" means *interface-complete*, not uniformly *physics-complete*. Three areas contain code the original developer explicitly labeled as placeholder/simplified rather than a full Fortran port: **SEAICE**'s core thermodynamics (`prec_si`/`addice`/`simelt`/`sea_ice`), **LAKES**' mixing (`lkmix` is a no-op), and part of **ATURB** (PBL-top-finding). Their unit tests pass because they validate the placeholder logic against itself, not full physical fidelity — this doesn't show up as a test failure, only as a gap discovered when the modules are driven with real data (see the P2SAoM40 section below). **RADIATION** is also a simplified graybody (Stefan-Boltzmann) scheme, not the spectral radiative transfer ROCKE-3D uses in production — a deliberate scope choice, not a bug, but worth stating plainly for a management audience.
+
+> **Is 14/17 appropriate? Yes, as a prioritization — the number itself was never the problem.** SEAICE and LAKES thermodynamics (phase-change physics, brine pockets, lake mixing) are genuinely harder to port correctly than the columnar physics this project has focused its validation effort on, and getting PBL/DRYCNV/FLUXES/SURFACE/RADIATION/GHY faithfully right first — rather than spreading effort thin across all 17 — is defensible sequencing. What was *not* appropriate was reporting this as "17/17 complete" before 2026-09-19, since interface-complete and physically-faithful look identical in a unit-test pass/fail column. Going forward, the 3 non-faithful modules are tracked as explicit technical debt (not silently closed) until each has a real-data regression test that would fail if its placeholder diverges from real Fortran behavior — see `PORTING_STATUS.md`, "Regression Tracking for Placeholder Modules."
 
 ### **✅ Validation Results**
 - **Numerical Consistency**: The modules with real Fortran test drivers (PBL, GHY, FLUXES, SURFACE, RADIATION, SEAICE, LAKES, DRYCNV, ATURB, PBL_SIMPLE) match Fortran output within **1e-6 tolerance** on their test cases. This does not by itself confirm physical completeness — see the placeholder-module note above.
@@ -120,6 +142,21 @@ The benchmarks above use synthetic or 1D-column test data. This new milestone in
 **Important caveat for management**: the CPU speedup figure above intentionally excludes radiation, because JAX's radiation module is a simplified graybody formula rather than the real multi-band spectral transfer scheme — including it would produce a misleadingly large (~200×) speedup that reflects a fidelity gap, not a fair speed comparison. This is the standard we're holding all performance claims in this project to going forward.
 
 Full detail: `FINDINGS.md` §2c, `PORTING_STATUS.md`, and `p2saom40_compare.py`.
+
+> **How the P2SAoM40 data is actually used — two different things share that name:**
+> 1. **This section (§2c above)**: real P2SAoM40 restart data (`fort.1.nc`) is fed in as **actual input** — real atmosphere/ocean/land state — and the JAX output is checked against real P2SAoM40 diagnostics (the 0.987 spatial-correlation row above). This *is* a validation against real model output, with the caveat already noted (period-mean, not per-step, ground truth).
+> 2. **The kernel-level CPU+GPU comparison below** (new, 2026-09-20): P2SAoM40 is used only to source a **realistic grid size and value ranges** (72×46×40, confirmed from that run's restart file dimensions). The actual input arrays fed to both Fortran and JAX are synthetic random values, not real P2SAoM40 fields, and "accuracy" there means **JAX matches real compiled Fortran** (numerical port fidelity), not agreement with the real P2SAoM40 climate. Don't read its GPU speedup numbers as validated *against* the P2SAoM40 run's own output — they aren't; they're a timing/fidelity check of the port, sized to that run's grid.
+
+### **🎮 Kernel-Level CPU + GPU Result (New, 2026-09-20)**
+
+A narrower, GPU-inclusive companion to the section above: real compiled Fortran (`ifort -O2`) timed directly against JAX, on both CPU and GPU, for the DRYCNV and PBL kernels only (not the full physics chain above).
+
+| Kernel | Fortran (CPU) | JAX (CPU) | JAX (GPU) | GPU vs. Fortran-CPU |
+|---|---|---|---|---|
+| DRYCNV | 1.272 ms | 17.09 ms (13.4× slower) | 0.564 ms | **2.3× faster** |
+| PBL similarity | 0.370 ms | 0.195 ms (1.9× faster) | 0.059 ms | **6.3× faster** |
+
+This is the project's first **measured** (not estimated) GPU number, run interactively on a SLURM GPU node — but it covers DRYCNV+PBL only, not RADIA/SURFACE/GROUND, so the "~20–30× GPU" figure elsewhere in this document remains an estimate for that broader scope. Full detail: `FINDINGS.md` §2d.
 
 ---
 

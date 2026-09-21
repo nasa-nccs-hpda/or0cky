@@ -1,6 +1,6 @@
 # ROCKE-3D JAX vs. Fortran Performance Findings
 
-**Last Updated**: 2026-09-20
+**Last Updated**: 2026-09-21
 **Status**: ✅ **All benchmarks completed** (see 2d for the first real GPU run, kernel-level)
 
 ---
@@ -19,6 +19,16 @@ This report compares the **performance** and **numerical accuracy** of the **ori
 | **CPU Performance**      | JAX is **~25% faster overall** (PBL/DRYCNV gains outweigh FLUXES/SURFACE/RADIATION losses).     |
 | **GPU Performance**      | JAX is **8–253× faster** than NumPy (scales with grid size).                                   |
 | **Ease of Use**          | JAX integrates better with modern workflows (PyTorch, TensorFlow).                           |
+
+---
+
+## 🧩 **0. Module Fidelity Scope: 14/17 Faithful, Not 17/17 — By Design, Not Oversight**
+
+Every performance/accuracy number below covers the **14 modules that are physically faithful ports**, not all 17 "ported" ones. **SEAICE** (core thermodynamics), **LAKES** (`lkmix` mixing), and part of **ATURB** (PBL-top-finding) are documented placeholder/simplified stand-ins, not full Fortran ports — see the fidelity table in `PORTING_STATUS.md`.
+
+**This 14/17 split is an appropriate engineering prioritization, not a gap that should be silently closed to reach 17/17**: SEAICE and LAKES thermodynamics (phase-change physics, brine pockets, lake mixing) are genuinely harder to port correctly than the columnar physics (PBL, DRYCNV) that this project's validation effort has focused on, and getting those 14 modules faithfully right first is defensible sequencing. The problem was never the 14/17 number — it's that this document and others called the project "17/17 complete" before 2026-09-19, because the placeholder modules' own unit tests pass (they validate the placeholder logic against itself, not physical fidelity) and can't distinguish "ported" from "faithfully ported." Real P2SAoM40 data is what actually surfaced this (§2c below).
+
+**Tracked as technical debt, not closed**: the 3 non-faithful modules stay explicitly flagged (🟠/🔴 status, never silently upgraded to 🟢) until each has a real-data regression test that would fail if its placeholder logic diverges from real Fortran output — see `PORTING_STATUS.md` "Regression Tracking for Placeholder Modules" for the concrete plan per module.
 
 ---
 
@@ -117,6 +127,10 @@ Not executed — no GPU is available in this environment. The driver is plain `j
 ## 🎮 **2d. Kernel-Level CPU + GPU Comparison (P2SAoM40 grid, real GPU run)**
 
 **2026-09-20.** A separate, narrower comparison than 2c above: instead of the full chained orchestrator, this directly times **real compiled Fortran** (`compare_fortran.f90`, `ifort -O2`, same toolchain that built the actual P2SAoM40 model) against JAX for just the **DRYCNV** and **PBL similarity** kernels, at P2SAoM40's real grid (72×46×40, confirmed from that run's own restart file). Same shared random inputs (fixed seed) fed to every leg, so outputs are directly diffable. Code: `compare_generate_inputs.py`, `compare_fortran.f90`, `compare_jax.py`, `compare_run_gpu_interactive.py`, `compare_report.py` — all in this directory.
+
+> **How the P2SAoM40 data is used here, vs. in 2c above — these are not the same thing:**
+> - **2c (above)**: real P2SAoM40 restart data (`fort.1.nc`) is the actual **input**, and JAX's output is checked against the real run's own period-mean diagnostics (the 0.987 spatial correlation) — a validation against real model output.
+> - **2d (here)**: P2SAoM40 is used only to source a realistic **grid size** (72×46×40) and value ranges. The inputs fed to both Fortran and JAX are synthetic random arrays with a fixed seed, not real P2SAoM40 field values, and "accuracy" below means **JAX agrees with a from-scratch real-Fortran reference** (numerical port fidelity) — it is not a comparison to the P2SAoM40 run's own output. Don't cite the GPU numbers below as "validated against P2SAoM40" — they're a timing/fidelity check of the port, sized to that run's grid, nothing more.
 
 Unlike section 2c's GPU status, **the GPU leg here was actually run** (interactively, on a SLURM-allocated GPU node, via `compare_run_gpu_interactive.py` — no sbatch job needed).
 

@@ -1,5 +1,5 @@
 # ROCKE-3D JAX Porting Status
-**Last Updated**: 2026-09-20
+**Last Updated**: 2026-09-21
 
 ## 📊 **Summary Table**
 
@@ -7,14 +7,14 @@
 |------------------|---------------------------|---------------------------|----------------|--------------------------|-------------------------|----------------|
 | **DRYCNV**       | `drycnv.py`               | `test_drycnv_jax.py`      | ✅ Ported      | `test_drycnv_fortran.f`   | ✅ Compiles             | ✅ Passed      |
 | **PBL**          | `pbl.py`                  | N/A                       | ✅ Ported      | `test_pbl_fortran.f`     | ✅ Compiles             | ✅ Passed      |
-| **ATURB**        | `aturb_jax.py`            | `test_aturb_jax.py`       | ✅ Ported      | `test_aturb_fortran.f`   | ✅ Compiles             | ✅ Passed      |
+| **ATURB**        | `aturb_jax.py`            | `test_aturb_jax.py`       | ✅ Ported      | `test_aturb_fortran.f`   | ✅ Compiles             | ⚠️ Passed vs. placeholder logic only — PBL-top-finding not faithful, see "Regression Tracking" below |
 | **PBL_SIMPLE**   | `pbl_simple_jax.py`       | N/A                       | ✅ Ported      | `test_pbl_simple_fortran.f` | ✅ Compiles         | ✅ Passed      |
 | **FLUXES**       | `fluxes_jax.py`           | `test_fluxes_jax.py`      | ✅ Ported      | `test_fluxes_fortran.f`  | ✅ Compiles             | ✅ Passed      |
 | **SURFACE**      | `surface_jax.py`          | `test_surface_jax.py`     | ✅ Ported      | `test_surface_fortran.f` | ✅ Compiles             | ✅ Passed      |
 | **RADIATION**    | `radiation_jax.py`        | `test_radiation_jax.py`   | ✅ Ported      | `test_radiation_fortran.f` | ✅ Compiles          | ✅ Passed      |
 | **GHY**          | `ghy_jax.py`              | `test_ghy_jax.py`         | ✅ Ported      | `test_ghy_fortran.f`     | ✅ Compiles             | ✅ Passed      |
-| **SEAICE**       | `seaice_jax.py`           | `test_seaice_jax.py`      | ✅ Ported      | `test_seaice_fortran.f`  | ✅ Compiles             | ✅ Passed      |
-| **LAKES**        | `lakes_jax.py`            | `test_lakes_jax.py`       | ✅ Ported      | `test_lakes_fortran.f`   | ✅ Compiles             | ✅ Passed      |
+| **SEAICE**       | `seaice_jax.py`           | `test_seaice_jax.py`      | ✅ Ported      | `test_seaice_fortran.f`  | ✅ Compiles             | ⚠️ Passed vs. placeholder logic only — core thermodynamics not faithful, see "Regression Tracking" below |
+| **LAKES**        | `lakes_jax.py`            | `test_lakes_jax.py`       | ✅ Ported      | `test_lakes_fortran.f`   | ✅ Compiles             | ⚠️ Passed vs. placeholder logic only — `lkmix` is a no-op, see "Regression Tracking" below |
 | **CONSTANT**     | `constant_jax.py`         | `test_constant_jax.py`    | ✅ Ported      | N/A                      | N/A                     | ✅ Passed      |
 | **ATM_COM**      | `atm_com_jax.py`          | `test_atm_com_jax.py`     | ✅ Ported      | N/A                      | N/A                     | ✅ Passed      |
 | **PBL_COM**      | `pbl_com_jax.py`          | N/A                       | ✅ Ported      | N/A                      | N/A                     | ✅ Passed      |
@@ -30,11 +30,11 @@
 
 | **Metric**               | **Value**                     |
 |--------------------------|-------------------------------|
-| **Total Modules Ported** | 17                            |
-| **JAX Unit Tests**       | ✅ All Passing (13/13)        |
+| **Total Modules Ported (interface-complete)** | 17              |
+| **Modules physically faithful** | **14 / 17** — SEAICE, LAKES, part of ATURB are documented placeholders (see "Regression Tracking" below) |
+| **JAX Unit Tests**       | ✅ All Passing (13/13) — passing means self-consistent, not faithful for placeholder modules |
 | **Fortran Test Drivers** | ✅ All Compile (11/11)        |
-| **Direct Validation**    | ✅ 10/10 modules (PBL, GHY, FLUXES, SURFACE, RADIATION, SEAICE, LAKES, DRYCNV, ATURB, PBL_SIMPLE) |
-| **Validation Accuracy**  | ✅ Within 1e-6 tolerance      |
+| **Direct Validation vs. real Fortran, to 1e-6** | 7/10 modules with real comparisons (PBL, GHY, FLUXES, SURFACE, RADIATION [simplified by design], DRYCNV) — SEAICE/LAKES/ATURB's "passed" only means agreement with their own placeholder logic, not with real Fortran |
 | **Benchmark Suite**      | ✅ Running                    |
 
 ---
@@ -73,6 +73,22 @@
 | Atm. dynamics, moist convection, ocean GCM | Out of scope | not ported |
 
 **Verified against real data** (see FINDINGS.md for full results): single-`DTsrc`-step JAX output correlates 0.987 spatially with the real run's period-mean surface air temperature; JAX-covered physics subset (SURFACE+GROUND, excluding radiation which isn't a fair comparison) runs ~5.5x faster than the equivalent real Fortran cost on this CPU.
+
+---
+
+## **🔒 Regression Tracking for Placeholder Modules**
+
+14/17 modules are faithful ports; 3 are documented placeholders (SEAICE, LAKES, part of ATURB — see "Orchestration fidelity" above and `EXECUTIVE_SUMMARY.md`'s "Is 14/17 appropriate?" note). This is an accepted prioritization, not a closed issue: each stays flagged 🟠, not silently upgraded to 🟢, until it has a real-data regression test per the plan below. None of these three tests exist yet — this section is the plan, not a status report.
+
+| Module | Placeholder today | What the regression test must check | Pass criterion |
+|---|---|---|---|
+| **SEAICE** | `seaice_jax.py` core thermodynamics (`prec_si`/`addice`/`simelt`/`sea_ice`) are documented stand-ins, not real physics | Drive both real `SEAICE.f` (via a Fortran test driver, not the existing `test_seaice_fortran.f`'s placeholder outputs) and `seaice_jax.py` with the same real sea-ice grid-cell state (temperature, thickness, salinity) pulled from a P2SAoM40 restart | Ice thickness/temperature tendency agrees with real Fortran to a stated tolerance (TBD — needs a domain-science call on acceptable drift, not just a numerical epsilon) |
+| **LAKES** | `lakes_jax.py`'s `lkmix` (lake mixing) is a no-op | Same approach: real `LAKES.f` lake-cell state in, compare mixed-layer depth / temperature profile tendency between real Fortran and JAX | Currently **guaranteed to fail** (no-op vs. real mixing) — the test's job is to make that failure visible and blocking, not to pass yet |
+| **ATURB (partial)** | PBL-top-finding is a placeholder; layer-1 turbulence uses direct flux-tendency coupling instead of `aturb_jax.py` | Compare PBL-top diagnosis and layer-1 turbulent tendency between real `ATURB.f` and the current JAX approximation, across a range of stability regimes (stable/unstable/neutral) from real P2SAoM40 columns | Diagnosed PBL-top height agrees with real Fortran within a stated number of model levels (TBD) |
+
+**Why this table, not just "port the other 3"**: SEAICE/LAKES thermodynamics are genuinely harder (phase-change physics, brine pockets) than the columnar physics already validated — rushing them to close the gap risks repeating the exact mistake this project already made once (a passing-but-shallow port that looks identical to a faithful one in a status table). A failing, honest regression test is strictly better than a passing shallow one.
+
+**Immediate action, before writing new port code**: replace `test_seaice_fortran.f`/`test_lakes_fortran.f`'s current placeholder outputs (per Next Steps item 1 below) with real subroutine calls — that's the prerequisite for the "compare against real Fortran" column above to be possible at all.
 
 ---
 
