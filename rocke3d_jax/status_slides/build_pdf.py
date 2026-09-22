@@ -25,6 +25,7 @@ CARD = HexColor("#1E293B")
 CARD2 = HexColor("#14212C")
 GREEN = HexColor("#4ADE80")
 ORANGE = HexColor("#F97316")
+AMBER = HexColor("#FBBF24")
 BLUE = HexColor("#38BDF8")
 INK = HexColor("#F8FAFC")
 INK2 = HexColor("#E2E8F0")
@@ -85,7 +86,7 @@ def slide_bottom_line(c):
     c.rect(0, 0, W, H, fill=1, stroke=0)
     y = eyebrow_title(
         c,
-        "ROCKE-3D &rarr; JAX &middot; Status as of 2026-09-21",
+        "ROCKE-3D &rarr; JAX &middot; Status as of 2026-09-22",
         "Where Things Stand",
         "Use an AI coding agent to autonomously convert ROCKE-3D (NASA GISS's Fortran GCM) to "
         "Python/JAX, and measure accuracy, CPU/GPU performance, conversion cost, and gotchas "
@@ -125,8 +126,8 @@ def slide_bottom_line(c):
               "model.</font></b>",
               MARGIN + 170, band_y + 34, W - 2 * MARGIN - 190, 40, size=9.5, color=INK2)
 
-    footer(c, "Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &middot; "
-              "historical record kept as-is in FINDINGS.md / PORTING_STATUS.md / EXECUTIVE_SUMMARY.md")
+    footer(c, "Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &mdash; "
+              "the single current source of truth for this project")
 
 
 def bar_row(c, x, y, label, bar_w, value_text, bar_color, label_w=90, max_bar=220, row_h=20):
@@ -175,9 +176,12 @@ def slide_performance(c):
     draw_para(c, "Same shared inputs on every leg. Grid: P2SAoM40's real 72x46x40.",
               px, py, col_w - 36, 20, size=8.5, color=FOOTER)
 
-    top2_h = 250
-    rounded(c, right_x, panel_top - top2_h, col_w, top2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - 24
+    top2_h = 270
+    left_bar_card(c, right_x, panel_top - top2_h, col_w, top2_h, AMBER, r=12)
+    rx, ry = right_x + 18, panel_top - 22
+    draw_para(c, "THE FINDING THAT MATTERS MOST &mdash; NOT A FOOTNOTE", rx, ry, col_w - 36, 14,
+              size=7.5, color=AMBER, bold=True, font="Courier")
+    ry -= 16
     draw_para(c, "Full physics chain (CPU + GPU)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
     ry -= 20
     ry -= draw_para(c, "PBL + radiation + surface + ground, driven by P2SAoM40's real restart "
@@ -190,7 +194,7 @@ def slide_performance(c):
     ry -= 22
     stat_col_w = (col_w - 36 - 16) / 2
     draw_para(c, "5.5x", rx, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
-    draw_para(c, "~1.0x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=ORANGE, bold=True, font="Courier")
+    draw_para(c, "~1.0x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=AMBER, bold=True, font="Courier")
     ry -= 26
     draw_para(c, "CPU vs. Fortran (48 vs. 264 ms)", rx, ry, stat_col_w, 24, size=7.5, color=MUTED)
     draw_para(c, "GPU vs. that node's CPU (33.0 vs. 33.5 ms) -- no benefit",
@@ -200,13 +204,14 @@ def slide_performance(c):
     c.line(rx, ry, rx + col_w - 36, ry)
     c.restoreState()
     ry -= 14
-    draw_para(c, "Real A100 result (2026-09-22) corrects an earlier ~20-30x GPU "
-              "<i>estimate</i> for this scope, used throughout EXECUTIVE_SUMMARY.md's ROI "
-              "section (now flagged there). Still ~8x faster than Fortran on GPU -- the "
-              "grid (3,312 pts) is just too small to benefit from GPU parallelism the way "
-              "the estimate assumed.", rx, ry, col_w - 36, 60, size=8, color=ORANGE)
+    draw_para(c, "Real A100 result (2026-09-22) retires an earlier ~20-30x GPU "
+              "<i>estimate</i> for this scope -- never measured before this run, and every "
+              "document that repeated it has now been corrected, not just flagged. Still "
+              "~8x faster than Fortran on GPU -- the grid (3,312 pts) is just too small to "
+              "amortize GPU dispatch overhead the way the pre-measurement estimate assumed.",
+              rx, ry, col_w - 36, 60, size=8, color=AMBER)
 
-    panel_h_right = 380
+    panel_h_right = 400
     bot2_h = panel_h_right - top2_h - 20
     rounded(c, right_x, panel_top - panel_h_right, col_w, bot2_h, 12, CARD)
     rx, ry = right_x + 18, panel_top - top2_h - 20 - 24
@@ -222,7 +227,7 @@ def slide_performance(c):
 
     footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
               "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
-              "GPU 2026-09-22) &middot; STATUS.md")
+              "NVIDIA A100, node warpa005, 2026-09-22) &middot; STATUS.md")
 
 
 def slide_next_steps(c):
@@ -273,8 +278,9 @@ def slide_next_steps(c):
     ry -= 36
     opens = [
         "<s>Measure the full physics-chain GPU run</s> — <b><font color='#4ADE80'>done</font></b>, "
-        "2026-09-22, real A100: ~1.0x (no benefit). Follow-up: re-derive the ROI figures in "
-        "EXECUTIVE_SUMMARY.md that assumed the old ~20-30x estimate.",
+        "2026-09-22, real A100: ~1.0x (no benefit). Follow-up: <b><font color='#4ADE80'>done</font></b> "
+        "— every ROI/timeline figure that assumed the old ~20-30x estimate has been retired "
+        "in this consolidation, not just flagged.",
         "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
         "— currently only worked around locally.",
         "Port SEAICE + ATURB, then re-run the correlation check — expect it to improve "
@@ -311,7 +317,7 @@ def slide_output_maps(c):
     draw_para(c,
         "The bright outlier points in pbl.u/dpsih/dpsiq come from a few grid cells with "
         "near-zero Monin-Obukhov length -- both Fortran and JAX reproduce the same outliers, so "
-        "these are still the floating-point-level diffs reported in FINDINGS.md section 2d, not a bug.",
+        "these are still the same floating-point-level diffs reported in STATUS.md, not a bug.",
         MARGIN, y, W - 2 * MARGIN, 30, size=8.5, color=FOOTER)
 
     footer(c, "All 40 generated maps: outputs/p2saom40_kernel_*.html &middot; "
