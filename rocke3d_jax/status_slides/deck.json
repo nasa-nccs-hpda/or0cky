@@ -1,11 +1,12 @@
 {
   "v": 4,
   "title": "ROCKE-3D → JAX: Status",
-  "order": ["bottom-line", "performance", "next-steps"],
+  "order": ["bottom-line", "performance", "next-steps", "output-maps"],
   "sections": {
     "s1": {"description": "Bottom line: goal, headline numbers, current state", "start": "bottom-line"},
     "s2": {"description": "Real Fortran vs JAX performance, CPU and GPU", "start": "performance"},
-    "s3": {"description": "Recommendation on remaining scope and open items", "start": "next-steps"}
+    "s3": {"description": "Recommendation on remaining scope and open items", "start": "next-steps"},
+    "s4": {"description": "Output maps from the P2SAoM40 kernel comparison notebook", "start": "output-maps"}
   },
   "faces": {
     "ibm-plex-sans": {"family": "IBM Plex Sans", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"},

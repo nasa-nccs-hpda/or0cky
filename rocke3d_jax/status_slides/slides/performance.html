@@ -1,12 +1,15 @@
-<section id="performance" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:32px">
+<section id="performance" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:28px">
   <div style="display:flex; flex-direction:column; gap:10px">
     <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">Performance</p>
     <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Real Fortran vs. JAX &mdash; CPU and GPU</h1>
   </div>
 
   <div style="display:flex; gap:48px; flex:1">
-    <div style="flex:1; background:#1E293B; border-radius:24px; padding:44px; display:flex; flex-direction:column; gap:32px">
-      <h3 style="font-size:32px; font-weight:600; color:#F8FAFC">Kernel-level, measured (mean of 100 calls)</h3>
+    <div style="flex:1; background:#1E293B; border-radius:24px; padding:44px; display:flex; flex-direction:column; gap:26px">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <h3 style="font-size:32px; font-weight:600; color:#F8FAFC">Kernel-level (mean of 100 calls)</h3>
+        <p style="font-size:19px; color:#94A3B8">"Kernel-level" = timing one physics routine in isolation (DRYCNV, PBL), not the full simulation pipeline. This is what isolates the JAX port's raw per-call speed from confounding factors in a bigger chain &mdash; and it's the only comparison with real, measured GPU numbers so far.</p>
+      </div>
 
       <div style="display:flex; flex-direction:column; gap:12px">
         <p style="font-size:26px; font-weight:600; color:#F8FAFC">DRYCNV</p>
@@ -46,15 +49,18 @@
         </div>
       </div>
 
-      <p style="font-size:20px; color:#64748B">Same shared inputs on every leg. Grid: P2SAoM40's real 72&times;46&times;40.</p>
+      <p style="font-size:19px; color:#64748B">Same shared inputs on every leg. Grid: P2SAoM40's real 72&times;46&times;40.</p>
     </div>
 
     <div style="flex:1; display:flex; flex-direction:column; gap:28px">
-      <div style="background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:18px">
+      <div style="background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:20px">
         <h3 style="font-size:30px; font-weight:600; color:#F8FAFC">Full physics chain (CPU only)</h3>
-        <p style="font-size:22px; color:#94A3B8">PBL + radiation + surface + ground, driven by P2SAoM40's real restart state, chained in the real per-timestep order.</p>
-        <p style="font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:700; color:#4ADE80">~5.5&times; faster</p>
-        <p style="font-size:20px; color:#94A3B8">~48 ms/step (JAX) vs. ~264 ms/step (real Fortran). Radiation excluded &mdash; JAX's radiation is a simplified graybody stand-in, not real spectral transfer; including it would overstate the result.</p>
+        <p style="font-size:21px; color:#94A3B8; line-height:1.5">PBL + radiation + surface + ground, driven by P2SAoM40's real restart state, chained in the real per-timestep order.</p>
+        <div style="height:1px; background:#334155"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:48px; font-weight:700; color:#4ADE80">~5.5&times; faster</p>
+        <p style="font-size:19px; color:#94A3B8; line-height:1.5">~48 ms/step (JAX) vs. ~264 ms/step (real Fortran).</p>
+        <p style="font-size:18px; color:#64748B; line-height:1.5">Radiation excluded from this figure &mdash; JAX's radiation is a simplified graybody stand-in, not real spectral transfer; including it would overstate the result.</p>
+        <div style="height:1px; background:#334155"></div>
         <p style="font-size:22px; color:#F97316; font-weight:600">GPU: not yet measured for this full chain.</p>
       </div>
 

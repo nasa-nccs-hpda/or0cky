@@ -95,22 +95,22 @@ def slide_bottom_line(c):
 
     cards = [
         (GREEN, "14 / 17", "Modules faithfully ported",
-         "Validated directly against real Fortran. 3 remain placeholders &mdash; see slide 3."),
-        (GREEN, "1e-9&ndash;1e-3", "Accuracy vs. real Fortran",
-         "PBL + DRYCNV, same inputs, CPU and GPU &mdash; floating-point-level agreement."),
+         "Validated directly against real Fortran. 3 remain placeholders &mdash; see slide 3.", "Courier", 20),
+        (GREEN, "1e-9 to 1e-3", "Accuracy vs. real Fortran",
+         "PBL + DRYCNV, same inputs, CPU and GPU &mdash; floating-point-level agreement.", "Helvetica", 15),
         (GREEN, "2.3&ndash;6.3&times;", "GPU speedup vs. real Fortran",
-         "Measured, not estimated &mdash; first real GPU run, 2026-09-20 (kernel-level)."),
+         "Measured, not estimated &mdash; first real GPU run, 2026-09-20 (kernel-level).", "Courier", 20),
         (ORANGE, "Mixed on CPU", "JAX is not a blanket CPU win",
-         "Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU."),
+         "Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU.", "Courier", 17),
     ]
     card_w = (W - 2 * MARGIN - 3 * 10) / 4
     card_h = 150
     card_y = y - card_h
     x = MARGIN
-    for bar, num, label, note in cards:
+    for bar, num, label, note, num_font, num_size in cards:
         left_bar_card(c, x, card_y, card_w, card_h, bar)
         draw_para(c, num, x + 14, card_y + card_h - 14, card_w - 24, 40,
-                  size=20, color=INK, bold=True, font="Courier")
+                  size=num_size, color=INK, bold=True, font=num_font)
         draw_para(c, label, x + 14, card_y + card_h - 46, card_w - 24, 30,
                   size=10.5, color=INK2, bold=True)
         draw_para(c, note, x + 14, card_y + card_h - 66, card_w - 24, 60, size=8.5, color=MUTED)
@@ -122,9 +122,7 @@ def slide_bottom_line(c):
               size=9.5, color=MUTED, bold=True)
     draw_para(c,
               "Every number here is <b><font color='#4ADE80'>JAX vs. the real production Fortran "
-              "model</font></b> &mdash; not JAX vs. a second Python reimplementation. NumPy-relative "
-              "comparisons exist elsewhere in this project's history but are dropped from this "
-              "summary as answering the wrong question.",
+              "model.</font></b>",
               MARGIN + 170, band_y + 34, W - 2 * MARGIN - 190, 40, size=9.5, color=INK2)
 
     footer(c, "Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &middot; "
@@ -153,9 +151,14 @@ def slide_performance(c):
 
     rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
     px, py = left_x + 18, panel_top - 28
-    draw_para(c, "Kernel-level, measured (mean of 100 calls)", px, py, col_w - 36, 20,
+    draw_para(c, "Kernel-level (mean of 100 calls)", px, py, col_w - 36, 20,
               size=12, color=INK, bold=True)
-    py -= 30
+    py -= 20
+    py -= draw_para(c, '"Kernel-level" = timing one physics routine in isolation (DRYCNV, PBL), '
+              "not the full pipeline -- isolates the JAX port's raw per-call speed, and is the "
+              "only comparison with real, measured GPU numbers so far.",
+              px, py, col_w - 36, 40, size=8, color=MUTED)
+    py -= 12
     draw_para(c, "DRYCNV", px, py, col_w - 36, 16, size=11, color=INK, bold=True)
     py -= 30
     max_bar = 220
@@ -172,19 +175,30 @@ def slide_performance(c):
     draw_para(c, "Same shared inputs on every leg. Grid: P2SAoM40's real 72x46x40.",
               px, py, col_w - 36, 20, size=8.5, color=FOOTER)
 
-    top2_h = 160
+    top2_h = 175
     rounded(c, right_x, panel_top - top2_h, col_w, top2_h, 12, CARD)
     rx, ry = right_x + 18, panel_top - 26
     draw_para(c, "Full physics chain (CPU only)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
     ry -= 22
     ry -= draw_para(c, "PBL + radiation + surface + ground, driven by P2SAoM40's real restart "
               "state, chained in the real per-timestep order.", rx, ry, col_w - 36, 40, size=9, color=MUTED)
-    ry -= 6
-    draw_para(c, "~5.5x faster", rx, ry, col_w - 36, 26, size=22, color=GREEN, bold=True, font="Courier")
-    ry -= 30
-    ry -= draw_para(c, "~48 ms/step (JAX) vs. ~264 ms/step (real Fortran). Radiation excluded "
-              "(simplified graybody stand-in, not real spectral transfer).", rx, ry, col_w - 36, 40, size=8.5, color=MUTED)
-    draw_para(c, "GPU: not yet measured for this full chain.", rx, ry - 4, col_w - 36, 16,
+    ry -= 8
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(rx, ry, rx + col_w - 36, ry)
+    c.restoreState()
+    ry -= 18
+    draw_para(c, "~5.5x faster", rx, ry, col_w - 36, 26, size=24, color=GREEN, bold=True, font="Courier")
+    ry -= 32
+    ry -= draw_para(c, "~48 ms/step (JAX) vs. ~264 ms/step (real Fortran).", rx, ry, col_w - 36, 20, size=9, color=MUTED)
+    ry -= 4
+    ry -= draw_para(c, "Radiation excluded from this figure -- JAX's radiation is a simplified "
+              "graybody stand-in, not real spectral transfer.", rx, ry, col_w - 36, 30, size=8, color=FOOTER)
+    ry -= 8
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(rx, ry, rx + col_w - 36, ry)
+    c.restoreState()
+    ry -= 16
+    draw_para(c, "GPU: not yet measured for this full chain.", rx, ry, col_w - 36, 16,
               size=9.5, color=ORANGE, bold=True)
 
     bot2_h = panel_h - top2_h - 20
@@ -218,7 +232,13 @@ def slide_next_steps(c):
     px, py = left_x + 18, panel_top - 26
     draw_para(c, "The remaining 3 modules &mdash; port or defer?", px, py, col_w - 36, 20,
               size=12, color=INK, bold=True)
-    py -= 30
+    py -= 20
+    py -= draw_para(c, "Why they're still placeholders: the original port deliberately left these "
+              "three as documented stand-ins (e.g. LAKES' lkmix is a no-op) to reach "
+              "interface-complete (17/17) first, prioritizing full validation of the columnar "
+              "physics (PBL, DRYCNV) instead -- a scoping choice, not an oversight.",
+              px, py, col_w - 36, 50, size=8, color=MUTED)
+    py -= 14
 
     items = [
         (GREEN, "SEAICE (core thermodynamics) — port next",
@@ -233,45 +253,65 @@ def slide_next_steps(c):
          "only if a lake-focused science need requires it."),
     ]
     for bar, title, note in items:
-        ih = 88
+        ih = 74
         left_bar_card(c, px, py - ih, col_w - 36, ih, bar, r=6)
-        draw_para(c, title, px + 14, py - 18, col_w - 64, 20, size=10.5, color=INK, bold=True)
-        draw_para(c, note, px + 14, py - 38, col_w - 64, 50, size=8.5, color=MUTED)
-        py -= ih + 12
+        draw_para(c, title, px + 14, py - 16, col_w - 64, 20, size=10, color=INK, bold=True)
+        draw_para(c, note, px + 14, py - 34, col_w - 64, 44, size=8, color=MUTED)
+        py -= ih + 8
 
-    top2_h = 110
-    rounded(c, right_x, panel_top - top2_h, col_w, top2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - 26
-    draw_para(c, "Reporting cleanup", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
-    ry -= 24
-    draw_para(c, "Drop NumPy-relative speedups from headline reporting. The target has always "
-              "been <b><font color='#4ADE80'>JAX vs. real Fortran</font></b> — NumPy was a "
-              "control group for a narrower question, and the PBL one "
-              "(<font face='Courier'>simil_numpy</font>) was also found to be incomplete.",
-              rx, ry, col_w - 36, 70, size=9, color=INK2)
-
-    bot2_h = panel_h - top2_h - 20
-    rounded(c, right_x, panel_top - panel_h, col_w, bot2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - top2_h - 20 - 24
-    draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
-    ry -= 24
+    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    rx, ry = right_x + 18, panel_top - 30
+    draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=13, color=INK, bold=True)
+    ry -= 36
     opens = [
         "Measure the full physics-chain GPU run (radiation+surface+ground together) — only "
         "the DRYCNV/PBL kernel subset has real GPU numbers today.",
         "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
         "— currently only worked around locally.",
-        "Port SEAICE + ATURB, then re-run the 0.987 correlation check.",
+        "Port SEAICE + ATURB, then re-run the 0.987 correlation check — expect it to improve "
+        "or reveal exactly where it was masking a gap.",
     ]
     for i, item in enumerate(opens, 1):
-        draw_para(c, f"<b><font color='#4ADE80'>{i}</font></b>  {item}", rx, ry, col_w - 36, 44, size=9, color=INK2)
-        ry -= 42
+        ry -= draw_para(c, f"<b><font color='#4ADE80'>{i}</font></b>  {item}", rx, ry, col_w - 36, 60, size=10.5, color=INK2)
+        ry -= 20
 
     footer(c, "Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)")
 
 
+def slide_output_maps(c):
+    import os
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "OUTPUT MAPS", "Where JAX and Fortran Differ, Spatially", title_size=24)
+
+    y -= draw_para(c,
+        "Difference maps only, from visualize_p2saom40_kernel_maps.ipynb / "
+        "outputs/p2saom40_kernel_*_diff_*.html, on P2SAoM40's real 72x46 grid. Field values are "
+        "synthetic test data, not real climate.",
+        MARGIN, y, W - 2 * MARGIN, 30, size=9.5, color=MUTED)
+    y -= 12
+
+    img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "diff_grid.png")
+    img_h = 300  # explicit, budget-checked so the note below and the footer both stay on-page
+    img_w = img_h * (2400 / 1050)  # native aspect ratio of diff_grid.png
+    img_x = MARGIN + (W - 2 * MARGIN - img_w) / 2  # centered
+    c.drawImage(img_path, img_x, y - img_h, width=img_w, height=img_h,
+                preserveAspectRatio=True, mask="auto")
+    y -= (img_h + 14)
+
+    draw_para(c,
+        "The bright outlier points in pbl.u/dpsih/dpsiq come from a few grid cells with "
+        "near-zero Monin-Obukhov length -- both Fortran and JAX reproduce the same outliers, so "
+        "these are still the floating-point-level diffs reported in FINDINGS.md section 2d, not a bug.",
+        MARGIN, y, W - 2 * MARGIN, 30, size=8.5, color=FOOTER)
+
+    footer(c, "All 40 generated maps: outputs/p2saom40_kernel_*.html &middot; "
+              "notebook: visualize_p2saom40_kernel_maps.ipynb")
+
+
 def main(out_path):
     c = canvas.Canvas(out_path, pagesize=PAGE)
-    for slide_fn in (slide_bottom_line, slide_performance, slide_next_steps):
+    for slide_fn in (slide_bottom_line, slide_performance, slide_next_steps, slide_output_maps):
         slide_fn(c)
         c.showPage()
     c.save()

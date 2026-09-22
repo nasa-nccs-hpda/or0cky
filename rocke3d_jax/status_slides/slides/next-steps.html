@@ -1,50 +1,40 @@
-<section id="next-steps" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:32px">
+<section id="next-steps" style="display:flex; flex-direction:column; gap:32px; padding:128px 128px 160px; background:#0f172a">
   <div style="display:flex; flex-direction:column; gap:10px">
-    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">What's Next</p>
-    <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Recommendation &amp; Open Items</h1>
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ade80">What's Next</p>
+    <h1 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:60px; font-weight:700; line-height:1.1; color:#f8fafc">Recommendation &amp; Open Items</h1>
   </div>
-
-  <div style="display:flex; gap:48px; flex:1">
-    <div style="flex:1; background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:22px">
-      <h3 style="font-size:32px; font-weight:600; color:#F8FAFC">The remaining 3 modules &mdash; port or defer?</h3>
-
-      <div style="background:#14212C; border-left:6px solid #4ADE80; border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:6px">
-        <p style="font-size:24px; font-weight:600; color:#F8FAFC">SEAICE (core thermodynamics) &mdash; <span style="color:#4ADE80">port next</span></p>
-        <p style="font-size:20px; color:#94A3B8">Physically active in every P2SAoM40-class run, not optional. Dominates polar surface energy balance &mdash; exactly where the current 0.987 global correlation check is least able to see a local error.</p>
+  <div style="display:flex; flex-direction:row; gap:48px; flex:1">
+    <div style="display:flex; flex-direction:column; gap:20px; flex:1; padding:40px; background:#1e293b; border-radius:24px">
+      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:32px; font-weight:600; color:#f8fafc">The remaining 3 modules — port or defer?</h3>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8; line-height:1.4">Why they're still placeholders: the original port deliberately left these three as documented stand-ins (e.g. LAKES' lkmix is a no-op) to reach interface-complete (17/17) first, prioritizing full validation of the columnar physics (PBL, DRYCNV) instead. Not an oversight — a scoping choice made explicit below.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">SEAICE (core thermodynamics) — <span style="color:#4ade80">port next</span></p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Physically active in every P2SAoM40-class run, not optional. Dominates polar surface energy balance — exactly where the current 0.987 global correlation check is least able to see a local error.</p>
       </div>
-      <div style="background:#14212C; border-left:6px solid #4ADE80; border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:6px">
-        <p style="font-size:24px; font-weight:600; color:#F8FAFC">ATURB (PBL-top-finding) &mdash; <span style="color:#4ADE80">port next</span></p>
-        <p style="font-size:20px; color:#94A3B8">Feeds surface-flux accuracy globally, not just at the poles. Also the kind of "harder physics" case that actually tests whether the vmap-over-grid-cells approach holds up.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">ATURB (PBL-top-finding) — <span style="color:#4ade80">port next</span></p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Feeds surface-flux accuracy globally, not just at the poles. Also the kind of "harder physics" case that actually tests whether the vmap-over-grid-cells approach holds up.</p>
       </div>
-      <div style="background:#14212C; border-left:6px solid #F97316; border-radius:8px; padding:20px 24px; display:flex; flex-direction:column; gap:6px">
-        <p style="font-size:24px; font-weight:600; color:#F8FAFC">LAKES (lkmix) &mdash; <span style="color:#F97316">defer</span></p>
-        <p style="font-size:20px; color:#94A3B8">Small fraction of Earth's surface &mdash; lower accuracy payoff for the effort. Revisit only if a lake-focused science need requires it.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #f97316; border-radius:8px">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">LAKES (lkmix) — <span style="color:#f97316">defer</span></p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Small fraction of Earth's surface — lower accuracy payoff for the effort. Revisit only if a lake-focused science need requires it.</p>
       </div>
     </div>
-
-    <div style="flex:1; display:flex; flex-direction:column; gap:28px">
-      <div style="background:#1E293B; border-radius:24px; padding:36px; display:flex; flex-direction:column; gap:16px">
-        <h3 style="font-size:28px; font-weight:600; color:#F8FAFC">Reporting cleanup</h3>
-        <p style="font-size:22px; color:#E2E8F0">Drop NumPy-relative speedups from headline reporting. The target has always been <b style="color:#4ADE80">JAX vs. real Fortran</b> &mdash; NumPy was a control group for a narrower question, and the one used for PBL (<code style="font-family:'JetBrains Mono',monospace">simil_numpy</code>) was also found to be incomplete.</p>
+    <div style="display:flex; flex-direction:column; gap:16px; flex:1; padding:40px; background:#1e293b; border-radius:24px; justify-content:center">
+      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; color:#f8fafc">Open items</h3>
+      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">1</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Measure the full physics-chain GPU run (radiation+surface+ground together) — only the DRYCNV/PBL kernel subset has real GPU numbers today.</p>
       </div>
-
-      <div style="background:#1E293B; border-radius:24px; padding:36px; display:flex; flex-direction:column; gap:14px; flex:1">
-        <h3 style="font-size:28px; font-weight:600; color:#F8FAFC">Open items</h3>
-        <div style="display:flex; align-items:flex-start; gap:12px">
-          <p style="font-size:22px; color:#4ADE80; font-weight:700">1</p>
-          <p style="font-size:22px; color:#E2E8F0">Measure the full physics-chain GPU run (radiation+surface+ground together) &mdash; only the DRYCNV/PBL kernel subset has real GPU numbers today.</p>
-        </div>
-        <div style="display:flex; align-items:flex-start; gap:12px">
-          <p style="font-size:22px; color:#4ADE80; font-weight:700">2</p>
-          <p style="font-size:22px; color:#E2E8F0">Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves &mdash; currently only worked around locally.</p>
-        </div>
-        <div style="display:flex; align-items:flex-start; gap:12px">
-          <p style="font-size:22px; color:#4ADE80; font-weight:700">3</p>
-          <p style="font-size:22px; color:#E2E8F0">Port SEAICE + ATURB (above), then re-run the 0.987 correlation check &mdash; expect it to improve or reveal exactly where it was masking a gap.</p>
-        </div>
+      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">2</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves — currently only worked around locally.</p>
+      </div>
+      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">3</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Port SEAICE + ATURB (left), then re-run the 0.987 correlation check — expect it to improve or reveal exactly where it was masking a gap.</p>
       </div>
     </div>
   </div>
-
-  <p style="position:absolute; left:128px; bottom:64px; font-size:22px; color:#64748B">Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)</p>
+  <p style="position:absolute; bottom:64px; left:128px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#64748b">Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)</p>
 </section>

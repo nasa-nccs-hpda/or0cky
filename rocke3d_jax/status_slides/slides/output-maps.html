@@ -1,0 +1,10 @@
+<section id="output-maps" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:14px; align-items:center">
+  <div style="display:flex; flex-direction:column; gap:8px; width:100%">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">Output Maps</p>
+    <h1 style="font-size:44px; font-weight:700; line-height:1.1; color:#F8FAFC">Where JAX and Fortran Differ, Spatially</h1>
+  </div>
+  <p style="width:100%; font-size:19px; color:#94A3B8; line-height:1.35">Difference maps only, from visualize_p2saom40_kernel_maps.ipynb / outputs/p2saom40_kernel_*_diff_*.html, on P2SAoM40's real 72&times;46 grid. Field values are synthetic test data, not real climate.</p>
+  <img src="/_blob/7e8f0554961734f5c3861e997d133fb1" alt="Difference maps (JAX minus Fortran) for DRYCNV T, PBL u, PBL dpsih, and PBL dpsiq, CPU and GPU" style="width:1326px; height:580px; object-fit:contain; border-radius:8px">
+  <p style="width:100%; font-size:16px; color:#64748B">The bright outlier points in pbl.u/dpsih/dpsiq come from a few grid cells with near-zero Monin-Obukhov length &mdash; both Fortran and JAX reproduce the same outliers, so these are still the floating-point-level diffs reported in FINDINGS.md &sect;2d, not a bug.</p>
+  <p style="position:absolute; left:128px; bottom:64px; font-size:20px; color:#64748B">All 40 generated maps: outputs/p2saom40_kernel_*.html &middot; notebook: visualize_p2saom40_kernel_maps.ipynb</p>
+</section>
