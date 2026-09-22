@@ -5,6 +5,15 @@
 actual project content — this file is only "where things are," not "what we
 found."
 
+**Post-reorg regression check (2026-09-22, same day)**: after the `mantle/`
+move below, everything was re-run to confirm nothing broke — 104/104 unit
+tests, all 6 per-module Fortran comparisons (recompiled fresh), the
+PBL/DRYCNV kernel pipeline, the current visualization notebook (executed
+end-to-end, zero errors), and the full physics-chain driver against the
+real restart data. Everything reproduced. Two real (small) bugs found and
+fixed in the process — see STATUS.md's "Regression verification" section
+for details. Nothing here needed re-litigating as a result.
+
 ## Where the real content lives
 
 - **`STATUS.md`** (this directory) — the single source of truth for project

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 RJAX = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax"
 DATA_DIR = os.path.join(RJAX, "compare_data")
-OUT_DIR = "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai/933e5f21-72ae-4e16-a0bd-a42b03071533/scratchpad/slide4_maps"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))  # status_slides/images/, alongside this script
 
 IM, JM, LM = 72, 46, 40
 SURFACE_LAYER = 0

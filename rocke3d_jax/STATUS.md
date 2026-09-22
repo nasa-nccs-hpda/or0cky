@@ -331,6 +331,53 @@ Docker/bare-metal/Slurm setup instructions and troubleshooting live in
 Its performance-expectation numbers have been corrected to point here rather
 than repeat the retired ~20–30× estimate.
 
+## Regression verification (2026-09-22, post-`mantle/` reorg)
+
+Everything in this document was re-verified to still run and reproduce its
+numbers after the `mantle/` reorg, on this machine (CPU only — no GPU node
+available in this session, so the GPU figures above were **not**
+re-measured; they still reflect the 2026-09-22 A100 run cited throughout):
+
+- **104/104 unit tests pass** (`test_*_jax.py` + `tests/`).
+- **PBL + DRYCNV kernel comparison** (`compare_generate_inputs.py` →
+  `compare_run_fortran.py` → `compare_jax.py` → `compare_report.py`,
+  freshly recompiled with `ifort -O2`): accuracy numbers reproduced
+  **exactly** (max diffs identical to the per-field table above). CPU timing
+  came out somewhat different this run (DRYCNV Fortran 1.56 ms / JAX 14.1 ms;
+  PBL Fortran 0.42 ms / JAX 0.34 ms) — same qualitative pattern (Fortran
+  wins DRYCNV, JAX wins PBL), different absolute numbers, consistent with
+  this being a third physical node/run and not a discrepancy.
+- **The other 6 modules' direct Fortran comparisons** (FLUXES, SURFACE,
+  RADIATION, GHY, SEAICE, LAKES): recompiled each `test_*_fortran.f` fresh
+  and re-ran the comparison (via `mantle/compare_fortran_jax.py`, invoked
+  with `PYTHONPATH` set to the top level so its cross-directory imports
+  resolve) — all 6 still pass. Caught and fixed a real mistake in the
+  process: naively redirecting each binary's stdout (`./test_x_fortran >
+  test_x_fortran_output.txt`) clobbers the file, because these programs
+  write their real output via an internal `OPEN` statement, not stdout —
+  fixed by running them without redirection.
+- **`visualize_p2saom40_kernel_maps.ipynb`** re-executed end to end
+  (`jupyter nbconvert --execute`, kernel `python3`, `JAX_PLATFORMS=cpu`):
+  zero error cells, all 40 output maps regenerated, PBL per-field diffs match
+  the table above exactly; DRYCNV's printed diffs are smaller than the table
+  (e.g. 7.83e-05 vs. 8.79e-05 for T) because the notebook prints the
+  surface-layer-0 slice only, while the table's number is the max over all
+  40 layers — expected, not a discrepancy (the notebook's own intro cell
+  already says this).
+- **Full physics-chain driver** (`p2saom40_compare.py`, real restart data,
+  same `fort.1.nc`/`PARTIAL.accP2SAoM40.nc` used throughout this project):
+  reproduced the 0.965 correlation / −1.86°C bias, the itype counts, and the
+  74.6%/9.91%/8.50% cost breakdown exactly. CPU wall time came out at 59.56
+  ms/step on this node — a third data point alongside the 48 ms and 33.5 ms
+  already discussed above, reinforcing (not contradicting) the point that
+  this number is node-dependent and the ratios are what matter.
+- Fixed one more latent bug found in the process: `status_slides/images/
+  render_diff.py` had a hardcoded path into a previous session's temporary
+  scratch directory as its output location — harmless while that scratch
+  dir existed, but would have failed the next time anyone tried to
+  regenerate the slide deck's difference-map image. Now writes next to
+  itself.
+
 ## Open items
 
 - SEAICE and ATURB placeholder physics — recommended above, not started.
