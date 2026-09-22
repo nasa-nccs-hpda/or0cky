@@ -1,9 +1,13 @@
 # ROCKE-3D → JAX: Status
 
-**As of**: 2026-09-21. This is the current-state summary — no revision history, no
+**As of**: 2026-09-22. This is the current-state summary — no revision history, no
 before/after narrative. For the full history of how we got here, see
 `FINDINGS.md`, `PORTING_STATUS.md`, `EXECUTIVE_SUMMARY.md`, `SESSION_SUMMARY.md`
 (kept as-is, not superseded).
+
+**Companion slide deck**: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA (4
+slides: bottom line, performance, recommendation, output maps; filesystem
+snapshot in `status_slides/`) tracks this document — the two are kept in sync.
 
 ## The goal
 
@@ -43,6 +47,15 @@ clean 1.5e-3 agreement above — the earlier, looser "~2.3%"/"1e-6" accuracy
 claims elsewhere in this repo should be considered superseded by this result
 for PBL and DRYCNV specifically.
 
+**Spatial view of the same result**: `visualize_p2saom40_kernel_maps.ipynb`
+projects the JAX−Fortran differences above onto the real P2SAoM40 72×46 grid
+(map images in `outputs/p2saom40_kernel_*_diff_*.html`, summarized in
+`status_slides/images/diff_grid.png`). Confirms the same floating-point-level
+agreement spatially, and shows a handful of outlier grid cells in
+`pbl.u`/`dpsih`/`dpsiq` — both Fortran and JAX reproduce the identical
+outliers (traced to near-zero Monin-Obukhov length at those cells), so
+they're still the same floating-point-level diffs, not a bug.
+
 ## Performance (real Fortran vs. JAX)
 
 | Comparison | Fortran (CPU) | JAX (CPU) | JAX (GPU) |
@@ -64,6 +77,12 @@ finding, not a caveat to downplay: **the case for JAX here is a GPU case**,
 not a CPU case.
 
 ## Recommendation: the 3 remaining modules
+
+**Why they're still placeholders, not a gap that was missed**: the original
+port deliberately left SEAICE/LAKES/ATURB as documented stand-ins (e.g.
+LAKES' `lkmix` is a no-op) to reach interface-complete (17/17) first,
+prioritizing full validation of the columnar physics (PBL, DRYCNV) instead.
+A scoping choice, made explicit here rather than discovered later.
 
 **SEAICE** (core thermodynamics) and **ATURB** (PBL-top-finding) — recommend
 porting next. Reasoning: sea ice is a standard, physically active component

@@ -1,5 +1,5 @@
 # ROCKE-3D JAX Porting Status
-**Last Updated**: 2026-09-21
+**Last Updated**: 2026-09-22
 
 ## 📊 **Summary Table**
 
@@ -109,6 +109,8 @@
 - **Benchmark Suite**: `benchmark_all.py`
 - **Comparison Script**: `compare_fortran_jax.py`
 - **P2SAoM40 kernel-level CPU+GPU comparison (2026-09-20)**: `compare_generate_inputs.py`, `compare_fortran.f90`, `compare_jax.py`, `compare_run_gpu_interactive.py`, `compare_submit_gpu.sbatch`, `compare_report.py` — real ifort-compiled Fortran vs. real JAX, DRYCNV+PBL, same shared inputs on every leg; results in `compare_data/summary.json`, writeup in FINDINGS.md §2d
+- **Spatial visualization of the above (2026-09-21)**: `visualize_p2saom40_kernel_maps.ipynb` — projects the same JAX-vs-Fortran differences onto the real P2SAoM40 72×46 grid; maps in `outputs/p2saom40_kernel_*_diff_*.html`
+- **Current-state summary**: `STATUS.md` (clean, no revision history) + companion slide deck https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA (filesystem snapshot: `status_slides/`)
 
 ---
 

@@ -1,7 +1,7 @@
 # ROCKE-3D JAX vs. Fortran Performance Findings
 
-**Last Updated**: 2026-09-21
-**Status**: ✅ **All benchmarks completed** (see 2d for the first real GPU run, kernel-level)
+**Last Updated**: 2026-09-22
+**Status**: ✅ **All benchmarks completed** (see 2d for the first real GPU run, kernel-level; spatial view in `visualize_p2saom40_kernel_maps.ipynb`)
 
 ---
 
@@ -162,7 +162,7 @@ JAX-GPU beats real Fortran-CPU on both kernels, resolving PORTING_STATUS.md's "N
 
 All differences are floating-point-level (output scales are 10¹–10³) on both devices — GPU is consistently a bit larger than CPU, consistent with a different float reduction order, not an algorithmic difference. This is the corrected, complete-branch validation; it supersedes any accuracy inference drawn from `simil_numpy` elsewhere in this repo.
 
-**Scope note**: this is a kernel-level comparison (DRYCNV + PBL only), not the full physics chain in section 2c (which also covers RADIATION/SURFACE/GROUND and remains CPU-only, GPU not yet run). Slide: see `compare_data/` in this directory for the raw JSON, or ask for the current comparison Artifact link.
+**Scope note**: this is a kernel-level comparison (DRYCNV + PBL only), not the full physics chain in section 2c (which also covers RADIATION/SURFACE/GROUND and remains CPU-only, GPU not yet run). Raw JSON: `compare_data/summary.json` in this directory. Spatial view of these same differences (JAX−Fortran, projected onto the real P2SAoM40 grid): `visualize_p2saom40_kernel_maps.ipynb`, or `outputs/p2saom40_kernel_*_diff_*.html` for the individual maps. Slide deck: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA (slide 4, "Output Maps"; filesystem snapshot in `status_slides/`).
 
 ---
 
