@@ -10,15 +10,26 @@ state instead of synthetic data.
 Uses netCDF4 directly (not xarray -- xarray's pandas import is broken
 in this environment).
 
-All paths default to the live run directory; nothing here writes to
-that directory.
+All paths default to the live run directory (on the "forest204" node's
+filesystem); nothing here writes to that directory. Override with the
+P2SAOM40_RUN_DIR / P2SAOM40_TOPO_PATH environment variables when running
+from elsewhere (e.g. the discover cluster, which does not mount that
+filesystem) -- copy fort.1.nc, PARTIAL.accP2SAoM40.nc, and the topo file
+to somewhere reachable first.
 """
 
+import os
 import numpy as np
 import netCDF4 as nc
 
-RUN_DIR = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/huge_space/P2SAoM40"
-TOPO_PATH = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files/Z72X46N_gas.1_nocasp.nc"
+RUN_DIR = os.environ.get(
+    "P2SAOM40_RUN_DIR",
+    "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/huge_space/P2SAoM40",
+)
+TOPO_PATH = os.environ.get(
+    "P2SAOM40_TOPO_PATH",
+    "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files/Z72X46N_gas.1_nocasp.nc",
+)
 
 IM, JM, LM = 72, 46, 40
 

@@ -96,7 +96,9 @@
 
 1. **Direct Fortran Validation**: Replace placeholder outputs in Fortran test drivers with actual subroutine calls.
 2. **Hybrid Workflow**: Integrate JAX modules into Fortran (via Python C API).
-3. **GPU/TPU Benchmarking**: ✅ Done for DRYCNV + PBL kernels at the real P2SAoM40 grid (2026-09-20, run interactively on a SLURM GPU node — see FINDINGS.md §2d): DRYCNV 30.3× faster than JAX-CPU (2.3× faster than real Fortran-CPU), matching the "expected 20–30×" estimate; PBL only 3.3× faster than JAX-CPU (6.3× faster than Fortran-CPU) — smaller than expected since PBL's cost is dispatch-bound, not compute-bound, at this problem size. Still open: the full chained orchestrator (`p2saom40_driver.py`, section above) has not been run on GPU.
+3. **GPU/TPU Benchmarking**: ✅ Done, both scopes now measured on a real NVIDIA A100 (discover cluster):
+   - **Kernel-level** (DRYCNV + PBL in isolation, 2026-09-20 — see `FINDINGS.md` §2d): DRYCNV 30.3× faster than JAX-CPU (2.3× faster than real Fortran-CPU), matching the "expected 20–30×" estimate; PBL only 3.3× faster than JAX-CPU (6.3× faster than Fortran-CPU) — smaller than expected since PBL's cost is dispatch-bound, not compute-bound, at this problem size.
+   - **Full chained orchestrator** (`p2saom40_driver.py` via `p2saom40_compare.py`, 2026-09-22 — see `FINDINGS.md` §2c): **~1.0× vs. JAX-CPU — essentially no GPU benefit**, sharply below the ~20–30× that had been estimated for this scope. Still ~8.0× faster than real Fortran (vs. ~5.5× on CPU). Root cause: same dispatch-overhead effect as PBL above, more pronounced across the full multi-step chain at this grid's 3,312 points. **This corrects, not confirms, the earlier estimate** — see `EXECUTIVE_SUMMARY.md`'s 2026-09-22 revision note for the business-impact implications.
 4. **Full Model Validation**: Run ROCKE-3D with JAX modules and validate climate statistics.
 
 ---

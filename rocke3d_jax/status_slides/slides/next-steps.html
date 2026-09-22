@@ -9,7 +9,7 @@
       <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8; line-height:1.4">Why they're still placeholders: the original port deliberately left these three as documented stand-ins (e.g. LAKES' lkmix is a no-op) to reach interface-complete (17/17) first, prioritizing full validation of the columnar physics (PBL, DRYCNV) instead. Not an oversight — a scoping choice made explicit below.</p>
       <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">SEAICE (core thermodynamics) — <span style="color:#4ade80">port next</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Physically active in every P2SAoM40-class run, not optional. Dominates polar surface energy balance — exactly where the current 0.987 global correlation check is least able to see a local error.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Physically active in every P2SAoM40-class run, not optional. Dominates polar surface energy balance — exactly where the current 0.987/0.965 global correlation checks are least able to see a local error.</p>
       </div>
       <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">ATURB (PBL-top-finding) — <span style="color:#4ade80">port next</span></p>
@@ -24,7 +24,7 @@
       <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; color:#f8fafc">Open items</h3>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">1</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Measure the full physics-chain GPU run (radiation+surface+ground together) — only the DRYCNV/PBL kernel subset has real GPU numbers today.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Measure the full physics-chain GPU run</s> &mdash; <b style="color:#4ade80">done</b>, 2026-09-22, real A100: ~1.0&times; (no benefit). Follow-up: re-derive the ROI figures in EXECUTIVE_SUMMARY.md that assumed the old ~20&ndash;30&times; estimate.</p>
       </div>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">2</p>
@@ -32,7 +32,7 @@
       </div>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">3</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Port SEAICE + ATURB (left), then re-run the 0.987 correlation check — expect it to improve or reveal exactly where it was masking a gap.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Port SEAICE + ATURB (left), then re-run the correlation check — expect it to improve or reveal exactly where it was masking a gap.</p>
       </div>
     </div>
   </div>

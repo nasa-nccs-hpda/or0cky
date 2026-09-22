@@ -25,7 +25,7 @@ second Python reimplementation.
 |---|---|
 | Does the JAX port match real Fortran numerically? | **Yes**, for the modules tested directly against it (PBL, DRYCNV): floating-point-level agreement (1e-9–1e-3) on both CPU and GPU. |
 | Is JAX faster than real Fortran? | **Depends on device and module.** See table below — not a blanket yes. |
-| Has this been checked on GPU? | **Yes, for the two directly-validated kernels** (DRYCNV, PBL) — real numbers, run 2026-09-20. **Not yet** for the larger chained physics group (radiation + surface + ground) or the 3 unported modules. |
+| Has this been checked on GPU? | **Yes, both scopes now.** Kernels (DRYCNV, PBL) in isolation: real 2.3–6.3× speedup, run 2026-09-20. Full chained physics group (radiation+surface+ground), real NVIDIA A100, run 2026-09-22: **~1.0× — essentially no GPU benefit** at this grid size (3,312 points) — corrects an earlier ~20–30× *estimate* repeated elsewhere in this repo. Not yet checked: the 3 unported modules. |
 | Is the port complete? | **14 of 17 modules** are faithful ports, validated against real Fortran. 3 (SEAICE core thermodynamics, LAKES mixing, part of ATURB) are documented placeholders. See recommendation below. |
 | Does this project still use NumPy comparisons? | It has some (`benchmark_all.py` and related) — **recommend dropping them from the headline story**. See below. |
 
@@ -37,7 +37,11 @@ NumPy stand-in:
 | What | Method | Result |
 |---|---|---|
 | PBL + DRYCNV kernels | Real inputs shared byte-for-byte between a from-scratch `ifort`-compiled Fortran reference and JAX, at P2SAoM40's real grid size (3,312 points × 40 layers) | Max diff ≤1.5e-3 (CPU), ≤2.8e-3 (GPU) against output scales of 10¹–10³ — floating-point-level, not algorithmic |
-| Full physics chain (PBL+radiation+surface+ground) | Driven by P2SAoM40's actual restart state (`fort.1.nc`), one real timestep | 0.987 spatial correlation vs. the real run's period-mean surface temperature (a coarser sanity check — period-mean vs. single-step, see `FINDINGS.md` §2c for the caveat) |
+| Full physics chain (PBL+radiation+surface+ground), restart snapshot 1949-12-01 | Driven by P2SAoM40's actual restart state (`fort.1.nc`), one real timestep | **0.987** spatial correlation vs. the real run's period-mean surface temperature (+1.0°C bias) |
+| Same, later restart snapshot 1950-11-26 (2026-09-22, GPU-capable run) | Same method, ~11 simulated months further into the same P2SAoM40 run (which has since completed its full 1-year integration) | **0.965** spatial correlation (−1.86°C bias) — consistent with the earlier snapshot, i.e. fidelity holds up over a full year of integration, not just the first month |
+
+Both full-chain rows are a coarser sanity check than the kernel row above —
+period-mean vs. single-step, see `FINDINGS.md` §2c for the caveat.
 
 **A validation-methodology gotcha worth knowing**: this project's earlier
 "Fortran-like" NumPy reference for PBL (`simil_numpy`) silently omitted half
@@ -62,7 +66,7 @@ they're still the same floating-point-level diffs, not a bug.
 |---|---|---|---|
 | DRYCNV kernel | 1.27 ms | 17.1 ms — **13.4× slower** | 0.56 ms — **2.3× faster than Fortran-CPU** |
 | PBL kernel | 0.37 ms | 0.20 ms — 1.9× faster | 0.06 ms — **6.3× faster than Fortran-CPU** |
-| Full physics chain (PBL+radiation+surface+ground) | ~264 ms/step (radiation excluded — see note) | ~48 ms/step — **5.5× faster** | not yet measured |
+| Full physics chain (PBL+radiation+surface+ground) | ~264 ms/step (radiation excluded — see note) | ~48 ms/step — **5.5× faster** (original CPU-only node) | ~33.0 ms/step on a GPU-capable node — **~1.0× vs. that node's own JAX-CPU** (33.5 ms, "no GPU benefit"); ~8.0× vs. Fortran-CPU |
 
 **Radiation note**: JAX's radiation module is a simplified graybody
 stand-in, not real spectral radiative transfer — any speedup figure that
@@ -75,6 +79,20 @@ Fortran — it loses DRYCNV outright on CPU (small-array dispatch overhead).
 GPU is where JAX wins decisively on both kernels. This is a real, useful
 finding, not a caveat to downplay: **the case for JAX here is a GPU case**,
 not a CPU case.
+
+**The full-chain GPU result is a real correction, not a footnote** (measured
+2026-09-22, NVIDIA A100, on a different — GPU-capable — node than the
+original 48 ms CPU figure above): on that node, JAX-GPU (33.0 ms/step) is
+**essentially the same as JAX-CPU on the same node** (33.5 ms/step) — no
+meaningful GPU speedup. Same root cause as the PBL kernel's more modest GPU
+gain in the table above, just more pronounced across the full multi-step
+chain: at only 3,312 grid points, there isn't enough work per step for a GPU
+to amortize kernel-launch/dispatch overhead. GPU deployment still isn't
+pointless here (~8.0× faster than real Fortran, comparable to the ~5.5×
+already seen on CPU), but the ~20–30× GPU *estimate* quoted in
+`EXECUTIVE_SUMMARY.md`'s ROI/Business-Impact/Timeline sections for this
+full-chain scope was wrong and should not be used for planning — see the
+correction note there and in `FINDINGS.md` §2c.
 
 ## Recommendation: the 3 remaining modules
 
@@ -154,6 +172,7 @@ vectorization approach without real additional work.
 
 ## Open items
 
-- Full physics-chain GPU run (radiation+surface+ground together) — not done, only the two-kernel subset has real GPU numbers.
+- ~~Full physics-chain GPU run~~ — **done** (2026-09-22, NVIDIA A100): ~1.0× vs. JAX-CPU, see Performance above. New follow-up: re-derive every ROI/timeline figure in `EXECUTIVE_SUMMARY.md` that assumed the old ~20–30× estimate for this scope (flagged there, not yet rewritten).
 - SEAICE and ATURB placeholder physics — recommended above, not started.
 - Wind-speed convention bug — fixed locally in `p2saom40_driver.py`, not yet fixed in the shared module files themselves.
+- The P2SAoM40 Fortran run itself has now completed its full 1-year integration (Dec 1949 → Nov/Dec 1950, `run_status=13`) — available as a longer-horizon validation point (used for the 1950-11-26 accuracy row above) if further checks are wanted.

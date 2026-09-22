@@ -1,8 +1,20 @@
 # **Executive Summary: ROCKE-3D JAX Porting Project**
 *Prepared for: NASA Management & Stakeholders*
-*Date: September 1, 2026 (last content revision: September 21, 2026 — see Revision Notes below)*
+*Date: September 1, 2026 (last content revision: September 22, 2026 — see Revision Notes below)*
 *Project Lead: GitHub Copilot (Autonomous Execution)*
 *Paper Alignment: [Tsigaridis et al. (2025), GMD](https://gmd.copernicus.org/articles/18/5825/2025/)*
+
+> **Revision Note (2026-09-22) — corrects a prior estimate, read this first**: The
+> full physics-subset chain was run on a real GPU (NVIDIA A100) for the first
+> time. Result: **~1.0× vs. JAX-CPU — essentially no GPU benefit** at this
+> orchestrator's grid size (3,312 points), not the ~20–30× estimated and
+> repeated throughout this document's Business Impact/ROI/Timeline sections
+> before any GPU was available. It is still ~8.0× faster than real Fortran
+> (vs. ~5.5× on CPU). See the "GPU Correction" note in the P2SAoM40 section
+> below for the full explanation, and re-derive any budget/planning figure
+> that assumed 20–30× before using it. (The separate DRYCNV+PBL kernel-level
+> GPU result from 2026-09-20, 2.3–6.3×, is unaffected by this correction —
+> different, narrower scope, see `FINDINGS.md` §2d.)
 
 > **Revision Note (2026-09-21)**: Added an explicit answer to "is 14/17 (not
 > 17/17) faithful modules appropriate?" — yes, as a prioritization (SEAICE/LAKES
@@ -135,11 +147,13 @@ The benchmarks above use synthetic or 1D-column test data. This new milestone in
 
 | Result | Value | What it means |
 |---|---|---|
-| Spatial accuracy | **0.987 correlation** with real period-mean surface temperature | Strong sanity check: JAX reproduces the correct spatial structure (cold poles, warm tropics, land/ocean contrast) from real initial conditions |
-| CPU performance | **~5.5× faster** than real Fortran for the comparable physics subset (surface fluxes + boundary layer) | Measured on this CPU, not GPU-estimated; radiation is excluded from this figure since JAX's radiation is a simplified stand-in, not equivalent physics (see caveat below) |
-| GPU performance | Not yet measured | No GPU available in this environment; the code is portable (`jax.numpy`) and expected to run unmodified on a GPU node |
+| Spatial accuracy | **0.987** (Dec 1949 snapshot) / **0.965** (Nov 1950 snapshot, 2026-09-22) correlation with real period-mean surface temperature | Strong sanity check at two different points in the real run: JAX reproduces the correct spatial structure (cold poles, warm tropics, land/ocean contrast) from real conditions |
+| CPU performance | **~5.5× faster** than real Fortran for the comparable physics subset (surface fluxes + boundary layer) | Measured; radiation is excluded from this figure since JAX's radiation is a simplified stand-in, not equivalent physics (see caveat below) |
+| GPU performance | **~1.0× vs. JAX-CPU (measured, 2026-09-22, NVIDIA A100) — essentially no GPU benefit**; ~8.0× vs. real Fortran | See "GPU Correction" note below — this is far below the previous ~20–30× estimate used elsewhere in this document |
 
 **Important caveat for management**: the CPU speedup figure above intentionally excludes radiation, because JAX's radiation module is a simplified graybody formula rather than the real multi-band spectral transfer scheme — including it would produce a misleadingly large (~200×) speedup that reflects a fidelity gap, not a fair speed comparison. This is the standard we're holding all performance claims in this project to going forward.
+
+> **GPU Correction (2026-09-22) — read this before citing any "20–30× GPU" figure in this document**: now that a real GPU (NVIDIA A100) is available, this full physics-subset chain measures **~1.0× vs. JAX-CPU** — essentially no GPU benefit — not the ~20–30× estimated earlier and repeated throughout this document's Business Impact, ROI, and Timeline sections. Root cause: this orchestrator's grid is only 3,312 points, too small for a GPU to amortize kernel-launch overhead. It's still ~8.0× faster than real Fortran (vs. ~5.5× on CPU), so GPU deployment isn't pointless — it's just far more modest than previously estimated. **Every ROI/timeline figure elsewhere in this document that assumes 20–30× GPU speedup should be re-derived from this real number before being used in a budget or planning decision.** A separate, narrower measurement (DRYCNV+PBL kernels in isolation, not this full chain) does show genuine 2.3–6.3× GPU gains — see `FINDINGS.md` §2d — so the story isn't "GPU never helps here," it's "the full chained orchestrator at this grid size doesn't benefit the way the estimate assumed."
 
 Full detail: `FINDINGS.md` §2c, `PORTING_STATUS.md`, and `p2saom40_compare.py`.
 

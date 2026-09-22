@@ -20,10 +20,16 @@ produces:
      ported vs. simplified vs. out of scope.
 
 Usage: python p2saom40_compare.py
+       JAX_PLATFORMS=cpu python p2saom40_compare.py   # force CPU explicitly
 """
 
 import os
-os.environ.setdefault("JAX_PLATFORMS", "cpu")
+# No JAX_PLATFORMS default here: let JAX auto-detect (GPU if present, else
+# CPU). This used to hardcode "cpu" as a default from when this script was
+# only ever run on a CPU-only node -- that silently pinned every run to CPU
+# even on a real GPU node, since os.environ.setdefault() only fills in a
+# value that isn't already set, and nothing else was setting it. Pass
+# JAX_PLATFORMS=cpu on the command line if you actually want to force CPU.
 
 import time
 import numpy as np
@@ -147,12 +153,28 @@ def main():
     print("    Atm. Dynamics                8.50% -- OUT OF SCOPE, not ported")
 
     section("6. Performance (GPU)")
-    print("  No GPU is visible in this environment (JAX reports:", jax.devices(), ")")
-    print("  To benchmark on GPU: run this script with JAX_PLATFORMS=cuda on a")
-    print("  GPU-enabled node/container -- see rocke3d_jax/Dockerfile.gpu, which")
-    print("  already installs jax[cuda12_pip]. No code changes needed; the driver")
-    print("  is plain jax.numpy and will place arrays on whatever backend is")
-    print("  active.")
+    if jax.devices()[0].platform == "gpu":
+        print(f"  GPU detected: {jax.devices()}")
+        _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # JIT warm-up (GPU)
+        jax.block_until_ready(_)
+        t0 = time.perf_counter()
+        for i in range(n_rep):
+            do_rad = (i % drv.NRAD == 0)
+            out = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
+        jax.block_until_ready(out)
+        jax_gpu_ms = (time.perf_counter() - t0) / n_rep * 1000.0
+        print(f"  JAX (this GPU, jit-compiled, {n_rep}-step average): {jax_gpu_ms:.2f} ms/DTsrc-step")
+        print(f"  vs. JAX (CPU, above): {jax_ms:.2f} ms/DTsrc-step -> {jax_ms / jax_gpu_ms:.1f}x faster on GPU")
+        print(f"  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): {264.0 / jax_gpu_ms:.1f}x faster")
+        print("  (radiation excluded from the Fortran comparison, as in section 5 --")
+        print("   JAX's radiation is a simplified graybody stand-in, not equivalent physics)")
+    else:
+        print("  No GPU is visible in this environment (JAX reports:", jax.devices(), ")")
+        print("  To benchmark on GPU: run this script on a GPU-enabled node/container")
+        print("  without forcing JAX_PLATFORMS=cpu -- see rocke3d_jax/Dockerfile.gpu,")
+        print("  which already installs jax[cuda12_pip]. No code changes needed; the")
+        print("  driver is plain jax.numpy and will place arrays on whatever backend")
+        print("  is active.")
 
     section("7. Functional coverage (orchestration fidelity)")
     rows = [

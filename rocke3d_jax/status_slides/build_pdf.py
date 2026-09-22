@@ -175,46 +175,54 @@ def slide_performance(c):
     draw_para(c, "Same shared inputs on every leg. Grid: P2SAoM40's real 72x46x40.",
               px, py, col_w - 36, 20, size=8.5, color=FOOTER)
 
-    top2_h = 175
+    top2_h = 250
     rounded(c, right_x, panel_top - top2_h, col_w, top2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - 26
-    draw_para(c, "Full physics chain (CPU only)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
-    ry -= 22
+    rx, ry = right_x + 18, panel_top - 24
+    draw_para(c, "Full physics chain (CPU + GPU)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
+    ry -= 20
     ry -= draw_para(c, "PBL + radiation + surface + ground, driven by P2SAoM40's real restart "
-              "state, chained in the real per-timestep order.", rx, ry, col_w - 36, 40, size=9, color=MUTED)
+              "state, chained in the real per-timestep order. Radiation excluded below "
+              "(simplified graybody stand-in).", rx, ry, col_w - 36, 40, size=8.5, color=MUTED)
     ry -= 8
     c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
     c.line(rx, ry, rx + col_w - 36, ry)
     c.restoreState()
-    ry -= 18
-    draw_para(c, "~5.5x faster", rx, ry, col_w - 36, 26, size=24, color=GREEN, bold=True, font="Courier")
-    ry -= 32
-    ry -= draw_para(c, "~48 ms/step (JAX) vs. ~264 ms/step (real Fortran).", rx, ry, col_w - 36, 20, size=9, color=MUTED)
-    ry -= 4
-    ry -= draw_para(c, "Radiation excluded from this figure -- JAX's radiation is a simplified "
-              "graybody stand-in, not real spectral transfer.", rx, ry, col_w - 36, 30, size=8, color=FOOTER)
-    ry -= 8
+    ry -= 22
+    stat_col_w = (col_w - 36 - 16) / 2
+    draw_para(c, "5.5x", rx, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
+    draw_para(c, "~1.0x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=ORANGE, bold=True, font="Courier")
+    ry -= 26
+    draw_para(c, "CPU vs. Fortran (48 vs. 264 ms)", rx, ry, stat_col_w, 24, size=7.5, color=MUTED)
+    draw_para(c, "GPU vs. that node's CPU (33.0 vs. 33.5 ms) -- no benefit",
+              rx + stat_col_w + 16, ry, stat_col_w, 24, size=7.5, color=MUTED)
+    ry -= 30
     c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
     c.line(rx, ry, rx + col_w - 36, ry)
     c.restoreState()
-    ry -= 16
-    draw_para(c, "GPU: not yet measured for this full chain.", rx, ry, col_w - 36, 16,
-              size=9.5, color=ORANGE, bold=True)
+    ry -= 14
+    draw_para(c, "Real A100 result (2026-09-22) corrects an earlier ~20-30x GPU "
+              "<i>estimate</i> for this scope, used throughout EXECUTIVE_SUMMARY.md's ROI "
+              "section (now flagged there). Still ~8x faster than Fortran on GPU -- the "
+              "grid (3,312 pts) is just too small to benefit from GPU parallelism the way "
+              "the estimate assumed.", rx, ry, col_w - 36, 60, size=8, color=ORANGE)
 
-    bot2_h = panel_h - top2_h - 20
-    rounded(c, right_x, panel_top - panel_h, col_w, bot2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - top2_h - 20 - 22
+    panel_h_right = 380
+    bot2_h = panel_h_right - top2_h - 20
+    rounded(c, right_x, panel_top - panel_h_right, col_w, bot2_h, 12, CARD)
+    rx, ry = right_x + 18, panel_top - top2_h - 20 - 24
     draw_para(c, "Reading this honestly", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
     ry -= 26
     ry -= draw_para(c, "JAX-CPU is <b>not</b> a blanket win &mdash; it loses DRYCNV outright to "
               "Fortran on CPU (small-array dispatch overhead dominates at this grid size).",
               rx, ry, col_w - 36, 50, size=9, color=INK2)
-    ry -= 4
-    draw_para(c, "GPU is where JAX wins decisively on both kernels tested. That's the real case "
-              "for this port.", rx, ry, col_w - 36, 40, size=9, color=GREEN, bold=True)
+    ry -= 8
+    draw_para(c, "GPU wins decisively on isolated kernels (2.3-6.3x) &mdash; but not on the full "
+              "chained pipeline (~1.0x). The grid is too small either way for GPU to be a clean "
+              "win by itself.", rx, ry, col_w - 36, 50, size=9, color=GREEN, bold=True)
 
     footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
-              "(kernel-level) &middot; p2saom40_driver.py (full chain) &middot; STATUS.md")
+              "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
+              "GPU 2026-09-22) &middot; STATUS.md")
 
 
 def slide_next_steps(c):
@@ -243,8 +251,8 @@ def slide_next_steps(c):
     items = [
         (GREEN, "SEAICE (core thermodynamics) — port next",
          "Physically active in every P2SAoM40-class run, not optional. Dominates polar surface "
-         "energy balance — exactly where the current 0.987 global correlation check is least "
-         "able to see a local error."),
+         "energy balance — exactly where the current 0.987/0.965 global correlation checks are "
+         "least able to see a local error."),
         (GREEN, "ATURB (PBL-top-finding) — port next",
          "Feeds surface-flux accuracy globally, not just at the poles. Also tests whether the "
          "vmap-over-grid-cells approach holds up on harder physics."),
@@ -264,11 +272,12 @@ def slide_next_steps(c):
     draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=13, color=INK, bold=True)
     ry -= 36
     opens = [
-        "Measure the full physics-chain GPU run (radiation+surface+ground together) — only "
-        "the DRYCNV/PBL kernel subset has real GPU numbers today.",
+        "<s>Measure the full physics-chain GPU run</s> — <b><font color='#4ADE80'>done</font></b>, "
+        "2026-09-22, real A100: ~1.0x (no benefit). Follow-up: re-derive the ROI figures in "
+        "EXECUTIVE_SUMMARY.md that assumed the old ~20-30x estimate.",
         "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
         "— currently only worked around locally.",
-        "Port SEAICE + ATURB, then re-run the 0.987 correlation check — expect it to improve "
+        "Port SEAICE + ATURB, then re-run the correlation check — expect it to improve "
         "or reveal exactly where it was masking a gap.",
     ]
     for i, item in enumerate(opens, 1):
