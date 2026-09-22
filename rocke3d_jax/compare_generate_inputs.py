@@ -4,7 +4,8 @@ Fortran-vs-JAX comparison (Fortran/CPU, JAX/CPU, JAX/GPU).
 
 Grid shapes are P2SAoM40's real dimensions, confirmed from this project's
 own P2SAoM40 restart file (im=72, jm=46, lm=40 atmosphere layers) -- see
-benchmark_all_p2saom40.py for how those were sourced.
+mantle/benchmark_all_p2saom40.py (historical, moved 2026-09-22) for how those
+were originally sourced.
 
 Writes, into ./compare_data/:
   - drycnv_{T,Q,PK,PDSIG}.dat   -- raw float64, Fortran (column-major) order

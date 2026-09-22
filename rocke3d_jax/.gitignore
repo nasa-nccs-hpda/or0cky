@@ -222,4 +222,5 @@ __marimo__/
 *.o
 *.a
 *.bin
+*.mod
 #*.html

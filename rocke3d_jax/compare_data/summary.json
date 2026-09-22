@@ -6,8 +6,8 @@
   },
   "timing": {
     "fortran_cpu": {
-      "drycnv_mean_seconds": 0.00127197,
-      "pbl_mean_seconds": 0.0003703,
+      "drycnv_mean_seconds": 0.00156302,
+      "pbl_mean_seconds": 0.00041536,
       "device": "fortran_cpu",
       "iterations": 100
     },
@@ -16,8 +16,8 @@
       "jax_devices": [
         "TFRT_CPU_0"
       ],
-      "drycnv_mean_seconds": 0.017090320587158203,
-      "pbl_mean_seconds": 0.00019533872604370116,
+      "drycnv_mean_seconds": 0.01409402847290039,
+      "pbl_mean_seconds": 0.00034019231796264646,
       "iterations": 100
     },
     "jax_gpu": {

@@ -144,7 +144,7 @@ def decode_aij(varname, acc_path=None):
     into physical units, using its embedded scale/denom/ia metadata.
 
     This is a period-mean (accumulated-over-the-run) field, not a
-    per-timestep value -- see FINDINGS.md for why (SUBDD was disabled
+    per-timestep value -- see STATUS.md for why (SUBDD was disabled
     in this rundeck). Useful for qualitative/pattern accuracy checks
     only.
     """

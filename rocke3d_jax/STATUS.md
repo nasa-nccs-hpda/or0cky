@@ -14,6 +14,14 @@ maps; filesystem snapshot in `status_slides/`). This is also now the *only*
 slide deck for this project — an earlier, narrower deck (kernel-level timing
 only) has been merged into it and retired.
 
+**Repository layout**: this directory was reorganized on 2026-09-22 —
+historical/superseded scripts, notebooks, and scratch data (old benchmark
+scripts, superseded compare tooling, orphaned data files, old dashboard
+notebooks) were moved into `mantle/` (see `mantle/README.md` for the full
+list and why each one moved), verified first against a full grep-based
+dependency map so nothing live was broken. Everything referenced in this
+document lives at the top level unless a path explicitly says `mantle/...`.
+
 ## Background: what P2SAoM40 is
 
 `P2SAoM40` is one rundeck configuration of **ROCKE-3D 2.0**
@@ -47,7 +55,7 @@ vs. a second Python reimplementation.
 | Is JAX faster than real Fortran? | **Depends on device and module.** See Performance below — not a blanket yes. |
 | Has this been checked on GPU? | **Yes, both scopes.** Kernels (DRYCNV, PBL) in isolation: real 2.3–6.3× speedup, run 2026-09-20. Full chained physics group, real NVIDIA A100 (node `warpa005`, discover cluster): **~1.0× — essentially no GPU benefit** at this grid size (3,312 points) — corrects an earlier ~20–30× *estimate* that has now been fully retired, not just flagged (see Full Physics Chain below). |
 | Is the port complete? | **14 of 17 modules** are faithful ports, validated against real Fortran. 3 (SEAICE core thermodynamics, LAKES mixing, part of ATURB) are documented placeholders. See Recommendation below. |
-| Does this project still use NumPy comparisons? | It has some (`benchmark_all.py` and related) — **dropped from the headline story**. See below. |
+| Does this project still use NumPy comparisons? | It has some (`mantle/benchmark_all.py` and related) — **dropped from the headline story**. See below. |
 
 ## Full Physics Chain: the finding that matters most
 
@@ -256,17 +264,18 @@ presenting it as measured fact.)*
 
 ## On NumPy: dropped from the headline story
 
-`benchmark_all.py`/`benchmark_all_cpu.py` compare JAX against `simil_numpy`/
-`dry_convection_numpy` — hand-written, un-jitted Python reimplementations of
-the same formulas, useful only for answering "how much does JIT compilation
-alone buy you, holding the algorithm constant." That's a real but narrow
-engineering question, and it's not what management or the project goal
-actually needs to know, which is JAX vs. **the real Fortran model** run in
-production. Given `simil_numpy` was also found to be *wrong* (see Accuracy
-above), it's a weak reference on top of being the wrong comparison. The files
-are kept (harmless as engineering scratch work) but NumPy-relative speedups
-are no longer cited anywhere in this project's status reporting — every
-headline number is JAX vs. Fortran.
+`mantle/benchmark_all.py`/`mantle/benchmark_all_cpu.py` compare JAX against
+`simil_numpy`/`dry_convection_numpy` — hand-written, un-jitted Python
+reimplementations of the same formulas, useful only for answering "how much
+does JIT compilation alone buy you, holding the algorithm constant." That's a
+real but narrow engineering question, and it's not what management or the
+project goal actually needs to know, which is JAX vs. **the real Fortran
+model** run in production. Given `simil_numpy` was also found to be *wrong*
+(see Accuracy above), it's a weak reference on top of being the wrong
+comparison. The files are kept (harmless as engineering scratch work, moved
+into `mantle/` in the 2026-09-22 reorg) but NumPy-relative speedups are no
+longer cited anywhere in this project's status reporting — every headline
+number is JAX vs. Fortran.
 
 ## Conversion cost & gotchas
 

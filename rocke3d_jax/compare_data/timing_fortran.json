@@ -1,6 +1,6 @@
 {
-  "drycnv_mean_seconds": 0.00127197,
-  "pbl_mean_seconds": 0.0003703,
+  "drycnv_mean_seconds": 0.00156302,
+  "pbl_mean_seconds": 0.00041536,
   "device": "fortran_cpu",
   "iterations": 100
 }

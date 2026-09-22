@@ -23,7 +23,7 @@ docker run --gpus all -it rocke3d-jax-gpu
 ### **3. Execute Benchmarks Inside Container**
 ```bash
 cd /workspace
-python benchmark_all.py
+python mantle/benchmark_all.py
 ```
 
 ---
@@ -100,7 +100,7 @@ module load python/3.9
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # Run benchmarks
-python benchmark_all.py > benchmark_gpu_results.txt 2>&1
+python mantle/benchmark_all.py > benchmark_gpu_results.txt 2>&1
 ```
 
 ### **3. Submit the Job**
@@ -142,7 +142,7 @@ Could not load dynamic library 'cudart64_12.dll'
 RuntimeError: CUDA out of memory
 ```
 **Solution:**
-- Reduce **grid size** in `benchmark_all.py`.
+- Reduce **grid size** in `mantle/benchmark_all.py`.
 - Use **smaller batch sizes** for large modules (e.g., `DRYCNV` with `LM=10`).
 
 ---

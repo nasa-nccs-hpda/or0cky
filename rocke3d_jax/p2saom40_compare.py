@@ -11,7 +11,7 @@ produces:
   2. Accuracy: a qualitative/pattern-level comparison against the real
      run's accumulated (period-mean) diagnostics -- NOT a per-timestep
      validation, since SUBDD (instantaneous output) was disabled in
-     this rundeck. See FINDINGS.md.
+     this rundeck. See STATUS.md.
   3. Performance (CPU): JAX driver wall-clock vs. the real per-routine
      Fortran costs measured in P2SAoM40.PRT.
   4. Performance (GPU): documented but not executed here -- no GPU is

@@ -9,7 +9,7 @@ and cadence (NIsurf=2 surface substeps per DTsrc, NRAD=5 radiation
 gating), driven by real 72x46x40 restart state (see p2saom40_io.py).
 
 Explicitly out of scope (not ported / not faithfully ported -- see
-FINDINGS.md and PORTING_STATUS.md for the fidelity audit):
+STATUS.md for the fidelity notes):
   - Atmospheric dynamical core, moist convection (CONDSE), ocean GCM.
   - seaice_jax's/lakes_jax's state-evolving thermodynamics (prec_si,
     addice, simelt, sea_ice, lkmix) are documented placeholders/no-ops
@@ -95,7 +95,7 @@ def surface_skin_temperature(state, itype, t1_actual):
     properly is a v2 refinement), ocean -> not separately available in
     this atmosphere-side restart (no ocean GCM ported), approximated by
     the actual (already PK-converted) layer-1 air temperature minus a
-    small stable offset. See FINDINGS.md for the full list of declared
+    small stable offset. See STATUS.md for the full list of declared
     simplifications.
 
     `t1_actual` must already be in real Kelvin (i.e. state["t"][...,0]
@@ -111,7 +111,7 @@ def surface_skin_temperature(state, itype, t1_actual):
     tg = tg_c + const.TF
     # Ocean (itype==1): no ocean-model SST in this atm-only restart;
     # approximate with layer-1 air temperature minus a small stable
-    # offset, a declared simplification (see FINDINGS.md).
+    # offset, a declared simplification (see STATUS.md).
     tg = np.where(itype == 1, np.asarray(t1_actual) - 0.5, tg)
     return tg
 
