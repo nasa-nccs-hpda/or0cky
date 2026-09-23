@@ -1,10 +1,11 @@
 {
   "v": 4,
   "title": "ROCKE-3D → JAX: Status",
-  "order": ["bottom-line", "performance", "next-steps", "output-maps"],
+  "order": ["bottom-line", "performance", "journey", "next-steps", "output-maps"],
   "sections": {
     "s1": {"description": "Bottom line: goal, headline numbers, current state", "start": "bottom-line"},
     "s2": {"description": "Real Fortran vs JAX performance, CPU and GPU", "start": "performance"},
+    "s2b": {"description": "Verification of the 4.2x GPU optimization result, and its scope caveat", "start": "journey"},
     "s3": {"description": "Recommendation on remaining scope and open items", "start": "next-steps"},
     "s4": {"description": "Output maps from the P2SAoM40 kernel comparison notebook", "start": "output-maps"}
   },

@@ -1,0 +1,44 @@
+<section id="journey" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:26px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">Verification</p>
+    <h1 style="font-size:56px; font-weight:700; line-height:1.1; color:#F8FAFC">Four Stages, Verified &mdash; Not Just Measured</h1>
+    <p style="font-size:18px; color:#94A3B8; line-height:1.4">This project already found one measurement bug in this exact chain. Before shipping "62&times; faster," here's what was checked before believing it.</p>
+  </div>
+
+  <div style="display:flex; gap:48px; flex:1">
+    <div style="flex:1; background:#1E293B; border-radius:24px; padding:40px; display:flex; flex-direction:column; gap:16px">
+      <h3 style="font-size:24px; font-weight:600; color:#F8FAFC">Three independent checks</h3>
+
+      <div style="display:flex; flex-direction:column; gap:6px; padding:18px 22px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
+        <p style="font-size:19px; font-weight:600; color:#f8fafc">1. Did the bug fix touch the GPU number?</p>
+        <p style="font-size:15.5px; color:#94a3b8; line-height:1.45">No. Diffed the fix line-by-line: the GPU timing code (warm-up, <code style="font-family:'JetBrains Mono',monospace">block_until_ready</code> before <i>and</i> after the timed loop) is byte-for-byte unchanged. Only the mislabeled "CPU" section and a print string changed. The GPU number was never the broken part.</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px; padding:18px 22px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
+        <p style="font-size:19px; font-weight:600; color:#f8fafc">2. Does it reproduce?</p>
+        <p style="font-size:15.5px; color:#94a3b8; line-height:1.45">Two independent runs of the same post-fusion code on the same A100: <b style="color:#e2e8f0">4.08 ms</b> and <b style="color:#e2e8f0">4.26 ms</b> &mdash; ~4% apart, normal system jitter, not a fluke.</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:6px; padding:18px 22px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
+        <p style="font-size:19px; font-weight:600; color:#f8fafc">3. Does the magnitude make sense?</p>
+        <p style="font-size:15.5px; color:#94a3b8; line-height:1.45">3,312 points, one fused dispatch, on an A100: low-single-digit ms is the expected range, not suspiciously fast. And 4.2&times; (not 40&times;) GPU-vs-CPU is consistent with this grid being too small to fully saturate the GPU &mdash; the same real effect the old buggy comparison was trying, and failing, to measure.</p>
+      </div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; gap:24px">
+      <div style="background:#1E293B; border-radius:24px; padding:36px; border-left:6px solid #FBBF24; display:flex; flex-direction:column; gap:12px">
+        <p style="font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:600; color:#FBBF24; letter-spacing:1.5px; text-transform:uppercase">The scope caveat &mdash; read this before quoting 62&times;</p>
+        <p style="font-size:16.5px; color:#E2E8F0; line-height:1.5">The numbers are real. What they compare isn't two implementations of identical work: real Fortran's <code style="font-family:'JetBrains Mono',monospace; background:#0F172A; padding:1px 5px; border-radius:4px">SURFACE()</code> does area-weighted multi-type sub-tiling, full land hydrology (<code style="font-family:'JetBrains Mono',monospace; background:#0F172A; padding:1px 5px; border-radius:4px">GHY</code>), and a real tridiagonal turbulence solve &mdash; none of which the JAX full-chain driver currently does.</p>
+        <p style="font-size:16.5px; color:#FBBF24; font-weight:600; line-height:1.5">A faithful, fully-featured port would do more work than today's simplified driver and would likely land at a smaller &mdash; still real &mdash; multiple.</p>
+      </div>
+
+      <div style="background:#1E293B; border-radius:24px; padding:32px 36px; display:flex; flex-direction:column; gap:10px; flex:1; justify-content:center">
+        <h3 style="font-size:22px; font-weight:600; color:#F8FAFC">Bottom line</h3>
+        <p style="font-size:17px; color:#E2E8F0; line-height:1.5">17.94&thinsp;ms &rarr; 4.26&thinsp;ms is a real, reproducible, <b style="color:#4ADE80">4.2&times; GPU speedup</b> on the physics this driver actually runs today &mdash; clearing this project's own &gt;2&times; target from real dispatch-fusion engineering, not a measurement artifact.</p>
+        <p style="font-size:15px; color:#64748B; line-height:1.5">Treat it as a validated, scope-bounded win: real for what's ported today, not yet a claim about the full model.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="position:absolute; left:128px; bottom:64px; font-size:20px; color:#64748B">Full chart, discussion, and hover-level detail: https://claude.ai/artifact/FmHsaDwSg9ap1BUY5Be9Ai &middot; STATUS.md "Full Physics Chain" &amp; "GPU optimization: Phase 1"</p>
+</section>

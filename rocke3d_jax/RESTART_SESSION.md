@@ -32,6 +32,24 @@ README_GPU.md, and the slide deck (both the live artifact and
 flagged, since the underlying files this correction depends on
 (`EXECUTIVE_SUMMARY.md` etc.) no longer exist to flag.
 
+**Verification pass, next day (2026-09-23)**: user pushed back on the 4.2×
+number before accepting it — reasonably, since this project had *just* found
+one measurement bug in this exact chain. Did three checks rather than just
+reassuring: confirmed the CPU-bug fix never touched the GPU-timing code path
+(diffed line-by-line), confirmed the GPU number reproduces across two
+independent runs (4.08 ms, 4.26 ms), and confirmed the magnitude is
+physically plausible for this grid size and hardware. Also surfaced and
+documented a real scope caveat that wasn't previously called out explicitly:
+the 62×/14.7× figures compare JAX's *simplified* full-chain physics (no
+sub-tiling, no `GHY`, no real `aturb` turbulence solve) against Fortran's
+*fuller* implementation of that same scope — the numbers are real, but a
+faithful full port would likely see a smaller ratio. All of this is now in
+STATUS.md's "Full Physics Chain" section and a new 5th slide, "Verification"
+(`journey.html`) — added to the live deck and `status_slides/build_pdf.py`.
+Standing lesson for next time a big number shows up right after a bug fix:
+verify before presenting, the same way this session verified before
+believing it.
+
 ## Where the real content lives
 
 - **`STATUS.md`** (this directory) — the single source of truth for project
@@ -42,7 +60,8 @@ flagged, since the underlying files this correction depends on
   again, they're gone on purpose; content merged into `STATUS.md`, originals
   still in git history.
 - **Slide deck**: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA
-  ("ROCKE-3D → JAX: Status," 4 slides). This is now the *only* deck for this
+  ("ROCKE-3D → JAX: Status," 5 slides — added a "Verification" slide for the
+  GPU-optimization result). This is now the *only* deck for this
   project — a second, narrower one was merged into it and deleted.
 - **Filesystem PDF copy**: `status_slides/status_deck.pdf` (source:
   `status_slides/build_pdf.py`, reportlab — not weasyprint, see

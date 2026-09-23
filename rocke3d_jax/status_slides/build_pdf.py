@@ -140,9 +140,102 @@ def bar_row(c, x, y, label, bar_w, value_text, bar_color, label_w=90, max_bar=22
 
 
 def slide_performance(c):
+    import math
     c.setFillColor(NAVY)
     c.rect(0, 0, W, H, fill=1, stroke=0)
     y = eyebrow_title(c, "PERFORMANCE", "Real Fortran vs. JAX &mdash; CPU and GPU", title_size=26)
+
+    col_w_left = (W - 2 * MARGIN - 20) * 0.56
+    col_w_right = (W - 2 * MARGIN - 20) * 0.44 - 20
+    left_x = MARGIN
+    right_x = MARGIN + col_w_left + 20
+    panel_top = y
+    panel_h = 330
+
+    # ---- Left (dominant): full physics chain, 4 stages, log-scale bars ----
+    left_bar_card(c, left_x, panel_top - panel_h, col_w_left, panel_h, GREEN, r=12)
+    px, py = left_x + 18, panel_top - 22
+    draw_para(c, "FULL PHYSICS CHAIN &mdash; THE HEADLINE RESULT", px, py, col_w_left - 36, 14,
+              size=7.5, color=GREEN, bold=True, font="Courier")
+    py -= 18
+    draw_para(c, "Four stages, one real DTsrc step", px, py, col_w_left - 36, 18, size=13, color=INK, bold=True)
+    py -= 18
+    py -= draw_para(c, "PBL+radiation+surface+ground, P2SAoM40's real restart state. Radiation "
+              "excluded (graybody stand-in) to keep every leg fair. Log-scale bars.",
+              px, py, col_w_left - 36, 30, size=8, color=MUTED)
+    py -= 10
+
+    def log_pct(ms):
+        return (math.log10(ms) - math.log10(1)) / (math.log10(300) - math.log10(1))
+
+    max_bar = 220
+    stages = [
+        ("Real Fortran", 264.0, "264.0 ms", BLUE, False),
+        ("JAX, original, CPU", 59.56, "59.56 ms — 4.4x", ORANGE, False),
+        ("JAX, original, GPU", 32.96, "32.96 ms — 8.0x", AMBER, False),
+        ("JAX, optimized, GPU", 4.26, "4.26 ms — 62.0x", GREEN, True),
+    ]
+    for label, ms, val_text, color, emph in stages:
+        bar_w = max(max_bar * log_pct(ms), 3)
+        draw_para(c, label, px, py + 12, 105, 16, size=8, color=MUTED)
+        c.saveState(); c.setFillColor(color)
+        c.roundRect(px + 105, py, bar_w, 14, 3, stroke=0, fill=1)
+        c.restoreState()
+        draw_para(c, val_text, px + 105 + max_bar + 8, py + 12, 150, 16,
+                  size=8.5, color=(GREEN if emph else INK2), bold=emph, font="Courier")
+        py -= 22
+
+    py -= 8
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(px, py, px + col_w_left - 36, py)
+    c.restoreState()
+    py -= 16
+    draw_para(c, "4.2x GPU-vs-CPU on the optimized code (same A100, before/after fusing "
+              "~33 per-step JIT dispatches into one) -- clears the &gt;2x target. "
+              "Verification + a measurement-script bug this also fixed: next slide.",
+              px, py, col_w_left - 36, 40, size=8.5, color=GREEN, bold=True)
+
+    # ---- Right (secondary): scope caveat + condensed kernel-level ----
+    top2_h = 190
+    rounded(c, right_x, panel_top - top2_h, col_w_right, top2_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - 22
+    draw_para(c, "What \"62x\" is actually measuring", rx, ry, col_w_right - 32, 18, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "Real Fortran SURFACE() does more physics than this JAX driver: "
+              "area-weighted sub-tiling, full GHY land hydrology (not wired into JAX), "
+              "and a real tridiagonal turbulence solve (JAX uses a shortcut).",
+              rx, ry, col_w_right - 32, 60, size=8, color=INK2)
+    ry -= 6
+    draw_para(c, "So part of 62x is JAX computing faster -- part is JAX computing less "
+              "physics for that scope. A faithful full port would likely see a smaller ratio.",
+              rx, ry, col_w_right - 32, 50, size=8, color=AMBER, bold=True)
+
+    bot2_h = panel_h - top2_h - 20
+    rounded(c, right_x, panel_top - panel_h, col_w_right, bot2_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - top2_h - 20 - 22
+    draw_para(c, "Kernel-level (mean of 100 calls)", rx, ry, col_w_right - 32, 16, size=10.5, color=INK, bold=True)
+    ry -= 16
+    draw_para(c, "Isolated routine, not the full pipeline.", rx, ry, col_w_right - 32, 14, size=7.5, color=MUTED)
+    ry -= 22
+    stat_col_w = (col_w_right - 32 - 12) / 2
+    draw_para(c, "13.4x slower", rx, ry, stat_col_w, 18, size=13, color=ORANGE, bold=True, font="Courier")
+    draw_para(c, "2.3-6.3x faster", rx + stat_col_w + 12, ry, stat_col_w, 18, size=13, color=GREEN, bold=True, font="Courier")
+    ry -= 16
+    draw_para(c, "DRYCNV, JAX-CPU", rx, ry, stat_col_w, 14, size=7, color=MUTED)
+    draw_para(c, "DRYCNV/PBL, JAX-GPU", rx + stat_col_w + 12, ry, stat_col_w, 14, size=7, color=MUTED)
+
+    footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
+              "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
+              "NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md")
+
+
+def slide_journey(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "VERIFICATION", "Four Stages, Verified &mdash; Not Just Measured",
+        "This project already found one measurement bug in this exact chain. Before "
+        "shipping \"62x faster,\" here's what was checked before believing it.",
+        title_size=30)
 
     col_w = (W - 2 * MARGIN - 20) / 2
     left_x = MARGIN
@@ -151,84 +244,63 @@ def slide_performance(c):
     panel_h = 330
 
     rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
-    px, py = left_x + 18, panel_top - 28
-    draw_para(c, "Kernel-level (mean of 100 calls)", px, py, col_w - 36, 20,
-              size=12, color=INK, bold=True)
-    py -= 20
-    py -= draw_para(c, '"Kernel-level" = timing one physics routine in isolation (DRYCNV, PBL), '
-              "not the full pipeline -- isolates the JAX port's raw per-call speed, and is the "
-              "only comparison with real, measured GPU numbers so far.",
-              px, py, col_w - 36, 40, size=8, color=MUTED)
-    py -= 12
-    draw_para(c, "DRYCNV", px, py, col_w - 36, 16, size=11, color=INK, bold=True)
-    py -= 30
-    max_bar = 220
-    bar_row(c, px, py, "Fortran-CPU", 220 * (1.27 / 17.1), "1.27 ms", BLUE); py -= 24
-    bar_row(c, px, py, "JAX-CPU", 220 * (17.1 / 17.1), "17.1 ms — 13.4x slower", ORANGE); py -= 24
-    bar_row(c, px, py, "JAX-GPU", max(220 * (0.56 / 17.1), 3), "0.56 ms — 2.3x faster than Fortran", GREEN); py -= 40
+    px, py = left_x + 18, panel_top - 26
+    draw_para(c, "Three independent checks", px, py, col_w - 36, 18, size=13, color=INK, bold=True)
+    py -= 22
 
-    draw_para(c, "PBL similarity", px, py, col_w - 36, 16, size=11, color=INK, bold=True)
-    py -= 30
-    bar_row(c, px, py, "Fortran-CPU", 220 * (0.37 / 0.37), "0.37 ms", BLUE); py -= 24
-    bar_row(c, px, py, "JAX-CPU", 220 * (0.20 / 0.37), "0.20 ms — 1.9x faster", ORANGE); py -= 24
-    bar_row(c, px, py, "JAX-GPU", 220 * (0.06 / 0.37), "0.06 ms — 6.3x faster than Fortran", GREEN); py -= 30
+    checks = [
+        ("1. Did the fix touch the GPU number?",
+         "No. Diffed it line-by-line: the GPU timing code (warm-up, block_until_ready "
+         "before and after) is byte-for-byte unchanged. Only the mislabeled \"CPU\" "
+         "section changed."),
+        ("2. Does it reproduce?",
+         "Two independent runs of the same post-fusion code, same A100: 4.08 ms and "
+         "4.26 ms -- ~4% apart, normal jitter, not a fluke."),
+        ("3. Does the magnitude make sense?",
+         "3,312 points, one fused dispatch, on an A100: low-single-digit ms is expected, "
+         "not suspiciously fast. And 4.2x (not 40x) fits a grid too small to fully "
+         "saturate the GPU -- the same real effect the old buggy number was chasing."),
+    ]
+    for title, body in checks:
+        ih = 92
+        left_bar_card(c, px, py - ih, col_w - 36, ih, GREEN, r=6)
+        draw_para(c, title, px + 14, py - 18, col_w - 64, 20, size=10.5, color=INK, bold=True)
+        draw_para(c, body, px + 14, py - 38, col_w - 64, 52, size=8, color=MUTED)
+        py -= ih + 10
 
-    draw_para(c, "Same shared inputs on every leg. Grid: P2SAoM40's real 72x46x40.",
-              px, py, col_w - 36, 20, size=8.5, color=FOOTER)
-
-    top2_h = 270
-    left_bar_card(c, right_x, panel_top - top2_h, col_w, top2_h, GREEN, r=12)
-    rx, ry = right_x + 18, panel_top - 22
-    draw_para(c, "CORRECTED TWICE, NOW VALIDATED &mdash; NOT A FOOTNOTE", rx, ry, col_w - 36, 14,
-              size=7.5, color=GREEN, bold=True, font="Courier")
-    ry -= 16
-    draw_para(c, "Full physics chain (CPU + GPU)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
-    ry -= 20
-    ry -= draw_para(c, "PBL + radiation + surface + ground, driven by P2SAoM40's real restart "
-              "state, chained in the real per-timestep order. Radiation excluded below "
-              "(simplified graybody stand-in).", rx, ry, col_w - 36, 40, size=8.5, color=MUTED)
+    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    rx, ry = right_x + 18, panel_top - 26
+    draw_para(c, "The scope caveat -- read before quoting 62x", rx, ry, col_w - 36, 18,
+              size=11, color=AMBER, bold=True)
+    ry -= 22
+    ry -= draw_para(c, "The numbers are real. What they compare isn't two implementations "
+              "of identical work: real Fortran's SURFACE() does area-weighted multi-type "
+              "sub-tiling, full land hydrology (GHY), and a real tridiagonal turbulence "
+              "solve -- none of which the JAX full-chain driver currently does.",
+              rx, ry, col_w - 36, 70, size=9, color=INK2)
     ry -= 8
+    ry -= draw_para(c, "A faithful, fully-featured port would do more work than today's "
+              "simplified driver and would likely land at a smaller -- still real -- multiple.",
+              rx, ry, col_w - 36, 40, size=9, color=AMBER, bold=True)
+    ry -= 16
     c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
     c.line(rx, ry, rx + col_w - 36, ry)
     c.restoreState()
     ry -= 22
-    stat_col_w = (col_w - 36 - 16) / 2
-    draw_para(c, "14.7x", rx, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
-    draw_para(c, "4.2x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
-    ry -= 26
-    draw_para(c, "Genuine CPU vs. Fortran (17.94 vs. 264 ms)", rx, ry, stat_col_w, 24, size=7.5, color=MUTED)
-    draw_para(c, "GPU vs. genuine CPU (4.26 vs. 17.94 ms) -- target cleared",
-              rx + stat_col_w + 16, ry, stat_col_w, 24, size=7.5, color=MUTED)
-    ry -= 30
-    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
-    c.line(rx, ry, rx + col_w - 36, ry)
-    c.restoreState()
-    ry -= 14
-    draw_para(c, "Real A100 result (2026-09-22): fused ~33 per-step JIT dispatches into one, "
-              "then found the measurement script's \"CPU\" timing never forced the CPU backend "
-              "-- on a GPU node it silently timed the GPU too, so the earlier ~1.0x figure "
-              "compared the GPU to itself. Fixed with a genuine CPU-only subprocess. "
-              "GPU vs. Fortran: 62.0x.",
-              rx, ry, col_w - 36, 60, size=8, color=GREEN)
+    draw_para(c, "Bottom line", rx, ry, col_w - 36, 16, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "17.94 ms &rarr; 4.26 ms is a real, reproducible <font color='#4ADE80'><b>4.2x GPU "
+              "speedup</b></font> on the physics this driver actually runs today -- clearing "
+              "this project's own &gt;2x target from real dispatch-fusion engineering, "
+              "not a measurement artifact.",
+              rx, ry, col_w - 36, 60, size=9.5, color=INK2)
+    ry -= 6
+    draw_para(c, "Treat it as a validated, scope-bounded win: real for what's ported "
+              "today, not yet a claim about the full model.",
+              rx, ry, col_w - 36, 30, size=8.5, color=MUTED)
 
-    panel_h_right = 400
-    bot2_h = panel_h_right - top2_h - 20
-    rounded(c, right_x, panel_top - panel_h_right, col_w, bot2_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - top2_h - 20 - 24
-    draw_para(c, "Reading this honestly", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
-    ry -= 26
-    ry -= draw_para(c, "JAX-CPU is <b>not</b> a blanket win &mdash; it loses DRYCNV outright to "
-              "Fortran on CPU (small-array dispatch overhead dominates at this grid size).",
-              rx, ry, col_w - 36, 50, size=9, color=INK2)
-    ry -= 8
-    draw_para(c, "GPU now wins decisively at every scope measured: isolated kernels (2.3-6.3x) "
-              "and the full chained pipeline (4.2x). The earlier \"no benefit\" full-chain "
-              "result was a measurement artifact, not a property of the problem size.",
-              rx, ry, col_w - 36, 50, size=9, color=GREEN, bold=True)
-
-    footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
-              "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
-              "NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md")
+    footer(c, "Full chart + discussion: claude.ai/artifact/FmHsaDwSg9ap1BUY5Be9Ai &middot; "
+              "STATUS.md \"Full Physics Chain\" &amp; \"GPU optimization: Phase 1\"")
 
 
 def slide_next_steps(c):
@@ -327,7 +399,7 @@ def slide_output_maps(c):
 
 def main(out_path):
     c = canvas.Canvas(out_path, pagesize=PAGE)
-    for slide_fn in (slide_bottom_line, slide_performance, slide_next_steps, slide_output_maps):
+    for slide_fn in (slide_bottom_line, slide_performance, slide_journey, slide_next_steps, slide_output_maps):
         slide_fn(c)
         c.showPage()
     c.save()

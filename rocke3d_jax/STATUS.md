@@ -9,10 +9,11 @@ already, or a stale/unmeasured estimate this document replaces with a real
 number.
 
 **Companion slide deck**: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA
-("ROCKE-3D → JAX: Status" — bottom line, performance, recommendation, output
-maps; filesystem snapshot in `status_slides/`). This is also now the *only*
-slide deck for this project — an earlier, narrower deck (kernel-level timing
-only) has been merged into it and retired.
+("ROCKE-3D → JAX: Status" — bottom line, performance, GPU-optimization
+verification, recommendation, output maps; filesystem snapshot in
+`status_slides/`). This is also now the *only* slide deck for this project —
+an earlier, narrower deck (kernel-level timing only) has been merged into it
+and retired.
 
 **Repository layout**: this directory was reorganized on 2026-09-22 —
 historical/superseded scripts, notebooks, and scratch data (old benchmark
@@ -131,6 +132,52 @@ project a whole-model runtime or dollar-cost from this result** — real
 spectral radiation and real atmospheric dynamics would both need to be ported
 and timed first. Treat the numbers above as a components-level result, not a
 whole-model ROI figure.
+
+**A second, narrower scope caveat, specific to the 62× (GPU) / 14.7× (CPU)
+figures vs. Fortran** — worth separating from the RADIA/CONDSE exclusion
+above because it's about the *included* scope, not the excluded parts: real
+Fortran `SURFACE()` (the 263 ms/call baseline these ratios are measured
+against) does more physics than this JAX port's full-chain driver actually
+runs today. Per "What's simplified in the full-chain driver" below: real
+`SURFACE()` does area-weighted sub-tiling across multiple surface types per
+grid cell (JAX uses one dominant type per cell), the full `GHY` land-hydrology
+scheme (not wired into the JAX driver at all), and a real tridiagonal
+turbulence solve via `aturb` (JAX uses a direct flux-tendency shortcut
+instead). **So part of the 62×/14.7× reflects JAX genuinely computing
+faster, and part of it reflects JAX computing less physics for that same
+263 ms slot.** The wall-clock numbers are real and were independently
+re-verified (see "Verifying the 4.2×" below) — this caveat doesn't question
+whether they're measured correctly, only what conclusion they license: a
+byte-for-byte faithful full port (sub-tiling + GHY + aturb all wired in)
+would do more work than today's simplified driver and would likely land at
+a smaller — still real — multiple.
+
+### Verifying the 4.2× (and 62×): three checks, not just a re-run
+
+A dramatic number, arrived at right after fixing a measurement bug, deserves
+more than a second measurement before it goes on a slide. Three independent
+checks, done before treating 4.26 ms/4.2×/62× as reportable:
+
+1. **Did the CPU-measurement bug fix touch the GPU number at all?** No —
+   diffed line-by-line: section 6's GPU-timing code (warm-up,
+   `jax.block_until_ready()` both before and after the timed loop) is
+   byte-for-byte unchanged by the fix. Only the mislabeled "CPU" section and
+   a print string changed. The GPU number was never the part that was
+   broken, in this run or the original ~1.0× one.
+2. **Does it reproduce?** Two independent runs of the same post-fusion code
+   on the same A100 gave **4.08 ms** and **4.26 ms** — ~4% apart, ordinary
+   run-to-run jitter, not a fluke.
+3. **Does the magnitude make physical sense?** 3,312 grid points fused into
+   one XLA dispatch on an A100: low-single-digit milliseconds is the
+   expected range for that little work, not suspiciously fast. And a 4.2×
+   GPU-vs-CPU ratio (not 40×) is consistent with this grid being too small
+   to fully saturate the GPU — the same real, physical effect the original
+   (buggy) comparison was trying and failing to measure.
+
+Full chart (all four stages: real Fortran, JAX-original-CPU,
+JAX-original-GPU, JAX-optimized-GPU; log-scale, hover detail, table view)
+and this same discussion: https://claude.ai/artifact/FmHsaDwSg9ap1BUY5Be9Ai
+— also now the deck's 5th slide, "Verification" (`journey.html`).
 
 ## Accuracy
 
