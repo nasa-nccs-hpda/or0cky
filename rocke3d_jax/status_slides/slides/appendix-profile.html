@@ -1,0 +1,68 @@
+<section id="appendix-profile" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:26px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; color:#4ADE80; letter-spacing:2px; text-transform:uppercase">Appendix</p>
+    <h1 style="font-size:52px; font-weight:700; line-height:1.1; color:#F8FAFC">Where the Pre-Fusion 55&thinsp;ms Actually Went</h1>
+    <p style="font-size:18px; color:#94A3B8; line-height:1.4">The profiling data behind the Phase 1 optimization on the Performance slide: <code style="font-family:'JetBrains Mono',monospace; background:#1E293B; padding:2px 6px; border-radius:4px">run_dtsrc_step</code> dispatching 33 separate JIT calls per step, CPU, post-warmup, mean of 30&ndash;100 calls.</p>
+  </div>
+
+  <div style="display:flex; gap:48px; flex:1">
+    <div style="flex:1.5; background:#1E293B; border-radius:24px; padding:36px; display:flex; flex-direction:column; gap:9px">
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">Unaccounted Python orchestration</p>
+        <div style="width:240px; height:22px; background:#1baf7a; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">18.00 ms &middot; 32.5%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">dry_convection_mixing_jit (1 call)</p>
+        <div style="width:184px; height:22px; background:#2a78d6; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">13.68 ms &middot; 24.7%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">getcm + getchq (24 calls)</p>
+        <div style="width:180px; height:22px; background:#2a78d6; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">13.35 ms &middot; 24.1%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">compute_pk_pek (1 call)</p>
+        <div style="width:61px; height:22px; background:#2a78d6; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">4.56 ms &middot; 8.2%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">_surface_fluxes_relative_wind (2, not @jit)</p>
+        <div style="width:35px; height:22px; background:#eb6834; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">2.58 ms &middot; 4.7%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">build_pressure_profile (NumPy, Python loop)</p>
+        <div style="width:31px; height:22px; background:#eb6834; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">2.34 ms &middot; 4.2%</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px">
+        <p style="width:280px; font-size:14px; color:#94A3B8">Everything else (radiation, misc, 5 calls)</p>
+        <div style="width:13px; height:22px; background:#2a78d6; border-radius:5px"></div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#E2E8F0">0.95 ms &middot; 1.6%</p>
+      </div>
+
+      <div style="height:1px; background:#334155; margin-top:8px"></div>
+      <div style="display:flex; gap:22px; margin-top:4px; font-size:13px; color:#94A3B8">
+        <span><span style="display:inline-block; width:10px; height:10px; background:#2a78d6; border-radius:2px; margin-right:6px"></span>Redundant JIT dispatch</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:#eb6834; border-radius:2px; margin-right:6px"></span>Never fused (host-only / un-jitted)</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:#1baf7a; border-radius:2px; margin-right:6px"></span>Pure Python glue overhead</span>
+      </div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; gap:24px">
+      <div style="background:#1E293B; border-radius:24px; padding:32px; display:flex; flex-direction:column; gap:12px">
+        <h3 style="font-size:20px; font-weight:600; color:#F8FAFC">What this diagnosed</h3>
+        <p style="font-size:15px; color:#E2E8F0; line-height:1.5">Every leaf function was individually <code style="font-family:'JetBrains Mono',monospace; background:#0F172A; padding:1px 5px; border-radius:4px">@jit</code>-decorated but called eagerly from Python &mdash; some inside nested loops (the 6-iteration Monin-Obukhov solve &times; 2 surface substeps = 24 dispatches on its own). Two functions never touched JAX at all.</p>
+        <p style="font-size:15px; color:#4ADE80; font-weight:600; line-height:1.5">This is what Phase 1 fused into a single jax.jit computation &mdash; the direct cause of the 62&times; result on the Performance slide.</p>
+      </div>
+      <div style="background:#1E293B; border-radius:24px; padding:28px 32px; display:flex; flex-direction:column; gap:8px; flex:1; justify-content:center">
+        <p style="font-size:14px; color:#94A3B8; line-height:1.5">Full interactive chart (hover detail, table view):</p>
+        <p style="font-family:'JetBrains Mono', monospace; font-size:14px; color:#4ADE80; word-break:break-all">claude.ai/artifact/WeVvMgHEXKFvVDvb9G3B96</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="position:absolute; left:128px; bottom:64px; font-size:20px; color:#64748B">Source: instrumented run_dtsrc_step / solve_surface_layer / leaf-function call counts, this repo's p2saom40_driver.py (pre-fusion) &middot; STATUS.md "GPU optimization: Phase 1"</p>
+</section>

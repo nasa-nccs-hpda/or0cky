@@ -55,7 +55,7 @@ vs. a second Python reimplementation.
 | Does the JAX port match real Fortran numerically? | **Yes**, for the modules tested directly against it (PBL, DRYCNV): floating-point-level agreement (1e-9–1e-3) on both CPU and GPU. |
 | Is JAX faster than real Fortran? | **Depends on device and module.** See Performance below — not a blanket yes. |
 | Has this been checked on GPU? | **Yes, both scopes.** Kernels (DRYCNV, PBL) in isolation: real 2.3–6.3× speedup, run 2026-09-20. Full chained physics group, real NVIDIA A100 (discover cluster): **4.2× GPU speedup**, measured 2026-09-22 after two fixes — a dispatch-fusion optimization (Phase 1) and a real bug in how the comparison itself was measured. See Full Physics Chain below; this replaces an earlier ~1.0× figure that turned out to be invalid, not a real physical limit. |
-| Is the port complete? | **14 of 17 modules** are faithful ports, validated against real Fortran. 3 (SEAICE core thermodynamics, LAKES mixing, part of ATURB) are documented placeholders. See Recommendation below. |
+| Is the port complete? | **Fewer modules are faithfully validated than this document previously claimed.** SEAICE, LAKES, and part of ATURB were already documented placeholders. As of 2026-09-23, **GHY is now known to be one too** — most of its physics (evaporation, runoff, soil thermal properties, snow-melt state) is explicitly placeholder code, and its cited "1e-6-level Fortran validation" was a rigged test that hardcoded the untested outputs to zero. The real count of faithfully-validated modules is being re-audited; treat any specific number here as unverified until that's done. **Completing them is a closed question, not an open one**: scoped 2026-09-23 and explicitly decided against — it doesn't serve this project's actual goal (a representative workflow with consistent answers across Fortran/CPU/GPU/optimized, already achieved and validated), only a different goal (scientific fidelity) this project isn't pursuing. See "A validation-methodology gotcha" below and Recommendation. |
 | Does this project still use NumPy comparisons? | It has some (`mantle/benchmark_all.py` and related) — **dropped from the headline story**. See below. |
 
 ## Full Physics Chain: the finding that matters most
@@ -222,6 +222,29 @@ stand-in) is what produced the clean 1.5e-3 agreement above. Any older
 flawed reference and are superseded by this result for PBL and DRYCNV
 specifically — they are not carried forward into this document.
 
+**A second instance of the same category of gotcha, found 2026-09-23**: while
+scoping a "faithful full-chain port" effort, `ghy_jax.py` (GHY, land
+hydrology) turned out to have the same problem `simil_numpy` had, in a more
+severe form. Reading the actual code: only `compute_sensible_heat` (a
+trivial bulk formula) is real. `compute_evap_limits`, `compute_runoff`,
+`get_soil_properties`, and `compute_snow_melt` are all explicitly commented
+"placeholder" / "simplified" in the source itself — e.g. `get_soil_properties`
+uses made-up linear formulas like `0.3 + 0.7*q_in` for thermal conductivity,
+never touching the real matric-potential/conductivity tables that
+`compute_soil_moisture_table` correctly computes elsewhere in the *same
+file* but that nothing ever calls. Worse: `test_ghy_fortran.f` — the file
+this project cited as GHY's "1e-6-level Fortran validation" — is not derived
+from the real `GHY_DRV.f` (4,939 lines, never consulted); it's a 60-line
+hand-written stub explicitly commented **"matching JAX logic"** that
+reimplements the same simplified formula, and its `evap`/`snow_melt` outputs
+are **hardcoded to `0.0`** with the comment "not critical for validation" —
+so the fields that actually needed checking were never checked. **GHY's
+"faithful port, validated" status throughout this project's history was
+wrong.** Real Fortran source for GHY, ATURB, and SEAICE (~11,700 lines
+combined) exists at `modelE2_planet_2.0/model/{GHY_DRV,ATURB,SEAICE}.f` if
+this gets revisited; a real port would need to actually read it, not extend
+the existing JAX file's pattern.
+
 **Spatial view of the kernel result**: `visualize_p2saom40_kernel_maps.ipynb`
 projects the JAX−Fortran differences above onto the real P2SAoM40 72×46 grid
 (map images in `outputs/p2saom40_kernel_*_diff_*.html`, summarized in
@@ -261,8 +284,10 @@ sub-components inside it are simplified relative to the real Fortran:
 - **Surface-type dispatch**: one dominant surface type per grid cell, no
   sub-tile weighting (real Fortran blends land/ice/ocean fractions within a
   cell).
-- **GHY** (ground hydrology): soil-moisture functions exist in `ghy_jax.py`
-  but are not wired into the full-chain driver.
+- **GHY** (ground hydrology): not wired into the full-chain driver — and, as
+  of 2026-09-23, known to be placeholder code in `ghy_jax.py` itself beyond
+  the trivial sensible-heat formula (see the validation-methodology gotcha
+  in Accuracy above). Not a "just needs wiring" gap.
 - **Layer-1 turbulence**: the driver applies a direct flux-tendency
   shortcut, bypassing `aturb_jax.py` entirely.
 - **Radiation**: simplified graybody stand-in (already noted above).
@@ -273,7 +298,29 @@ is a **coarser sanity check of the whole pipeline**, not proof that every
 individual sub-component matches Fortran to the same 1e-3 standard as the
 validated PBL/DRYCNV kernels.
 
-## Recommendation: the 3 remaining modules
+## Recommendation: the 3 remaining modules — closed out, not pursuing (2026-09-23)
+
+**Status**: a faithful port of GHY (and, by the same reasoning, ATURB/SEAICE)
+was scoped on 2026-09-23 and explicitly decided against — not because it's
+infeasible (real Fortran source exists, and the multi-layer restart state
+GHY needs was located in `1JAN1950.rsfP2SAoM40.nc`), but because it doesn't
+serve this project's actual goal. That goal, clarified the same day: run a
+*representative* workflow across Fortran / JAX-CPU / JAX-GPU-original /
+JAX-GPU-optimized that gives ~the same answers at every stage, not to
+maximize scientific fidelity to Fortran. That property already holds today,
+fully validated — the Phase 1 fusion work was a pure dispatch restructuring
+(field-level diffs of 1e-6–1e-8 relative between old and new driver), so all
+three JAX legs compute *identical* physics and give identical answers
+(0.965 correlation vs. Fortran, held constant CPU→GPU→optimized). Porting
+GHY/ATURB would change what JAX computes, requiring a fresh accuracy
+re-validation before any of the four legs could be trusted again — real
+extra work that doesn't move this project toward its stated goal. See
+"GPU optimization: Phase 1" above for the full reasoning trail.
+
+**The domain-judgment reasoning below is kept for the record** (why SEAICE
+and ATURB would matter *if* the project's goal were scientific fidelity
+rather than representative-workflow benchmarking) — not acted on, given the
+above.
 
 **Why they're still placeholders, not a gap that was missed**: the original
 port deliberately left SEAICE/LAKES/ATURB as documented stand-ins (e.g.
@@ -281,22 +328,23 @@ LAKES' `lkmix` is a no-op) to reach interface-complete (17/17) first,
 prioritizing full validation of the columnar physics (PBL, DRYCNV) instead.
 A scoping choice, made explicit here rather than discovered later.
 
-**SEAICE** (core thermodynamics) and **ATURB** (PBL-top-finding) — recommend
-porting next. Reasoning: sea ice is a standard, physically active component
-of any ROCKE-3D ocean-coupled run including P2SAoM40, not an optional
-add-on, and it dominates the surface energy balance specifically in polar
-regions — exactly where the current 0.987 *global* correlation check is
-least able to reveal a local error. ATURB's placeholder affects
+**SEAICE** (core thermodynamics) and **ATURB** (PBL-top-finding) — would be
+the next candidates for porting *if this project's goal changes* to
+prioritize scientific fidelity. Reasoning: sea ice is a standard, physically
+active component of any ROCKE-3D ocean-coupled run including P2SAoM40, not
+an optional add-on, and it dominates the surface energy balance specifically
+in polar regions — exactly where the current 0.987 *global* correlation
+check is least able to reveal a local error. ATURB's placeholder affects
 boundary-layer depth, which feeds surface flux accuracy broadly, not just at
 the poles. Both are also useful precisely *because* they're harder than
-PBL/DRYCNV: the stated goal includes collecting "gotchas," and the
-easy columnar-physics modules have already told us most of what they can
-about where the vmap-over-grid-cells approach works cleanly.
+PBL/DRYCNV: collecting "gotchas" from harder physics is more informative
+than from the easy columnar-physics modules, which have already told us most
+of what they can about where the vmap-over-grid-cells approach works
+cleanly. **Not currently being acted on** — see Status above.
 
-**LAKES** (`lkmix`) — recommend leaving as placeholder for now. Lakes cover a
-much smaller fraction of Earth's surface than sea ice, so the accuracy payoff
-is lower for the effort; revisit only if a specific science need (a
-lake-focused study) requires it.
+**LAKES** (`lkmix`) — lowest priority of the three even under the
+fidelity-first framing. Lakes cover a much smaller fraction of Earth's
+surface than sea ice, so the accuracy payoff is lower for the effort.
 
 *(This SEAICE/lakes area-of-impact reasoning is domain judgment, not a number
 measured in this project's own data — flagging that distinction rather than
@@ -308,7 +356,7 @@ presenting it as measured fact.)*
 |---|---|---|
 | DRYCNV | `drycnv.py` | Direct, kernel-level (see Accuracy) |
 | PBL | `pbl.py` | Direct, kernel-level (see Accuracy) |
-| GHY | `ghy_jax.py` | Direct (1e-6-level, standalone), **not wired into the full-chain driver** |
+| GHY | `ghy_jax.py` | **Placeholder** (found 2026-09-23) — only `compute_sensible_heat` is real; evap/runoff/soil-properties/snow-melt are explicitly placeholder code, and the cited Fortran validation was rigged (see gotcha above). Not wired into the full-chain driver either. |
 | FLUXES | `fluxes_jax.py` | Direct — see wind-speed convention gotcha below |
 | SURFACE | `surface_jax.py` | Direct, but full-chain driver uses simplified single-type dispatch |
 | RADIATION | `radiation_jax.py` | Simplified graybody stand-in, not real SOCRATES spectral transfer |
@@ -322,7 +370,7 @@ presenting it as measured fact.)*
 | LAKES_COM | `lakes_com_jax.py` | Supporting state module (interface only) |
 | SEAICE | `seaice_jax.py` | **Placeholder** — not physically complete, recommended next |
 | LAKES | `lakes_jax.py` | **Placeholder** (`lkmix` no-op) — recommended to defer |
-| ATURB | `aturb_jax.py` | **Placeholder** for PBL-top-finding; bypassed by full-chain driver's layer-1 shortcut — recommended next |
+| ATURB | `aturb_jax.py` | **Partial** — substantial real code (tridiagonal solver, TKE production/dissipation structure, `find_pbl_top`), but the stability-closure constants inside `e_gcm` (`c1`–`c5`, `b1`) are hardcoded placeholders (`1.0, 2.0, 3.0...`), not the real Mellor-Yamada-derived values from `PBL.f`. Its own `validate_aturb()` admits it validates "against a placeholder Fortran-like implementation," not real Fortran. Bypassed by the full-chain driver's layer-1 shortcut — recommended next, but scope is bigger than "wire it in" (see Recommendation and the GHY gotcha above for why that assumption needs checking before trusting it). |
 
 ## On NumPy: dropped from the headline story
 
@@ -528,7 +576,19 @@ unnecessary once the measurement itself was fixed.
 
 - ~~Re-measure the fused driver on a real GPU node~~ — **done**, 4.2× GPU
   speedup confirmed, target cleared. See "GPU optimization: Phase 1" above.
-- SEAICE and ATURB placeholder physics — recommended above, not started.
+- ~~A faithful full-chain port (sub-tiling + GHY + ATURB)~~ — **closed,
+  2026-09-23, decided against.** Scoped in detail (real Fortran source
+  totals ~11,700 lines: `GHY_DRV.f` 4,939, `SEAICE.f`+`SEAICE_DRV.f` 5,394,
+  `ATURB.f` 1,405; GHY specifically is a coupled land-surface model needing
+  its own internal orchestration ported, not independent functions to wire
+  in) and explicitly not pursued: it doesn't serve this project's actual
+  goal (a representative, consistent-answers workflow across Fortran/CPU/
+  GPU/optimized — already achieved), only a different goal (scientific
+  fidelity) this project isn't after. See Recommendation above for the full
+  reasoning. Don't reopen this without a real change in project goal.
+- ~~SEAICE and ATURB placeholder physics~~ — same closure as above; the
+  underlying domain-judgment case for porting them (kept in Recommendation)
+  wasn't wrong, it's just not what this project is optimizing for.
 - Wind-speed convention bug — fixed locally in `p2saom40_driver.py`, not yet
   fixed in the shared module files themselves.
 - Real spectral radiation (SOCRATES) and real atmospheric dynamics/`CONDSE`

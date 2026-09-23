@@ -316,27 +316,27 @@ def slide_next_steps(c):
 
     rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
     px, py = left_x + 18, panel_top - 26
-    draw_para(c, "The remaining 3 modules &mdash; port or defer?", px, py, col_w - 36, 20,
+    draw_para(c, "The remaining 3 modules &mdash; closed, not pursuing", px, py, col_w - 36, 20,
               size=12, color=INK, bold=True)
     py -= 20
-    py -= draw_para(c, "Why they're still placeholders: the original port deliberately left these "
-              "three as documented stand-ins (e.g. LAKES' lkmix is a no-op) to reach "
-              "interface-complete (17/17) first, prioritizing full validation of the columnar "
-              "physics (PBL, DRYCNV) instead -- a scoping choice, not an oversight.",
-              px, py, col_w - 36, 50, size=8, color=MUTED)
+    py -= draw_para(c, "Scoped 2026-09-23 (GHY alone is a coupled land-surface model needing its "
+              "own orchestration ported, not a function to wire in) and decided against: it "
+              "doesn't serve this project's actual goal -- a representative, consistent-answers "
+              "workflow across Fortran/CPU/GPU/optimized, already achieved -- only a different "
+              "goal (scientific fidelity) this project isn't pursuing.",
+              px, py, col_w - 36, 55, size=8, color=MUTED)
     py -= 14
 
     items = [
-        (GREEN, "SEAICE (core thermodynamics) — port next",
-         "Physically active in every P2SAoM40-class run, not optional. Dominates polar surface "
-         "energy balance — exactly where the current 0.987/0.965 global correlation checks are "
-         "least able to see a local error."),
-        (GREEN, "ATURB (PBL-top-finding) — port next",
-         "Feeds surface-flux accuracy globally, not just at the poles. Also tests whether the "
-         "vmap-over-grid-cells approach holds up on harder physics."),
+        (FOOTER, "SEAICE (core thermodynamics) — not pursuing",
+         "Domain case for porting (polar surface energy balance) still holds if the project's "
+         "goal ever shifts to fidelity -- kept in STATUS.md, not acted on."),
+        (FOOTER, "ATURB (PBL-top-finding) — not pursuing",
+         "Same reasoning as SEAICE. Has real tridiagonal-solver code already, but hardcoded "
+         "placeholder closure constants (c1-c5, b1) instead of real values."),
         (ORANGE, "LAKES (lkmix) — defer",
-         "Small fraction of Earth's surface — lower accuracy payoff for the effort. Revisit "
-         "only if a lake-focused science need requires it."),
+         "Lowest priority of the three even under the fidelity-first framing. Small fraction "
+         "of Earth's surface."),
     ]
     for bar, title, note in items:
         ih = 74
@@ -356,8 +356,9 @@ def slide_next_steps(c):
         "<b><font color='#4ADE80'>4.2x</font></b> GPU speedup.",
         "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
         "— currently only worked around locally.",
-        "Port SEAICE + ATURB, then re-run the correlation check — expect it to improve "
-        "or reveal exactly where it was masking a gap.",
+        "<s>Port SEAICE + ATURB, re-run the correlation check</s> — "
+        "<b><font color='#94A3B8'>closed, not pursuing</font></b>. Scoped 2026-09-23; doesn't "
+        "serve this project's representative-workflow goal (see left).",
     ]
     for i, item in enumerate(opens, 1):
         ry -= draw_para(c, f"<b><font color='#4ADE80'>{i}</font></b>  {item}", rx, ry, col_w - 36, 60, size=10.5, color=INK2)
@@ -397,9 +398,84 @@ def slide_output_maps(c):
               "notebook: visualize_p2saom40_kernel_maps.ipynb")
 
 
+def slide_appendix_profile(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "APPENDIX", "Where the Pre-Fusion 55ms Actually Went",
+        "The profiling data behind the Phase 1 optimization on the Performance slide: "
+        "run_dtsrc_step dispatching 33 separate JIT calls per step, CPU, post-warmup, "
+        "mean of 30-100 calls.", title_size=26)
+
+    col_w_left = (W - 2 * MARGIN - 20) * 0.6
+    col_w_right = (W - 2 * MARGIN - 20) * 0.4 - 20
+    left_x = MARGIN
+    right_x = MARGIN + col_w_left + 20
+    panel_top = y
+    panel_h = 300
+
+    rounded(c, left_x, panel_top - panel_h, col_w_left, panel_h, 12, CARD)
+    px, py = left_x + 18, panel_top - 22
+
+    JIT_BLUE = HexColor("#2a78d6")
+    HOST_ORANGE = HexColor("#eb6834")
+    PY_AQUA = HexColor("#1baf7a")
+    rows = [
+        ("Unaccounted Python orchestration", "18.00 ms  32.5%", 1.0, PY_AQUA),
+        ("dry_convection_mixing_jit (1 call)", "13.68 ms  24.7%", 0.767, JIT_BLUE),
+        ("getcm + getchq (24 calls)", "13.35 ms  24.1%", 0.750, JIT_BLUE),
+        ("compute_pk_pek (1 call)", "4.56 ms  8.2%", 0.253, JIT_BLUE),
+        ("_surface_fluxes_relative_wind (2, not @jit)", "2.58 ms  4.7%", 0.143, HOST_ORANGE),
+        ("build_pressure_profile (NumPy loop)", "2.34 ms  4.2%", 0.130, HOST_ORANGE),
+        ("Everything else (5 calls)", "0.95 ms  1.6%", 0.053, JIT_BLUE),
+    ]
+    max_bar = 150
+    for label, val, frac, color in rows:
+        draw_para(c, label, px, py + 8, col_w_left - 36 - max_bar - 90, 14, size=7.5, color=MUTED)
+        c.saveState(); c.setFillColor(color)
+        c.roundRect(px + col_w_left - 36 - max_bar - 80, py, max(max_bar * frac, 3), 12, 3, stroke=0, fill=1)
+        c.restoreState()
+        draw_para(c, val, px + col_w_left - 36 - 78, py + 8, 78, 14, size=7, color=INK2, font="Courier")
+        py -= 20
+
+    py -= 6
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(px, py, px + col_w_left - 36, py)
+    c.restoreState()
+    py -= 16
+    for label, color in [("Redundant JIT dispatch", JIT_BLUE), ("Never fused (host-only)", HOST_ORANGE), ("Python glue overhead", PY_AQUA)]:
+        c.saveState(); c.setFillColor(color); c.rect(px, py - 2, 8, 8, stroke=0, fill=1); c.restoreState()
+        draw_para(c, label, px + 12, py + 6, 150, 12, size=7.5, color=MUTED)
+        px += 165
+    px = left_x + 18
+
+    rounded(c, right_x, panel_top - panel_h, col_w_right, panel_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - 22
+    draw_para(c, "What this diagnosed", rx, ry, col_w_right - 32, 16, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "Every leaf function was individually @jit-decorated but called "
+              "eagerly from Python -- some inside nested loops (the 6-iteration "
+              "Monin-Obukhov solve x 2 surface substeps = 24 dispatches alone). Two "
+              "functions never touched JAX at all.",
+              rx, ry, col_w_right - 32, 70, size=8, color=INK2)
+    ry -= 6
+    ry -= draw_para(c, "This is what Phase 1 fused into a single jax.jit computation -- "
+              "the direct cause of the 62x result on the Performance slide.",
+              rx, ry, col_w_right - 32, 40, size=8, color=GREEN, bold=True)
+    ry -= 20
+    draw_para(c, "Full interactive chart:", rx, ry, col_w_right - 32, 14, size=8, color=MUTED)
+    ry -= 16
+    draw_para(c, "claude.ai/artifact/WeVvMgHEXKFvVDvb9G3B96", rx, ry, col_w_right - 32, 30,
+              size=8, color=GREEN, font="Courier")
+
+    footer(c, "Source: instrumented run_dtsrc_step / solve_surface_layer / leaf-function "
+              "call counts, this repo's p2saom40_driver.py (pre-fusion) &middot; "
+              "STATUS.md \"GPU optimization: Phase 1\"")
+
+
 def main(out_path):
     c = canvas.Canvas(out_path, pagesize=PAGE)
-    for slide_fn in (slide_bottom_line, slide_performance, slide_journey, slide_next_steps, slide_output_maps):
+    for slide_fn in (slide_bottom_line, slide_performance, slide_journey, slide_next_steps,
+                      slide_output_maps, slide_appendix_profile):
         slide_fn(c)
         c.showPage()
     c.save()

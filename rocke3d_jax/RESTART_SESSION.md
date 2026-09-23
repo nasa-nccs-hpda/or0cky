@@ -5,6 +5,54 @@
 actual project content — this file is only "where things are," not "what we
 found."
 
+**2026-09-23 update — the "faithful full-chain port" is CLOSED, not
+paused. Read this before reopening it.** Attempted to start this
+(sub-tiling + `GHY` + `ATURB`), scoped it in real depth, and then the user
+explicitly closed it out. Sequence of findings, in case the reasoning
+matters later:
+1. `GHY` looked like the easiest piece (its JAX file looked most complete)
+   — it wasn't. Reading it in full: only `compute_sensible_heat` is real;
+   evap/runoff/soil-properties/snow-melt are explicitly placeholder in the
+   source, and the Fortran "validation" test was a hand-written stub
+   commented "matching JAX logic" with its untested outputs hardcoded to
+   zero. Corrected STATUS.md's "14/17 faithful" claim and GHY's module-table
+   entry accordingly — don't trust the old claim if you see it cached
+   anywhere.
+2. Real Fortran source exists for all three
+   (`modelE2_planet_2.0/model/{GHY_DRV,ATURB,SEAICE}.f` / `giss_LSM/GHY.f`,
+   ~11,700 lines combined) — read `get_soil_properties` (25 lines) and
+   `runoff` (112 lines) from the real `giss_LSM/GHY.f` in full. Confirmed the
+   real multi-layer soil state GHY needs (`w_ij`/`ht_ij`, shape (46,72,3,7))
+   exists in `1JAN1950.rsfP2SAoM40.nc` — a fuller restart file in the same
+   P2SAoM40 directory this project had never used (the `fort.1.nc` restart
+   this project reads throughout only has a bulk `wearth` field, not the
+   layered state). So this was **not blocked by missing data** — genuinely
+   portable if someone wanted to.
+3. But `snow` (in GHY.f) just delegates to an entirely separate module
+   (`snow_drvm`), and `runoff` depends on state (`xinfc`, `xku`) computed by
+   *other* GHY subroutines earlier in a specific sequence — GHY is a coupled
+   land-surface model, not 5 independent functions. Faithfully porting it
+   means porting its internal time-stepping orchestration (`advnc`, 600+
+   lines) too.
+4. **The user then reframed the actual goal**: a representative workflow
+   across Fortran/JAX-CPU/JAX-GPU-original/JAX-GPU-optimized that gives
+   ~the same answers at each stage — not maximizing scientific fidelity to
+   Fortran. That property already holds today, fully validated (Phase 1 was
+   a pure dispatch restructuring, so all three JAX legs compute identical
+   physics). Porting GHY/ATURB would change what JAX computes, requiring a
+   fresh accuracy re-validation before any leg could be trusted again — work
+   that doesn't serve the stated goal. **Decision: closed, not pursuing.**
+   STATUS.md's Recommendation and Open items, and both the live slide deck
+   and `status_slides/`, were updated to reflect this closure explicitly
+   (not left as a dangling "recommended next").
+
+Do not reopen this without the project's actual goal changing first — the
+domain-judgment case for SEAICE/ATURB (kept in STATUS.md's Recommendation
+section) was never wrong, it's just not what this project is optimizing
+for. Full detail: STATUS.md's "A validation-methodology gotcha" (second
+instance) in Accuracy, and the "Recommendation: the 3 remaining modules —
+closed out" section.
+
 **Post-reorg regression check (2026-09-22, same day)**: after the `mantle/`
 move below, everything was re-run to confirm nothing broke — 104/104 unit
 tests, all 6 per-module Fortran comparisons (recompiled fresh), the

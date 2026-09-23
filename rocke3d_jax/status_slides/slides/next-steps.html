@@ -5,19 +5,19 @@
   </div>
   <div style="display:flex; flex-direction:row; gap:48px; flex:1">
     <div style="display:flex; flex-direction:column; gap:20px; flex:1; padding:40px; background:#1e293b; border-radius:24px">
-      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:32px; font-weight:600; color:#f8fafc">The remaining 3 modules — port or defer?</h3>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8; line-height:1.4">Why they're still placeholders: the original port deliberately left these three as documented stand-ins (e.g. LAKES' lkmix is a no-op) to reach interface-complete (17/17) first, prioritizing full validation of the columnar physics (PBL, DRYCNV) instead. Not an oversight — a scoping choice made explicit below.</p>
-      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">SEAICE (core thermodynamics) — <span style="color:#4ade80">port next</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Physically active in every P2SAoM40-class run, not optional. Dominates polar surface energy balance — exactly where the current 0.987/0.965 global correlation checks are least able to see a local error.</p>
+      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:32px; font-weight:600; color:#f8fafc">The remaining 3 modules — closed, not pursuing</h3>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8; line-height:1.4">Scoped in detail 2026-09-23 (GHY alone is a coupled land-surface model needing its own internal orchestration ported, not a function to wire in) and explicitly decided against: it doesn't serve this project's actual goal &mdash; a representative workflow with consistent answers across Fortran/CPU/GPU/optimized, already achieved and validated &mdash; only a different goal (scientific fidelity) this project isn't pursuing.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #64748b; border-radius:8px">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">SEAICE (core thermodynamics) — <span style="color:#94a3b8">not pursuing</span></p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Domain case for porting (polar surface energy balance) still holds if the project's goal ever shifts to fidelity &mdash; kept in STATUS.md, not acted on.</p>
       </div>
-      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #4ade80; border-radius:8px">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">ATURB (PBL-top-finding) — <span style="color:#4ade80">port next</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Feeds surface-flux accuracy globally, not just at the poles. Also the kind of "harder physics" case that actually tests whether the vmap-over-grid-cells approach holds up.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #64748b; border-radius:8px">
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">ATURB (PBL-top-finding) — <span style="color:#94a3b8">not pursuing</span></p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Same reasoning as SEAICE. Has real tridiagonal-solver code already, but hardcoded placeholder closure constants (c1&ndash;c5, b1) instead of real values.</p>
       </div>
       <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #f97316; border-radius:8px">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">LAKES (lkmix) — <span style="color:#f97316">defer</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Small fraction of Earth's surface — lower accuracy payoff for the effort. Revisit only if a lake-focused science need requires it.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Lowest priority of the three even under the fidelity-first framing. Small fraction of Earth's surface.</p>
       </div>
     </div>
     <div style="display:flex; flex-direction:column; gap:16px; flex:1; padding:40px; background:#1e293b; border-radius:24px; justify-content:center">
@@ -32,7 +32,7 @@
       </div>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">3</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Port SEAICE + ATURB (left), then re-run the correlation check — expect it to improve or reveal exactly where it was masking a gap.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Port SEAICE + ATURB, re-run the correlation check</s> &mdash; <b style="color:#94a3b8">closed, not pursuing</b>. Scoped 2026-09-23; doesn't serve this project's representative-workflow goal (see left).</p>
       </div>
     </div>
   </div>
