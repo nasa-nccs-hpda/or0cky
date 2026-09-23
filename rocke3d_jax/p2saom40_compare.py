@@ -21,15 +21,37 @@ produces:
 
 Usage: python p2saom40_compare.py
        JAX_PLATFORMS=cpu python p2saom40_compare.py   # force CPU explicitly
+
+Gotcha this script used to have, fixed 2026-09-22: section 5 ("Performance
+(CPU)") never actually forced CPU -- it just timed run_dtsrc_step() on
+whatever jax.devices()[0] already was. Run this script on a GPU node without
+JAX_PLATFORMS=cpu (the normal way to also get section 6's real GPU number)
+and section 5 silently ran on the GPU too, mislabeled "CPU" -- which is why
+an earlier full-chain measurement showed ~1.0x GPU/CPU (it was comparing the
+GPU to itself). Section 5 now spawns a genuine CPU-only subprocess for its
+timing when a GPU is active in the main process, instead of trusting
+jax.devices()[0] to still be CPU by then.
 """
 
 import os
+import sys
+import subprocess
 # No JAX_PLATFORMS default here: let JAX auto-detect (GPU if present, else
 # CPU). This used to hardcode "cpu" as a default from when this script was
 # only ever run on a CPU-only node -- that silently pinned every run to CPU
 # even on a real GPU node, since os.environ.setdefault() only fills in a
 # value that isn't already set, and nothing else was setting it. Pass
 # JAX_PLATFORMS=cpu on the command line if you actually want to force CPU.
+
+# Internal subprocess mode: re-invoked by section 5 below with
+# JAX_PLATFORMS=cpu forced in *this process's* environment, before jax is
+# ever imported here, so it genuinely initializes the CPU backend regardless
+# of what GPU the parent process already claimed. Must be checked before
+# `import jax` -- JAX's backend is fixed at first use and can't be switched
+# by touching os.environ afterward.
+_CPU_SUBPROCESS_FLAG = "--cpu-timing-subprocess"
+if _CPU_SUBPROCESS_FLAG in sys.argv:
+    os.environ["JAX_PLATFORMS"] = "cpu"
 
 import time
 import numpy as np
@@ -62,6 +84,57 @@ def save_map(field, lat, lon, title, fname, colorscale="RdBu_r"):
     path = os.path.join(OUT_DIR, fname)
     fig.write_html(path)
     print(f"  saved {path}")
+
+
+def _cpu_timing_subprocess_main(n_rep=20):
+    """Run ONLY the timing loop, forced onto the CPU backend (see the
+    JAX_PLATFORMS=cpu set above, before jax was imported in this process).
+    Prints a single machine-readable line and exits -- invoked as a
+    subprocess by section 5 of main() when the parent process already has a
+    GPU claimed, so that a genuine CPU number can still be measured in the
+    same run without relying on jax.devices() (which would just report the
+    GPU this process inherited).
+    """
+    assert jax.devices()[0].platform == "cpu", f"expected CPU backend, got {jax.devices()}"
+    state = io.load_restart_state(f"{io.RUN_DIR}/fort.1.nc")
+    frac = io.load_surface_fractions()
+    itype = io.build_itype(frac, state["rsi_atm"])
+    static_fields = drv.build_static_fields(itype)
+    start_dt = io.itime_to_datetime(state["itime"])
+    lat, lon = frac["lat"], frac["lon"]
+
+    _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # warm-up
+    t0 = time.perf_counter()
+    for i in range(n_rep):
+        do_rad = (i % drv.NRAD == 0)
+        drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
+    jax_ms = (time.perf_counter() - t0) / n_rep * 1000.0
+    print(f"CPU_TIMING_MS={jax_ms:.4f}")
+
+
+def _measure_cpu_ms_genuinely(n_rep):
+    """Get a real CPU-only timing number regardless of what backend this
+    process's jax has already claimed. If jax.devices()[0] is already CPU,
+    just time it in-process (cheap, no subprocess needed). If a GPU is
+    already active, spawn a subprocess with JAX_PLATFORMS=cpu forced before
+    its own `import jax` -- the only way to get a genuine second backend,
+    since a process's JAX backend is fixed at first use.
+    """
+    if jax.devices()[0].platform != "gpu":
+        return None  # caller already measuring in-process on real CPU
+
+    result = subprocess.run(
+        [sys.executable, os.path.abspath(__file__), _CPU_SUBPROCESS_FLAG],
+        capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)),
+    )
+    for line in result.stdout.splitlines():
+        if line.startswith("CPU_TIMING_MS="):
+            return float(line.split("=", 1)[1])
+    raise RuntimeError(
+        "Genuine CPU-timing subprocess did not report a result.\n"
+        f"--- subprocess stdout ---\n{result.stdout}\n"
+        f"--- subprocess stderr ---\n{result.stderr}"
+    )
 
 
 def main():
@@ -127,14 +200,24 @@ def main():
         print(f"  skipped sensht comparison: {e}")
 
     section("5. Performance (CPU): JAX driver vs. real Fortran per-routine cost")
-    _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # JIT warm-up
     n_rep = 20
-    t0 = time.perf_counter()
-    for i in range(n_rep):
-        do_rad = (i % drv.NRAD == 0)
-        drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
-    jax_ms = (time.perf_counter() - t0) / n_rep * 1000.0
-    print(f"  JAX (this CPU, jit-compiled, {n_rep}-step average): {jax_ms:.2f} ms/DTsrc-step")
+    genuine_cpu_ms = _measure_cpu_ms_genuinely(n_rep)
+    if genuine_cpu_ms is not None:
+        # This process already claimed the GPU (jax.devices()[0] is "gpu"):
+        # timing run_dtsrc_step() here would silently measure the GPU, not
+        # the CPU, so the real CPU number came from a forced-CPU subprocess
+        # instead -- see _measure_cpu_ms_genuinely's docstring.
+        jax_ms = genuine_cpu_ms
+        print(f"  (this process already has a GPU claimed -- ran a genuine")
+        print(f"   CPU-only subprocess for this number instead of timing the GPU)")
+    else:
+        _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # JIT warm-up
+        t0 = time.perf_counter()
+        for i in range(n_rep):
+            do_rad = (i % drv.NRAD == 0)
+            drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
+        jax_ms = (time.perf_counter() - t0) / n_rep * 1000.0
+    print(f"  JAX (genuine CPU, jit-compiled, {n_rep}-step average): {jax_ms:.2f} ms/DTsrc-step")
     print()
     print("  Real Fortran per-routine cost, measured in P2SAoM40.PRT (194 real")
     print("  DTsrc steps, single MPI process, same CPU-class hardware):")
@@ -164,7 +247,7 @@ def main():
         jax.block_until_ready(out)
         jax_gpu_ms = (time.perf_counter() - t0) / n_rep * 1000.0
         print(f"  JAX (this GPU, jit-compiled, {n_rep}-step average): {jax_gpu_ms:.2f} ms/DTsrc-step")
-        print(f"  vs. JAX (CPU, above): {jax_ms:.2f} ms/DTsrc-step -> {jax_ms / jax_gpu_ms:.1f}x faster on GPU")
+        print(f"  vs. JAX (genuine CPU, above): {jax_ms:.2f} ms/DTsrc-step -> {jax_ms / jax_gpu_ms:.1f}x faster on GPU")
         print(f"  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): {264.0 / jax_gpu_ms:.1f}x faster")
         print("  (radiation excluded from the Fortran comparison, as in section 5 --")
         print("   JAX's radiation is a simplified graybody stand-in, not equivalent physics)")
@@ -200,4 +283,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if _CPU_SUBPROCESS_FLAG in sys.argv:
+        _cpu_timing_subprocess_main()
+    else:
+        main()

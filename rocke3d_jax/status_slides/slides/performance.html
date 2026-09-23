@@ -53,32 +53,32 @@
     </div>
 
     <div style="flex:1; display:flex; flex-direction:column; gap:24px">
-      <div style="background:#1E293B; border-radius:24px; padding:36px; border-left:6px solid #FBBF24; display:flex; flex-direction:column; gap:14px">
-        <p style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:#FBBF24; letter-spacing:1.5px; text-transform:uppercase">The finding that matters most &mdash; not a footnote</p>
+      <div style="background:#1E293B; border-radius:24px; padding:36px; border-left:6px solid #4ADE80; display:flex; flex-direction:column; gap:14px">
+        <p style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:600; color:#4ADE80; letter-spacing:1.5px; text-transform:uppercase">Corrected twice, now validated &mdash; not a footnote</p>
         <h3 style="font-size:30px; font-weight:600; color:#F8FAFC">Full physics chain (CPU + GPU)</h3>
         <p style="font-size:18px; color:#94A3B8; line-height:1.4">PBL + radiation + surface + ground, driven by P2SAoM40's real restart state, chained in the real per-timestep order, real NVIDIA A100. Radiation excluded from the numbers below (simplified graybody stand-in) to keep it a fair comparison.</p>
         <div style="height:1px; background:#334155"></div>
         <div style="display:flex; gap:24px">
           <div style="flex:1; display:flex; flex-direction:column; gap:4px">
-            <p style="font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:700; color:#4ADE80">5.5&times;</p>
-            <p style="font-size:15px; color:#94A3B8">CPU vs. Fortran<br>(48 ms vs. 264 ms)</p>
+            <p style="font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:700; color:#4ADE80">14.7&times;</p>
+            <p style="font-size:15px; color:#94A3B8">Genuine CPU vs. Fortran<br>(17.94 ms vs. 264 ms)</p>
           </div>
           <div style="flex:1; display:flex; flex-direction:column; gap:4px">
-            <p style="font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:700; color:#FBBF24">~1.0&times;</p>
-            <p style="font-size:15px; color:#94A3B8">GPU vs. that node's CPU<br>(33.0 ms vs. 33.5 ms) &mdash; no benefit</p>
+            <p style="font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:700; color:#4ADE80">4.2&times;</p>
+            <p style="font-size:15px; color:#94A3B8">GPU vs. genuine CPU<br>(4.26 ms vs. 17.94 ms) &mdash; target cleared</p>
           </div>
         </div>
         <div style="height:1px; background:#334155"></div>
-        <p style="font-size:15px; color:#FBBF24; font-weight:600">Real A100 result (2026-09-22) retires the earlier ~20&ndash;30&times; GPU <i>estimate</i> for this scope &mdash; that number was never measured before this run, and every document that repeated it has now been corrected, not just flagged. Still ~8&times; faster than Fortran on GPU; the grid (3,312 pts) is just too small to amortize GPU dispatch overhead the way the pre-measurement estimate assumed.</p>
+        <p style="font-size:15px; color:#4ADE80; font-weight:600">Real A100 result (2026-09-22), after fusing ~33 per-step JIT dispatches into one (Phase 1) AND fixing a real bug in the measurement script itself: its "CPU" timing never forced the CPU backend, so on a GPU node it silently timed the GPU too &mdash; the earlier ~1.0&times; figure was comparing the GPU to itself, not to CPU. Fixed: the script now spawns a genuine CPU-only subprocess when a GPU is already active. GPU vs. Fortran: 62.0&times;.</p>
       </div>
 
       <div style="background:#1E293B; border-radius:24px; padding:28px 36px; display:flex; flex-direction:column; gap:10px">
         <h3 style="font-size:24px; font-weight:600; color:#F8FAFC">Reading this honestly</h3>
         <p style="font-size:18px; color:#E2E8F0">JAX-CPU is <b>not</b> a blanket win &mdash; it loses DRYCNV outright to Fortran on CPU (small-array dispatch overhead dominates at this grid size).</p>
-        <p style="font-size:18px; color:#4ADE80; font-weight:600">GPU wins decisively on isolated kernels (2.3&ndash;6.3&times;) &mdash; but not on the full chained pipeline (~1.0&times;). Different scopes, both real.</p>
+        <p style="font-size:18px; color:#4ADE80; font-weight:600">GPU now wins decisively at every scope measured: isolated kernels (2.3&ndash;6.3&times;) and the full chained pipeline (4.2&times;). The earlier "no benefit" full-chain result was a measurement artifact, not a property of the problem size.</p>
       </div>
     </div>
   </div>
 
-  <p style="position:absolute; left:128px; bottom:64px; font-size:22px; color:#64748B">Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py (kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, NVIDIA A100, node warpa005, 2026-09-22) &middot; STATUS.md</p>
+  <p style="position:absolute; left:128px; bottom:64px; font-size:22px; color:#64748B">Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py (kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md</p>
 </section>

@@ -4,7 +4,7 @@
 ======================================================================
   restart: itime=33312 (1950-11-26 00:00:00 UTC)
   itype counts: {'ocean': 1644, 'seaice': 522, 'landice': 401, 'land': 745} (total 3312 / 3312)
-  JAX devices: [CudaDevice(id=0)]
+  JAX devices: [CpuDevice(id=0)]
 
 ======================================================================
 2. Run one real DTsrc=1800s physics step
@@ -14,8 +14,8 @@
   fsf                      min=     0.000  max=  1363.789  mean=   311.260
   flong                    min=   140.024  max=   514.144  mean=   329.526
   sensible_heat_flux       min=  -274.235  max=  1152.710  mean=    90.379
-  latent_heat_flux         min=   -85.991  max=  1518.975  mean=    41.177
-  net_energy_flux          min= -1373.549  max=  1269.370  mean=    86.410
+  latent_heat_flux         min=   -85.991  max=  1518.974  mean=    41.177
+  net_energy_flux          min= -1373.548  max=  1269.370  mean=    86.410
 
 ======================================================================
 3. Functionality: real-grid global maps -> outputs/
@@ -41,7 +41,7 @@
 ======================================================================
 5. Performance (CPU): JAX driver vs. real Fortran per-routine cost
 ======================================================================
-  JAX (this CPU, jit-compiled, 20-step average): 4.04 ms/DTsrc-step
+  JAX (this CPU, jit-compiled, 20-step average): 17.94 ms/DTsrc-step
 
   Real Fortran per-routine cost, measured in P2SAoM40.PRT (194 real
   DTsrc steps, single MPI process, same CPU-class hardware):
@@ -62,12 +62,12 @@
 ======================================================================
 6. Performance (GPU)
 ======================================================================
-  GPU detected: [CudaDevice(id=0)]
-  JAX (this GPU, jit-compiled, 20-step average): 4.08 ms/DTsrc-step
-  vs. JAX (CPU, above): 4.04 ms/DTsrc-step -> 1.0x faster on GPU
-  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): 64.8x faster
-  (radiation excluded from the Fortran comparison, as in section 5 --
-   JAX's radiation is a simplified graybody stand-in, not equivalent physics)
+  No GPU is visible in this environment (JAX reports: [CpuDevice(id=0)] )
+  To benchmark on GPU: run this script on a GPU-enabled node/container
+  without forcing JAX_PLATFORMS=cpu -- see rocke3d_jax/Dockerfile.gpu,
+  which already installs jax[cuda12_pip]. No code changes needed; the
+  driver is plain jax.numpy and will place arrays on whatever backend
+  is active.
 
 ======================================================================
 7. Functional coverage (orchestration fidelity)

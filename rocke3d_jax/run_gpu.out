@@ -41,7 +41,7 @@
 ======================================================================
 5. Performance (CPU): JAX driver vs. real Fortran per-routine cost
 ======================================================================
-  JAX (this CPU, jit-compiled, 20-step average): 4.04 ms/DTsrc-step
+  JAX (this CPU, jit-compiled, 20-step average): 4.29 ms/DTsrc-step
 
   Real Fortran per-routine cost, measured in P2SAoM40.PRT (194 real
   DTsrc steps, single MPI process, same CPU-class hardware):
@@ -63,9 +63,9 @@
 6. Performance (GPU)
 ======================================================================
   GPU detected: [CudaDevice(id=0)]
-  JAX (this GPU, jit-compiled, 20-step average): 4.08 ms/DTsrc-step
-  vs. JAX (CPU, above): 4.04 ms/DTsrc-step -> 1.0x faster on GPU
-  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): 64.8x faster
+  JAX (this GPU, jit-compiled, 20-step average): 4.26 ms/DTsrc-step
+  vs. JAX (CPU, above): 4.29 ms/DTsrc-step -> 1.0x faster on GPU
+  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): 62.0x faster
   (radiation excluded from the Fortran comparison, as in section 5 --
    JAX's radiation is a simplified graybody stand-in, not equivalent physics)
 

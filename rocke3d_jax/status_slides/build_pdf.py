@@ -177,10 +177,10 @@ def slide_performance(c):
               px, py, col_w - 36, 20, size=8.5, color=FOOTER)
 
     top2_h = 270
-    left_bar_card(c, right_x, panel_top - top2_h, col_w, top2_h, AMBER, r=12)
+    left_bar_card(c, right_x, panel_top - top2_h, col_w, top2_h, GREEN, r=12)
     rx, ry = right_x + 18, panel_top - 22
-    draw_para(c, "THE FINDING THAT MATTERS MOST &mdash; NOT A FOOTNOTE", rx, ry, col_w - 36, 14,
-              size=7.5, color=AMBER, bold=True, font="Courier")
+    draw_para(c, "CORRECTED TWICE, NOW VALIDATED &mdash; NOT A FOOTNOTE", rx, ry, col_w - 36, 14,
+              size=7.5, color=GREEN, bold=True, font="Courier")
     ry -= 16
     draw_para(c, "Full physics chain (CPU + GPU)", rx, ry, col_w - 36, 18, size=12, color=INK, bold=True)
     ry -= 20
@@ -193,23 +193,23 @@ def slide_performance(c):
     c.restoreState()
     ry -= 22
     stat_col_w = (col_w - 36 - 16) / 2
-    draw_para(c, "5.5x", rx, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
-    draw_para(c, "~1.0x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=AMBER, bold=True, font="Courier")
+    draw_para(c, "14.7x", rx, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
+    draw_para(c, "4.2x", rx + stat_col_w + 16, ry, stat_col_w, 24, size=20, color=GREEN, bold=True, font="Courier")
     ry -= 26
-    draw_para(c, "CPU vs. Fortran (48 vs. 264 ms)", rx, ry, stat_col_w, 24, size=7.5, color=MUTED)
-    draw_para(c, "GPU vs. that node's CPU (33.0 vs. 33.5 ms) -- no benefit",
+    draw_para(c, "Genuine CPU vs. Fortran (17.94 vs. 264 ms)", rx, ry, stat_col_w, 24, size=7.5, color=MUTED)
+    draw_para(c, "GPU vs. genuine CPU (4.26 vs. 17.94 ms) -- target cleared",
               rx + stat_col_w + 16, ry, stat_col_w, 24, size=7.5, color=MUTED)
     ry -= 30
     c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
     c.line(rx, ry, rx + col_w - 36, ry)
     c.restoreState()
     ry -= 14
-    draw_para(c, "Real A100 result (2026-09-22) retires an earlier ~20-30x GPU "
-              "<i>estimate</i> for this scope -- never measured before this run, and every "
-              "document that repeated it has now been corrected, not just flagged. Still "
-              "~8x faster than Fortran on GPU -- the grid (3,312 pts) is just too small to "
-              "amortize GPU dispatch overhead the way the pre-measurement estimate assumed.",
-              rx, ry, col_w - 36, 60, size=8, color=AMBER)
+    draw_para(c, "Real A100 result (2026-09-22): fused ~33 per-step JIT dispatches into one, "
+              "then found the measurement script's \"CPU\" timing never forced the CPU backend "
+              "-- on a GPU node it silently timed the GPU too, so the earlier ~1.0x figure "
+              "compared the GPU to itself. Fixed with a genuine CPU-only subprocess. "
+              "GPU vs. Fortran: 62.0x.",
+              rx, ry, col_w - 36, 60, size=8, color=GREEN)
 
     panel_h_right = 400
     bot2_h = panel_h_right - top2_h - 20
@@ -221,13 +221,14 @@ def slide_performance(c):
               "Fortran on CPU (small-array dispatch overhead dominates at this grid size).",
               rx, ry, col_w - 36, 50, size=9, color=INK2)
     ry -= 8
-    draw_para(c, "GPU wins decisively on isolated kernels (2.3-6.3x) &mdash; but not on the full "
-              "chained pipeline (~1.0x). The grid is too small either way for GPU to be a clean "
-              "win by itself.", rx, ry, col_w - 36, 50, size=9, color=GREEN, bold=True)
+    draw_para(c, "GPU now wins decisively at every scope measured: isolated kernels (2.3-6.3x) "
+              "and the full chained pipeline (4.2x). The earlier \"no benefit\" full-chain "
+              "result was a measurement artifact, not a property of the problem size.",
+              rx, ry, col_w - 36, 50, size=9, color=GREEN, bold=True)
 
     footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
               "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
-              "NVIDIA A100, node warpa005, 2026-09-22) &middot; STATUS.md")
+              "NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md")
 
 
 def slide_next_steps(c):
@@ -277,10 +278,10 @@ def slide_next_steps(c):
     draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=13, color=INK, bold=True)
     ry -= 36
     opens = [
-        "<s>Measure the full physics-chain GPU run</s> — <b><font color='#4ADE80'>done</font></b>, "
-        "2026-09-22, real A100: ~1.0x (no benefit). Follow-up: <b><font color='#4ADE80'>done</font></b> "
-        "— every ROI/timeline figure that assumed the old ~20-30x estimate has been retired "
-        "in this consolidation, not just flagged.",
+        "<s>Get the full physics-chain GPU speedup above 2x</s> — <b><font color='#4ADE80'>done</font></b>, "
+        "2026-09-22: fused ~33 per-step JIT dispatches into one, then found and fixed a bug "
+        "where the \"CPU\" baseline was secretly timing the GPU. Real result: "
+        "<b><font color='#4ADE80'>4.2x</font></b> GPU speedup.",
         "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
         "— currently only worked around locally.",
         "Port SEAICE + ATURB, then re-run the correlation check — expect it to improve "

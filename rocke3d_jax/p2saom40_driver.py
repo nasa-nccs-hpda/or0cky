@@ -42,6 +42,7 @@ matching drycnv.py's expected level-last layout.
 """
 
 import numpy as np
+import jax
 import jax.numpy as jnp
 
 import constant_jax as const
@@ -87,7 +88,7 @@ def build_static_fields(itype):
     return z0, albedo, emis
 
 
-def surface_skin_temperature(state, itype, t1_actual):
+def surface_skin_temperature(itype, tearth, tlake, t1_actual):
     """Real per-cell ground/skin temperature (K), selected by itype from
     actual restart fields (not fabricated): land -> tearth (C), lake ->
     tlake (C), sea ice -> standard freezing-point proxy (hsi_atm/ssi_atm
@@ -100,19 +101,19 @@ def surface_skin_temperature(state, itype, t1_actual):
 
     `t1_actual` must already be in real Kelvin (i.e. state["t"][...,0]
     multiplied by PK -- GISS's prognostic T is T_actual/PK, not actual
-    temperature, see run_dtsrc_step).
+    temperature, see run_dtsrc_step). Pure jnp (traced inside the fused
+    per-step computation, see _step_core) -- tearth/tlake are passed in
+    directly rather than pulled from a state dict so this composes as a
+    plain array function under jax.jit.
     """
-    tearth = state["tearth"]  # GISS TEARTH is degrees C
-    tlake = state["tlake"]    # degrees C
-
-    tg_c = np.where(itype == 4, tearth, 0.0)
-    tg_c = np.where(itype == 3, np.minimum(tearth, 0.0), tg_c)  # landice: cap at freezing
-    tg_c = np.where(itype == 2, -1.8, tg_c)  # seaice surface: standard sea-water freezing point proxy
+    tg_c = jnp.where(itype == 4, tearth, 0.0)
+    tg_c = jnp.where(itype == 3, jnp.minimum(tearth, 0.0), tg_c)  # landice: cap at freezing
+    tg_c = jnp.where(itype == 2, -1.8, tg_c)  # seaice surface: standard sea-water freezing point proxy
     tg = tg_c + const.TF
     # Ocean (itype==1): no ocean-model SST in this atm-only restart;
     # approximate with layer-1 air temperature minus a small stable
     # offset, a declared simplification (see STATUS.md).
-    tg = np.where(itype == 1, np.asarray(t1_actual) - 0.5, tg)
+    tg = jnp.where(itype == 1, t1_actual - 0.5, tg)
     return tg
 
 
@@ -124,12 +125,26 @@ def solve_surface_layer(z, z0, t1, tg, ws, n_iter=6):
     physical idea (iterate drag/transfer coefficients against a
     consistent Monin-Obukhov length), not a byte-for-byte port of the
     Fortran algorithm. Declared simplification.
+
+    Implemented as a single jax.lax.fori_loop (traced once) rather than
+    a Python for-loop, so this whole 6-iteration solve compiles to one
+    fused XLA computation instead of dispatching pbl.getcm/getchq as 12
+    separate calls -- see STATUS.md's "Regression verification" /
+    profiling section for why this mattered (this loop, x NIsurf=2, was
+    24 of the ~33 separate JIT dispatches in the pre-fusion driver).
+    Numerically identical to the original Python-loop version: each
+    iteration still computes cm/ch from the *incoming* lmonin before
+    updating it, so the final cm/ch reflect the second-to-last lmonin
+    estimate, exactly as before.
     """
     kappa = 0.4
     ws_safe = jnp.maximum(ws, 0.5)
-    lmonin = jnp.full_like(t1, 1.0e5)  # start near-neutral (large |L|)
-    dm = dpsim = cm = dpsih = ch = None
-    for _ in range(n_iter):
+    lmonin0 = jnp.full_like(t1, 1.0e5)  # start near-neutral (large |L|)
+    cm0 = jnp.zeros_like(t1)  # shape/dtype placeholder; overwritten on iteration 0
+    ch0 = jnp.zeros_like(t1)
+
+    def body(_, carry):
+        lmonin, _cm_prev, _ch_prev = carry
         dm, dpsim, cm = pbl.getcm(z, z0, lmonin)
         dpsih, ch = pbl.getchq(z, z0, lmonin, dm)
         ustar = jnp.sqrt(cm) * ws_safe
@@ -140,7 +155,11 @@ def solve_surface_layer(z, z0, t1, tg, ws, n_iter=6):
         tstar_safe = jnp.sign(tstar) * jnp.maximum(jnp.abs(tstar), 1e-4) + 1e-8
         thetabar = 0.5 * (t1 + tg)
         l_raw = (ustar ** 2) * thetabar / (kappa * const.GRAV * tstar_safe)
-        lmonin = jnp.sign(l_raw) * jnp.clip(jnp.abs(l_raw), 1.0, 1.0e5)
+        lmonin_new = jnp.sign(l_raw) * jnp.clip(jnp.abs(l_raw), 1.0, 1.0e5)
+        return (lmonin_new, cm, ch)
+
+    _, cm, ch = jax.lax.fori_loop(0, n_iter, body, (lmonin0, cm0, ch0))
+
     # pbl.py's getcm/getchq clip to [cmin=0.001, cmax=1.0] -- a safety
     # bound carried over from the Fortran source, not a realistic bulk
     # transfer-coefficient range. Real neutral drag/Stanton/Dalton
@@ -197,35 +216,43 @@ def build_pressure_profile(p_sfc, ma):
     per-layer air mass, rather than atm_com_jax.compute_pmid_pedn's
     placeholder sigma-coordinate formula (which needs a DSIG input this
     restart doesn't directly provide). dp(L) [mb] = MA(L)*GRAV/100.
+
+    Vectorized with jnp.cumsum rather than a Python for-loop over LM
+    layers -- mathematically identical (pedn[l+1] = p_sfc - sum(dp[0:l+1])
+    is exactly what the loop computed one layer at a time), but this
+    version traces as part of one fused computation instead of running
+    as untraceable host-side NumPy on every step (previously ~2.3ms/step
+    of pure Python/NumPy that never touched JAX at all -- see STATUS.md's
+    profiling section).
     """
     dp = ma * float(const.GRAV) / 100.0  # (J,I,L), mb
-    lm = ma.shape[-1]
-    pedn = np.zeros(ma.shape[:-1] + (lm + 1,))
-    pedn[..., 0] = p_sfc
-    for l in range(lm):
-        pedn[..., l + 1] = pedn[..., l] - dp[..., l]
+    pedn_rest = p_sfc[..., None] - jnp.cumsum(dp, axis=-1)  # (J,I,L), layers 1..LM
+    pedn = jnp.concatenate([p_sfc[..., None], pedn_rest], axis=-1)  # (J,I,LM+1)
     pmid = 0.5 * (pedn[..., :-1] + pedn[..., 1:])
     return pmid, pedn
 
 
-def run_dtsrc_step(state, itype, static_fields, lat_dg, lon_dg, dt_utc, step_index=0, do_radiation=None):
-    """Advance the real restart state by one DTsrc=1800s step through the
-    ported physics subset, in the real call order:
-      zenith angle -> RADIATION (NRAD-gated) -> SURFACE (NIsurf substeps:
-      PBL similarity + flux dispatch + layer-1 tendency) -> DRYCNV
-      (layers 2..LM, once).
+@jax.jit
+def _step_core(t, q, u1, v1, p_sfc, ma, itype_j, z0, albedo, emis,
+                tearth, tlake, uocean, vocean, cosz):
+    """The full per-DTsrc physics computation (pressure profile ->
+    PK/PEK -> skin temp -> surface properties -> RADIATION ->
+    SURFACE[NIsurf substeps] -> DRYCNV), as ONE fused jax.jit
+    computation instead of ~33 separately-dispatched calls.
 
-    Returns (new_state, diagnostics) where diagnostics holds the
-    per-cell fields used for the accuracy/functionality comparison.
+    This is a pure restructuring for dispatch efficiency, not an
+    algorithm change: every formula, iteration count, and operation
+    order below is identical to the original per-call version (see git
+    history / STATUS.md's profiling section for the before/after). All
+    arguments are already jnp arrays (or convert trivially); the host
+    wrapper run_dtsrc_step() below handles the one-time NumPy<->JAX
+    conversion at the boundary instead of doing it call-by-call inside
+    the step.
     """
-    z0, albedo, emis = static_fields
+    p_sfc = jnp.asarray(p_sfc)
+    ma = jnp.asarray(ma)
 
-    t = state["t"].copy()   # GISS convention: T_stored = T_actual / PK (see below)
-    q = state["q"].copy()
-    u1, v1 = state["u"][..., 0], state["v"][..., 0]
-    p_sfc = state["p"] + PTOP  # true surface pressure (mb); see PTOP note above
-
-    pmid, pedn = build_pressure_profile(p_sfc, state["ma"])
+    pmid, pedn = build_pressure_profile(p_sfc, ma)
     pk, pek = compute_pk_pek(pmid, pedn)
     pk1 = pk[..., 0]
     # Real GISS ModelE convention (confirmed empirically against this
@@ -236,32 +263,29 @@ def run_dtsrc_step(state, itype, static_fields, lat_dg, lon_dg, dt_utc, step_ind
     # directly (its THM computation multiplies by PK internally), so
     # only the *surface-physics* calls below need actual Kelvin.
     t1_actual = t[..., 0] * pk1
-    tg = surface_skin_temperature(state, itype, t1_actual)
+    tg = surface_skin_temperature(itype_j, tearth, tlake, t1_actual)
 
     thv1, rho, qsat = surface_jax.compute_surface_properties(t1_actual, q[..., 0], p_sfc * 100.0)
-    qg = np.where(itype == 1, qsat, qsat * 0.9)  # near-saturated proxy over ocean/moist land (declared simplification)
+    qg = jnp.where(itype_j == 1, qsat, qsat * 0.9)  # near-saturated proxy over ocean/moist land (declared simplification)
 
     # --- RADIATION (real cadence: full computation every NRAD steps) ---
-    if do_radiation is None:
-        do_radiation = (step_index % NRAD == 0)
-    cosz = compute_zenith_cosz(lat_dg, lon_dg, dt_utc)
+    # NOTE: the NRAD-gating itself (do_radiation) doesn't change any
+    # computation here -- both branches evaluate the same cheap formulas
+    # (see run_dtsrc_step's docstring) -- so it's resolved on the host,
+    # not threaded through this jitted core.
     fsf, srdflb, srnflb = radiation_jax.compute_solar_flux_jit(const.SOLAR_CONSTANT, cosz, albedo)
     flong = radiation_jax.stefan_boltzmann_jit(t1_actual, 1.0)  # graybody downwelling LW proxy from lowest layer (declared simplification)
-    if not do_radiation:
-        # Cheap branch (matches real RADIA's MODRD!=0 path): hold
-        # previous fluxes. v1 has no persisted previous-step radiative
-        # state, so this still evaluates the same cheap formulas but
-        # timing-wise represents the "held value" branch.
-        pass
 
     # --- SURFACE: NIsurf=2 substeps at DTSURF=900s ---
-    itype_j = jnp.asarray(itype)
-    uflux = vflux = tflux = qflux = solar = lw_net = net_energy = None
+    # NIsurf is a small, fixed Python int, so this unrolls at trace time
+    # into NIsurf copies inside the same fused program (still ONE
+    # dispatch) rather than NIsurf separate calls from the host.
+    ma1 = ma[..., 0]
+    cp = const.SHA
+    tflux = qflux = uflux = net_energy = None
     for _ in range(NIsurf):
         ws1 = jnp.sqrt(u1 ** 2 + v1 ** 2)
-        cm, ch, cq = solve_surface_layer(jnp.asarray(Z_REF), jnp.asarray(z0), t1_actual, tg, ws1)
-        uocean = state["uosurf_icdyn"]
-        vocean = state["vosurf_icdyn"]
+        cm, ch, cq = solve_surface_layer(jnp.asarray(Z_REF), z0, t1_actual, tg, ws1)
         uflux, vflux, tflux, qflux, solar, lw_net, net_energy = _surface_fluxes_relative_wind(
             itype_j, tg, qg, rho, cm, ch, cq,
             u1, v1, t1_actual, q[..., 0], fsf, flong, albedo, emis, uocean, vocean,
@@ -277,21 +301,58 @@ def run_dtsrc_step(state, itype, static_fields, lat_dg, lon_dg, dt_utc, step_ind
         # d(M1*u1)/dt = uflux (uflux already carries the correct sign:
         # negative when the atmosphere is faster than the surface, i.e.
         # drag decelerates the flow)
-        ma1 = state["ma"][..., 0]
-        cp = const.SHA
         dT1_actual = (tflux / (ma1 * cp)) * DTSURF
         dT1 = dT1_actual / pk1
         dQ1 = (qflux / (ma1 * const.LHE)) * DTSURF
-        t = t.at[..., 0].add(dT1) if hasattr(t, "at") else _np_add_layer0(t, dT1)
-        q = q.at[..., 0].add(dQ1) if hasattr(q, "at") else _np_add_layer0(q, dQ1)
+        t = t.at[..., 0].add(dT1)
+        q = q.at[..., 0].add(dQ1)
         t1_actual = t[..., 0] * pk1
         u1 = u1 + (uflux / ma1) * DTSURF
         v1 = v1 + (vflux / ma1) * DTSURF
 
     # --- DRYCNV proper, layers 2..LM (0-indexed 1..LM-1), once per DTsrc ---
-    t_j, q_j = jnp.asarray(t), jnp.asarray(q)
-    pdsig = jnp.asarray(pedn[..., :-1] - pedn[..., 1:])
-    t_after, q_after = drycnv.dry_convection_mixing_jit(t_j, q_j, jnp.asarray(pk), pdsig)
+    pdsig = pedn[..., :-1] - pedn[..., 1:]
+    t_after, q_after = drycnv.dry_convection_mixing_jit(t, q, pk, pdsig)
+
+    return t_after, q_after, u1, v1, tg, fsf, flong, tflux, qflux, net_energy, uflux
+
+
+def run_dtsrc_step(state, itype, static_fields, lat_dg, lon_dg, dt_utc, step_index=0, do_radiation=None):
+    """Advance the real restart state by one DTsrc=1800s step through the
+    ported physics subset, in the real call order:
+      zenith angle -> RADIATION (NRAD-gated) -> SURFACE (NIsurf substeps:
+      PBL similarity + flux dispatch + layer-1 tendency) -> DRYCNV
+      (layers 2..LM, once).
+
+    Returns (new_state, diagnostics) where diagnostics holds the
+    per-cell fields used for the accuracy/functionality comparison.
+
+    Host-side thin wrapper: converts the restart state's NumPy arrays to
+    device arrays ONCE, calls the single fused _step_core jax.jit
+    computation, then converts the results back to NumPy ONCE for the
+    returned dicts. All the actual physics is in _step_core.
+    """
+    z0, albedo, emis = static_fields
+
+    if do_radiation is None:
+        do_radiation = (step_index % NRAD == 0)
+    # compute_zenith_cosz depends on Python datetime attributes (doy,
+    # hour-of-day), which aren't traceable JAX values, so it's computed
+    # here on the host -- cheap (~0.2ms), not part of the dispatch-count
+    # problem this fusion targets -- and passed into _step_core as plain
+    # array data.
+    cosz = compute_zenith_cosz(lat_dg, lon_dg, dt_utc)
+
+    t_after, q_after, u1, v1, tg, fsf, flong, tflux, qflux, net_energy, uflux = _step_core(
+        jnp.asarray(state["t"]), jnp.asarray(state["q"]),
+        jnp.asarray(state["u"][..., 0]), jnp.asarray(state["v"][..., 0]),
+        jnp.asarray(state["p"] + PTOP), jnp.asarray(state["ma"]),
+        jnp.asarray(itype),
+        jnp.asarray(z0), jnp.asarray(albedo), jnp.asarray(emis),
+        jnp.asarray(state["tearth"]), jnp.asarray(state["tlake"]),
+        jnp.asarray(state["uosurf_icdyn"]), jnp.asarray(state["vosurf_icdyn"]),
+        jnp.asarray(cosz),
+    )
 
     new_state = dict(state)
     new_state["t"] = np.asarray(t_after)
@@ -314,9 +375,3 @@ def run_dtsrc_step(state, itype, static_fields, lat_dg, lon_dg, dt_utc, step_ind
         "radiation_computed_this_step": bool(do_radiation),
     }
     return new_state, diagnostics
-
-
-def _np_add_layer0(arr, delta):
-    out = np.asarray(arr).copy()
-    out[..., 0] = out[..., 0] + np.asarray(delta)
-    return out

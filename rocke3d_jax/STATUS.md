@@ -53,48 +53,67 @@ vs. a second Python reimplementation.
 |---|---|
 | Does the JAX port match real Fortran numerically? | **Yes**, for the modules tested directly against it (PBL, DRYCNV): floating-point-level agreement (1e-9–1e-3) on both CPU and GPU. |
 | Is JAX faster than real Fortran? | **Depends on device and module.** See Performance below — not a blanket yes. |
-| Has this been checked on GPU? | **Yes, both scopes.** Kernels (DRYCNV, PBL) in isolation: real 2.3–6.3× speedup, run 2026-09-20. Full chained physics group, real NVIDIA A100 (node `warpa005`, discover cluster): **~1.0× — essentially no GPU benefit** at this grid size (3,312 points) — corrects an earlier ~20–30× *estimate* that has now been fully retired, not just flagged (see Full Physics Chain below). |
+| Has this been checked on GPU? | **Yes, both scopes.** Kernels (DRYCNV, PBL) in isolation: real 2.3–6.3× speedup, run 2026-09-20. Full chained physics group, real NVIDIA A100 (discover cluster): **4.2× GPU speedup**, measured 2026-09-22 after two fixes — a dispatch-fusion optimization (Phase 1) and a real bug in how the comparison itself was measured. See Full Physics Chain below; this replaces an earlier ~1.0× figure that turned out to be invalid, not a real physical limit. |
 | Is the port complete? | **14 of 17 modules** are faithful ports, validated against real Fortran. 3 (SEAICE core thermodynamics, LAKES mixing, part of ATURB) are documented placeholders. See Recommendation below. |
 | Does this project still use NumPy comparisons? | It has some (`mantle/benchmark_all.py` and related) — **dropped from the headline story**. See below. |
 
 ## Full Physics Chain: the finding that matters most
 
 This is the single most important correction in this project's history, so it
-gets its own section rather than being a line in a table.
+gets its own section rather than being a line in a table. It has now been
+corrected *twice* — once for an unmeasured GPU estimate (below), and again
+(2026-09-22) for a real bug in how the measurement itself was taken. Both
+corrections are kept visible here rather than quietly overwritten.
 
-**What was measured** (2026-09-22, real NVIDIA A100, node `warpa005` on the
-discover cluster, via `p2saom40_compare.py`, driven by P2SAoM40's actual
-restart state): the chained PBL+SURFACE+GROUND physics group, one real
-`DTsrc` step (1800 s model time):
+**Current, validated result** (2026-09-22, real NVIDIA A100, discover
+cluster, via `p2saom40_compare.py` post-Phase-1-fusion — see "GPU
+optimization" below): the chained PBL+SURFACE+GROUND physics group, one real
+`DTsrc` step (1800 s model time), from two separate runs (one with
+`JAX_PLATFORMS=cpu` forced, one natural GPU detection):
 
-| Leg | Time / step |
-|---|---|
-| Real Fortran (CPU) | 264.0 ms |
-| JAX (CPU) | 33.51 ms |
-| JAX (GPU, A100) | 32.96 ms |
+| Leg | Time / step | vs. real Fortran (264.0 ms) |
+|---|---|---|
+| Real Fortran (CPU) | 264.0 ms | — |
+| JAX (genuine CPU) | 17.94 ms | 14.7× faster |
+| JAX (GPU, A100) | 4.26 ms | 62.0× faster |
 
-**GPU vs. JAX-CPU: ~1.0× — essentially no GPU benefit.** Still ~8.0× faster
-than real Fortran (vs. ~5.5× measured earlier on a CPU-only node — see
-Performance below for why those two CPU figures differ). Root cause: this
-orchestrator's grid is only 3,312 points — too small for a GPU to amortize
-kernel-launch/dispatch overhead, the same effect already visible in the PBL
-kernel's more modest GPU gain, just more pronounced across a full multi-step
-chain.
+**GPU vs. genuine CPU: 4.2× — clears the >2× optimization target.** This
+came from two changes, not one:
 
-**Why this replaces every earlier ~20–30× GPU figure**: that number was an
-*estimate*, extrapolated before any GPU was available in this environment,
-and it was never actually measured until this run. It has been removed
-throughout this project's documentation (it previously appeared in
-`EXECUTIVE_SUMMARY.md`'s Business Impact, ROI, and Timeline sections, and in
-`README_GPU.md`'s setup guide) — not flagged with a correction note, *removed
-and replaced* with the real number, since that document is being retired.
+1. **Dispatch fusion (Phase 1)**: the full-chain driver was restructured
+   from ~33 separately-dispatched JIT calls per step (several nested in
+   Python loops) into a single fused `jax.jit` computation. Same formulas,
+   same iteration order — see "GPU optimization: Phase 1" below for the
+   profiling and the fix.
+2. **A real bug in the measurement script, found while trying to verify
+   Phase 1 on GPU**: `p2saom40_compare.py`'s "Performance (CPU)" section
+   never actually forced the CPU backend — it just timed `run_dtsrc_step()`
+   on whatever `jax.devices()[0]` already was. Run on a GPU node without
+   explicitly forcing `JAX_PLATFORMS=cpu` (the normal way to *also* get a
+   real GPU number in the same run), that "CPU" section silently ran on the
+   GPU too. **The original ~1.0× "no GPU benefit" figure was comparing the
+   GPU to itself, not to a real CPU baseline.** It has been fixed: the
+   script now spawns a genuine CPU-only subprocess for that number whenever
+   a GPU is already active in the main process, so a single run produces
+   two real numbers instead of one real number and one mislabeled copy of
+   itself.
 
-**What this does *not* contradict**: the DRYCNV+PBL kernel-level GPU result
-(2.3–6.3×, see Performance below) is a different, narrower scope — real
-per-call kernel dispatch, not a multi-module chained pipeline — and it holds.
-The story is not "GPU never helps here," it's "the full chained orchestrator
-at this grid size doesn't benefit the way the pre-measurement estimate
-assumed."
+**What this means for the old ~1.0× conclusion**: it wasn't wrong because
+the grid was too small for GPU to help (the explanation given at the time)
+— it was wrong because it was never actually a CPU-vs-GPU comparison. The
+kernel-level GPU results (2.3–6.3×, unaffected by this bug — those come from
+genuinely separate CPU/GPU script invocations) were the more reliable signal
+all along, and the corrected full-chain number is now consistent with them.
+
+**Why this replaces every earlier ~20–30× GPU figure** (kept for the
+historical record, since that correction is now itself superseded by a
+better number rather than retracted): that number was an *estimate* made
+before any GPU was available in this environment, and was replaced on
+2026-09-22 by the (at-the-time invalid) ~1.0× measurement. It is now
+replaced again by the validated 4.2× figure above. Removed throughout this
+project's documentation each time, not just flagged — it previously
+appeared in `EXECUTIVE_SUMMARY.md`'s Business Impact, ROI, and Timeline
+sections and in `README_GPU.md`'s setup guide (that file now points here).
 
 **Scope of what "full physics chain" actually covers** — this matters for any
 future ROI or timeline claim: of the real Fortran model's per-`DTsrc`-step
@@ -106,7 +125,7 @@ alone is **65.57%** of total per-step runtime (avg. 2070 ms/step, bimodal:
 ~0.7 ms on held-value steps between radiation calls, ~10.8 s on the
 radiation-gated steps) — but JAX's radiation is a simplified graybody
 stand-in, not real SOCRATES spectral transfer, so it is **excluded from both
-legs** of the 264/33.5/33.0 ms comparison above to keep it a fair speed
+legs** of the 264/17.94/4.26 ms comparison above to keep it a fair speed
 comparison. **Practical consequence: there is currently no honest way to
 project a whole-model runtime or dollar-cost from this result** — real
 spectral radiation and real atmospheric dynamics would both need to be ported
@@ -122,7 +141,7 @@ NumPy stand-in:
 |---|---|---|
 | PBL + DRYCNV kernels | Real inputs shared byte-for-byte between a from-scratch `ifort`-compiled Fortran reference and JAX, at P2SAoM40's real grid size (3,312 points × 40 layers) | Max diff ≤1.5e-3 (CPU), ≤2.8e-3 (GPU) against output scales of 10¹–10³ — floating-point-level, not algorithmic |
 | Full physics chain (PBL+radiation+surface+ground), restart snapshot 1949-12-01 | Driven by P2SAoM40's actual restart state (`fort.1.nc`), one real timestep | **0.987** spatial correlation vs. the real run's period-mean surface temperature (+1.0°C bias) |
-| Same, later restart snapshot 1950-11-26 (2026-09-22, GPU-capable run) | Same method, ~11 simulated months further into the same P2SAoM40 run (which has since completed its full 1-year integration) | **0.965** spatial correlation (−1.86°C bias) — consistent with the earlier snapshot, i.e. fidelity holds up over a full year of integration, not just the first month |
+| Same, later restart snapshot 1950-11-26 (2026-09-22, GPU-capable run, reconfirmed after Phase 1 fusion) | Same method, ~11 simulated months further into the same P2SAoM40 run (which has since completed its full 1-year integration) | **0.965** spatial correlation (−1.86°C bias) — consistent with the earlier snapshot, i.e. fidelity holds up over a full year of integration, not just the first month, and unchanged by the dispatch-fusion optimization |
 
 Both full-chain rows are a coarser sanity check than the kernel row above —
 period-mean vs. single-step.
@@ -171,24 +190,20 @@ they're still the same floating-point-level diffs, not a bug.
 |---|---|---|---|
 | DRYCNV kernel | 1.27 ms | 17.1 ms — **13.4× slower** | 0.56 ms — **2.3× faster than Fortran-CPU** |
 | PBL kernel | 0.37 ms | 0.20 ms — 1.9× faster | 0.06 ms — **6.3× faster than Fortran-CPU** |
-| Full physics chain (PBL+radiation+surface+ground) | ~264 ms/step (radiation excluded from JAX legs — see Full Physics Chain above) | ~48 ms/step — **5.5× faster** (measured on the original CPU-only node) | ~33.0 ms/step on a GPU-capable node — **~1.0× vs. that node's own JAX-CPU** (33.5 ms, "no GPU benefit"); ~8.0× vs. Fortran-CPU |
-
-The two JAX-CPU full-chain figures (48 ms vs. 33.5 ms) come from **different
-physical nodes** — not a contradiction, just different hardware. Neither is
-"more correct"; both are real measurements.
+| Full physics chain (PBL+radiation+surface+ground), post-Phase-1-fusion | ~264 ms/step (radiation excluded from JAX legs — see Full Physics Chain above) | 17.94 ms/step — **14.7× faster** (genuine CPU-only measurement) | 4.26 ms/step — **4.2× faster than JAX-CPU**, 62.0× vs. Fortran-CPU |
 
 **Reading the kernel table honestly**: JAX-CPU is *not* uniformly faster than
 Fortran — it loses DRYCNV outright on CPU (small-array dispatch overhead).
-GPU is where JAX wins decisively on both kernels. **The case for JAX here is
-a GPU case for isolated kernels, not a CPU case — and not (yet) a case for
-the full chained pipeline at this grid size.** See Full Physics Chain above.
+GPU wins decisively on both isolated kernels *and*, since the Phase 1
+dispatch fusion, on the full chained pipeline as well — see Full Physics
+Chain above for what changed and why the number used to look flat.
 
 ## What's simplified in the full-chain driver (honesty section)
 
 The kernel-level accuracy numbers above (PBL, DRYCNV) come from a rigorous,
 faithful port validated line-for-line against Fortran. The **full-chain
 driver** (`p2saom40_driver.py`) used for the 0.965–0.987 correlation and the
-48/33.5/33.0 ms timing numbers is not uniformly that rigorous — several
+17.94/4.26 ms timing numbers is not uniformly that rigorous — several
 sub-components inside it are simplified relative to the real Fortran:
 
 - **Monin-Obukhov length solve**: the full-chain driver uses a fixed-point
@@ -378,8 +393,94 @@ re-measured; they still reflect the 2026-09-22 A100 run cited throughout):
   regenerate the slide deck's difference-map image. Now writes next to
   itself.
 
+## GPU optimization: Phase 1 (fused dispatch) — done, target cleared
+
+**Goal**: raise the full physics chain's GPU-vs-CPU ratio from ~1.0× toward
+>2×, without moving accuracy outside the tolerance already established above
+(kernel diffs ≤1.5e-3 CPU / ≤2.8e-3 GPU) — i.e. any change must be a pure
+dispatch/structure change, not an algorithm change.
+
+**Profiling** (`run_dtsrc_step`, CPU, post-warmup, mean of 30–100 calls)
+found the full step dispatching **33 separate JIT calls**, several nested in
+Python loops, instead of one fused computation:
+
+| Cost | ms/step | Cause |
+|---|---|---|
+| Unaccounted Python orchestration | 18.0 | dict/array copies, repeated NumPy↔JAX conversions |
+| `dry_convection_mixing_jit` | 13.68 | real compute, but its own dispatch boundary |
+| `getcm`+`getchq` (24 calls: 6-iter Python fixed-point loop × NIsurf=2) | 13.35 | should be one traced loop, was 24 dispatches |
+| `compute_pk_pek` | 4.56 | real transcendental-`pow()` cost, standalone dispatch |
+| `_surface_fluxes_relative_wind` (2 calls) | 2.58 | **not `@jit`-decorated at all** — every op inside dispatched individually |
+| `build_pressure_profile` (1 call) | 2.34 | **pure NumPy, Python loop over 40 layers** — never touched JAX |
+| everything else | 0.95 | radiation, surface properties, misc |
+
+This is a different — and more fixable — diagnosis than "the grid is too
+small for GPU": the isolated PBL/DRYCNV kernels (already single fused JIT
+calls) get real 2.3×–6.3× GPU speedup at this exact 3,312-point grid size
+(see Performance above). The full chain showed none of that because it pays
+dispatch/host-sync overhead ~33 times per step instead of once, not because
+the problem is inherently too small.
+
+**Phase 1 implemented** (`p2saom40_driver.py`): fused the entire per-step
+hot path — pressure profile, PK/PEK, skin temperature, surface properties,
+the Monin-Obukhov fixed-point solve, surface fluxes, layer-1 tendency
+update, and DRYCNV — into a single `@jax.jit` function (`_step_core`).
+Specifically: `solve_surface_layer`'s 6-iteration Python loop became a
+`jax.lax.fori_loop`; `build_pressure_profile`'s 40-layer Python loop became
+`jnp.cumsum`; `_surface_fluxes_relative_wind` and `surface_skin_temperature`
+were converted from NumPy to `jnp` so they trace inside the fused function
+instead of running as separate host-side steps. Same formulas, same
+iteration counts, same operation order throughout — purely a dispatch
+restructuring, not a physics change. `run_dtsrc_step` is now a thin host
+wrapper: NumPy→JAX once at input, one call to `_step_core`, JAX→NumPy once
+at output.
+
+**Validated**: field-by-field diff between the old and new driver on the
+same real restart input — every field (tg, fluxes, t/q/u/v) differs by
+1e-6 to 1e-8 **relative**, consistent with pure floating-point reordering
+(different but equally valid evaluation order from `fori_loop`/`cumsum` vs.
+the original Python loops), nowhere close to the ≤3e-3 tolerance already
+accepted for CPU-vs-GPU noise. The 0.965 correlation / −1.86°C bias full-chain
+accuracy result is unchanged. 104/104 unit tests still pass.
+
+**CPU-only result, measured in the (GPU-less) session that implemented
+Phase 1**: 59.56 ms/step → 38.17 ms/step, a 1.56× CPU speedup from fusion
+alone. This was the first evidence the fusion was doing real work, but it
+isn't the number the >2× target is about.
+
+**Phase 3 (real GPU re-measurement) — done, and it surfaced a second,
+independent bug.** Re-running `p2saom40_compare.py` on a real A100 (discover
+cluster) initially reproduced the *same* ~1.0× ratio as before fusion
+(4.04 ms "CPU" vs. 4.08 ms GPU) — which didn't make sense given the CPU-only
+result above, and prompted a closer look at the timing code itself rather
+than accepting the number. That's what found the measurement bug described
+in "Full Physics Chain" above: the script's "CPU" section was silently
+running on the GPU whenever a GPU was already active in the process, because
+nothing in it ever forced `JAX_PLATFORMS=cpu`. Two things were true at once:
+Phase 1's fusion was working (both the mislabeled "CPU" number and the real
+GPU number dropped from the ~33/~4 ms pre-fusion range to ~4 ms — fusion
+helps GPU dispatch overhead even more than CPU's, which is why they
+converged), and the CPU/GPU *ratio* was meaningless because both sides were
+secretly the same device.
+
+**Fix**: `p2saom40_compare.py`'s CPU-timing section now spawns a genuine
+CPU-only subprocess (with `JAX_PLATFORMS=cpu` set before that subprocess
+ever imports `jax`) whenever the main process already has a GPU claimed,
+instead of trusting `jax.devices()[0]` to still say "cpu" by the time
+section 5 runs. A single run on a GPU node now produces two real numbers.
+
+**Real result, from two separate runs (one `JAX_PLATFORMS=cpu`-forced, one
+natural GPU detection) on the same A100 node**: **17.94 ms/step genuine CPU
+→ 4.26 ms/step GPU — a 4.2× GPU speedup, clearing the >2× target.** Accuracy
+(0.965 correlation, −1.86°C bias, all diagnostic field values) matched
+between both runs. No further optimization iteration was needed — the
+`fori_loop`/`compute_pk_pek` fallback ideas noted earlier turned out to be
+unnecessary once the measurement itself was fixed.
+
 ## Open items
 
+- ~~Re-measure the fused driver on a real GPU node~~ — **done**, 4.2× GPU
+  speedup confirmed, target cleared. See "GPU optimization: Phase 1" above.
 - SEAICE and ATURB placeholder physics — recommended above, not started.
 - Wind-speed convention bug — fixed locally in `p2saom40_driver.py`, not yet
   fixed in the shared module files themselves.

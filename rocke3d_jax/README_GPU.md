@@ -2,8 +2,8 @@
 
 This guide provides instructions for running the **ROCKE-3D JAX port** on
 **NVIDIA GPUs**. The table below shows *pre-GPU estimates* only — for real
-measured numbers (kernel-level: 2.3–6.3×; full physics chain: ~1.0×, i.e.
-essentially no GPU benefit at this grid size), see `STATUS.md`.
+measured numbers (kernel-level: 2.3–6.3×; full physics chain: 4.2×, after a
+2026-09-22 dispatch-fusion optimization), see `STATUS.md`.
 
 ---
 
@@ -62,7 +62,7 @@ Devices: [GpuDevice(id=0, process_index=0, ...)]
 |------------|---------------|--------------------|------------------------|
 | DRYCNV kernel, P2SAoM40 grid | 1.27 ms | 17.1 ms | 0.56 ms — **2.3× faster than Fortran** |
 | PBL kernel, P2SAoM40 grid | 0.37 ms | 0.20 ms | 0.06 ms — **6.3× faster than Fortran** |
-| Full physics chain (PBL+SURFACE+GROUND) | 264.0 ms | 33.51 ms | 32.96 ms — **~1.0× vs JAX-CPU, no GPU benefit** |
+| Full physics chain (PBL+SURFACE+GROUND), post-fusion | 264.0 ms | 17.94 ms | 4.26 ms — **4.2× faster than JAX-CPU** |
 
 ---
 
@@ -149,9 +149,10 @@ RuntimeError: CUDA out of memory
 
 ## 📝 Notes
 
-- **GPU Speedup**: real, measured, and scope-dependent — 2.3–6.3× on isolated
-  kernels, ~1.0× (no benefit) on the full chained physics group at this grid
-  size. See `STATUS.md`, "Full Physics Chain" section, for why.
+- **GPU Speedup**: real, measured — 2.3–6.3× on isolated kernels, 4.2× on the
+  full chained physics group (after fusing per-step JIT dispatches into one).
+  See `STATUS.md`, "Full Physics Chain" section, for the full story including
+  a measurement-script bug that made an earlier full-chain run look flat.
 - **Multi-GPU**: For larger models, use `jax.distributed` for multi-GPU scaling.
 - **TPU Support**: For Google TPUs, use `JAX_PLATFORMS=tpu` and follow [JAX TPU Guide](https://github.com/google/jax#google-tpu).
 

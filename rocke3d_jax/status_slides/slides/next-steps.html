@@ -24,7 +24,7 @@
       <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; color:#f8fafc">Open items</h3>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">1</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Measure the full physics-chain GPU run</s> &mdash; <b style="color:#4ade80">done</b>, 2026-09-22, real A100: ~1.0&times; (no benefit). Follow-up: re-derive the ROI figures in EXECUTIVE_SUMMARY.md that assumed the old ~20&ndash;30&times; estimate.</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Get the full physics-chain GPU speedup above 2&times;</s> &mdash; <b style="color:#4ade80">done</b>, 2026-09-22: fused ~33 per-step JIT dispatches into one, then found and fixed a bug where the "CPU" baseline was secretly timing the GPU. Real result: <b style="color:#4ade80">4.2&times;</b> GPU speedup.</p>
       </div>
       <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
         <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">2</p>

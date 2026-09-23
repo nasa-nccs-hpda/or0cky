@@ -14,6 +14,24 @@ real restart data. Everything reproduced. Two real (small) bugs found and
 fixed in the process — see STATUS.md's "Regression verification" section
 for details. Nothing here needed re-litigating as a result.
 
+**GPU optimization, same day, later**: profiled the full-chain driver
+(`run_dtsrc_step`), found it dispatching ~33 separate JIT calls per step,
+and fused the whole hot path into one `@jax.jit` function
+(`p2saom40_driver.py`'s `_step_core`) — see "GPU optimization: Phase 1" in
+STATUS.md. Verifying this on a real GPU (discover cluster A100) surfaced a
+**second, independent bug**: `p2saom40_compare.py`'s "Performance (CPU)"
+section never actually forced the CPU backend, so on a GPU node it silently
+timed the GPU too — meaning the project's headline "~1.0×, no GPU benefit"
+full-chain finding, repeated across STATUS.md, README_GPU.md, and the slide
+deck, was comparing the GPU to itself, not a real CPU baseline. Fixed (the
+script now spawns a genuine CPU-only subprocess when a GPU is already
+active) and re-measured: **17.94 ms genuine CPU → 4.26 ms GPU, a real 4.2×
+speedup**, clearing the project's own >2× target. All of STATUS.md,
+README_GPU.md, and the slide deck (both the live artifact and
+`status_slides/`) have been corrected with the real numbers — not just
+flagged, since the underlying files this correction depends on
+(`EXECUTIVE_SUMMARY.md` etc.) no longer exist to flag.
+
 ## Where the real content lives
 
 - **`STATUS.md`** (this directory) — the single source of truth for project
@@ -120,18 +138,23 @@ unless already told to.
 full 1-year integration), real Fortran-vs-JAX kernel comparison (CPU+GPU),
 real full-physics-chain GPU comparison (rolled in from a parallel session),
 `visualize_p2saom40_kernel_maps.ipynb`, the slide deck + PDF, the doc
-consolidation (5 docs → 1, deck merge, stale-figure cleanup throughout), and
-the `mantle/` file reorg (dependency-mapped first, then executed).
+consolidation (5 docs → 1, deck merge, stale-figure cleanup throughout), the
+`mantle/` file reorg (dependency-mapped first, then executed), and the GPU
+optimization work (dispatch fusion + fixing the CPU/GPU measurement bug) —
+full chain now genuinely 4.2× faster on GPU, target cleared.
 
 **Still open** (see `STATUS.md` "Open items" for the technical ones):
 1. SEAICE + ATURB placeholder physics — recommended next, not started
-   (explicitly deprioritized again this session — user said "we will not do
-   1-3" when offered this alongside the reorg).
+   (explicitly deprioritized this session — user said "we will not do 1-3"
+   when offered this alongside the reorg, choosing the GPU optimization work
+   instead).
 2. Wind-speed convention bug — fixed locally in `p2saom40_driver.py`, not in
    the shared module files. (Also deprioritized this session.)
 3. Real spectral radiation (SOCRATES) and atmospheric dynamics/`CONDSE`
    remain entirely unported/untimed. (Also deprioritized this session.)
 4. ~~The `mantle/` file reorg~~ — **done**, see above.
+5. ~~Get the full physics-chain GPU speedup above 2×~~ — **done**, see above
+   and STATUS.md's "GPU optimization: Phase 1" section.
 
 ## How to resume cold
 
