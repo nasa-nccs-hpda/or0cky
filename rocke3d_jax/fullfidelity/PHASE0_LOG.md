@@ -91,3 +91,10 @@ Findings from the dumps (step 33312): dynamics runs *before* CONDSE (pre_condse
 state != restart state); SURFACE changes T by ≤0.28 K, Q ≤2.9e-3, U/V ≤4 m/s
 across the column (that is real ATURB acting on all layers, not just layer 1);
 the phase-2 ATM_DIFFUS slot changes nothing (dummy, as documented).
+
+## 2026-09-24: chaos noise floor measured (gate item 3 — DONE)
+Perturbed-T (±1 ulp) 5-day run vs unperturbed: see FULL_FIDELITY_DELTAS.md D3.
+Recipe: copy `fort.1.nc`, add `nextafter` ±1ulp noise to `t` with netCDF4 in
+r+ mode, run as for the reproducibility run. ~16 min.
+**Phase 0 gate: PASSED** — oracle reproducible, hooks non-perturbing,
+noise floor known, first Track A delta (D2) measured.

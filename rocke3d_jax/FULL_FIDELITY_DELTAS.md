@@ -53,7 +53,28 @@ flux→tendency coupling; locating the dominant term is the first Phase-1
 diagnostic (per-term comparison against dumped Fortran fluxes, which need a
 further dump hook in SURFACE).
 
+## D3 — Chaos noise floor of the real model (5 days, 240 steps)
+Real Fortran twice from 1950-11-26, second time with T perturbed by ±1 ulp
+(float64, ~6e-14) everywhere. After 5 days (restart at 1950-12-01):
+
+| Field (layer 1 unless noted) | Pointwise RMS diff | Global-mean diff | Zonal-mean RMS diff | Field std |
+|---|---|---|---|---|
+| T | 0.048 K | 1.4e-4 K | 0.007 K | 2.74 K |
+| U | 0.36 m/s | 0.011 m/s | 0.057 m/s | 6.5 m/s |
+| Q | 1.8e-4 | 8.8e-6 | 3.4e-5 | 5.9e-3 |
+| T layer 21 | 0.058 K | 3.9e-3 K | 0.012 K | 1.55 K |
+Whole column (all layers): T rms 0.27 K (max 5.5 K), U/V rms 0.74 m/s (max 12.8),
+p rms 0.33 hPa (max 2.2 hPa). Restart: only 36/257 variables stay bitwise identical.
+
+**Use:** a rounding-level difference grows to ~1–3% of field variability
+pointwise in 5 days, while global and zonal means stay within ~1e-3–1e-2 of
+that. F2 acceptance must therefore be on statistics (global/zonal means,
+spectra, RMSE relative to this floor), not pointwise equality; any port whose
+5-day pointwise error is ≲ this floor is indistinguishable from Fortran
+rounding. Each single-step (F1) comparison is deterministic (floor = 0), see D2.
+Script/data: perturbed run recipe in `fullfidelity/PHASE0_LOG.md`; compare with
+`compare_restarts.py`.
+
 ## Pending rows
-- D3: chaos noise floor (perturbed-Fortran divergence) — run in progress.
 - D4: per-routine F0 rows as ATURB / PBL Newton / GHY land (Phase 1).
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
