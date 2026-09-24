@@ -572,6 +572,32 @@ between both runs. No further optimization iteration was needed — the
 `fori_loop`/`compute_pk_pek` fallback ideas noted earlier turned out to be
 unnecessary once the measurement itself was fixed.
 
+## Track B: full-fidelity port (branch `full-fidelity-port`, started 2026-09-24)
+
+HQ asked for a port that can be defended against the real Fortran. Plan: `FULL_FIDELITY_PLAN.md`;
+measured differences vs. the earlier ("Track A") representative driver: `FULL_FIDELITY_DELTAS.md`;
+working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Track A** and unchanged.
+
+**What is established so far (all against the real ModelE executable, not stand-ins):**
+- The real P2SAoM40 model builds and runs here (ifort 19.1.3 + NetCDF, recipe in
+  `fullfidelity/env_modele.sh`); a 5-day re-run reproduces the original restart **byte-for-byte**.
+  Instrumented copies with dump hooks do not perturb results (256/257 restart fields bitwise; the 257th is
+  wall-clock timing).
+- **Track A's DRYCNV is not part of the real model**: the P2SAoM40 executable has no DRYCNV; free-
+  atmosphere mixing is ATURB. Track A's DRYCNV benchmark is therefore a stand-alone kernel result only.
+- Track A's one-step surface answer is ~13× farther from real Fortran than doing nothing (layer-1 T error
+  0.36 K vs. 0.027 K signal), not fixed by real SST; it also used approximated constants (deltx, g, R).
+- **Track B ports validated at float64 rounding level against real Fortran call records:**
+  ATURB (T, Q, TKE, PBL height, U/V B-grid diffusion, A-grid winds; 3 dates, max error 1e-12 K / 1e-14 m/s,
+  `aturb_ff.py`, `aturb_uv_ff.py`) and PBL `advanc` (surface layer; 27.5k calls on 4 surface types, worst
+  max-abs/rms 5e-11, `pbl_ff.py`). 19 tests (with mutation checks).
+- Chaos noise floor of the real model: a 1-ulp perturbation grows to 0.27 K RMS / 0.74 m/s in 5 days
+  (global means agree to ~1e-3–1e-2 of that): multi-day comparisons must be statistical.
+
+**Not done yet (so no whole-model fidelity claim can be made):** SURFACE tile-flux logic, GHY (land),
+SEAICE/LAKES/LANDICE thermodynamics, radiation (SOCRATES), clouds/moist convection, atmospheric
+dynamics, ocean. No speed numbers for Track B yet (only float64 CPU correctness runs).
+
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 
 Goal: ≥5× on the Python implementations, accuracy held. "Anything goes" —
