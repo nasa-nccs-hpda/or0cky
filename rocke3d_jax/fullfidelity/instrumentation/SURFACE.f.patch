@@ -1,0 +1,111 @@
+--- SURFACE.f.orig	2026-09-24 13:10:18.926614059 -0400
++++ SURFACE.f	2026-09-24 13:15:00.136143948 -0400
+@@ -172,6 +172,7 @@
+      *     ,PEARTH
+ 
+       REAL*8 MA1, MSI1, MICE(2), SNOWL(2)
++      REAL*8 srec(90)
+ 
+ !@var XXX_sv temporary arrays to store the values of fluxes for
+ !@+   the current surface timestep for a few flux diagnostics that
+@@ -601,6 +602,49 @@
+       EVHDT=0.
+       TRHDT=0.
+       F1DT=0.
++      srec=-1d300
++      srec(1)=I
++      srec(2)=J
++      srec(3)=ITYPE
++      srec(4)=NS
++      srec(5)=PTYPE
++      srec(6)=TG1
++      srec(7)=TG2
++      srec(8)=TR4
++      srec(9)=SNOW
++      srec(10)=MSI2
++      srec(11)=dF1dTG
++      srec(12)=HCG1
++      srec(13)=HCG2
++      srec(14)=FSRI(1)
++      srec(15)=FSRI(2)
++      srec(16)=SRHEAT
++      srec(17)=ELHX
++      srec(18)=uocean
++      srec(19)=vocean
++      srec(20)=sss(i,j)
++      srec(21)=PS
++      srec(22)=MA1
++      srec(23)=Q1
++      srec(24)=THV1
++      srec(25)=TRHR(0,I,J)
++      srec(26)=dtsurf
++      srec(27)=FLAKE(I,J)
++      srec(28)=FOCEAN(I,J)
++      srec(29)=EVAPLIM
++      srec(30)=HTLIM
++      srec(31)=atmocn%E0(I,J)
++      srec(32)=atmocn%EVAPOR(I,J)
++      srec(33)=byMA(1,I,J)
++      srec(34)=SSI(1,I,J)
++      srec(35)=SSI(2,I,J)
++      srec(36)=0
++      if (si_atm%FLAG_DSWS(I,J)) srec(36)=1
++      srec(37)=TGO
++      srec(38)=MWL(I,J)
++      srec(39)=GML(I,J)
++      srec(40)=AXYP(I,J)
++      srec(81)=asflx(itype)%TRUP_in_rad(I,J)
+ 
+       TG=TG1+TF
+       QG_SAT=QSAT(TG,ELHX,PS)
+@@ -658,6 +702,19 @@
+       TS=pbl_args%TSV/(1.+QSRF*xdelt)
+ C =====================================================================
+ 
++      srec(41)=us
++      srec(42)=vs
++      srec(43)=ws
++      srec(44)=gusti
++      srec(45)=qsrf
++      srec(46)=CM
++      srec(47)=CH
++      srec(48)=CQ
++      srec(49)=TS
++      srec(50)=pbl_args%dskin
++      srec(51)=pbl_args%tprime
++      srec(52)=pbl_args%qprime
++      srec(53)=pbl_args%tsv
+ C**** Adjust ground variables to account for skin effects
+       TG = TG + pbl_args%dskin
+       QG_SAT=QSAT(TG,ELHX,PS)
+@@ -842,6 +899,30 @@
+       asflx(itype)%DMVA(I,J) = asflx(itype)%DMVA(I,J) + DMVA_IJ*DTSURF
+       asflx(itype)%uflux1(i,j) = DMUA_IJ
+       asflx(itype)%vflux1(i,j) = DMVA_IJ
++      srec(60)=TG1
++      srec(61)=TGRN2(ITYPE,I,J)
++      srec(62)=TR4
++      srec(63)=asflx(itype)%DTH1(I,J)
++      srec(64)=asflx(itype)%DQ1(I,J)
++      srec(65)=DMUA_IJ
++      srec(66)=DMVA_IJ
++      srec(67)=SHDT
++      srec(68)=EVHDT
++      srec(69)=TRHDT
++      srec(70)=EVAP
++      srec(71)=F0DT
++      srec(72)=F1DT
++      srec(73)=QG_SAT
++      srec(74)=TG
++      srec(75)=RCDMWS
++      srec(76)=RHOSRF
++      srec(77)=DQ1X
++      srec(78)=dLWDT
++      srec(79)=0
++      if (lim_lake_evap) srec(79)=1
++      srec(80)=0
++      if (lim_dew) srec(80)=1
++      call ffdump_surf(srec,90)
+ 
+ C****
+ C**** SAVE SOME TYPE DEPENDENT FLUXES/DIAGNOSTICS

@@ -10,6 +10,7 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch MODELE.f  < <this dir>/MODELE.f.patch      # pre/post SURFACE call sites
     patch ATURB.f   < <this dir>/ATURB.f.patch       # entry/exit dumps of atm_diffus (ffa_* files)
     patch PBL_DRV.f < <this dir>/PBL_DRV.f.patch     # one record per PBL call (ffp_* files)
+    patch SURFACE.f < <this dir>/SURFACE.f.patch     # one record per ocean/ice tile (ffs_* files)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -45,3 +46,7 @@ PBL dumps: `ffp_<itime>.bin`, one 154-double big-endian record per PBL call (all
 (inputs 1-89: i,j,itype,ihc, pbl_args inputs, profiles; outputs 90-154). Read with
 `np.fromfile(path,'>f8').reshape(-1,154)`. `ffa_consts.txt` also holds tf, stbo, lhs, mrat, rvap, ...
 Note: fixed-form source, keep every added line <= 72 columns.
+
+SURFACE tile dumps: `ffs_<itime>.bin`, 90-double big-endian records, one per ocean (itype 1) or sea-ice
+(itype 2) tile per surface substep (~7k/step). Columns: see srec(1..81) in SURFACE.f.patch
+(inputs at BL entry, PBL outputs, tile outputs). Entries not set for a tile type hold -1e300 or stale values.

@@ -116,5 +116,15 @@ Bug caught by validation: `b123=b1**(2./3.)` uses a REAL*4 exponent in the Fortr
 7.19512273); using the "obvious" double value gave 1e-7 errors; found and fixed via the test data.
 Tests: `fullfidelity/tests/test_pbl_ff.py` (stratified samples, 3 dates; incl. mutation checks).
 
+## D6 — Track B SURFACE ocean/lake + sea-ice tile fluxes vs real Fortran, F0
+`fullfidelity/surface_tile_ff.py`: skin-effect ground adjustment, sensible/latent/thermal fluxes
+(explicit for water, implicit two-layer for sea ice), evaporation/dew/lake limits, and the atmosphere-facing
+outputs (DTH1, DQ1, DMUA, DMVA). 6 steps × 3 dates = 41.9k tile records (5.4k ocean+lake, 1.6k ice per step).
+Outputs: 12 of 19 fields **bitwise equal** to Fortran, the rest ≤ 2e-10 absolute on values of 1e4–1e5 (J/m²);
+temperatures ≤ 7e-15 K; DTH1 ≤ 2e-15. Tests: `fullfidelity/tests/test_surface_tile_ff.py` (7, with mutation checks).
+**Coverage gap (stated, not hidden):** the lake-evaporation limit, dew limit, lake heat-flux limit and the
+ice-melt clip (`TG1+dTG>0`) never trigger in these dumps, so those branches are transcribed but unvalidated.
+Ice thermal properties (dF1dTG, HCG1, HCG2, FSRI: SEAICE.f `alami`, `dEidTiws`, `solar_ice_frac`) are inputs here.
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
