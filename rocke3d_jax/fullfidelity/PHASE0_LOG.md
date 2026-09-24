@@ -81,3 +81,13 @@ in a scratch dir with `gmake -C decks RUN=P2SAoM40 <copy>/model/P2SAoM40.bin`
 Dump hooks will be added in that copy only. ATM_DRV.f `atm_phase1` and
 MODELE.f main loop give the natural hook points (before/after CONDSE, RADIA,
 SURFACE, ATM_DIFFUS).
+
+## 2026-09-24: instrumented ModelE built and validated (gate item 2 — PASSED)
+Dump hooks (`instrumentation/*.patch`, recipe in `instrumentation/build_and_run.md`)
+built in a scratch copy in ~1 min. Instrumented vs original binary, 6 steps:
+restart 256/257 bitwise identical (only wall-clock `cputime` differs) — the
+hooks do not perturb results. Dumps read with `ffdump_reader.py`.
+Findings from the dumps (step 33312): dynamics runs *before* CONDSE (pre_condse
+state != restart state); SURFACE changes T by ≤0.28 K, Q ≤2.9e-3, U/V ≤4 m/s
+across the column (that is real ATURB acting on all layers, not just layer 1);
+the phase-2 ATM_DIFFUS slot changes nothing (dummy, as documented).

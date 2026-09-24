@@ -1,0 +1,12 @@
+--- MODELE.f.orig	2026-09-24 11:47:46.987572951 -0400
++++ MODELE.f	2026-09-24 11:47:47.286303406 -0400
+@@ -329,7 +329,9 @@
+ 
+ C**** CALCULATE SURFACE FLUXES (and, for now, this procedure
+ C**** also drives "surface" components that are on the atm grid)
++      call ffdump('pre_surface')
+       CALL SURFACE
++      call ffdump('post_surface')
+       call stopTimer('Surface')
+          CALL TIMER (NOW,MSURF)
+ 

@@ -1,0 +1,92 @@
+--- ATM_DRV.f.orig	2026-09-24 11:47:46.977138257 -0400
++++ ATM_DRV.f	2026-09-24 11:47:47.235519835 -0400
+@@ -261,7 +261,9 @@
+          CALL TIMER (NOW,MSURF)
+ 
+ C**** CONDENSATION, SUPER SATURATION AND MOIST CONVECTION
++      call ffdump('pre_condse')
+       CALL CONDSE
++      call ffdump('post_condse')
+          CALL CHECKT ('CONDSE')
+          CALL TIMER (NOW,MCNDS)
+ #ifndef SCM
+@@ -272,6 +274,7 @@
+ C**** RADIATION, SOLAR AND THERMAL
+       MODRD=MOD(Itime-ItimeI,NRAD)
+       CALL RADIA
++      call ffdump('post_radia')
+          CALL CHECKT ('RADIA ')
+          CALL TIMER (NOW,MRAD)
+ #ifndef SCM
+@@ -455,7 +458,9 @@
+ 
+ C**** IF ATURB is used in rundeck then this is a dummy call
+ C**** CALCULATE DRY CONVECTION ABOVE PBL
++      call ffdump('pre_aturb')
+       CALL ATM_DIFFUS (2,LM-1,dtsrc)
++      call ffdump('post_aturb')
+          CALL CHECKT ('DRYCNV')
+          CALL TIMER (NOW,MSURF)
+          IF (MODD5S.EQ.0) CALL DIAGCA (9)
+@@ -1963,3 +1968,61 @@
+       return
+       end subroutine accum_subdd_atm
+ #endif
++
++      subroutine ffdump(tag)
++!@sum full-fidelity-port instrumentation: write prognostic state
++!@+   to stream files when env FFD_START/FFD_NSTEP select this itime
++      use model_com, only : itime
++      use atm_com, only : ma,u,v,t,q,qcl,qci,p,pk,pmid,pedn,pdsig
++      implicit none
++      character(len=*) :: tag
++      integer, save :: it0=-1, nst=0, init=0
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A,A,A)') 'ffd_',itime,'_',trim(tag),'.bin'
++      fu=987
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      call ffw3('MA',ma)
++      call ffw3('U',u)
++      call ffw3('V',v)
++      call ffw3('T',t)
++      call ffw3('Q',q)
++      call ffw3('QCL',qcl)
++      call ffw3('QCI',qci)
++      call ffw3('PK',pk)
++      call ffw3('PMID',pmid)
++      call ffw3('PEDN',pedn)
++      call ffw3('PDSIG',pdsig)
++      call ffw2('P',p)
++      close(fu)
++      contains
++      subroutine ffw3(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 3, lbound(a,1),lbound(a,2),lbound(a,3),
++     &     ubound(a,1),ubound(a,2),ubound(a,3)
++      write(fu) a
++      end subroutine ffw3
++      subroutine ffw2(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 2, lbound(a,1),lbound(a,2),1,
++     &     ubound(a,1),ubound(a,2),1
++      write(fu) a
++      end subroutine ffw2
++      end subroutine ffdump
