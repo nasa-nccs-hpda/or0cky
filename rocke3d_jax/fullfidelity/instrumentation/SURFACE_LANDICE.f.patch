@@ -1,0 +1,81 @@
+--- SURFACE_LANDICE.f.orig	2026-09-24 13:28:52.869514899 -0400
++++ SURFACE_LANDICE.f	2026-09-24 13:28:54.375258678 -0400
+@@ -76,6 +76,7 @@
+      *     ,FSRI(2),dlwdt,TGO
+ 
+       REAL*8 MA1
++      REAL*8 lrec(60), tg1_0, tr4_0
+       REAL*8, PARAMETER :: qmin=1.d-12
+       REAL*8, PARAMETER :: Z2LI3L=Z2LI/(3.*ALAMI0), Z1LIBYL=Z1E/ALAMI0
+       REAL*8, EXTERNAL :: QSAT
+@@ -270,6 +271,8 @@
+       ! (Needed for Stefan-Boltzmann Law)
+       ! GTEMPR radiative ground temperature over surface type (K)
+       TR4=igla%TGR4(I,J)
++      tg1_0=TG1
++      tr4_0=TR4
+ 
+       ! SRHEAT = Solar Heating
+       ! FSF = Solar Forcing over each type (W/m^2)
+@@ -363,6 +366,35 @@
+       TS=pbl_args%TSV/(1.+QSRF*xdelt)
+ C =====================================================================
+ 
++      lrec=-1d300
++      lrec(1)=I
++      lrec(2)=J
++      lrec(3)=IHC
++      lrec(4)=PTYPE
++      lrec(5)=tg1_0
++      lrec(6)=igla%GTEMP2(I,J)
++      lrec(7)=tr4_0
++      lrec(8)=SNOW
++      lrec(9)=SRHEAT
++      lrec(10)=PS
++      lrec(11)=MA1
++      lrec(12)=Q1
++      lrec(13)=igla%flong(I,J)
++      lrec(14)=dtsurf
++      lrec(15)=igla%TRUP_in_rad(I,J)
++      lrec(16)=us
++      lrec(17)=vs
++      lrec(18)=ws
++      lrec(19)=gusti
++      lrec(20)=qsrf
++      lrec(21)=CM
++      lrec(22)=CH
++      lrec(23)=CQ
++      lrec(24)=TS
++      lrec(25)=pbl_args%dskin
++      lrec(26)=pbl_args%tprime
++      lrec(27)=pbl_args%qprime
++      lrec(28)=pbl_args%tsv
+ C**** Adjust ground variables to account for skin effects
+       ! TG comes from the landice model.
+       TG = TG + pbl_args%dskin
+@@ -538,6 +570,25 @@
+ !unused      igla%DMVA(I,J) = igla%DMVA(I,J) + DMVA_IJ*DTSURF
+       igla%uflux1(i,j) = RCDMWS*US
+       igla%vflux1(i,j) = RCDMWS*VS
++      lrec(30)=igla%TGRND(I,J)
++      lrec(31)=igla%DTH1(I,J)
++      lrec(32)=igla%DQ1(I,J)
++      lrec(33)=igla%uflux1(i,j)
++      lrec(34)=igla%vflux1(i,j)
++      lrec(35)=SHDT
++      lrec(36)=EVHDT
++      lrec(37)=TRHDT
++      lrec(38)=EVAP
++      lrec(39)=F0DT
++      lrec(40)=F1DT
++      lrec(41)=dLWDT
++      lrec(42)=DQ1X
++      lrec(43)=QG_SAT
++      lrec(44)=TG
++      lrec(45)=RCDMWS
++      lrec(46)=0
++      if (lim_dew) lrec(46)=1
++      call ffdump_li(lrec,60)
+ 
+ 
+       ! demo diagnostic: a PBL output

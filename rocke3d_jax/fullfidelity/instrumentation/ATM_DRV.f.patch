@@ -1,5 +1,5 @@
 --- ATM_DRV.f.orig	2026-09-24 11:47:46.977138257 -0400
-+++ ATM_DRV.f	2026-09-24 13:10:41.691567023 -0400
++++ ATM_DRV.f	2026-09-24 13:28:54.847131370 -0400
 @@ -261,7 +261,9 @@
           CALL TIMER (NOW,MSURF)
  
@@ -28,7 +28,7 @@
           CALL CHECKT ('DRYCNV')
           CALL TIMER (NOW,MSURF)
           IF (MODD5S.EQ.0) CALL DIAGCA (9)
-@@ -1963,3 +1968,292 @@
+@@ -1963,3 +1968,321 @@
        return
        end subroutine accum_subdd_atm
  #endif
@@ -321,3 +321,32 @@
 +      endif
 +      write(fu) rec
 +      end subroutine ffdump_surf
++
++      subroutine ffdump_li(rec,nrec)
++!@sum full-fidelity-port instrumentation: append one land-ice tile record
++      use model_com, only : itime
++      implicit none
++      integer :: nrec
++      real*8 :: rec(nrec)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=993
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffl_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) rec
++      end subroutine ffdump_li

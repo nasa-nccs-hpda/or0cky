@@ -129,5 +129,11 @@ match the model's own values on all 9,048 ice tiles (dF1dTG/HCG1/HCG2 bitwise; F
 (`surface_chain_ff.py`, no recorded PBL outputs used): PBL advanc → tile fluxes reproduces the tile outputs to
 ≤ 6e-11 of their spread (DTH1, DQ1, DMUA, DMVA, SHDT, EVHDT, TRHDT, EVAP).
 
+## D7 — Track B land-ice tile (SURFACE_LANDICE.f) vs real Fortran, F0
+`fullfidelity/landice_tile_ff.py`: implicit two-layer land-ice surface fluxes and atmosphere-facing
+outputs. 6 steps × 692 real tile records. Temperatures ≤ 7e-15 K, momentum fluxes bitwise, energy terms
+≤ 6e-11 J/m² on values of 1e4 (all ≥ 1e-15 relative), DTH1 ≤ 4e-16. Tests: `tests/test_landice_tile_ff.py`
+(with mutation checks). Coverage gap: dew-limit branch never triggered (transcribed, unvalidated).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
