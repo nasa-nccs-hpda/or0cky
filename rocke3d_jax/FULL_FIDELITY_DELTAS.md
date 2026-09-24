@@ -79,7 +79,7 @@ Script/data: perturbed run recipe in `fullfidelity/PHASE0_LOG.md`; compare with
 `fullfidelity/aturb_ff.py` (float64 transcription of ATURB.f/PBL.f/TRIDIAG.f, not the old
 placeholder). Inputs = the real model's own ATURB entry state and fluxes (dumps);
 output compared with the real exit state. 4 calls (2 steps × NIsurf=2), all 3312 columns
-(polar duplicates masked). Tests: `fullfidelity/tests/test_aturb_ff.py`.
+(polar duplicates masked), on three dates (1950-11-26, 12-01, 01-01: different seasons). Tests: `fullfidelity/tests/test_aturb_ff.py`.
 
 | Output | max abs error | Fortran signal (RMS change) | Bitwise-equal cells |
 |---|---|---|---|
@@ -90,8 +90,9 @@ output compared with the real exit state. 4 calls (2 steps × NIsurf=2), all 331
 | PBL top level (dclev) | 0 | — | 100 % |
 Error is ~10 orders of magnitude below the signal and at float64 rounding level (~1e-15 relative).
 Mutation checks (tests fail if wrong): deltx 0.608 → T err 6e-5 K, e err 3e-3; g=9.81 →
-pblht err 1.3 m; b1=19.0 → e err 0.32. **Not yet exercised:** `kmmin` clamp (never binds in
-these steps), other seasons/hemispheres; U/V B-grid diffusion (next).
+pblht err 1.3 m; b1=19.0 → e err 0.32. Velocity grid (`aturb_uv_ff.py`: regrid to B-grid, U/V diffusion, A-grid wind recompute incl. polar rotation):
+U,V,UA,VA max error 1.4e-14 m/s vs Fortran change 0.06 m/s RMS (96 % of cells bitwise equal). 15 tests pass
+(incl. 3 mutation checks). **Not yet exercised:** `kmmin` clamp never binds in these steps.
 Byproduct: Track A used deltx=0.608, g=9.81, R=287 (real planet config: 0.60785…, 9.80665, 287.0487).
 
 ## Pending rows

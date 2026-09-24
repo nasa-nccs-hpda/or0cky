@@ -98,3 +98,8 @@ Recipe: copy `fort.1.nc`, add `nextafter` ±1ulp noise to `t` with netCDF4 in
 r+ mode, run as for the reproducibility run. ~16 min.
 **Phase 0 gate: PASSED** — oracle reproducible, hooks non-perturbing,
 noise floor known, first Track A delta (D2) measured.
+
+## 2026-09-24: Phase 1 item 1 DONE — ATURB fully ported (T, Q, TKE, PBL, U/V) at rounding level
+See FULL_FIDELITY_DELTAS.md D4. Test data: ff_data/{nov26,dec01,jan01} (untracked, 1 GB;
+regenerate with instrumentation/build_and_run.md). `ffa_geom.txt`/`ffa_consts.txt` are
+written by the instrumented model on first ATURB call.

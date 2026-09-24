@@ -12,8 +12,11 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-DATA = os.environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26_steps0-1")
-have = os.path.exists(f"{DATA}/ffa_33312_c1_in.bin")
+FF = os.environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
+DATA = f"{FF}/nov26"
+CASES = [("nov26", "33312_c1"), ("nov26", "33313_c2"), ("dec01", "33552_c1"), ("dec01", "33553_c2"),
+         ("jan01", "17520_c1"), ("jan01", "17521_c2")]
+have = os.path.exists(f"{DATA}/ffa_33312_c1_in.bin") and os.path.exists(f"{FF}/jan01/ffa_17520_c1_in.bin")
 pytestmark = pytest.mark.skipif(not have, reason="real-Fortran ATURB dumps not available")
 
 import aturb_ff as A          # noqa: E402  (enables x64)
@@ -41,9 +44,9 @@ def test_constants_match_running_model():
         assert mine == pytest.approx(c[k], rel=1e-14, abs=0), k
 
 
-@pytest.mark.parametrize("tag", ["33312_c1", "33312_c2", "33313_c1", "33313_c2"])
-def test_tq_e_pbl_match_fortran_to_rounding(tag):
-    rows = K.run(f"{DATA}/ffa_{tag}_in.bin", f"{DATA}/ffa_{tag}_out.bin")
+@pytest.mark.parametrize("case,tag", CASES)
+def test_tq_e_pbl_match_fortran_to_rounding(case, tag):
+    rows = K.run(f"{FF}/{case}/ffa_{tag}_in.bin", f"{FF}/{case}/ffa_{tag}_out.bin")
     # non-vacuity: the Fortran routine actually changed the state
     assert rows["t"]["fortran_change_rms"] > 1e-3
     assert rows["e"]["fortran_change_rms"] > 1e-2
@@ -55,6 +58,30 @@ def test_tq_e_pbl_match_fortran_to_rounding(tag):
     assert rows["pblht"]["max_abs"] < 1e-9
     assert rows["pblptop"]["max_abs"] < 1e-9
     assert rows["dclev"]["max_abs"] == 0.0
+
+
+@pytest.mark.parametrize("case,tag", CASES)
+def test_uv_grid_diffusion_and_agrid_winds_match_fortran(case, tag):
+    rows = K.run_full(f"{FF}/{case}/ffa_{tag}_in.bin", f"{FF}/{case}/ffa_{tag}_out.bin")
+    for k in ("U", "V", "UA", "VA"):
+        assert rows[k]["fortran_change_rms"] > 1e-2, k        # non-vacuous: real change
+        assert rows[k]["max_abs"] < 1e-10, k                   # observed <=1.4e-14 m/s
+
+
+def test_geometry_matches_model():
+    import aturb_uv_ff as UV
+    g = UV.geometry()
+    cur, d = None, {}
+    for line in open(f"{DATA}/ffa_geom.txt"):
+        line = line.strip()
+        if not line or line.startswith("im_jm"):
+            continue
+        if line[0].isalpha():
+            cur = line; d[cur] = []
+        else:
+            d[cur].append(float(line))
+    for k in ("rapvs", "rapvn", "cosiv", "siniv"):
+        assert np.abs(np.array(d[k]) - g[k]).max() < 1e-15, k
 
 
 def test_mutations_are_detected():

@@ -65,3 +65,37 @@ if __name__ == "__main__":
     rows = run(f"{dd}/ffa_{tag}_in.bin", f"{dd}/ffa_{tag}_out.bin")
     for k, r in rows.items():
         print(f"{k:8s} " + "  ".join(f"{a}={b:.3e}" for a, b in r.items()))
+
+
+def run_full(path_in, path_out):
+    """A-grid part + velocity-grid diffusion + A-grid wind recompute vs real Fortran."""
+    import aturb_uv_ff as UV
+    args, dt, din = load_inputs(path_in)
+    dout = read_dump(path_out, 1)
+    m = valid_mask(args["T"].shape[:2])
+    for k in ("UFLUX1", "VFLUX1", "TFLUX1", "QFLUX1", "TSAVG", "QSAVG"):
+        args[k] = np.where(m, args[k], {"TSAVG": 280.0, "QSAVG": 0.0}.get(k, 1e-3))
+    res = A.aturb_grid(**{k: jnp.asarray(v) for k, v in args.items()}, dtime=dt)
+    geo = UV.geometry()
+    U = jnp.asarray(np.transpose(din["U"], (1, 0, 2))); V = jnp.asarray(np.transpose(din["V"], (1, 0, 2)))
+    Un, Vn = UV.diffuse_uv(U, V, res["uflxa"], res["vflxa"], res["km"], res["uw_nl"], res["vw_nl"],
+                           res["rho"], res["rhoe"], res["dz"], res["dze"], dt, geo)
+    ua, va = UV.recalc_agrid_uv(Un, Vn, geo)
+    ref = {"U": np.transpose(dout["U"], (1, 0, 2)), "V": np.transpose(dout["V"], (1, 0, 2)),
+           "UA": np.transpose(dout["UALIJ"], (2, 1, 0)), "VA": np.transpose(dout["VALIJ"], (2, 1, 0))}
+    got = {"U": Un, "V": Vn, "UA": ua, "VA": va}
+    ini = {"U": np.transpose(din["U"], (1, 0, 2)), "V": np.transpose(din["V"], (1, 0, 2)),
+           "UA": np.transpose(din["UALIJ"], (2, 1, 0)), "VA": np.transpose(din["VALIJ"], (2, 1, 0))}
+    rows = {}
+    for k, r in ref.items():
+        g = np.asarray(got[k])
+        mm = np.ones(r.shape, bool)
+        if k in ("U", "V"):
+            mm[0] = False                    # row J=1 is not a velocity row (unchanged)
+        else:
+            mm = np.broadcast_to(m[..., None], r.shape)
+        d = (g - r)[mm]
+        ch = (r - ini[k])[mm]
+        rows[k] = dict(max_abs=float(np.abs(d).max()), rms=float(np.sqrt((d ** 2).mean())),
+                       fortran_change_rms=float(np.sqrt((ch ** 2).mean())), n_exact=float((d == 0).mean()))
+    return rows
