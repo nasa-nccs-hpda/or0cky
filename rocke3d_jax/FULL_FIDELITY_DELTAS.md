@@ -75,6 +75,24 @@ rounding. Each single-step (F1) comparison is deterministic (floor = 0), see D2.
 Script/data: perturbed run recipe in `fullfidelity/PHASE0_LOG.md`; compare with
 `compare_restarts.py`.
 
+## D4 — Track B ATURB (A-grid: T, Q, TKE, PBL height) vs real Fortran, F0
+`fullfidelity/aturb_ff.py` (float64 transcription of ATURB.f/PBL.f/TRIDIAG.f, not the old
+placeholder). Inputs = the real model's own ATURB entry state and fluxes (dumps);
+output compared with the real exit state. 4 calls (2 steps × NIsurf=2), all 3312 columns
+(polar duplicates masked). Tests: `fullfidelity/tests/test_aturb_ff.py`.
+
+| Output | max abs error | Fortran signal (RMS change) | Bitwise-equal cells |
+|---|---|---|---|
+| T (K) | 7e-13 | 3.7e-3 K | 19–22 % |
+| Q | 9e-18 | 2.3e-5 | 98 % |
+| TKE e | 6e-15 | 7.9e-2 | 91 % |
+| PBL height (m) | 9e-13 | — | 83–85 % |
+| PBL top level (dclev) | 0 | — | 100 % |
+Error is ~10 orders of magnitude below the signal and at float64 rounding level (~1e-15 relative).
+Mutation checks (tests fail if wrong): deltx 0.608 → T err 6e-5 K, e err 3e-3; g=9.81 →
+pblht err 1.3 m; b1=19.0 → e err 0.32. **Not yet exercised:** `kmmin` clamp (never binds in
+these steps), other seasons/hemispheres; U/V B-grid diffusion (next).
+Byproduct: Track A used deltx=0.608, g=9.81, R=287 (real planet config: 0.60785…, 9.80665, 287.0487).
+
 ## Pending rows
-- D4: per-routine F0 rows as ATURB / PBL Newton / GHY land (Phase 1).
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
