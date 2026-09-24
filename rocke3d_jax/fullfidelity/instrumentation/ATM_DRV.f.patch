@@ -1,5 +1,5 @@
 --- ATM_DRV.f.orig	2026-09-24 11:47:46.977138257 -0400
-+++ ATM_DRV.f	2026-09-24 12:01:14.809928847 -0400
++++ ATM_DRV.f	2026-09-24 12:29:18.575550771 -0400
 @@ -261,7 +261,9 @@
           CALL TIMER (NOW,MSURF)
  
@@ -28,7 +28,7 @@
           CALL CHECKT ('DRYCNV')
           CALL TIMER (NOW,MSURF)
           IF (MODD5S.EQ.0) CALL DIAGCA (9)
-@@ -1963,3 +1968,139 @@
+@@ -1963,3 +1968,263 @@
        return
        end subroutine accum_subdd_atm
  #endif
@@ -94,6 +94,15 @@
 +      subroutine ffdump_aturb(tag,dtime)
 +!@sum full-fidelity-port instrumentation for ATURB (atm_diffus)
 +      use model_com, only : itime
++      use constant, only : grav,rgas,deltx,teeny,sha,mb2kg,lhe,by3,
++     &     tf,stbo,shv,lhs,omega2,rhows,visc_wtr_kin,mrat,rvap
++      use resolution, only : psf,pmtop,im,jm
++      use geom, only : rapvs,rapvn,ravps,ravpn,cosiv,siniv,dxyp,dxys,
++     &     dxyn,dxyv,rapj
++      use socpbl, only : kappa,zgs,prt,b1,b123,d1,d2,d3,d4,d5,
++     &     s0,s1,s2,s4,s5,s6,s7,s8,c1,c2,c3,c4,c5,rimax,gm_at_rimax,
++     &     ghmin,ghmax,emin,emax,k_max,kmmin,khmin,ustar_min,
++     &     lmonin_min,lmonin_max
 +      use atm_com, only : ma,u,v,t,q,pk,pek,pmid,pedn,pdsig,ualij,valij
 +      use pblcom, only : egcm,w2gcm,pblht,dclev,pblptop
 +      use fluxes, only : uflux1,vflux1,tflux1,qflux1,atmsrf
@@ -117,6 +126,92 @@
 +        if (itime.ne.lastit) ncall=0
 +        lastit=itime
 +        ncall=ncall+1
++      endif
++      if (init.eq.1) then
++        init=2
++        open(989,file='ffa_consts.txt',status='replace')
++        write(989,'(A,ES26.17E3)') 'grav ',grav
++        write(989,'(A,ES26.17E3)') 'rgas ',rgas
++        write(989,'(A,ES26.17E3)') 'deltx ',deltx
++        write(989,'(A,ES26.17E3)') 'teeny ',teeny
++        write(989,'(A,ES26.17E3)') 'sha ',sha
++        write(989,'(A,ES26.17E3)') 'mb2kg ',mb2kg
++        write(989,'(A,ES26.17E3)') 'lhe ',lhe
++        write(989,'(A,ES26.17E3)') 'lhs ',lhs
++        write(989,'(A,ES26.17E3)') 'tf ',tf
++        write(989,'(A,ES26.17E3)') 'mrat ',mrat
++        write(989,'(A,ES26.17E3)') 'rvap ',rvap
++        write(989,'(A,ES26.17E3)') 'stbo ',stbo
++        write(989,'(A,ES26.17E3)') 'shv ',shv
++        write(989,'(A,ES26.17E3)') 'omega2 ',omega2
++        write(989,'(A,ES26.17E3)') 'rhows ',rhows
++        write(989,'(A,ES26.17E3)') 'visc_wtr_kin ',visc_wtr_kin
++        write(989,'(A,ES26.17E3)') 'by3 ',by3
++        write(989,'(A,ES26.17E3)') 'psf ',psf
++        write(989,'(A,ES26.17E3)') 'pmtop ',pmtop
++        write(989,'(A,ES26.17E3)') 'kappa ',kappa
++        write(989,'(A,ES26.17E3)') 'zgs ',zgs
++        write(989,'(A,ES26.17E3)') 'prt ',prt
++        write(989,'(A,ES26.17E3)') 'b1 ',b1
++        write(989,'(A,ES26.17E3)') 'b123 ',b123
++        write(989,'(A,ES26.17E3)') 'd1 ',d1
++        write(989,'(A,ES26.17E3)') 'd2 ',d2
++        write(989,'(A,ES26.17E3)') 'd3 ',d3
++        write(989,'(A,ES26.17E3)') 'd4 ',d4
++        write(989,'(A,ES26.17E3)') 'd5 ',d5
++        write(989,'(A,ES26.17E3)') 's0 ',s0
++        write(989,'(A,ES26.17E3)') 's1 ',s1
++        write(989,'(A,ES26.17E3)') 's2 ',s2
++        write(989,'(A,ES26.17E3)') 's4 ',s4
++        write(989,'(A,ES26.17E3)') 's5 ',s5
++        write(989,'(A,ES26.17E3)') 's6 ',s6
++        write(989,'(A,ES26.17E3)') 's7 ',s7
++        write(989,'(A,ES26.17E3)') 's8 ',s8
++        write(989,'(A,ES26.17E3)') 'c1 ',c1
++        write(989,'(A,ES26.17E3)') 'c2 ',c2
++        write(989,'(A,ES26.17E3)') 'c3 ',c3
++        write(989,'(A,ES26.17E3)') 'c4 ',c4
++        write(989,'(A,ES26.17E3)') 'c5 ',c5
++        write(989,'(A,ES26.17E3)') 'rimax ',rimax
++        write(989,'(A,ES26.17E3)') 'gm_at_rimax ',gm_at_rimax
++        write(989,'(A,ES26.17E3)') 'ghmin ',ghmin
++        write(989,'(A,ES26.17E3)') 'ghmax ',ghmax
++        write(989,'(A,ES26.17E3)') 'emin ',emin
++        write(989,'(A,ES26.17E3)') 'emax ',emax
++        write(989,'(A,ES26.17E3)') 'k_max ',k_max
++        write(989,'(A,ES26.17E3)') 'kmmin ',kmmin
++        write(989,'(A,ES26.17E3)') 'khmin ',khmin
++        write(989,'(A,ES26.17E3)') 'ustar_min ',ustar_min
++        write(989,'(A,ES26.17E3)') 'lmonin_min ',lmonin_min
++        write(989,'(A,ES26.17E3)') 'lmonin_max ',lmonin_max
++        close(989)
++        open(990,file='ffa_geom.txt',status='replace')
++        write(990,'(A,2I6)') 'im_jm ',im,jm
++        write(990,'(A)') 'rapvs'
++        write(990,'(ES26.17E3)') rapvs(1:jm)
++        write(990,'(A)') 'rapvn'
++        write(990,'(ES26.17E3)') rapvn(1:jm)
++        write(990,'(A)') 'ravps'
++        write(990,'(ES26.17E3)') ravps(1:jm)
++        write(990,'(A)') 'ravpn'
++        write(990,'(ES26.17E3)') ravpn(1:jm)
++        write(990,'(A)') 'dxyp'
++        write(990,'(ES26.17E3)') dxyp(1:jm)
++        write(990,'(A)') 'dxys'
++        write(990,'(ES26.17E3)') dxys(1:jm)
++        write(990,'(A)') 'dxyn'
++        write(990,'(ES26.17E3)') dxyn(1:jm)
++        write(990,'(A)') 'dxyv'
++        write(990,'(ES26.17E3)') dxyv(1:jm)
++        write(990,'(A)') 'cosiv'
++        write(990,'(ES26.17E3)') cosiv(1:im)
++        write(990,'(A)') 'siniv'
++        write(990,'(ES26.17E3)') siniv(1:im)
++        write(990,'(A)') 'rapj_pole_s'
++        write(990,'(ES26.17E3)') rapj(1:im,1)
++        write(990,'(A)') 'rapj_mid'
++        write(990,'(ES26.17E3)') rapj(1:4,2)
++        close(990)
 +      endif
 +      write(fname,'(A,I0,A,I0,A,A,A)') 'ffa_',itime,'_c',ncall,'_',
 +     &     trim(tag),'.bin'
@@ -168,3 +263,32 @@
 +      write(fu) a
 +      end subroutine w2
 +      end subroutine ffdump_aturb
++
++      subroutine ffdump_pbl(rec,nrec)
++!@sum full-fidelity-port instrumentation: append one PBL call record
++      use model_com, only : itime
++      implicit none
++      integer :: nrec
++      real*8 :: rec(nrec)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=991
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffp_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) rec
++      end subroutine ffdump_pbl

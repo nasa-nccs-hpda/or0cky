@@ -95,5 +95,26 @@ U,V,UA,VA max error 1.4e-14 m/s vs Fortran change 0.06 m/s RMS (96 % of cells bi
 (incl. 3 mutation checks). **Not yet exercised:** `kmmin` clamp never binds in these steps.
 Byproduct: Track A used deltx=0.608, g=9.81, R=287 (real planet config: 0.60785…, 9.80665, 287.0487).
 
+## D5 — Track B PBL `advanc` (surface layer: drag, fluxes, skin effect) vs real Fortran, F0
+`fullfidelity/pbl_ff.py`: float64 transcription of PBL.f `advanc` — the 8-sublayer prognostic
+boundary layer with Newton-mapped log-linear grid, second-order-closure diffusivities, implicit
+q/T/u/v/e tridiagonal solves, ≤5-iteration ustar fixed point with under-relaxation, ocean skin
+temperature, Monin–Obukhov drag (dflux/getzhq/find_dpsim/find_dpsih). Track A replaced all of
+this with one fixed-point iteration on Monin–Obukhov similarity. Inputs = the real model's own
+`PBL` call arguments (every call in one step: **9,182 calls ×3 dates = 27.5k** incl. all four
+surface types 5418 ocean / 1566 sea-ice / 692 land-ice / 1506 land). `deltas_pbl_ff.json`.
+
+| Output (worst of 3 dates) | max abs error / RMS of output | relative error median | p99 |
+|---|---|---|---|
+| ustar, us, cm, ch, cq | ≤ 5e-11 | 1–3e-14 | ≤ 2.5e-12 |
+| surface fluxes u,v,t,q | ≤ 1e-10 | 4e-14 (T flux 3e-13) | ≤ 3e-11 |
+| khs, w2_1, dskin, tsv | ≤ 7e-11 | ≤ 1e-12 | ≤ 5e-11 |
+Floor check: perturbing the input `ztop` by 1e-15 relative changes outputs by the same amount
+(median 4e-14, max 5e-11) as the port-vs-Fortran discrepancy — the residual is the model's own
+float64 sensitivity (the Newton grid stops at data-dependent steps), not a port difference.
+Bug caught by validation: `b123=b1**(2./3.)` uses a REAL*4 exponent in the Fortran (7.19512315 vs
+7.19512273); using the "obvious" double value gave 1e-7 errors; found and fixed via the test data.
+Tests: `fullfidelity/tests/test_pbl_ff.py` (stratified samples, 3 dates; incl. mutation checks).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).

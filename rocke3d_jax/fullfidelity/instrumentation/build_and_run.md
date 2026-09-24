@@ -9,6 +9,7 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch ATM_DRV.f < <this dir>/ATM_DRV.f.patch     # adds ffdump + 5 call sites
     patch MODELE.f  < <this dir>/MODELE.f.patch      # pre/post SURFACE call sites
     patch ATURB.f   < <this dir>/ATURB.f.patch       # entry/exit dumps of atm_diffus (ffa_* files)
+    patch PBL_DRV.f < <this dir>/PBL_DRV.f.patch     # one record per PBL call (ffp_* files)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -38,3 +39,9 @@ MA,PK,PEK,PMID,PEDN,PDSIG (L,I,J); UFLUX1,VFLUX1,TFLUX1,QFLUX1,TSAVG,QSAVG,PBLHT
 DCLEV,PBLPTOP (I,J). NOTE: cells not computed by the model (polar i>1, halo)
 contain uninitialised garbage in the flux arrays (e.g. 3e208) - mask to valid
 cells (i=1 only at j=1 and j=JM) before comparing.
+
+PBL dumps: `ffp_<itime>.bin`, one 154-double big-endian record per PBL call (all tile types;
+~9.2k records/step). Column layout: see rec(1..154) assignments in PBL_DRV.f.patch
+(inputs 1-89: i,j,itype,ihc, pbl_args inputs, profiles; outputs 90-154). Read with
+`np.fromfile(path,'>f8').reshape(-1,154)`. `ffa_consts.txt` also holds tf, stbo, lhs, mrat, rvap, ...
+Note: fixed-form source, keep every added line <= 72 columns.

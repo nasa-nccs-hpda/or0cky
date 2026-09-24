@@ -103,3 +103,8 @@ noise floor known, first Track A delta (D2) measured.
 See FULL_FIDELITY_DELTAS.md D4. Test data: ff_data/{nov26,dec01,jan01} (untracked, 1 GB;
 regenerate with instrumentation/build_and_run.md). `ffa_geom.txt`/`ffa_consts.txt` are
 written by the instrumented model on first ATURB call.
+
+## 2026-09-24: Phase 1 item 2 DONE — PBL `advanc` ported (D5)
+27.5k real PBL calls (4 surface types, 3 dates): worst max-abs/rms 5e-11; residual equals the model's own
+float64 sensitivity. Test data ff_data/*/ffp_*.bin. Next: SURFACE tile-flux logic (ocean, sea-ice
+explicit/implicit fluxes), then GHY (land), SEAICE/LAKES thermodynamics, land ice.

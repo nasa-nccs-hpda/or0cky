@@ -1,0 +1,113 @@
+--- PBL_DRV.f.orig	2026-09-24 12:23:40.847762974 -0400
++++ PBL_DRV.f	2026-09-24 12:24:32.053561586 -0400
+@@ -154,6 +154,7 @@
+       real*8 :: AMPtrradius,AMPtrdens,AMPtrmass
+ #endif
+       real*8 dbls,ustar,lmonin
++      real*8 rec(154)
+       integer ldbls,ldbl
+ 
+       pbl_args%psurf = atm%srfp(i,j)
+@@ -327,6 +328,63 @@
+ 
+       dtdt_gcm = (pbl_args%tkv - t1_after_aturb(i,j)*
+      &     atm%srfpk(i,j))/pbl_args%dtsurf
++      rec(1)=i
++      rec(2)=j
++      rec(3)=itype
++      rec(4)=ihc
++      rec(5)=pbl_args%dtsurf
++      rec(6)=pbl_args%zs1
++      rec(7)=pbl_args%tgv
++      rec(8)=pbl_args%tkv
++      rec(9)=pbl_args%qg_sat
++      rec(10)=pbl_args%qg_aver
++      rec(11)=pbl_args%hemi
++      rec(12)=pbl_args%tr4
++      rec(13)=pbl_args%evap_max
++      rec(14)=pbl_args%fr_sat
++      rec(15)=pbl_args%uocean
++      rec(16)=pbl_args%vocean
++      rec(17)=pbl_args%psurf
++      rec(18)=pbl_args%trhr0
++      rec(19)=pbl_args%tg
++      rec(20)=pbl_args%elhx
++      rec(21)=pbl_args%qsol
++      rec(22)=pbl_args%sss_loc
++      rec(23)=0
++      if (pbl_args%ocean) rec(23)=1
++      rec(24)=0
++      if (pbl_args%ddml_eq_1) rec(24)=1
++      rec(25)=pbl_args%gusti
++      rec(26)=pbl_args%tdns
++      rec(27)=pbl_args%qdns
++      rec(28)=pbl_args%snow
++      rec(29)=pbl_args%dskin
++      rec(30)=pbl_args%dbl
++      rec(31)=pbl_args%khs
++      rec(32)=pbl_args%ug
++      rec(33)=pbl_args%vg
++      rec(34)=pbl_args%cm
++      rec(35)=pbl_args%ch
++      rec(36)=pbl_args%cq
++      rec(37)=coriol
++      rec(38)=utop
++      rec(39)=vtop
++      rec(40)=qtop
++      rec(41)=ztop
++      rec(42)=mdf
++      rec(43)=dpdxr
++      rec(44)=dpdyr
++      rec(45)=dpdxr0
++      rec(46)=dpdyr0
++      rec(47)=dtdt_gcm
++      rec(48)=u1_after_aturb(i,j)
++      rec(49)=v1_after_aturb(i,j)
++      rec(50)=z0m
++      rec(51:58)=upbl(1:8)
++      rec(59:66)=vpbl(1:8)
++      rec(67:74)=tpbl(1:8)
++      rec(75:82)=qpbl(1:8)
++      rec(83:89)=epbl(1:7)
+       call advanc( pbl_args,coriol,utop,vtop,qtop,ztop,mdf
+      &     ,dpdxr,dpdyr,dpdxr0,dpdyr0
+      &     ,dtdt_gcm,u1_after_aturb(i,j),v1_after_aturb(i,j)
+@@ -402,6 +460,38 @@
+       psitop=atan2(vg,ug+teeny)
+       psisrf=atan2(pbl_args%vs,pbl_args%us+teeny)
+       psi   =psisrf-psitop
++      rec(90)=pbl_args%us
++      rec(91)=pbl_args%vs
++      rec(92)=pbl_args%ws
++      rec(93)=pbl_args%tsv
++      rec(94)=pbl_args%qsrf
++      rec(95)=pbl_args%cm
++      rec(96)=pbl_args%ch
++      rec(97)=pbl_args%cq
++      rec(98)=pbl_args%dskin
++      rec(99)=pbl_args%ws0
++      rec(100)=pbl_args%ustar
++      rec(101)=pbl_args%lmonin
++      rec(102)=pbl_args%khs
++      rec(103)=kms
++      rec(104)=kqs
++      rec(105)=z0m
++      rec(106)=z0h
++      rec(107)=z0q
++      rec(108)=w2_1
++      rec(109)=ufluxs
++      rec(110)=vfluxs
++      rec(111)=tfluxs
++      rec(112)=qfluxs
++      rec(113)=pbl_args%wspdf
++      rec(114)=pbl_args%gusti
++      rec(115)=psi
++      rec(116:123)=upbl(1:8)
++      rec(124:131)=vpbl(1:8)
++      rec(132:139)=tpbl(1:8)
++      rec(140:147)=qpbl(1:8)
++      rec(148:154)=epbl(1:7)
++      call ffdump_pbl(rec,154)
+       atm%ustar_pbl(i,j)=pbl_args%ustar
+       atm%lmonin_pbl(i,j)=pbl_args%lmonin
+ C ******************************************************************
