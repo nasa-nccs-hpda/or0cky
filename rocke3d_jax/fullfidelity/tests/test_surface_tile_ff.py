@@ -49,3 +49,33 @@ def test_mutations_are_detected():
             assert worst > 1e-6, name
         finally:
             setattr(S, name, old)
+
+
+def test_ice_properties_match_fortran():
+    import jax.numpy as jnp
+    import ice_props_ff as I
+    for path in FILES:
+        r = S.load(path)
+        r = r[r[:, 2] == 2]
+        g = I.ice_tile_props(*(jnp.asarray(r[:, S.IN[k]]) for k in ("tg1", "tg2", "snow", "ssi1", "ssi2", "srheat")),
+                             jnp.asarray(r[:, S.IN["flag_dsws"]]) > 0.5)
+        for got, k in zip(g, ("dF1dTG", "hcg1", "hcg2", "fsri1", "fsri2")):
+            ref = r[:, S.IN[k]]
+            assert ref.std() > 0
+            assert np.abs(np.asarray(got) - ref).max() < 1e-12 * max(np.abs(ref).max(), 1e-30), (path, k)
+
+
+def test_pbl_to_tile_chain_matches_fortran():
+    """PBL advanc (ours) -> tile fluxes (ours): no recorded PBL outputs used."""
+    import pbl_compare as PC, surface_chain_ff as CH
+    d0 = os.path.dirname(FILES[0])
+    p = PC.load(glob.glob(f"{d0}/ffp_*.bin")[0])
+    t = S.load(FILES[0])
+    p = p[p[:, 2] <= 2]
+    n = 384
+    idx = np.random.default_rng(1).choice(len(t), n, replace=False)
+    idx.sort()
+    got = CH.run_chain(p[idx], t[idx])
+    for k in ("dth1", "dq1", "dmua", "dmva", "shdt", "evhdt", "trhdt", "evap", "tg1"):
+        ref = t[idx, S.OUT[k]]
+        assert np.abs(np.asarray(got[k]) - ref).max() < 1e-8 * ref.std(), k

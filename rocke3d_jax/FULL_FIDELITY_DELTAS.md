@@ -124,7 +124,10 @@ Outputs: 12 of 19 fields **bitwise equal** to Fortran, the rest ≤ 2e-10 absolu
 temperatures ≤ 7e-15 K; DTH1 ≤ 2e-15. Tests: `fullfidelity/tests/test_surface_tile_ff.py` (7, with mutation checks).
 **Coverage gap (stated, not hidden):** the lake-evaporation limit, dew limit, lake heat-flux limit and the
 ice-melt clip (`TG1+dTG>0`) never trigger in these dumps, so those branches are transcribed but unvalidated.
-Ice thermal properties (dF1dTG, HCG1, HCG2, FSRI: SEAICE.f `alami`, `dEidTiws`, `solar_ice_frac`) are inputs here.
+Ice thermal properties (`ice_props_ff.py`: SEAICE.f `alami`, `dEidTiws`, `solar_ice_frac`, layer bookkeeping)
+match the model's own values on all 9,048 ice tiles (dF1dTG/HCG1/HCG2 bitwise; FSRI ≤ 6e-17). **Composition check**
+(`surface_chain_ff.py`, no recorded PBL outputs used): PBL advanc → tile fluxes reproduces the tile outputs to
+≤ 6e-11 of their spread (DTH1, DQ1, DMUA, DMVA, SHDT, EVHDT, TRHDT, EVAP).
 
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
