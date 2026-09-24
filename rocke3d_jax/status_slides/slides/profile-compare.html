@@ -1,0 +1,31 @@
+<section id="profile-compare" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:26px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ADE80">Profile</p>
+    <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Where the Time Goes: Phase 1 vs. Phase 2</h1>
+    <p style="font-size:26px; color:#94A3B8; line-height:1.35">CPU time for one model step, split into three parts. Same node, same data; measured back to back.</p>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:18px; padding:32px 36px; background:#1E293B; border-radius:12px">
+    <div style="display:flex; align-items:center; gap:20px">
+      <p style="width:260px; font-size:26px; font-weight:600; color:#F8FAFC">Phase 1</p>
+      <div style="display:flex; flex-direction:row; border-radius:6px"><div style="width:398px; height:44px; background:#38BDF8"></div><div style="width:476px; height:44px; background:#4ADE80"></div><div style="width:226px; height:44px; background:#F97316"></div></div>
+      <p style="font-family:'JetBrains Mono', monospace; font-size:24px; color:#E2E8F0">34.0 ms</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:20px">
+      <p style="width:260px; font-size:26px; font-weight:600; color:#F8FAFC">Phase 2, one call at a time</p>
+      <div style="display:flex; flex-direction:row; border-radius:6px"><div style="width:34px; height:44px; background:#38BDF8"></div><div style="width:99px; height:44px; background:#4ADE80"></div><div style="width:91px; height:44px; background:#F97316"></div></div>
+      <p style="font-family:'JetBrains Mono', monospace; font-size:24px; color:#E2E8F0">6.9 ms · 4.9× faster</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:20px">
+      <p style="width:260px; font-size:26px; font-weight:600; color:#F8FAFC">Phase 2, chained</p>
+      <div style="display:flex; flex-direction:row; border-radius:6px"><div style="width:34px; height:44px; background:#38BDF8"></div><div style="width:99px; height:44px; background:#4ADE80"></div></div>
+      <p style="font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:700; color:#4ADE80">4.1 ms · 8.3× faster</p>
+    </div>
+    <p style="font-size:24px; color:#94A3B8"><span style="color:#38BDF8">■</span> Dry convection &nbsp;&nbsp; <span style="color:#4ADE80">■</span> All other computing &nbsp;&nbsp; <span style="color:#F97316">■</span> Copying data to/from the device, recomputing constants</p>
+  </div>
+  <div style="display:flex; flex-direction:row; gap:24px">
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; "><p style="font-size:26px; font-weight:700; color:#F8FAFC">Dry convection</p><p style="font-size:26px; color:#4ADE80; font-weight:600">12.3 → 1.1 ms (11×)</p><p style="font-size:24px; color:#94A3B8">Was 36% of the step; now 15%.</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; "><p style="font-size:26px; font-weight:700; color:#F8FAFC">All other computing</p><p style="font-size:26px; color:#4ADE80; font-weight:600">14.7 → 3.1 ms (4.8×)</p><p style="font-size:24px; color:#94A3B8">Fewer expensive math operations.</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #FBBF24; border-radius:12px; "><p style="font-size:26px; font-weight:700; color:#F8FAFC">Data copying</p><p style="font-size:26px; color:#FBBF24; font-weight:600">7.0 → 2.8 ms (2.5×)</p><p style="font-size:24px; color:#94A3B8">Now 41% of a single call; chained mode removes it.</p></div>
+  </div>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#64748B">Busy shared node, so times run ~2× the A100-node numbers; proportions are the point. Earlier profile: appendix. STATUS.md “Round 2”</p>
+</section>

@@ -1,0 +1,15 @@
+<section id="what-changed" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:28px">
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ADE80">What Changed</p>
+    <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Two Optimizations, Two Different Ideas</h1>
+  </div>
+  <div style="display:flex; flex-direction:row; gap:32px">
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #86EFAC; border-radius:12px; gap:16px"><p style="font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:600; color:#86EFAC; letter-spacing:1.5px; text-transform:uppercase">Phase 1 · Sep 22</p><h3 style="font-size:36px; font-weight:700; color:#F8FAFC">Fewer, bigger jobs</h3><p style="font-size:26px; color:#E2E8F0; line-height:1.4">The first translation launched about 33 tiny GPU jobs per step, and launch overhead swamped the real work. We fused them into a single job.</p><p style="font-size:26px; font-weight:600; color:#86EFAC; line-height:1.35">GPU: 33 ms → 4.3 ms per step</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; gap:16px"><p style="font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:600; color:#4ADE80; letter-spacing:1.5px; text-transform:uppercase">Phase 2 · Sep 23–24</p><h3 style="font-size:36px; font-weight:700; color:#F8FAFC">Stop moving data around</h3><p style="font-size:26px; color:#E2E8F0; line-height:1.4">Each step still copied the model state to the GPU and back and recomputed constants. Now the state stays on the GPU across many steps, constants are computed once, and the slowest routines were rewritten (dry convection ~10× faster).</p><p style="font-size:26px; font-weight:600; color:#4ADE80; line-height:1.35">GPU: 4.3 → 0.74 ms · CPU: 17.9 → 1.9 ms</p></div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:10px; padding:28px 32px; background:#1E293B; border-radius:12px">
+    <p style="font-size:26px; color:#E2E8F0; line-height:1.4"><b>Analogy:</b> Phase 1 combined 33 errands into one trip. Phase 2 stopped driving home between trips.</p>
+    <p style="font-size:26px; color:#FBBF24; line-height:1.4"><b>Key finding:</b> the 5.8× GPU gain needs the “keep data on the GPU” mode. Called one step at a time, as the old interface does, the GPU gains only 1.2× (3.6 ms).</p>
+  </div>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#64748B">How the chained mode works: STATUS.md “What ‘chained device-resident’ means” · README_GPU.md</p>
+</section>

@@ -1,7 +1,7 @@
 # Status slide deck — filesystem record
 
-Filesystem copy of the "ROCKE-3D → JAX: Status" slide deck (4 slides, last
-synced 2026-09-22), kept alongside `STATUS.md` in this directory.
+Filesystem copy of the "ROCKE-3D → JAX: Status" slide deck (8 slides, last
+synced 2026-09-24: HQ-audience refresh with the five-stage Fortran→JAX progression, Phase 1 vs Phase 2 profile, and the stop-the-port recommendation), kept alongside `STATUS.md` in this directory.
 
 **Live, viewable/presentable version**: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA
 
@@ -39,3 +39,8 @@ synced 2026-09-22), kept alongside `STATUS.md` in this directory.
 **Live, editable version**: https://claude.ai/artifact/LxdYuYeQXxHDsX18KWxBLA
 — if it's edited there later, nothing in this directory updates
 automatically. Everything here is a snapshot as of 2026-09-22.
+
+**STALE: `status_deck.pdf` / `build_pdf.py` still render the 2026-09-22
+4-slide deck (they predate the 2026-09-24 refresh).** `slides/*.html` and
+`deck.json` here match the live deck; regenerate the PDF (edit `build_pdf.py`
+to the new content) before sharing it from the filesystem.

@@ -1,34 +1,18 @@
-<section id="bottom-line" style="display:flex; flex-direction:column; gap:40px; padding:128px 128px 160px; background:#0f172a">
+<section id="bottom-line" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:32px">
   <div style="display:flex; flex-direction:column; gap:10px">
-    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ade80">ROCKE-3D → JAX · Status as of 2026-09-22</p>
-    <h1 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:68px; font-weight:700; line-height:1.1; color:#f8fafc">Where Things Stand</h1>
-    <p style="width:1500px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; color:#94a3b8">Use an AI coding agent to autonomously convert ROCKE-3D (NASA GISS's Fortran GCM) to Python/JAX, and measure accuracy, CPU/GPU performance, conversion cost, and gotchas — validated against real production restart data (P2SAoM40).</p>
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ADE80">ROCKE-3D on Python/JAX · Status 2026-09-24</p>
+    <h1 style="font-size:56px; font-weight:700; line-height:1.1; color:#F8FAFC">A Slice of NASA's Climate Model Now Runs 356× Faster Than Its Fortran Original</h1>
+    <p style="font-size:26px; color:#94A3B8; line-height:1.35">An AI coding agent translated part of ROCKE-3D (NASA GISS's Fortran climate model) to Python/JAX. Two optimization rounds followed, checking accuracy against the real model each time.</p>
   </div>
-  <div style="display:flex; flex-direction:row; gap:28px">
-    <div style="display:flex; flex-direction:column; gap:10px; flex:1; padding:32px 28px; background:#1e293b; border-left:6px solid #4ade80; border-radius:10px">
-      <p style="font-family:'JetBrains Mono', monospace; font-size:52px; font-weight:700; color:#f8fafc">14 / 17</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; font-weight:600; color:#e2e8f0">Modules faithfully ported</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Validated directly against real Fortran. 3 remain placeholders — recommendation on next slide.</p>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:10px; flex:1; padding:32px 28px; background:#1e293b; border-left:6px solid #4ade80; border-radius:10px">
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:40px; font-weight:700; color:#f8fafc">1e-9 to 1e-3</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; font-weight:600; color:#e2e8f0">Accuracy vs. real Fortran</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">PBL + DRYCNV, same inputs, CPU and GPU — floating-point-level agreement, not algorithmic.</p>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:10px; flex:1; padding:32px 28px; background:#1e293b; border-left:6px solid #4ade80; border-radius:10px">
-      <p style="font-family:'JetBrains Mono', monospace; font-size:52px; font-weight:700; color:#f8fafc">2.3–6.3×</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; font-weight:600; color:#e2e8f0">GPU speedup vs. real Fortran</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Measured, not estimated — first real GPU run, 2026-09-20 (kernel-level).</p>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:10px; flex:1; padding:32px 28px; background:#1e293b; border-left:6px solid #f97316; border-radius:10px">
-      <p style="font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:700; color:#f8fafc">Mixed on CPU</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; font-weight:600; color:#e2e8f0">JAX is not a blanket CPU win</p>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU — see next slide.</p>
-    </div>
+  <div style="display:flex; flex-direction:row; gap:24px">
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; "><p style="font-family:'JetBrains Mono', monospace; font-size:60px; font-weight:700; color:#4ADE80">356×</p><p style="font-size:26px; font-weight:600; color:#E2E8F0">faster than Fortran</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">On a GPU, for the surface-physics slice we ported: 0.74 ms vs. 264 ms per model step.</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; "><p style="font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:700; color:#F8FAFC">Same answers</p><p style="font-size:26px; font-weight:600; color:#E2E8F0">As the real model</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Kernels match Fortran to floating-point precision; a full step correlates 0.965 with real model data.</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; "><p style="font-family:'JetBrains Mono', monospace; font-size:60px; font-weight:700; color:#F8FAFC">5 stages</p><p style="font-size:26px; font-weight:600; color:#E2E8F0">Each one measured</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Fortran → JAX/CPU → JAX/GPU → Phase 1 → Phase 2, on the real P2SAoM40 restart data.</p></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #FBBF24; border-radius:12px; "><p style="font-family:'JetBrains Mono', monospace; font-size:40px; font-weight:700; color:#FBBF24">Not the whole model</p><p style="font-size:26px; font-weight:600; color:#E2E8F0">Scope matters</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Radiation (66% of Fortran's runtime) and dynamics are not ported, so no whole-model speedup is claimed.</p></div>
   </div>
-  <div style="display:flex; flex-direction:row; gap:20px; align-items:center; padding:28px 32px; background:#1e293b; border-radius:10px">
-    <p style="width:280px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#94a3b8">The comparison that matters:</p>
-    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Every number on this slide is <b>JAX vs. the real production Fortran model.</b></p>
+  <div style="display:flex; flex-direction:row; gap:24px; align-items:center; padding:26px 32px; background:#14212C; border-left:6px solid #4ADE80; border-radius:12px">
+    <p style="width:330px; font-size:26px; font-weight:600; color:#4ADE80">Recommendation for HQ</p>
+    <p style="font-size:26px; color:#F8FAFC; line-height:1.35"><b>Stop the port here.</b> The goal is met; finishing the remaining modules would add scientific fidelity, not speed evidence. When to reconsider: slide 6.</p>
   </div>
-  <p style="position:absolute; bottom:64px; left:128px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#64748b">Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) — the single current source of truth for this project</p>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#64748B">Full technical detail: STATUS.md (projects/imvi/rocke3d_jax) — the single source of truth</p>
 </section>

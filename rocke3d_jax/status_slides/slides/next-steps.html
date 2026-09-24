@@ -1,40 +1,12 @@
-<section id="next-steps" style="display:flex; flex-direction:column; gap:32px; padding:128px 128px 160px; background:#0f172a">
+<section id="next-steps" style="background:#0F172A; color:#E2E8F0; font-family:'IBM Plex Sans', Arial, sans-serif; padding:128px 128px 160px; display:flex; flex-direction:column; gap:28px">
   <div style="display:flex; flex-direction:column; gap:10px">
-    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ade80">What's Next</p>
-    <h1 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:60px; font-weight:700; line-height:1.1; color:#f8fafc">Recommendation &amp; Open Items</h1>
+    <p style="font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#4ADE80">Decision</p>
+    <h1 style="font-size:60px; font-weight:700; line-height:1.1; color:#F8FAFC">Recommendation: Stop the Port Here</h1>
+    <p style="font-size:26px; color:#94A3B8; line-height:1.35">The speed result is real but scope-bounded. Continuing pays off only if the goal changes.</p>
   </div>
-  <div style="display:flex; flex-direction:row; gap:48px; flex:1">
-    <div style="display:flex; flex-direction:column; gap:20px; flex:1; padding:40px; background:#1e293b; border-radius:24px">
-      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:32px; font-weight:600; color:#f8fafc">The remaining 3 modules — closed, not pursuing</h3>
-      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8; line-height:1.4">Scoped in detail 2026-09-23 (GHY alone is a coupled land-surface model needing its own internal orchestration ported, not a function to wire in) and explicitly decided against: it doesn't serve this project's actual goal &mdash; a representative workflow with consistent answers across Fortran/CPU/GPU/optimized, already achieved and validated &mdash; only a different goal (scientific fidelity) this project isn't pursuing.</p>
-      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #64748b; border-radius:8px">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">SEAICE (core thermodynamics) — <span style="color:#94a3b8">not pursuing</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Domain case for porting (polar surface energy balance) still holds if the project's goal ever shifts to fidelity &mdash; kept in STATUS.md, not acted on.</p>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #64748b; border-radius:8px">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">ATURB (PBL-top-finding) — <span style="color:#94a3b8">not pursuing</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Same reasoning as SEAICE. Has real tridiagonal-solver code already, but hardcoded placeholder closure constants (c1&ndash;c5, b1) instead of real values.</p>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:6px; padding:20px 24px; background:#14212c; border-left:6px solid #f97316; border-radius:8px">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; color:#f8fafc">LAKES (lkmix) — <span style="color:#f97316">defer</span></p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:19px; color:#94a3b8">Lowest priority of the three even under the fidelity-first framing. Small fraction of Earth's surface.</p>
-      </div>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:16px; flex:1; padding:40px; background:#1e293b; border-radius:24px; justify-content:center">
-      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; color:#f8fafc">Open items</h3>
-      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">1</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Get the full physics-chain GPU speedup above 2&times;</s> &mdash; <b style="color:#4ade80">done</b>, 2026-09-22: fused ~33 per-step JIT dispatches into one, then found and fixed a bug where the "CPU" baseline was secretly timing the GPU. Real result: <b style="color:#4ade80">4.2&times;</b> GPU speedup.</p>
-      </div>
-      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">2</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#e2e8f0">Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves — currently only worked around locally.</p>
-      </div>
-      <div style="display:flex; flex-direction:row; gap:14px; align-items:start">
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:700; color:#4ade80">3</p>
-        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#e2e8f0"><s style="color:#64748b">Port SEAICE + ATURB, re-run the correlation check</s> &mdash; <b style="color:#94a3b8">closed, not pursuing</b>. Scoped 2026-09-23; doesn't serve this project's representative-workflow goal (see left).</p>
-      </div>
-    </div>
+  <div style="display:flex; flex-direction:row; gap:32px">
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #4ADE80; border-radius:12px; gap:14px"><h3 style="font-size:32px; font-weight:600; color:#4ADE80">Why stop here</h3><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">The goal is met</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">A representative workload giving consistent answers on Fortran, JAX/CPU and JAX/GPU, validated.</p></div><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">The rest adds fidelity, not speed evidence</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Land hydrology, sea ice and turbulence are ~11,700 lines of Fortran and add scientific realism only.</p></div><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">They are not where the time is</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Fortran spends 66% in radiation, ~10% in moist convection and ~9% in dynamics. None is ported.</p></div></div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px; padding:28px 30px; background:#1E293B; border-left:6px solid #FBBF24; border-radius:12px; gap:14px"><h3 style="font-size:32px; font-weight:600; color:#FBBF24">When to reconsider</h3><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">HQ wants JAX to run real science</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Then fidelity matters: port land hydrology, sea ice and turbulence.</p></div><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">HQ wants a whole-model speed claim</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">The next investment is radiation, dynamics and moist convection: a larger, different effort than those three modules.</p></div><div style="display:flex; flex-direction:column; gap:4px; padding:16px 22px; background:#14212C; border-radius:8px"><p style="font-size:26px; font-weight:600; color:#F8FAFC">Not yet estimated</p><p style="font-size:24px; color:#94A3B8; line-height:1.35">Effort for either path has not been scoped; we can do that on request.</p></div></div>
   </div>
-  <p style="position:absolute; bottom:64px; left:128px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:22px; color:#64748b">Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)</p>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#64748B">Reasoning and cost scoping: STATUS.md “Recommendation: the 3 remaining modules” and “Open items”</p>
 </section>
