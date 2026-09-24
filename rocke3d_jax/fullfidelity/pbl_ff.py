@@ -196,7 +196,8 @@ def _newton(fg, a, b, accuracy):
                 jnp.where(take & ~fin, f_new, f), jnp.where(take & ~fin, df_new, df), done | fin)
 
     st = (root0, dxold0, dxold0, xa0, xb0, f0, df0, jnp.zeros((), bool))
-    st = lax.fori_loop(0, 100, body, st)
+    # early-exit loop (data dependent, <=100 iterations like NewtonMethod's maxNumIterations)
+    st = lax.while_loop(lambda c: (~c[1][7]) & (c[0] < 100), lambda c: (c[0] + 1, body(c[0], c[1])), (0, st))[1]
     return st[0]
 
 

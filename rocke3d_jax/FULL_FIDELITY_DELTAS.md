@@ -135,5 +135,20 @@ outputs. 6 steps × 692 real tile records. Temperatures ≤ 7e-15 K, momentum fl
 ≤ 6e-11 J/m² on values of 1e4 (all ≥ 1e-15 relative), DTH1 ≤ 4e-16. Tests: `tests/test_landice_tile_ff.py`
 (with mutation checks). Coverage gap: dew-limit branch never triggered (transcribed, unvalidated).
 
+## D8 — Speed of the faithful Track B pieces (CPU, float64, unoptimized; measured 2026-09-24)
+Node was loaded (load avg ≈19 on 12 cores), single process, `jax.jit`, warm. **Correctness first**: no
+kernel fusion / tuning has been done on Track B; these are baselines, not results.
+
+| Piece | Work | Time |
+|---|---|---|
+| PBL `advanc` | 4,591 calls (one surface substep, all tile types) | 0.12 s (26 µs/call) after switching the Newton grid solve to a data-dependent `while_loop` (was 0.47 s, identical outputs) |
+| ATURB (A-grid + U/V diffusion + A-wind recompute) | 3,312 columns × 40 layers | 0.07 s per call |
+| ⇒ per DTsrc step (2 substeps each) | PBL + ATURB only | ≈ 0.4 s |
+For scale: the real Fortran SURFACE (incl. GHY land, ATURB, ice/ocean/lake tiles) averages 263 ms per DTsrc step
+in `P2SAoM40.PRT`. Track B's pieces so far do **not** include land (GHY), sea-ice/lake ground thermodynamics
+or the tile-flux vector ops, so this is **not** a like-for-like comparison and no speed-up claim is made.
+Track A's headline (0.74 ms/step on an A100) is for a far simpler computation and must not be compared with these.
+GPU numbers for Track B: not measured yet (needs a GPU node).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
