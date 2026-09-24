@@ -38,8 +38,20 @@ layer-1 air temperature (real model carries prognostic ground/ocean/ice
 temperatures), uses a simplified fixed-point Monin–Obukhov solve, no
 sub-tiling, no real ATURB. Caveats: one restart date (November), six
 consecutive steps, radiation off, restart-derived ground fields taken at
-1950-11-26 (they evolve slowly). Not yet checked: sensitivity of the error to
-using the true ground temperatures — that is the first thing to test.
+1950-11-26 (they evolve slowly). Controls run (itime 33312, layer-1 T RMS error vs real post-SURFACE state):
+
+| Variant | T1 error |
+|---|---|
+| Track A as-is | 0.358 K |
+| Track A with ocean skin temperature = real restart SST (`asst`) | 0.360 K (no help; U1 error worse, 0.91→1.23 m/s) |
+| **Identity: apply no physics at all** | **0.027 K** |
+
+So the skin-temperature simplification is *not* the cause, and Track A's
+surface step is ~13× farther from real Fortran than doing nothing. The
+remaining suspects are the flux formulas/units, the fixed-point solve and the
+flux→tendency coupling; locating the dominant term is the first Phase-1
+diagnostic (per-term comparison against dumped Fortran fluxes, which need a
+further dump hook in SURFACE).
 
 ## Pending rows
 - D3: chaos noise floor (perturbed-Fortran divergence) — run in progress.
