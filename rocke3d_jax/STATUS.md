@@ -572,6 +572,133 @@ between both runs. No further optimization iteration was needed — the
 `fori_loop`/`compute_pk_pek` fallback ideas noted earlier turned out to be
 unnecessary once the measurement itself was fixed.
 
+## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
+
+Goal: ≥5× on the Python implementations, accuracy held. "Anything goes" —
+this round was profile-driven and mostly *not* JAX-tuning: it removed
+algorithmic waste and per-call overhead.
+
+**Measured on the CPU node** (12 cores, load ~18 — timings are noisy; ratios
+are from interleaved baseline-vs-new runs on the same data):
+
+| Item | Baseline | Round 2 | Speedup |
+|---|---|---|---|
+| DRYCNV kernel, layer-first (native) | ~12 ms | ~1.2 ms | **~9.5×** |
+| DRYCNV kernel, original level-last API | ~12 ms | ~2.9 ms | **~4×** |
+| PBL `simil` kernel | 0.34 ms | 0.16 ms | **~2.1× (short of 5×)** |
+| Full chain, single call (host state in/out) | 26–44 ms | 6–10 ms | **~3.6–4.4×** |
+| Full chain, chained device-resident (`lax.scan`), per step | 26–31 ms | ~3–7 ms | **~5×** (best ~9×) |
+
+What changed:
+- **DRYCNV**: original scan carried and dynamic-update-sliced the whole
+  (I,J,L) arrays every layer (O(L²) traffic). Now a layer-first scan with a
+  2-slab carry. Layer-first (L,J,I) is byte-identical to Fortran's (I,J,L).
+  Unrolling was tried: 2× *slower* on CPU (fusion duplicates producers).
+  A strided level-last scan was also tried: slower (5.6 vs 3.0 ms).
+- **PBL**: fewer transcendentals — vectorized Cephes `atan`, `sqrt(sqrt)`
+  for x^0.25, `exp(log(w)/3)` for cube root, shared `log(z/z0)`, one unified
+  unstable-branch formula. Op-count bound; ~2× is what it gives.
+- **Driver** (`p2saom40_driver.py`): loop-invariant work (pressure profile,
+  PK, PDSIG, Monin-Obukhov constants, lat/lon trig) hoisted into
+  `prepare_static`; on-device solar zenith; `run_steps_device` chains N steps
+  in one dispatch with state never leaving the device. `run_dtsrc_step`
+  remains as a compatible wrapper (with a prepare cache).
+- Rejected: XLA CPU fast-math (no speedup, outputs changed ~5e-4).
+
+**Full chain on the discover A100 node (2026-09-24, `p2saom40_compare.py`,
+same node/method as the Phase-1 baseline of 17.94 ms CPU / 4.26 ms GPU):**
+
+| Path | CPU ms/step | vs 17.94 | GPU ms/step | vs 4.26 | GPU vs Fortran SURFACE+GROUND (264 ms) |
+|---|---|---|---|---|---|
+| Single-call wrapper | 4.20 | **4.3×** | 3.62 | **1.2×** | 73× |
+| Chained device-resident | 1.89 | **9.5×** | 0.74 | **5.8×** | 356× |
+
+- The ≥5× target is met on **both** CPU and GPU, but only by the chained
+  device-resident path. The single-call wrapper on GPU gains just 1.2×: it is
+  dominated by host↔device transfer and per-call dispatch, not physics.
+- Chained GPU is only 2.6× faster than chained CPU (0.74 vs 1.89 ms): the CPU
+  got much better too; the workload (3312 columns) is small for an A100.
+- The Fortran comparison covers SURFACE+GROUND only (radiation excluded, as
+  before), so the 356× is a like-for-like kernel-group ratio, not a
+  whole-model speedup.
+- Not yet reported by you: `compare_jax.py` kernel timings on GPU (DRYCNV
+  scan vs the old 0.56 ms).
+
+### What "chained device-resident" means (and how it differs from Phase 1)
+
+A model step is: take the atmospheric state (T, q, layer-1 winds), compute
+surface fluxes and dry convection, return the updated state. The question is
+*where the state lives between steps*.
+
+**Single-call path (`run_dtsrc_step`)** — what the original driver did, and
+what the compat wrapper still does. Every call: (1) copy the state from host
+NumPy arrays to the device, (2) run the step, (3) copy results back to host
+NumPy, (4) rebuild anything derived from the inputs (pressure profile, PK,
+PDSIG, trig of lat/lon, solar zenith on the host). On a CPU the "copies" are
+cheap but nonzero (dtype/layout conversion, level-last↔layer-first
+transposes); on a GPU they cross PCIe and force a synchronization each step.
+
+**Chained device-resident path (`prepare_static` + `run_steps_device`)** —
+1. `prepare_static` runs **once**: everything that does not change between
+   steps (pressure/PK/PDSIG, surface type masks, lat/lon trig, constants) is
+   computed and uploaded to the device.
+2. `dyn_from_state` uploads the evolving state **once**, in layer-first
+   layout (Fortran's memory order, so no transposes inside the loop).
+3. `run_steps_device` executes N steps inside a single `jax.lax.scan`: the
+   state is the scan carry, so it stays in device memory from step to step.
+   The solar zenith is computed on the device from four scalars per step.
+4. `state_from_dyn` copies the final state back to the host **once**.
+
+Per-step cost therefore contains only physics — no transfers, no host
+recomputation, no per-step Python launch or GPU synchronization. This is how
+a real model advances (state stays resident; output is written only every so
+many steps), which is why it is the honest per-step number, while the
+single-call number is the cost of a *compatibility interface*.
+
+**How this differs from the earlier JAX optimization (Phase 1):**
+
+| | Phase 1 (2026-09-22) | Round 2 (2026-09-23) |
+|---|---|---|
+| Target | Dispatch overhead *within* one step | Everything *around and between* steps, plus kernel arithmetic |
+| Change | Fused ~33 separate jit calls into one `@jax.jit` per step | Chained N steps into one `lax.scan` dispatch; hoisted invariants; kept state on device |
+| Boundary crossings | Still host→device→host **every step** | Once per *run* |
+| Kernel math | Unchanged | DRYCNV rewritten (no O(L²) array copies), PBL transcendentals cut |
+| Result (A100) | 17.94 → 4.26 ms/step chain (4.2× vs CPU) | 4.26 → 3.62 single-call (1.2×), → 0.74 chained (5.8×) |
+
+In short: Phase 1 made one step a single GPU launch; Round 2 makes many steps
+a single launch and stops moving data in and out between them. Phase 1's gain
+was mostly launch-count; Round 2's is mostly transfer/recomputation removal
+plus a genuinely cheaper DRYCNV. Note the single-call wrapper only improved
+1.2× on GPU precisely because it still pays the boundary crossings Phase 1
+left in place.
+
+Practical rule: use `run_steps_device` for any multi-step run or benchmark;
+use `run_dtsrc_step` only for one-off calls and compatibility with old
+scripts. Chained runs must be given all N solar-scalar rows up front
+(`solar_scalars` per timestamp); diagnostics are returned for the last step only.
+
+**Accuracy (the part to trust only as far as it is checked):**
+- New tests (`tests/test_round2_optimizations.py`, 11) vs independent
+  float64 references over all stability branches; DRYCNV vs float64 <5e-4 K;
+  layer-first == level-last bitwise; device path == wrapper == repeated steps.
+- Chained-step diffs vs baseline show isolated cell differences (latent flux
+  up to ~5.9 W/m² at one cell). These are **not a regression**: the
+  Monin-Obukhov fixed point flips branch in marginal cells, and perturbing
+  the *baseline* by one float32 ulp produces divergence of the same size.
+  Global means/correlations unchanged; distance to real Fortran unchanged.
+- One deliberate change: pressure prep is now float64 on the host (more
+  accurate than the original float32 cumsum). `precision="float32"`
+  reproduces the original arithmetic to ~1e-6.
+- Found and fixed while checking: `flong` must use `radiation_jax.STBO`.
+
+**Caveats:**
+- The PBL kernel alone did not reach 5×; the 5× is a full-chain result, and
+  the single-call wrapper (which pays host↔device each call) is ~4×. The
+  ≥5× figure needs the device-resident path.
+- Kernel-level GPU timings (`compare_jax.py`) still pending; DRYCNV's scan
+  may be loop-overhead-bound on GPU (old GPU DRYCNV was 0.56 ms).
+- Only JAX code was optimized; the NumPy scripts in `mantle/` were not.
+
 ## Open items
 
 - ~~Re-measure the fused driver on a real GPU node~~ — **done**, 4.2× GPU

@@ -54,6 +54,8 @@ if _CPU_SUBPROCESS_FLAG in sys.argv:
     os.environ["JAX_PLATFORMS"] = "cpu"
 
 import time
+import datetime
+import jax.numpy as jnp
 import numpy as np
 import jax
 
@@ -86,6 +88,41 @@ def save_map(field, lat, lon, title, fname, colorscale="RdBu_r"):
     print(f"  saved {path}")
 
 
+def _time_steps(n_rep):
+    """Time the driver on whatever backend this process has. Returns
+    (single_call_ms, chained_ms) per DTsrc step:
+      single_call: run_dtsrc_step() compat wrapper (host state in/out each call)
+      chained:     n_rep steps in ONE lax.scan dispatch, state device-resident
+                   (how a real model would advance; the honest per-step cost)
+    """
+    state = io.load_restart_state(f"{io.RUN_DIR}/fort.1.nc")
+    frac = io.load_surface_fractions()
+    itype = io.build_itype(frac, state["rsi_atm"])
+    static_fields = drv.build_static_fields(itype)
+    start_dt = io.itime_to_datetime(state["itime"])
+    lat, lon = frac["lat"], frac["lon"]
+
+    jax.block_until_ready(drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1))
+    t0 = time.perf_counter()
+    for i in range(n_rep):
+        do_rad = (i % drv.NRAD == 0)
+        out = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
+    jax.block_until_ready(out)
+    single_ms = (time.perf_counter() - t0) / n_rep * 1000.0
+
+    prep = drv.prepare_static(state, itype, static_fields, lat, lon)
+    dts = [start_dt + datetime.timedelta(seconds=1800 * i) for i in range(n_rep)]
+    sols = jnp.stack([jnp.asarray(drv.solar_scalars(d)) for d in dts])
+    dyn = drv.dyn_from_state(state)
+    jax.block_until_ready(drv.run_steps_device(dyn, prep, sols))  # JIT warm-up
+    best = float("inf")
+    for _ in range(3):
+        t0 = time.perf_counter()
+        jax.block_until_ready(drv.run_steps_device(dyn, prep, sols))
+        best = min(best, (time.perf_counter() - t0) / n_rep * 1000.0)
+    return single_ms, best
+
+
 def _cpu_timing_subprocess_main(n_rep=20):
     """Run ONLY the timing loop, forced onto the CPU backend (see the
     JAX_PLATFORMS=cpu set above, before jax was imported in this process).
@@ -96,20 +133,8 @@ def _cpu_timing_subprocess_main(n_rep=20):
     GPU this process inherited).
     """
     assert jax.devices()[0].platform == "cpu", f"expected CPU backend, got {jax.devices()}"
-    state = io.load_restart_state(f"{io.RUN_DIR}/fort.1.nc")
-    frac = io.load_surface_fractions()
-    itype = io.build_itype(frac, state["rsi_atm"])
-    static_fields = drv.build_static_fields(itype)
-    start_dt = io.itime_to_datetime(state["itime"])
-    lat, lon = frac["lat"], frac["lon"]
-
-    _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # warm-up
-    t0 = time.perf_counter()
-    for i in range(n_rep):
-        do_rad = (i % drv.NRAD == 0)
-        drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
-    jax_ms = (time.perf_counter() - t0) / n_rep * 1000.0
-    print(f"CPU_TIMING_MS={jax_ms:.4f}")
+    single_ms, chained_ms = _time_steps(n_rep)
+    print(f"CPU_TIMING_MS={single_ms:.4f} {chained_ms:.4f}")
 
 
 def _measure_cpu_ms_genuinely(n_rep):
@@ -129,7 +154,8 @@ def _measure_cpu_ms_genuinely(n_rep):
     )
     for line in result.stdout.splitlines():
         if line.startswith("CPU_TIMING_MS="):
-            return float(line.split("=", 1)[1])
+            single, chained = line.split("=", 1)[1].split()
+            return float(single), float(chained)
     raise RuntimeError(
         "Genuine CPU-timing subprocess did not report a result.\n"
         f"--- subprocess stdout ---\n{result.stdout}\n"
@@ -201,23 +227,18 @@ def main():
 
     section("5. Performance (CPU): JAX driver vs. real Fortran per-routine cost")
     n_rep = 20
-    genuine_cpu_ms = _measure_cpu_ms_genuinely(n_rep)
-    if genuine_cpu_ms is not None:
-        # This process already claimed the GPU (jax.devices()[0] is "gpu"):
-        # timing run_dtsrc_step() here would silently measure the GPU, not
-        # the CPU, so the real CPU number came from a forced-CPU subprocess
-        # instead -- see _measure_cpu_ms_genuinely's docstring.
-        jax_ms = genuine_cpu_ms
-        print(f"  (this process already has a GPU claimed -- ran a genuine")
-        print(f"   CPU-only subprocess for this number instead of timing the GPU)")
+    genuine_cpu = _measure_cpu_ms_genuinely(n_rep)
+    if genuine_cpu is not None:
+        # This process already claimed the GPU: timing here would measure the
+        # GPU, so the CPU numbers came from a forced-CPU subprocess.
+        jax_ms, jax_chain_ms = genuine_cpu
+        print("  (this process already has a GPU claimed -- ran a genuine")
+        print("   CPU-only subprocess for these numbers instead of timing the GPU)")
     else:
-        _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # JIT warm-up
-        t0 = time.perf_counter()
-        for i in range(n_rep):
-            do_rad = (i % drv.NRAD == 0)
-            drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
-        jax_ms = (time.perf_counter() - t0) / n_rep * 1000.0
-    print(f"  JAX (genuine CPU, jit-compiled, {n_rep}-step average): {jax_ms:.2f} ms/DTsrc-step")
+        jax_ms, jax_chain_ms = _time_steps(n_rep)
+    print(f"  JAX (genuine CPU, {n_rep}-step average):")
+    print(f"    single-call wrapper (host<->device each call): {jax_ms:.2f} ms/DTsrc-step")
+    print(f"    chained device-resident (one lax.scan):        {jax_chain_ms:.2f} ms/DTsrc-step")
     print()
     print("  Real Fortran per-routine cost, measured in P2SAoM40.PRT (194 real")
     print("  DTsrc steps, single MPI process, same CPU-class hardware):")
@@ -238,17 +259,13 @@ def main():
     section("6. Performance (GPU)")
     if jax.devices()[0].platform == "gpu":
         print(f"  GPU detected: {jax.devices()}")
-        _ = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=1)  # JIT warm-up (GPU)
-        jax.block_until_ready(_)
-        t0 = time.perf_counter()
-        for i in range(n_rep):
-            do_rad = (i % drv.NRAD == 0)
-            out = drv.run_dtsrc_step(state, itype, static_fields, lat, lon, start_dt, step_index=i, do_radiation=do_rad)
-        jax.block_until_ready(out)
-        jax_gpu_ms = (time.perf_counter() - t0) / n_rep * 1000.0
-        print(f"  JAX (this GPU, jit-compiled, {n_rep}-step average): {jax_gpu_ms:.2f} ms/DTsrc-step")
-        print(f"  vs. JAX (genuine CPU, above): {jax_ms:.2f} ms/DTsrc-step -> {jax_ms / jax_gpu_ms:.1f}x faster on GPU")
-        print(f"  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): {264.0 / jax_gpu_ms:.1f}x faster")
+        jax_gpu_ms, jax_gpu_chain_ms = _time_steps(n_rep)
+        print(f"  JAX (this GPU, {n_rep}-step average):")
+        print(f"    single-call wrapper:     {jax_gpu_ms:.2f} ms/DTsrc-step")
+        print(f"    chained device-resident: {jax_gpu_chain_ms:.2f} ms/DTsrc-step")
+        print(f"  chained GPU vs. chained CPU: {jax_chain_ms / jax_gpu_chain_ms:.1f}x faster on GPU")
+        print(f"  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): "
+              f"{264.0 / jax_gpu_ms:.1f}x (single-call), {264.0 / jax_gpu_chain_ms:.1f}x (chained)")
         print("  (radiation excluded from the Fortran comparison, as in section 5 --")
         print("   JAX's radiation is a simplified graybody stand-in, not equivalent physics)")
     else:

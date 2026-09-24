@@ -19,6 +19,8 @@ Usage:
     u, t, q, dpsim, dpsih, dpsiq = simil_jit(z, z0m, z0h, z0q, lmonin, ustar, tstar, qstar, tg, qg)
 """
 
+import math
+
 import jax
 import jax.numpy as jnp
 from jax import jit
@@ -40,99 +42,124 @@ cmin = 0.001  # Min drag coefficient
 zetm = -1.0  # Critical Monin-Obukhov length for unstable conditions
 
 
+# ---------------------------------------------------------------------------
+# Fast elementwise math (Round 2 optimization, 2026-09)
+#
+# On XLA-CPU, pow(x, 0.25), pow(x, 1/3)/cbrt and arctan are scalar libm calls
+# (~50-70 us per 3312 elements) while sqrt/log/exp are vectorized (~4 us). The
+# original find_dpsim spent ~285 us per call, almost all in 2x pow(.25),
+# 2x arctan and 1x pow(1/3). The replacements below are algebraically the same
+# functions, accurate to float32 rounding (verified against the original and
+# against real Fortran; see STATUS.md "Round 2 optimization").
+# ---------------------------------------------------------------------------
+
+def _atan(x):
+    """Vectorized float32-accurate arctan (Cephes atanf: range reduction +
+    minimax polynomial). Pure elementwise jnp ops, so XLA vectorizes it."""
+    ax = jnp.abs(x)
+    big = ax > 2.414213562373095
+    mid = ax > 0.4142135623730951
+    xr = jnp.where(big, -1.0 / jnp.where(big, ax, 1.0),
+                   jnp.where(mid, (ax - 1.0) / (ax + 1.0), ax))
+    y0 = jnp.where(big, 1.5707963267948966, jnp.where(mid, 0.7853981633974483, 0.0))
+    z = xr * xr
+    p = (((8.05374449538e-2 * z - 1.38776856032e-1) * z + 1.99777106478e-1) * z
+         - 3.33329491539e-1) * z * xr + xr
+    return jnp.sign(x) * (y0 + p)
+
+
+def _quarter_pow(a):
+    """a**0.25 as sqrt(sqrt(a)) (NaN for a<0, same as pow with a fractional exponent)."""
+    return jnp.sqrt(jnp.sqrt(a))
+
+
 @jit
 def find_dpsim(zet: jnp.ndarray, zet0: jnp.ndarray) -> jnp.ndarray:
     """
-    JAX implementation of find_dpsim (Monin-Obukhov similarity for momentum).
-    
+    Monin-Obukhov similarity function for momentum (find_dpsim in PBL.f).
+
     Args:
         zet: Non-dimensional height (z / L) for momentum.
         zet0: Non-dimensional roughness height (z0 / L) for momentum.
-    
+
     Returns:
         dpsim: Similarity function for momentum (dimensionless).
     """
-    # Stable conditions (zet >= 0)
     stable = zet >= 0.0
-    
-    # Unstable branch: zet < 0
-    x = (1.0 - gamamu * zet)**0.25
-    x0 = (1.0 - gamamu * zet0)**0.25
-    xm = (1.0 - gamamu * zetm)**0.25
-    
-    # Unstable: zet > zetm
-    term1_unstable = jnp.log(((1 + x) * (1 + x) * (1 + x * x)) / 
-               ((1 + x0) * (1 + x0) * (1 + x0 * x0)))
-    term3_unstable = 2 * (jnp.arctan(x) - jnp.arctan(x0))
-    dpsim_unstable_gt = term1_unstable - term3_unstable
-    
-    # Unstable: zet <= zetm
-    term1_unstable_le = jnp.log(((1 + xm) * (1 + xm) * (1 + xm * xm)) / 
-                   ((1 + x0) * (1 + x0) * (1 + x0 * x0)))
-    term3_unstable_le = 2 * (jnp.arctan(xm) - jnp.arctan(x0))
-    term4_unstable_le = jnp.log(zet / zetm)
-    term5_unstable_le = 1.140125 * ((-zet)**by3 - (-zetm)**by3)
-    dpsim_unstable_le = term1_unstable_le - term3_unstable_le + term4_unstable_le - term5_unstable_le
-    
-    dpsim = jnp.where(
+
+    # Unstable (zet < 0). For zet <= zetm the "gt" formula is evaluated at
+    # zet = zetm (so x -> xm) and the extra strongly-unstable terms are added.
+    zc = jnp.maximum(zet, zetm)
+    x = _quarter_pow(1.0 - gamamu * zc)
+    x0 = _quarter_pow(1.0 - gamamu * zet0)
+    term1 = jnp.log(((1 + x) * (1 + x) * (1 + x * x)) /
+                    ((1 + x0) * (1 + x0) * (1 + x0 * x0)))
+    # 2*(atan(x) - atan(x0)) == 2*atan((x-x0)/(1+x*x0)) for x, x0 > 0
+    term3 = 2 * _atan((x - x0) / (1 + x * x0))
+    dpsim_unstable = term1 - term3
+    w = jnp.maximum(-zet, -zetm)          # >= -zetm; = -zet where zet <= zetm
+    lw = jnp.log(w)
+    extra = (lw - math.log(-zetm)) - 1.140125 * (jnp.exp(lw * by3) - (-zetm) ** by3)
+    dpsim_unstable = dpsim_unstable + jnp.where(zet <= zetm, extra, 0.0)
+
+    # Stable: 0 <= zet <= zet1 and zet > zet1
+    lstab = jnp.log(jnp.maximum(zet, zet1) / zet1)
+    dpsim_s2 = (-gamams * (zet1 - zet0) + zet1 * (slope1 - gamams) * lstab
+                - slope1 * (zet - zet1))
+
+    return jnp.where(
         stable & (zet <= zet1),
         -gamams * (zet - zet0),
-        jnp.where(
-            stable,
-            -gamams * (zet1 - zet0) +
-            zet1 * (slope1 - gamams) * jnp.log(zet / zet1) -
-            slope1 * (zet - zet1),
-            jnp.where(
-                zet > zetm,
-                dpsim_unstable_gt,
-                dpsim_unstable_le
-            )
-        )
+        jnp.where(stable, dpsim_s2, dpsim_unstable),
     )
-    return dpsim
 
 
 @jit
-def find_dpsih(zet: jnp.ndarray, zet0: jnp.ndarray, z: jnp.ndarray, z0: jnp.ndarray) -> jnp.ndarray:
+def find_dpsih(zet: jnp.ndarray, zet0: jnp.ndarray, z: jnp.ndarray, z0: jnp.ndarray,
+               logzz0=None) -> jnp.ndarray:
     """
-    JAX implementation of find_dpsih (Monin-Obukhov similarity for heat/moisture).
-    
+    Monin-Obukhov similarity function for heat/moisture (find_dpsih in PBL.f).
+
     Args:
         zet: Non-dimensional height (z / L) for heat/moisture.
         zet0: Non-dimensional roughness height (z0 / L) for heat/moisture.
         z: Height (m).
         z0: Roughness height (m).
-    
+        logzz0: optional precomputed log(z / z0) (loop-invariant in callers).
+
     Returns:
         dpsih: Similarity function for heat/moisture (dimensionless).
     """
-    # Stable conditions (zet >= 0)
     stable = zet >= 0.0
-    dpsih = jnp.where(
+    if logzz0 is None:
+        logzz0 = jnp.log(z / z0)
+    lstab = jnp.log(jnp.maximum(zet, zet1) / zet1)
+    return jnp.where(
         stable & (zet <= zet1),
-        sigma1 * jnp.log(z / z0) - sigma * gamahs * (zet - zet0),
+        sigma1 * logzz0 - sigma * gamahs * (zet - zet0),
         jnp.where(
             stable,
             sigma1 * jnp.log(zet1 / z0) - sigma * gamahs * (zet1 - zet0) +
-            (1 + sigma * (zet1 * (slope1 - gamahs) - 1)) * jnp.log(zet / zet1) -
+            (1 + sigma * (zet1 * (slope1 - gamahs) - 1)) * lstab -
             sigma * slope1 * (zet - zet1),
             # Unstable conditions (zet < 0)
-            sigma1 * jnp.log(z / z0) - sigma * gamahu * (zet - zet0)
-        )
+            sigma1 * logzz0 - sigma * gamahu * (zet - zet0),
+        ),
     )
-    return dpsih
 
 
 @jit
-def getcm(z: jnp.ndarray, z0: jnp.ndarray, lmonin: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+def getcm(z: jnp.ndarray, z0: jnp.ndarray, lmonin: jnp.ndarray, logzz0=None
+          ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """
-    JAX implementation of getcm (drag coefficient for momentum flux).
-    
+    Drag coefficient for momentum flux (getcm in PBL.f).
+
     Args:
         z: Height (m).
         z0: Roughness height for momentum (m).
         lmonin: Monin-Obukhov length (m).
-    
+        logzz0: optional precomputed log(z / z0).
+
     Returns:
         dm: Logarithmic term for momentum.
         dpsim: Similarity function for momentum.
@@ -141,31 +168,37 @@ def getcm(z: jnp.ndarray, z0: jnp.ndarray, lmonin: jnp.ndarray) -> tuple[jnp.nda
     zet = z / lmonin
     zet0 = z0 / lmonin
     dpsim = find_dpsim(zet, zet0)
-    dm = jnp.maximum(jnp.log(z / z0) - dpsim, 1e-3)
+    if logzz0 is None:
+        logzz0 = jnp.log(z / z0)
+    dm = jnp.maximum(logzz0 - dpsim, 1e-3)
     cm = (kappa ** 2) / (dm ** 2)
     cm = jnp.clip(cm, cmin, cmax)
     return dm, dpsim, cm
 
 
 @jit
-def getchq(z: jnp.ndarray, z0: jnp.ndarray, lmonin: jnp.ndarray, dm: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+def getchq(z: jnp.ndarray, z0: jnp.ndarray, lmonin: jnp.ndarray, dm: jnp.ndarray,
+           logzz0=None) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
-    JAX implementation of getchq (Stanton/Dalton number for heat/moisture flux).
-    
+    Stanton/Dalton number for heat/moisture flux (getchq in PBL.f).
+
     Args:
         z: Height (m).
         z0: Roughness height for heat/moisture (m).
         lmonin: Monin-Obukhov length (m).
         dm: Logarithmic term for momentum (from getcm).
-    
+        logzz0: optional precomputed log(z / z0).
+
     Returns:
         dpsih: Similarity function for heat/moisture.
         ch: Stanton/Dalton number (dimensionless).
     """
     zet = z / lmonin
     zet0 = z0 / lmonin
-    dpsih = find_dpsih(zet, zet0, z, z0)
-    dh = jnp.maximum(jnp.log(z / z0) - dpsih, 1e-3)
+    if logzz0 is None:
+        logzz0 = jnp.log(z / z0)
+    dpsih = find_dpsih(zet, zet0, z, z0, logzz0)
+    dh = jnp.maximum(logzz0 - dpsih, 1e-3)
     ch = (kappa ** 2) / (dm * dh)
     ch = jnp.clip(ch, cmin, cmax)
     return dpsih, ch
@@ -199,15 +232,18 @@ def simil(z: jnp.ndarray, z0m: jnp.ndarray, z0h: jnp.ndarray, z0q: jnp.ndarray,
         dpsih: Similarity function for heat.
         dpsiq: Similarity function for moisture.
     """
-    # Compute drag coefficients
-    dm, dpsim, _ = getcm(z, z0m, lmonin)
-    dpsih, _ = getchq(z, z0h, lmonin, dm)
-    dpsiq, _ = getchq(z, z0q, lmonin, dm)
-    
+    # Compute drag coefficients (log(z/z0*) computed once each and reused)
+    lzm = jnp.log(z / z0m)
+    lzh = jnp.log(z / z0h)
+    lzq = jnp.log(z / z0q)
+    dm, dpsim, _ = getcm(z, z0m, lmonin, lzm)
+    dpsih, _ = getchq(z, z0h, lmonin, dm, lzh)
+    dpsiq, _ = getchq(z, z0q, lmonin, dm, lzq)
+
     # Compute similarity solutions
-    u = (ustar / kappa) * (jnp.log(z / z0m) - dpsim)
-    t = tg + (tstar / kappa) * (jnp.log(z / z0h) - dpsih)
-    q = qg + (qstar / kappa) * (jnp.log(z / z0q) - dpsiq)
+    u = (ustar / kappa) * (lzm - dpsim)
+    t = tg + (tstar / kappa) * (lzh - dpsih)
+    q = qg + (qstar / kappa) * (lzq - dpsiq)
     
     return u, t, q, dpsim, dpsih, dpsiq
 
@@ -217,4 +253,4 @@ find_dpsim_jit = jit(find_dpsim)
 find_dpsih_jit = jit(find_dpsih)
 getcm_jit = jit(getcm)
 getchq_jit = jit(getchq)
-simil_jit = jit(simil)
+simil_jit = simil  # already @jit

@@ -1,0 +1,95 @@
+
+======================================================================
+1. Load real P2SAoM40 state (72x46x40)
+======================================================================
+  restart: itime=33312 (1950-11-26 00:00:00 UTC)
+  itype counts: {'ocean': 1644, 'seaice': 522, 'landice': 401, 'land': 745} (total 3312 / 3312)
+  JAX devices: [CudaDevice(id=0)]
+
+======================================================================
+2. Run one real DTsrc=1800s physics step
+======================================================================
+  tg                       min=   220.880  max=   307.981  mean=   279.719
+  cosz                     min=     0.000  max=     0.999  mean=     0.228
+  fsf                      min=     0.000  max=  1363.789  mean=   311.260
+  flong                    min=   140.024  max=   514.144  mean=   329.526
+  sensible_heat_flux       min=  -274.235  max=  1152.710  mean=    90.379
+  latent_heat_flux         min=   -85.991  max=  1518.975  mean=    41.177
+  net_energy_flux          min= -1373.549  max=  1269.370  mean=    86.410
+
+======================================================================
+3. Functionality: real-grid global maps -> outputs/
+======================================================================
+  saved /discover/nobackup/gtamkin/dev/ilab-agentic-ai/projects/imvi/rocke3d_jax/outputs/p2saom40_itype_map.html
+  saved /discover/nobackup/gtamkin/dev/ilab-agentic-ai/projects/imvi/rocke3d_jax/outputs/p2saom40_jax_tg_map.html
+  saved /discover/nobackup/gtamkin/dev/ilab-agentic-ai/projects/imvi/rocke3d_jax/outputs/p2saom40_jax_sensible_heat_map.html
+  saved /discover/nobackup/gtamkin/dev/ilab-agentic-ai/projects/imvi/rocke3d_jax/outputs/p2saom40_jax_latent_heat_map.html
+  saved /discover/nobackup/gtamkin/dev/ilab-agentic-ai/projects/imvi/rocke3d_jax/outputs/p2saom40_jax_net_energy_map.html
+
+======================================================================
+4. Accuracy: qualitative comparison vs. real period-mean diagnostics
+======================================================================
+  NOTE: PARTIAL.accP2SAoM40.nc holds PERIOD-MEAN accumulated fields,
+  not per-timestep truth (SUBDD was disabled in this rundeck). This
+  is a pattern/order-of-magnitude sanity check, not exact validation.
+  layer-1 air temp (C) vs. real period-mean 'tsurf' (C):
+    spatial pattern correlation = 0.965   mean bias = -1.86 C
+  JAX sensible heat flux vs. real period-mean 'sensht':
+    spatial pattern correlation = -0.014
+    JAX range [-274, 1153] W/m^2  vs. real period-mean range [-2459, 623] W/m^2
+
+======================================================================
+5. Performance (CPU): JAX driver vs. real Fortran per-routine cost
+======================================================================
+  (this process already has a GPU claimed -- ran a genuine
+   CPU-only subprocess for these numbers instead of timing the GPU)
+  JAX (genuine CPU, 20-step average):
+    single-call wrapper (host<->device each call): 4.20 ms/DTsrc-step
+    chained device-resident (one lax.scan):        1.89 ms/DTsrc-step
+
+  Real Fortran per-routine cost, measured in P2SAoM40.PRT (194 real
+  DTsrc steps, single MPI process, same CPU-class hardware):
+    RADIA()            65.57% of runtime, avg 2070 ms/call
+                        (bimodal: ~0.7ms on 4/5 steps, ~10833ms on the
+                         NRAD=5-gated 1/5 steps -- real spectral
+                         radiative transfer; JAX's radiation_jax.py is
+                         a simplified graybody formula, so this huge
+                         JAX/Fortran gap reflects a fidelity difference,
+                         not an apples-to-apples speed comparison)
+    SURFACE()           8.87% of runtime, avg  263 ms/call
+                        (includes NIsurf=2 PBL+EARTH+layer-1 substeps)
+    GROUND_SI/LI/LK    ~0.16% of runtime, avg    ~1 ms/call combined
+    ---- JAX-covered subset: ~74.6% of real per-step Fortran cost ----
+    CONDSE() (moist convection)  9.91% -- OUT OF SCOPE, not ported
+    Atm. Dynamics                8.50% -- OUT OF SCOPE, not ported
+
+======================================================================
+6. Performance (GPU)
+======================================================================
+  GPU detected: [CudaDevice(id=0)]
+  JAX (this GPU, 20-step average):
+    single-call wrapper:     3.62 ms/DTsrc-step
+    chained device-resident: 0.74 ms/DTsrc-step
+  chained GPU vs. chained CPU: 2.6x faster on GPU
+  vs. real Fortran SURFACE+GROUND (~264 ms/DTsrc-step): 72.8x (single-call), 356.2x (chained)
+  (radiation excluded from the Fortran comparison, as in section 5 --
+   JAX's radiation is a simplified graybody stand-in, not equivalent physics)
+
+======================================================================
+7. Functional coverage (orchestration fidelity)
+======================================================================
+  Zenith angle           [Simplified      ]  declination+hour-angle formula, not the ORBIT module
+  RADIATION              [Simplified      ]  graybody Stefan-Boltzmann, not spectral radiative transfer
+  PBL (similarity fns)   [Faithful        ]  pbl.py: find_dpsim/find_dpsih/getcm/getchq, unit-validated
+  Monin-Obukhov solve    [Simplified      ]  fixed-point iteration, not PBL.f's Newton solve
+  FLUXES formulas        [Bug-fixed       ]  ws was computed from surface wind only (=0 for land/ice) -- fixed locally in p2saom40_driver.py, see module docstring
+  SURFACE dispatch       [Simplified      ]  single dominant itype per cell, no area-weighted sub-tiling
+  GHY (land)             [Not wired       ]  ghy_jax.py's soil-moisture-table/flux-limit fns not yet used
+  Layer-1 turbulence     [Simplified      ]  direct flux-tendency coupling, not aturb_jax's tridiagonal solve (placeholder PBL-top-finding)
+  DRYCNV (layers 2..LM)  [Faithful        ]  drycnv.py, unit-validated, used as-is
+  GROUND_SI/LI/LK        [Not implemented ]  seaice_jax/lakes_jax core thermodynamics are documented placeholders/no-ops in the existing port; surface temps held fixed at restart values
+  Atm. Dynamics          [Out of scope    ]  no dynamical core ported
+  CONDSE (moist conv.)   [Out of scope    ]  no moist convection ported
+  Ocean GCM              [Out of scope    ]  SST approximated from layer-1 air temp; no ocean model ported
+
+Done.

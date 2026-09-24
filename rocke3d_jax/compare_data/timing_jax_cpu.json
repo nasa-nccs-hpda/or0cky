@@ -3,7 +3,8 @@
   "jax_devices": [
     "TFRT_CPU_0"
   ],
-  "drycnv_mean_seconds": 0.01409402847290039,
-  "pbl_mean_seconds": 0.00034019231796264646,
+  "drycnv_mean_seconds": 0.0012385845184326172,
+  "drycnv_levellast_api_mean_seconds": 0.0031899142265319823,
+  "pbl_mean_seconds": 0.00016451835632324218,
   "iterations": 100
 }

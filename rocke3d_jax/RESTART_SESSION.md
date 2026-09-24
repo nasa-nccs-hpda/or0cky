@@ -62,10 +62,18 @@ real restart data. Everything reproduced. Two real (small) bugs found and
 fixed in the process — see STATUS.md's "Regression verification" section
 for details. Nothing here needed re-litigating as a result.
 
+**Round 2 optimization (2026-09-23)**: DRYCNV rewritten (layer-first scan,
+~9.5× / ~4× via the old API), PBL op-count cuts (~2×), driver restructured
+into `prepare_static` + device-resident `run_steps_device` (~5× per step on
+CPU chained, ~4× single call). CPU only; **GPU numbers still need the user's
+run** (steps in README_GPU.md). Accuracy argument, rejected ideas and caveats:
+STATUS.md "Round 2 optimization". Nothing committed. `mantle/` NumPy scripts
+untouched. 115 tests pass.
+
 **GPU optimization, same day, later**: profiled the full-chain driver
 (`run_dtsrc_step`), found it dispatching ~33 separate JIT calls per step,
 and fused the whole hot path into one `@jax.jit` function
-(`p2saom40_driver.py`'s `_step_core`) — see "GPU optimization: Phase 1" in
+(`p2saom40_driver.py`'s `_step_core`, since replaced by `_step_dev`/`run_steps_device` in Round 2) — see "GPU optimization: Phase 1" in
 STATUS.md. Verifying this on a real GPU (discover cluster A100) surfaced a
 **second, independent bug**: `p2saom40_compare.py`'s "Performance (CPU)"
 section never actually forced the CPU backend, so on a GPU node it silently
