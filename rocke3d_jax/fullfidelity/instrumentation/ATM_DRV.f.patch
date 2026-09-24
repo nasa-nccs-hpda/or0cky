@@ -1,5 +1,5 @@
 --- ATM_DRV.f.orig	2026-09-24 11:47:46.977138257 -0400
-+++ ATM_DRV.f	2026-09-24 11:47:47.235519835 -0400
++++ ATM_DRV.f	2026-09-24 12:01:14.809928847 -0400
 @@ -261,7 +261,9 @@
           CALL TIMER (NOW,MSURF)
  
@@ -28,7 +28,7 @@
           CALL CHECKT ('DRYCNV')
           CALL TIMER (NOW,MSURF)
           IF (MODD5S.EQ.0) CALL DIAGCA (9)
-@@ -1963,3 +1968,61 @@
+@@ -1963,3 +1968,139 @@
        return
        end subroutine accum_subdd_atm
  #endif
@@ -90,3 +90,81 @@
 +      write(fu) a
 +      end subroutine ffw2
 +      end subroutine ffdump
++
++      subroutine ffdump_aturb(tag,dtime)
++!@sum full-fidelity-port instrumentation for ATURB (atm_diffus)
++      use model_com, only : itime
++      use atm_com, only : ma,u,v,t,q,pk,pek,pmid,pedn,pdsig,ualij,valij
++      use pblcom, only : egcm,w2gcm,pblht,dclev,pblptop
++      use fluxes, only : uflux1,vflux1,tflux1,qflux1,atmsrf
++      implicit none
++      character(len=*) :: tag
++      real*8 :: dtime
++      integer, save :: it0=-1, nst=0, init=0, ncall=0, lastit=-1
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (tag.eq.'in') then
++        if (itime.ne.lastit) ncall=0
++        lastit=itime
++        ncall=ncall+1
++      endif
++      write(fname,'(A,I0,A,I0,A,A,A)') 'ffa_',itime,'_c',ncall,'_',
++     &     trim(tag),'.bin'
++      fu=988
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dtime
++      call w3('U',u)
++      call w3('V',v)
++      call w3('T',t)
++      call w3('Q',q)
++      call w3('UALIJ',ualij)
++      call w3('VALIJ',valij)
++      call w3('EGCM',egcm)
++      call w3('W2GCM',w2gcm)
++      call w3('MA',ma)
++      call w3('PK',pk)
++      call w3('PEK',pek)
++      call w3('PMID',pmid)
++      call w3('PEDN',pedn)
++      call w3('PDSIG',pdsig)
++      call w2('UFLUX1',uflux1)
++      call w2('VFLUX1',vflux1)
++      call w2('TFLUX1',tflux1)
++      call w2('QFLUX1',qflux1)
++      call w2('TSAVG',atmsrf%tsavg)
++      call w2('QSAVG',atmsrf%qsavg)
++      call w2('PBLHT',pblht)
++      call w2('DCLEV',dclev)
++      call w2('PBLPTOP',pblptop)
++      close(fu)
++      contains
++      subroutine w3(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 3, lbound(a,1),lbound(a,2),lbound(a,3),
++     &     ubound(a,1),ubound(a,2),ubound(a,3)
++      write(fu) a
++      end subroutine w3
++      subroutine w2(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 2, lbound(a,1),lbound(a,2),1,
++     &     ubound(a,1),ubound(a,2),1
++      write(fu) a
++      end subroutine w2
++      end subroutine ffdump_aturb

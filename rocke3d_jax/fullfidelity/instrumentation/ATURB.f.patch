@@ -1,0 +1,18 @@
+--- ATURB.f.orig	2026-09-24 12:01:14.716498771 -0400
++++ ATURB.f	2026-09-24 12:01:14.939030001 -0400
+@@ -113,6 +113,7 @@
+       ! routine has been called from.
+ 
+       if (lbase_min.eq.2) return       ! quit if called from main
++      call ffdump_aturb('in',dtime)
+ 
+       !  convert input T to virtual T
+ 
+@@ -633,6 +634,7 @@
+         END DO
+       END DO
+ 
++      call ffdump_aturb('out',dtime)
+       return
+       end subroutine atm_diffus
+ 
