@@ -8,6 +8,30 @@ workload. Everything in STATUS.md stays as the **baseline** ("representative
 driver"); this branch adds a second, separately-labelled track and records the
 **deltas** between them.
 
+## Progress (updated 2026-09-24, end of first autonomous session)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Phase 0: build/instrument real ModelE, reproducibility, noise floor | **done** | `fullfidelity/PHASE0_LOG.md`, ledger D1–D3 |
+| Phase 1.1 ATURB (A-grid + U/V) | **done, F0 rounding-level** | D4 |
+| Phase 1.2 PBL `advanc` (surface layer, all 4 tile types) | **done, F0** | D5 |
+| Phase 1.3 SURFACE ocean/lake + sea-ice tile fluxes, ice properties | **done, F0** (limiter branches unvalidated) | D6 |
+| Phase 1.3b land-ice tile | **done, F0** (dew limit unvalidated) | D7 |
+| Phase 1.4 GHY / land (EARTH + `advnc` + snow + Ent canopy conductance) | not started; scoped below | — |
+| Phase 1.5 SEAICE/LAKES ground thermodynamics; tile aggregation (`avg_patches_*`) | not started | — |
+| Phases 2–5 (radiation, clouds, dynamics, ocean) | not started | — |
+
+**Scoping learned so far.** (a) The pieces ported so far are stateless column/tile functions and validated at
+1e-11–1e-16 relative; the method (instrumented real model → per-call records → JAX port → tests with
+mutation checks) works and took roughly an hour of effort per ~1k Fortran lines. (b) The land model is a
+different animal: `giss_LSM/GHY.f` (4.6k lines) keeps its state in module-level variables (soil water/heat
+in 6 layers × bare/vegetated, 5 snow layers, canopy), is driven by Ent vegetation (26.5k lines of library; only
+the canopy conductance/photosynthesis path is needed), and needs the multi-layer land state from the restart.
+Expect it to be the longest single item in Phase 1. (c) Moist convection + large-scale condensation
+(`CLOUDS2.F90`: MSTCNV 2.7k, LSCOND 2.0k lines, heavily branching) is next in size. (d) Track B's current
+pieces are unoptimized (CPU float64 ≈ 0.4 s per DTsrc step for PBL+ATURB alone, ledger D8): performance work
+comes only after each rung's correctness.
+
 ## 1. Definition of "full fidelity" (decide this first, in writing)
 
 Fidelity is a ladder, not a switch. Each rung is a claim we can test:
