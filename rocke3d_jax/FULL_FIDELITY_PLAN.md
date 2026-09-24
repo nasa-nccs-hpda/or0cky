@@ -51,6 +51,13 @@ play; with them, well over 150k. This is a multi-month effort for one
 person; the plan below is ordered so that each phase produces a
 *measurable fidelity delta* and can be the stopping point.
 
+> **2026-09-24 finding (see `fullfidelity/PHASE0_LOG.md`):** the real
+> P2SAoM40 executable contains no DRYCNV — free-atmosphere mixing is ATURB
+> (`atm_diffus`). Track A's DRYCNV work benchmarks a routine the real
+> configuration does not run. Phase 1 must therefore make **ATURB** the first
+> port target. Also confirmed: the real model is bitwise reproducible here
+> (5-day re-run == original restart, byte-identical).
+
 ## 3. Method (what makes this different from the previous port)
 
 The earlier ports were validated against self-written "Fortran-like" test

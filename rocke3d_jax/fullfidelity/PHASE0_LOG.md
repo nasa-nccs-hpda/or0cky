@@ -57,3 +57,27 @@ Consequences:
 - A 5-day / 240-step, full-model, real-Fortran reference trajectory exists
   with known-good endpoints: the F2 test target.
 - A ~16 min cycle for re-running Fortran (with instrumentation) is cheap.
+
+## 2026-09-24: KEY FINDING — DRYCNV is not part of real P2SAoM40 physics
+
+`nm P2SAoM40.bin` shows **no `drycnv` symbol**; the executable contains
+`atm_diffus_`, `e_gcm_`, `find_pbl_top_` (ATURB.f). The rundeck's object list
+has ATURB and no DRYCNV, and ATM_DRV.f's comment says the DRYCNV slot is a
+dummy call when ATURB is used (`CALL ATM_DIFFUS (2,LM-1,dtsrc)`).
+The PBL similarity functions (`socpbl_mp_find_dpsim_`) *are* used (surface layer).
+
+Implication for HQ's skepticism: Track A's "DRYCNV: Faithful, 9.5x" kernel
+validates a routine the real configuration never executes. The
+free-atmosphere turbulence that must be ported for fidelity is **ATURB**
+(1,405 lines; currently only partial), not DRYCNV. Priority of ATURB in
+Phase 1 rises accordingly (it becomes the vertical-mixing core, not a
+"wire it in" item). Track A's DRYCNV timing remains valid as a stand-alone
+kernel benchmark but must not be cited as part of the P2SAoM40 workload.
+
+## Instrumentation build (in progress)
+A working copy of the model tree (236 MB, everything but ModelE_Support) builds
+in a scratch dir with `gmake -C decks RUN=P2SAoM40 <copy>/model/P2SAoM40.bin`
+(paths are relative to the tree root, `.modelErc` supplies NETCDFHOME).
+Dump hooks will be added in that copy only. ATM_DRV.f `atm_phase1` and
+MODELE.f main loop give the natural hook points (before/after CONDSE, RADIA,
+SURFACE, ATM_DIFFUS).
