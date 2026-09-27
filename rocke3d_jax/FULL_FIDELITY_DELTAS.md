@@ -150,5 +150,49 @@ or the tile-flux vector ops, so this is **not** a like-for-like comparison and n
 Track A's headline (0.74 ms/step on an A100) is for a far simpler computation and must not be compared with these.
 GPU numbers for Track B: not measured yet (needs a GPU node).
 
+## D9 — Track B GHY land-surface model vs real Fortran, F0
+`fullfidelity/ghy_ref.py` + `ghy_compare.py`: plain-Python/NumPy (not yet JAX) transcription of
+`giss_LSM/GHY.f` `advnc` and its callees (reth, hydra, xklh, retp, evap_limits, sensible_heat,
+drip_from_canopy, fl/flh/flg/flhg, runoff, fllmt, apply_fluxes, accm) and the snow model
+(SNOW.f/SNOW_DRV.f: snow_fraction, snow_redistr, snow_adv/snow_adv_1, heat_eq). Compiled options
+matched: EVAP_VEG_GROUND, GHY_FD_1_HACK, GHY_USE_LARGESCALE_PRECIP, INTERCEPT_TEMPORAL,
+LARGE_SCALE_PRECIP_INTERCEPT; no tracers, no SCM. Dynamic vegetation (Ent: canopy conductance,
+soil-layer betas, LAI, GPP, TRANS_SW, Ci, IPP) is **not** ported — its real per-sub-iteration outputs
+are recorded from the instrumented model (`ffent`/`ffent0` in the dump) and fed in as inputs, so this
+validates the land-surface physics that consumes Ent's exports, not Ent itself.
+
+Validated on **9,036 real land-tile records** (all `fearth>0` cells, 6 steps × 3 dates); 804–854/1506
+cells per step carry active snow (>50%), so the snow model is genuinely exercised, not a vacuous path.
+Zero exceptions over a full file (every real cell, not just a sample).
+
+| Output | max\|abs error\| | max real value (scale) | ratio |
+|---|---|---|---|
+| tbcs, tsns (skin/sensible temp, °C) | 7e-7 | 59 | 1e-8 |
+| ashg (sensible heat, W/m²·s) | 0.056 | 5.4e5 | 1e-7 |
+| alhg, ae0 (latent heat / net energy) | 1.85 | 4.3e5 | 4e-6 |
+| aevap | 7e-7 | 0.17 | 4e-6 |
+| aruns, aeruns (surface runoff) | 1.8e-4 / 3.7 | 0.56 / 1.6e4 | up to 7e-3 (see below) |
+| arunu, aerunu (underground runoff) | 6e-8 / 5e-4 | 0.21 / 2e4 | 1e-6 |
+
+**Not float64-rounding-level like ATURB/PBL/SURFACE** — this is a plain-Python reference, ported for
+correctness first (no JAX vectorization yet), and the largest residuals are in `aruns`/`aeruns`
+(bare-soil surface runoff): traced to cells with a very small bare fraction (fb ~0.5–1%) where the
+runoff formula's `(w/ws)**8` saturation exponent amplifies float64 rounding noise near the `min(...,0.6)`
+threshold — the same "tiny threshold-crossing sensitivity" pattern documented for ATURB/PBL, not a
+logic bug (the core temperature/heat-flux outputs that matter most are all ≤4e-6 relative). Land skin
+temperature and heat fluxes — the fields SURFACE.f actually consumes for the atmosphere coupling — are
+solid; runoff diagnostics are secondary outputs.
+
+**Bug caught by validation:** ws(0,2)/shc(0,2) (canopy water capacity / heat capacity) are set from
+Ent's per-cell exports (`ws_can`, `shc_can`) *before* the main iteration loop in the real code; missing
+this produced 0/0 divisions and NaN/Inf immediately (canopy temperature). Found and fixed via the
+oracle comparison, not by inspection.
+
+**Not yet ported:** Ent vegetation itself (photosynthesis, canopy conductance, LAI dynamics — treated
+as a recorded input here); GHY tracers; the adaptive sub-step selector `gdtm` (the recorded per-iteration
+`dts` is used directly, so this validates the physics update, not the time-step-size choice — a
+separate, smaller check would confirm `gdtm` reproduces the same `dts` given the same state).
+Tests: `fullfidelity/tests/test_ghy_ref.py` (5, incl. mutation checks and a full-file no-exception run).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).

@@ -1,0 +1,113 @@
+--- GHY_DRV.f.orig	2026-09-25 08:05:12.234965959 -0400
++++ GHY_DRV.f	2026-09-25 08:05:12.444693135 -0400
+@@ -872,6 +872,10 @@
+       real*8 fb,fv
+ !@var rhosrf0 estimated surface air density
+       real*8 rhosrf0
++      real*8 grec(450)
++      real*8 ffent(13,60), ffent0(12)
++      integer ffnit,ff1,ff2
++      common /ffgent/ ffent, ffent0, ffnit
+ 
+       real*8, dimension(:,:), pointer :: trdn,srdn
+ 
+@@ -1228,6 +1232,54 @@
+       mCO2cond_old = mCO2cond_ij(i,j)
+       t = newBaseTime( modelEClock%getCurrentTime()
+      &     + newTimeInterval(0.d0) )
++      grec=-1d300
++      grec(1)=i
++      grec(2)=j
++      grec(4)=Ca
++      grec(5)=cos_zen_angle
++      grec(6)=vis_rad
++      grec(7)=direct_vis_rad
++      grec(8)=Qf_ij(i,j)
++      grec(9:29)=reshape(w_ij(0:ngm,1:LS_NFRAC,i,j),(/21/))
++      grec(30:50)=reshape(ht_ij(0:ngm,1:LS_NFRAC,i,j),(/21/))
++      grec(51:52)=nsn_ij(1:2,i,j)
++      grec(53:58)=reshape(dzsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(59:64)=reshape(wsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(65:70)=reshape(hsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(71:72)=fr_snow_ij(1:2,i,j)
++      grec(73)=top_index_ij(i,j)
++      grec(74)=top_dev_ij(i,j)
++      grec(75:80)=dz_ij(i,j,1:ngm)
++      grec(81:110)=reshape(q_ij(i,j,1:imt,1:ngm),(/30/))
++      grec(111:140)=reshape(qk_ij(i,j,1:imt,1:ngm),(/30/))
++      grec(141)=sl_ij(i,j)
++      grec(142)=fb
++      grec(143)=fv
++      grec(144)=prec(i,j)/(dtsrc*rhow)
++      grec(145)=eprec(i,j)/dtsrc
++      grec(146)=precss(i,j)/(dtsrc*rhow)
++      grec(147)=0d0
++      grec(148)=irrig
++      grec(149)=htirrig
++      grec(150)=srheat
++      grec(151)=trheat
++      grec(152)=fgeotherm(i,j)
++      grec(153)=pbl_args%tsv/(1.+qs*xdelt)
++      grec(154)=pbl_args%qsrf
++      grec(155)=ps - dmCO2cond(i,j)*grav*0.01d0
++      grec(156)=rhosrf
++      grec(157)=cdh
++      grec(158)=q1*ma1
++      grec(159)=pbl_args%ws
++      grec(160)=pbl_args%ws0
++      grec(161)=pbl_args%gusti
++      grec(162)=pbl_args%tprime
++      grec(163)=pbl_args%qprime
++      grec(164)=0d0
++      if (end_of_day_flag) grec(164)=1d0
++      grec(165)=mCO2cond_ij(i,j)
++      grec(166)=ma1
++      grec(167)=orbit%getTrueAnomaly(t)/3.14159265358979d0*180.d0
+       call advnc(
+      &     entcells(i,j), Ca,
+      &     cos_zen_angle, vis_rad, direct_vis_rad,
+@@ -1294,6 +1346,44 @@
+ 
+       !call veg_save_cell(i,j)
+       !call ghy_save_cell(i,j)
++      grec(168)=ffent0(1)
++      grec(169)=ffent0(2)
++      grec(170)=ffent0(3)
++      grec(171)=ffent0(4)
++      grec(172:177)=ffent0(5:10)
++      grec(180)=Qf_ij(i,j)
++      grec(181:201)=reshape(w_ij(0:ngm,1:LS_NFRAC,i,j),(/21/))
++      grec(202:222)=reshape(ht_ij(0:ngm,1:LS_NFRAC,i,j),(/21/))
++      grec(223:224)=nsn_ij(1:2,i,j)
++      grec(225:230)=reshape(dzsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(231:236)=reshape(wsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(237:242)=reshape(hsn_ij(1:nlsn,1:2,i,j),(/6/))
++      grec(243:244)=fr_snow_ij(1:2,i,j)
++      grec(245)=mCO2cond_ij(i,j)
++      grec(246)=tbcs
++      grec(247)=tsns
++      grec(248)=ashg
++      grec(249)=alhg
++      grec(250)=aevap
++      grec(251)=aruns
++      grec(252)=arunu
++      grec(253)=aeruns
++      grec(254)=aerunu
++      grec(255)=ae0
++      grec(256)=abetad
++      grec(257:258)=snowd(1:2)
++      grec(259:272)=reshape(tp(0:ngm,1:2),(/14/))
++      grec(273:286)=reshape(fice(0:ngm,1:2),(/14/))
++      grec(287)=evap_max_ij(i,j)
++      grec(288)=fr_sat_ij(i,j)
++      grec(289)=thets(1,1)
++      grec(290)=ffnit
++      do ff1=1,min(ffnit,12)
++      do ff2=1,13
++      grec(299+13*(ff1-1)+ff2)=ffent(ff2,ff1)
++      enddo
++      enddo
++      call ffdump_ghy(grec,450)
+       if ( fb > 0 ) snowbv(1,i,j)   = snowd(1)
+       if ( fv > 0 ) snowbv(2,i,j)   = snowd(2)
+ 

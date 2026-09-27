@@ -1,0 +1,44 @@
+--- giss_LSM/GHY.f.orig	2026-09-25 08:05:12.295098042 -0400
++++ giss_LSM/GHY.f	2026-09-25 08:05:12.435386148 -0400
+@@ -2198,6 +2198,9 @@
+       real*8 :: sbgc_temp(ngm), sbgc_moist(ngm)
+       real*8 :: height_can
+       real*8 :: albedo_6b(6)
++      real*8 ffent(13,60), ffent0(12)
++      integer ffnit
++      common /ffgent/ ffent, ffent0, ffnit
+ #ifdef TRACERS_WATER
+       real*8 tr_evap(ghy_tr%ntg,2),tr_rnff(ghy_tr%ntg,2)
+ #endif
+@@ -2334,6 +2337,13 @@
+      &     ,C_entcell=C_entcell_start
+ #endif
+      &     )
++      ffent0(1)=ws_can
++      ffent0(2)=shc_can
++      ffent0(3)=fv
++      ffent0(4)=height_can
++      ffent0(5:10)=albedo_6b(1:6)
++      ffent(:,:)=-1d300
++      ffnit=0
+ ccc make sure there are no round-off errors in fractions
+       if ( fv < 1.d-6 ) fv = 0.d0
+       if ( fv > 1.d0 - 1.d-6 ) fv = 1.d0
+@@ -2507,6 +2517,17 @@
+           lai = 0.d0
+           IPP = 0.d0
+         endif
++      if (nit.le.60) then
++      ffent(1,nit)=cnc
++      ffent(2:7,nit)=betadl(1:6)
++      ffent(8,nit)=TRANS_SW
++      ffent(9,nit)=Ci
++      ffent(10,nit)=GPP
++      ffent(11,nit)=lai
++      ffent(12,nit)=IPP
++      ffent(13,nit)=dts
++      endif
++      ffnit=nit
+ 
+ !        print *,"HGY_COND: ",ijdebug, cnc, betadl, Ci, Qf
+ !        print *,"GHY_FORCINGS: ", ijdebug, tp(0,2),

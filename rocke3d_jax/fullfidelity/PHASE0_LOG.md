@@ -108,3 +108,16 @@ written by the instrumented model on first ATURB call.
 27.5k real PBL calls (4 surface types, 3 dates): worst max-abs/rms 5e-11; residual equals the model's own
 float64 sensitivity. Test data ff_data/*/ffp_*.bin. Next: SURFACE tile-flux logic (ocean, sea-ice
 explicit/implicit fluxes), then GHY (land), SEAICE/LAKES thermodynamics, land ice.
+
+
+## 2026-09-27: Phase 1 item 4 DONE — GHY land-surface model ported (D9)
+9,036 real land-tile records (6 steps x 3 dates), 804-854/1506 with active snow per step, zero exceptions
+on a full-file run. Plain-Python reference (not yet JAX); largest residuals (aruns/aeruns, up to 7e-3 of
+field scale) traced to a threshold-crossing sensitivity in the bare-soil runoff formula, same pattern as
+ATURB/PBL branch flips -- not a logic bug. Core outputs (tbcs, tsns, ashg, alhg, ae0, aevap) all <=4e-6
+relative. Bug caught: ws(0,2)/shc(0,2) canopy capacities must come from Ent's per-cell exports
+(ws_can/shc_can), set once before the iteration loop -- missing this gave immediate NaN/Inf.
+Ent vegetation itself (canopy conductance/LAI/photosynthesis) is NOT ported; its real per-substep
+outputs are read from the dump and used as inputs. Test data: ff_data/*/ffg_*.bin + ffg_thm.txt.
+Next: SEAICE/LAKES ground thermodynamics and tile aggregation (`avg_patches_*`), then JAX-vectorize
+the ported pieces, then Phase 2 (radiation via SOCRATES from Python, per user decision 2026-09-25).

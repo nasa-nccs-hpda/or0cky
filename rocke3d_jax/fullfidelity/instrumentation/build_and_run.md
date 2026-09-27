@@ -53,3 +53,9 @@ SURFACE tile dumps: `ffs_<itime>.bin`, 90-double big-endian records, one per oce
 (inputs at BL entry, PBL outputs, tile outputs). Entries not set for a tile type hold -1e300 or stale values.
 
 Land-ice tile dumps: `ffl_<itime>.bin`, 60-double records, ~692/step (both substeps); columns lrec(1..46) in SURFACE_LANDICE.f.patch.
+
+Land (GHY) dumps: patch `giss_LSM/GHY.f` and `GHY_DRV.f` with `GHY.f.patch`/`GHY_DRV.f.patch` in
+addition to the ATM_DRV.f patch. `ffg_<itime>.bin`: 450-double records, one per land (`fearth>0`) tile
+per DTsrc step; `ffg_thm.txt` (soil property table, written once) is needed by the reference port only
+for cross-checking, not required at runtime (ghy_ref.py recomputes it). Record layout: see
+`fullfidelity/ghy_compare.py`'s `unpack()`.
