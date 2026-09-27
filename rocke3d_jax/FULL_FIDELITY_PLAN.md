@@ -23,7 +23,8 @@ driver"); this branch adds a second, separately-labelled track and records the
 | Phase 1.5c Lake mixing (LAKES.f `LKSOURC`/`LKMIX`) | **done, F0 bitwise** (TKE-entrainment branch dead code in this rundeck, unvalidated) | D13 |
 | Phase 2 Radiation (SOCRATES) | scoped 2026-09-27, proof-of-concept only (one kernel via subprocess); paused — user redirected effort to remaining small items first | plan §Phase 2 |
 | Phases 3–5 (clouds, dynamics, ocean) | not started | — |
-| JAX-vectorization of Track B reference ports (`ghy_ref.py`, `seaice_core_ff.py`, still plain Python/NumPy) | not started | — |
+| JAX-vectorization: SEA_ICE/SSIDEC/snowice/SIMELT (`seaice_core_jax.py`) | **done**, same accuracy as plain Python, jit-compilable | D14 |
+| JAX-vectorization: ADDICE, GHY (`ghy_ref.py`) | not started (ADDICE's branch depth makes it a separate, larger effort — see D14) | — |
 
 **Scoping learned so far.** (a) The pieces ported so far are stateless column/tile functions and validated at
 1e-11–1e-16 relative; the method (instrumented real model → per-call records → JAX port → tests with

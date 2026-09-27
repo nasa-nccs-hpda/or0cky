@@ -607,10 +607,16 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   a statically-linked subprocess driver instead, establishing the calling architecture for a future
   full radiation port. Not a SOCRATES rewrite — the intent is to call the real, unmodified library.
 
+- JAX-vectorization: the SEA_ICE/SSIDEC/snowice/SIMELT hot path (`seaice_core_jax.py`) is now a
+  batched, `jax.jit`-compilable port (4,524 real cells: 4.6 ms cached vs. a 2.9 s one-time compile)
+  at the same accuracy as the plain-Python reference (worst case 7e-15 relative difference between
+  the two). ADDICE and GHY are still plain Python -- ADDICE's ~15-leaf branch tree is deliberately
+  deferred rather than vectorized in a rush (see D14).
+
 **Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
 kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
-convection, atmospheric dynamics, ocean. All Track B reference ports are still plain Python/NumPy, not
-yet JAX-vectorized. No speed numbers for Track B yet (only float64 CPU correctness runs).
+convection, atmospheric dynamics, ocean, ADDICE and GHY JAX-vectorization. No speed numbers for the
+rest of Track B yet (only float64 CPU correctness runs).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 

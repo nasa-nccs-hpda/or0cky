@@ -278,5 +278,43 @@ transcribed here but never exercised by real Fortran calls — ported faithfully
 practice, same honesty standard as the SIMELT `TSIL`-undefined case in D12.
 Tests: `fullfidelity/tests/test_lakes_ff.py` (4, incl. mutation checks).
 
+## D14 — JAX-vectorized SEA_ICE/SSIDEC/snowice/SIMELT (`seaice_core_jax.py`) vs real Fortran
+`fullfidelity/seaice_core_jax.py`: batched-array (jnp.where in place of Python if/else) port of the
+per-DTsrc-step hot path from `seaice_core_ff.py` -- `sea_ice`, `ssidec`, `snowice`, their shared
+`relayer`/`relayer_12`/`get_snow_ice_layer`/`set_snow_ice_layer`/`tice` helpers, and `simelt`. Runs
+all real cells from a file in one call instead of a Python loop (JIT-compilable: 4,524 cells run in
+4.6 ms cached on CPU after a 2.9 s one-time trace/compile, vs. the reference's per-cell Python loop).
+
+**ADDICE is intentionally not vectorized** (see the module's docstring): it composes 4 sequential
+decision blocks whose leaves are themselves nested branches (~15 mutually-exclusive paths overall),
+several of which are lead-fraction rebalancing corrections only lightly exercised by the available
+3-date real record. `relayer_12` alone (needed by `sea_ice`/`snowice`) already has 9 leaf branches,
+each hand-derived as a closed form in the pre-branch inputs and selected with nested `jnp.where`
+matching the original's if/elif/else precedence -- ADDICE would need a comparable derivation on top
+of that, with less real-data coverage to catch a mistake in a rare branch. It stays plain Python.
+
+Validated on the **same 4,524 real GROUND_SI cells and 4,668 real SIMELT cells** as D10/D12, three
+independent ways: directly against the real Fortran dumps, against `seaice_core_ff` row-for-row
+(worst case 7e-15 relative, i.e. float64-rounding-level agreement with the already-validated plain
+Python), and for exact eager/`jax.jit` equivalence. No NaN/Inf anywhere in 4,524+4,668 real cells.
+
+| Output | max rel err vs Fortran (batched) | vs D10/D12 (plain Python) |
+|---|---|---|
+| GROUND_SI snow | 2.2e-15 | 2e-15 |
+| GROUND_SI hsil | 7.0e-8 | 7e-9 |
+| GROUND_SI msi2 | 5.0e-8 | 5e-8 |
+| GROUND_SI ssil | 6.8e-7 | 7e-7 |
+| GROUND_SI runosi/erunosi/srunosi | 3.4e-5 / 6.5e-5 / 3.1e-4 | 3e-5 to 3e-4 |
+| SIMELT (roice/snow/msi2/hsil/ssil) | 0 (bitwise) | 0 (bitwise) |
+| SIMELT enrgused | 4.0e-16 | 1.5e-16 |
+
+Essentially identical accuracy to the plain-Python reference at every field -- vectorizing did not
+loosen any tolerance. `tsil` in SIMELT's `roice>0` branch is `NaN` (a sentinel, not a computed
+value), matching the plain-Python `tsil=None` for the same documented-undefined-Fortran-output case.
+Tests: `fullfidelity/tests/test_seaice_jax_vectorized.py` (6, incl. mutation checks, jit-equivalence,
+and a cross-check against `seaice_core_ff`).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
+- JAX-vectorization of `ghy_ref.py` (land/GHY) and `addice` (sea-ice formation) -- both still plain
+  Python; ADDICE's scope decision is documented in D14 / `seaice_core_jax.py`'s module docstring.

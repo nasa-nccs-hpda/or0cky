@@ -160,3 +160,18 @@ entrainment branch is transcribed but never exercised by real calls -- documente
 practice, not silently assumed correct. Test data ff_data/*/ffl2_*.bin.
 This completes all items in "the smaller remaining items" except JAX-vectorization of the Track B
 reference ports (ghy_ref.py, seaice_core_ff.py — still plain Python/NumPy), which is next.
+
+## 2026-09-27: JAX-vectorization of the sea-ice hot path DONE (D14)
+seaice_core_jax.py: batched-array (jnp.where, no Python loop over cells) port of sea_ice/ssidec/
+snowice/simelt and their relayer/relayer_12/get_snow_ice_layer/set_snow_ice_layer/tice helpers.
+relayer_12 alone required hand-deriving 9 mutually-exclusive leaf branches as closed forms in the
+pre-branch inputs (its Python original is a 4-way nested if/elif/else). Validated on the same 4,524
+GROUND_SI + 4,668 SIMELT real cells as D10/D12: matches Fortran at the same tolerances as the plain-
+Python reference (worst case unchanged to 2 significant figures), matches seaice_core_ff row-for-row
+to 7e-15 relative, jax.jit-compiles (4.6ms cached for 4,524 cells vs 2.9s one-time compile), zero
+NaN/Inf. Scope decision, not an oversight: ADDICE is NOT vectorized here -- it chains 4 sequential
+decision blocks with ~15 leaf branches total, several rebalancing corrections only lightly exercised
+by the 3-date real record; rushing its jnp.where conversion would add more untested branch surface
+than the lake-mixing/ADDICE-Python effort has real data to validate against. Full test suite (62
+tests across fullfidelity/) still green after this change. Remaining JAX-vectorization work: ADDICE,
+GHY (ghy_ref.py, a much larger stateful multi-layer column solver).
