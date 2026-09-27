@@ -194,5 +194,34 @@ as a recorded input here); GHY tracers; the adaptive sub-step selector `gdtm` (t
 separate, smaller check would confirm `gdtm` reproduces the same `dts` given the same state).
 Tests: `fullfidelity/tests/test_ghy_ref.py` (5, incl. mutation checks and a full-file no-exception run).
 
+## D10 — Track B sea-ice ground thermodynamics (GROUND_SI) vs real Fortran, F0
+`fullfidelity/seaice_core_ff.py`: plain-Python transcription of SEAICE.f `SEA_ICE` (4-layer heat
+diffusion, melt/dew, compression, relayering), `SSIDEC` (brine drainage, ocean domain only) and
+`snowice` (snow-to-ice conversion), driving from the real model's own GROUND_SI inputs (surface fluxes
+already computed by SURFACE.f). `seaice_thermo="BP"` (brine-pocket, the P2SAoM40 default). Documented
+approximation: the real `Ti`/`Ti2b` (enthalpy->temperature) use REAL*16 internally; this port uses
+float64 throughout, validated empirically rather than assumed exact.
+
+Validated on **4,524 real GROUND_SI cells** (6 steps × 3 dates, both sea-ice and lake-ice domains).
+Brine drainage fires in 65% of ocean cells and snow-to-ice conversion in 15–20% — both genuinely
+exercised, not rare edge cases. Zero exceptions over every real cell.
+
+| Output | max relative error (or absolute, where ref≈0) |
+|---|---|
+| snow, hsil (layer enthalpy) | 2e-15 / 7e-9 |
+| msi2 (ice mass) | 5e-8 |
+| ssil (layer salt) | 7e-7 |
+| runosi, erunosi, srunosi (ocean-coupling fluxes) | 3e-5 to 3e-4 |
+
+The coupling-flux diagnostics (runosi/erunosi/srunosi) are differences of large numbers (surface flux
+minus internal flux minus brine/snow-ice flux), so their relative error is a few orders above the state
+variables — same cancellation pattern documented elsewhere, not a logic bug (a dump-placement bug was
+caught and fixed during validation: the first instrumentation attempt read `RUNOSI` *before* Fortran
+assigned it, showing a spurious 100% mismatch that pointed straight at the real cause).
+Tests: `fullfidelity/tests/test_seaice_core_ff.py` (5, incl. mutation checks).
+**Not ported:** ADDICE/SIMELT (ice formation/complete melt — different code paths not on the record's
+DOPOINT branch), lake mixing (LAKES.f `lkmix`, a documented no-op even in Track A), tile aggregation
+(`avg_patches_*` — the JAX-vectorization step for all Track B pieces is still pending).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).

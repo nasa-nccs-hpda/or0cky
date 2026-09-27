@@ -1,0 +1,86 @@
+--- SEAICE_DRV.f.orig	2026-09-27 11:48:51.580560277 -0400
++++ SEAICE_DRV.f	2026-09-27 11:55:45.753618245 -0400
+@@ -621,6 +621,7 @@
+       integer :: J_0, J_1, I_0,I_1
+       real*8 MSI1,SNOWL1,MICE1
+       REAL*8 CMPRS
++      real*8 sirec(60)
+ 
+       call startTimer('GROUND_SI()')
+ 
+@@ -746,6 +747,28 @@
+ c        if (debug) print*,"si0",i,j,SNOW,ROICE,HSIL,SSIL,MSI2,F0DT,F1DT,
+ c     *       EVAP,SROX,SNOW+ACE1I-SSIL(1)-SSIL(2) !, TRSIL(1,1)+TRSIL(1,2)
+ 
++      sirec=-1d300
++      sirec(1)=I
++      sirec(2)=J
++      sirec(3)=0
++      if (DOMAIN.eq.'OCEAN') sirec(3)=1
++      sirec(4)=DTSRC
++      sirec(5)=SNOW
++      sirec(6)=ROICE
++      sirec(7:10)=HSIL(1:4)
++      sirec(11:14)=SSIL(1:4)
++      sirec(15)=MSI2
++      sirec(16)=F0DT
++      sirec(17)=F1DT
++      sirec(18)=EVAP
++      sirec(19)=SROX(1)
++      sirec(20)=FMOC
++      sirec(21)=FHOC
++      sirec(22)=FSOC
++      sirec(23)=0
++      if (WETSNOW) sirec(23)=1
++      sirec(24)=Tm
++      sirec(25)=Sm
+         CALL SEA_ICE(DTSRC,SNOW,ROICE,HSIL,SSIL,MSI2,F0DT,F1DT,EVAP,SROX
+ #ifdef TRACERS_WATER
+      *       ,TRSIL,TREVAP,FTROC,TRRUN
+@@ -757,6 +780,18 @@
+ c        if (debug) print*,"si1",i,j,SNOW,HSIL,SSIL,MSI2,FMOC,FHOC,FSOC,
+ c     *       RUN,ERUN,SRUN,WETSNOW,MELT12,SNOW
+ c     $       +ACE1I-SSIL(1)-SSIL(2) !, TRSIL(1,1)+TRSIL(1,2)
++      sirec(26)=SNOW
++      sirec(27:30)=HSIL(1:4)
++      sirec(31:34)=SSIL(1:4)
++      sirec(35)=MSI2
++      sirec(36)=RUN
++      sirec(37)=ERUN
++      sirec(38)=SRUN
++      sirec(39)=0
++      if (WETSNOW) sirec(39)=1
++      sirec(40)=MELT12
++      sirec(41)=CMPRS
++      sirec(42)=SROX(2)
+ C**** Decay sea ice salinity
+         IF(DOMAIN.EQ.'OCEAN') THEN
+           CALL SSIDEC(SNOW,MSI2,HSIL,SSIL,DTsrc,MELT12,
+@@ -812,6 +847,16 @@
+ #ifdef TRACERS_WATER
+         TRSI(:,:,I,J) = TRSIL(:,:)
+ #endif
++      sirec(43)=SNOW
++      sirec(44:47)=HSIL(1:4)
++      sirec(48:51)=SSIL(1:4)
++      sirec(52)=MSI2
++      sirec(53)=RUNOSI(I,J)
++      sirec(54)=ERUNOSI(I,J)
++      sirec(55)=SRUNOSI(I,J)
++      sirec(56)=MFLUX
++      sirec(57)=HFLUX
++      sirec(58)=SFLUX
+         FLAG_DSWS(I,J)=WETSNOW
+ 
+         MSI1 = ACE1I + SNOW
+@@ -864,6 +909,10 @@
+         SITOPMLT(I,J) = POICE*(RUN+MFLUX)
+         MSNFLOOD(I,J) = -POICE*MSNWIC
+         HSNFLOOD(I,J) = -POICE*HSNWIC
++        sirec(53)=RUNOSI(I,J)
++        sirec(54)=ERUNOSI(I,J)
++        sirec(55)=SRUNOSI(I,J)
++        call ffdump_si(sirec,60)
+ 
+       END IF
+ 

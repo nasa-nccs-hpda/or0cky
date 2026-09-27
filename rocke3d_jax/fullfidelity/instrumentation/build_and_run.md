@@ -59,3 +59,7 @@ addition to the ATM_DRV.f patch. `ffg_<itime>.bin`: 450-double records, one per 
 per DTsrc step; `ffg_thm.txt` (soil property table, written once) is needed by the reference port only
 for cross-checking, not required at runtime (ghy_ref.py recomputes it). Record layout: see
 `fullfidelity/ghy_compare.py`'s `unpack()`.
+
+Sea-ice ground-thermodynamics dumps: patch `SEAICE_DRV.f` with `SEAICE_DRV.f.patch` in addition to the
+ATM_DRV.f patch. `ffi_<itime>.bin`: 60-double records, one per sea-ice/lake-ice cell (`POICE>0`) per
+GROUND_SI call. Column layout: see `fullfidelity/seaice_compare.py` module docstring.

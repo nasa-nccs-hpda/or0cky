@@ -121,3 +121,13 @@ Ent vegetation itself (canopy conductance/LAI/photosynthesis) is NOT ported; its
 outputs are read from the dump and used as inputs. Test data: ff_data/*/ffg_*.bin + ffg_thm.txt.
 Next: SEAICE/LAKES ground thermodynamics and tile aggregation (`avg_patches_*`), then JAX-vectorize
 the ported pieces, then Phase 2 (radiation via SOCRATES from Python, per user decision 2026-09-25).
+
+
+## 2026-09-27: Phase 1 item 5a DONE — sea-ice ground thermodynamics ported (D10)
+4,524 real GROUND_SI cells (6 steps x 3 dates, sea-ice + lake-ice), zero exceptions. SEA_ICE+SSIDEC+
+snowice all validated; relative errors 1e-15-3e-4 (coupling-flux diagnostics are the loosest, same
+cancellation pattern as elsewhere). One dump-placement bug caught and fixed (read RUNOSI before Fortran
+assigned it -- looked like total failure, was purely an instrumentation ordering mistake).
+Remaining for Phase 1: ADDICE/SIMELT (ice formation/melt-out), lake mixing (documented no-op in Track A
+too), then JAX-vectorize all Track B pieces so far (currently plain Python/NumPy reference code, correct
+but not fast), then Phase 2 (radiation via SOCRATES from Python, per user decision 2026-09-25).
