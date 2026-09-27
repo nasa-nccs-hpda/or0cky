@@ -223,5 +223,13 @@ Tests: `fullfidelity/tests/test_seaice_core_ff.py` (5, incl. mutation checks).
 DOPOINT branch), lake mixing (LAKES.f `lkmix`, a documented no-op even in Track A), tile aggregation
 (`avg_patches_*` — the JAX-vectorization step for all Track B pieces is still pending).
 
+## D11 — Tile aggregation (avg_patches_*) vs real Fortran
+`fullfidelity/tile_aggregate_ff.py`: the composite surface fields ATURB/PBL consume (uflux1, vflux1,
+dth1, dq1, tsavg, qsavg) are an area-fraction-weighted sum over the 4 surface-type patches
+(FLUXES.f `avg_patches_pbl_exports`/`avg_patches_srfflx_exports`) — confirmed by reading the source,
+not assumed. Validated on **38,040 real grid cells** (6 steps × 3 dates × 3312 cells): max error
+≤ 9e-7 of the field's RMS (float64 rounding level); patch fractions sum to 1.0 in every cell.
+Tests: `fullfidelity/tests/test_tile_aggregate_ff.py` (3, incl. mutation check).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).

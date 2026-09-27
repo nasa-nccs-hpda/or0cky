@@ -1,14 +1,16 @@
 --- SURFACE.f.orig	2026-09-24 13:10:18.926614059 -0400
-+++ SURFACE.f	2026-09-24 13:15:00.136143948 -0400
-@@ -172,6 +172,7 @@
++++ SURFACE.f	2026-09-27 14:22:06.235709660 -0400
+@@ -172,6 +172,9 @@
       *     ,PEARTH
  
        REAL*8 MA1, MSI1, MICE(2), SNOWL(2)
 +      REAL*8 srec(90)
++      REAL*8 trec(40)
++      INTEGER ffi_,ffj_,ffk_
  
  !@var XXX_sv temporary arrays to store the values of fluxes for
  !@+   the current surface timestep for a few flux diagnostics that
-@@ -601,6 +602,49 @@
+@@ -601,6 +604,49 @@
        EVHDT=0.
        TRHDT=0.
        F1DT=0.
@@ -58,7 +60,7 @@
  
        TG=TG1+TF
        QG_SAT=QSAT(TG,ELHX,PS)
-@@ -658,6 +702,19 @@
+@@ -658,6 +704,19 @@
        TS=pbl_args%TSV/(1.+QSRF*xdelt)
  C =====================================================================
  
@@ -78,7 +80,7 @@
  C**** Adjust ground variables to account for skin effects
        TG = TG + pbl_args%dskin
        QG_SAT=QSAT(TG,ELHX,PS)
-@@ -842,6 +899,30 @@
+@@ -842,6 +901,30 @@
        asflx(itype)%DMVA(I,J) = asflx(itype)%DMVA(I,J) + DMVA_IJ*DTSURF
        asflx(itype)%uflux1(i,j) = DMUA_IJ
        asflx(itype)%vflux1(i,j) = DMVA_IJ
@@ -109,3 +111,33 @@
  
  C****
  C**** SAVE SOME TYPE DEPENDENT FLUXES/DIAGNOSTICS
+@@ -1055,6 +1138,29 @@
+       call avg_patches_pbl_exports(grid,asflx,atmsrf)
+       call avg_patches_srfflx_exports(grid,asflx,atmsrf)
+       call avg_patches_srfstate_exports(grid,asflx,atmsrf)
++      DO ffj_=J_0,J_1
++      DO ffi_=I_0,IMAXJ(ffj_)
++      trec=-1d300
++      trec(1)=ffi_
++      trec(2)=ffj_
++      DO ffk_=1,4
++      trec(2+7*(ffk_-1)+1)=asflx(ffk_)%ftype(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+2)=asflx(ffk_)%uflux1(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+3)=asflx(ffk_)%vflux1(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+4)=asflx(ffk_)%dth1(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+5)=asflx(ffk_)%dq1(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+6)=asflx(ffk_)%tsavg(ffi_,ffj_)
++      trec(2+7*(ffk_-1)+7)=asflx(ffk_)%qsavg(ffi_,ffj_)
++      END DO
++      trec(31)=atmsrf%uflux1(ffi_,ffj_)
++      trec(32)=atmsrf%vflux1(ffi_,ffj_)
++      trec(33)=atmsrf%dth1(ffi_,ffj_)
++      trec(34)=atmsrf%dq1(ffi_,ffj_)
++      trec(35)=atmsrf%tsavg(ffi_,ffj_)
++      trec(36)=atmsrf%qsavg(ffi_,ffj_)
++      call ffdump_tile(trec,40)
++      END DO
++      END DO
+ 
+ C****
+ C**** UPDATE FIRST LAYER QUANTITIES
