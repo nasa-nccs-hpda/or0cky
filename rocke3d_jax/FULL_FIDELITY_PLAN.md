@@ -148,7 +148,43 @@ estimates and the least reliable part of this plan.
   pattern correlation vs. period-mean (−0.014, one-step vs. mean — not a
   like-for-like check) should be re-measured properly against the oracle.
 
-### Phase 2 — Radiation (6–10 weeks + a decision) — biggest single item
+### Phase 2 — Radiation (6–10 weeks + a decision) — biggest single item, SCOPED 2026-09-27
+
+Concrete finding from reading the real call chain (not guessed): P2SAoM40's CPP flags are
+`USE_PLANET_RAD` + `GISS_RAD_OFF`, meaning the classic GISS graybody/correlated-k radiation is
+compiled OUT and **SOCRATES is the sole active radiation scheme** — confirming the "S" in P2SAoM40
+really is exercised, not a fallback.
+
+- **Entry point:** `RCOMPX` (`RADIATION.f`), the single-column radiation subroutine, called from
+  `RADIA` in `RAD_DRV.f` (the per-DTsrc-step driver, gated by `NRAD=5`). `RCOMPX` does not take its
+  inputs as arguments — it reads/writes the `RADPAR` module's ~100+ scalars/arrays (temperature
+  profile, water vapor, ozone, well-mixed gases, cloud optical properties, spectral surface albedo,
+  orbital/zenith angle, aerosols). `RADIA` populates all of this per column in **~1,500+ lines** of
+  setup code before each `RCOMPX` call (up to 5 calls/column for tracer diagnostics).
+- Inside `RCOMPX`, when `USE_PLANET_RAD`+`GISS_RAD_OFF` are set, it calls `planet_rad.F90`'s
+  `init_planet_rad` → `set_planet_alb_param` → **`run_planet_rad`** (the actual SOCRATES driver:
+  `set_control_lw/sw`, `set_dimen`, `set_atm`, `set_cld`, `set_aer`, `set_bound_lw/sw`, then
+  `radiance_calc` — the real SOCRATES library call, `libsocrates.a`, precompiled, modern F90 with
+  derived types, no `BIND(C)` interfaces) → `get_planet_radout` → `deallocate_planet_rad`.
+- **Implication for 2a (call SOCRATES from Python, the user's chosen approach, 2026-09-25):** the
+  natural interception point is `RCOMPX` at the `RADIA` call site, not `run_planet_rad` directly —
+  `RCOMPX`'s module-state inputs are what a real per-column call needs, and are themselves populated
+  by ~1,500 lines of real, non-trivial GCM logic (this is not a small shim). Plan:
+  1. Dump-hook `RADIA`'s `CALL RCOMPX` (all of `RADPAR`'s inputs before, outputs after) — same
+     instrumented-model method used for every other module this project, at real, gated NRAD=5 steps.
+  2. Write a `BIND(C)`/`ISO_C_BINDING` Fortran shim that: sets the same `RADPAR` module variables
+     from flat C arrays, calls `RCOMPX`, and copies the outputs back out — compiled into a `.so`
+     (the existing `libsocrates.a` is static; linking it into a shared object the shim exports is
+     required for `ctypes`/`cffi` to load it).
+  3. Python wrapper (`ctypes`) calling that `.so`, validated against the Phase 2.1 dump.
+  4. Only then decide 2c (porting SOCRATES's own kernels to JAX) — 2a should be the whole of Phase 2's
+     first deliverable, since it already gives a *real* SOCRATES radiation answer.
+- **Not started**: no code written for Phase 2 yet. This is honestly the largest remaining unit of
+  work in the project — larger than everything ported so far (Phase 0 + all of Phase 1) combined,
+  by line count of real Fortran touched (~1,500+ lines of setup alone, before SOCRATES's own 90k-line
+  library). It deserves a dedicated session using the same dump-hook methodology, not a rushed
+  shortcut.
+
 RADIA is 65.6% of Fortran runtime, and the graybody stand-in is the most
 visible fidelity gap. Options, to be decided at Phase 0 from measurements:
 - **2a. Call SOCRATES from Python** (ctypes/f2py wrapper of `libsocrates.a`)
