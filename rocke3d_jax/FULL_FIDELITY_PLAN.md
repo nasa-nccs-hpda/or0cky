@@ -180,7 +180,20 @@ really is exercised, not a fallback.
   3. Python wrapper (`ctypes`) calling that `.so`, validated against the Phase 2.1 dump.
   4. Only then decide 2c (porting SOCRATES's own kernels to JAX) — 2a should be the whole of Phase 2's
      first deliverable, since it already gives a *real* SOCRATES radiation answer.
-- **Not started**: no code written for Phase 2 yet. This is honestly the largest remaining unit of
+- **Started 2026-09-27 (proof-of-concept, not full radiation):** confirmed empirically that
+`libsocrates.a`'s object files are not `-fPIC` (`ifort -shared -Wl,--whole-archive libsocrates.a`
+fails with `relocation ... can not be used when making a shared object` on ~40 object files) --
+`ctypes`/`cffi` cannot load a `.so` built from the existing archive without a full SOCRATES source
+recompile with `-fPIC` (source found at `ModelE_Support/socrates/src/`, ~150 files, separate work).
+Built and ran a small statically-linked Fortran driver (`fullfidelity/socrates_poc/gauss_angle_driver.f90`,
+compiled with the same `ifort` 19.1.3 toolchain the real model uses) around one real SOCRATES kernel,
+`gauss_angle` (the Gaussian-quadrature IR-flux solver called from `monochromatic_ir_radiance`), and
+called it from Python (`socrates_py.py`) over a subprocess/stdin-stdout, getting back real,
+physically-sane flux values from the actual compiled library -- no reimplementation. This settles the
+calling *architecture* for Phase 2a (subprocess, not ctypes) but wraps one small kernel, not
+`RCOMPX`/`run_planet_rad`. Next concrete steps: (1) dump-hook `RADIA`'s `CALL RCOMPX` for a real
+oracle, (2) write the much larger driver program that sets the ~100 `RADPAR`/`planet_rad` inputs and
+calls `run_planet_rad` (or `RCOMPX` directly) the same stdin/stdout way, (3) validate against (1). This is honestly the largest remaining unit of
   work in the project — larger than everything ported so far (Phase 0 + all of Phase 1) combined,
   by line count of real Fortran touched (~1,500+ lines of setup alone, before SOCRATES's own 90k-line
   library). It deserves a dedicated session using the same dump-hook methodology, not a rushed
