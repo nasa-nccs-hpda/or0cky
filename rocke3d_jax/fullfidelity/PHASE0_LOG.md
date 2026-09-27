@@ -131,3 +131,32 @@ assigned it -- looked like total failure, was purely an instrumentation ordering
 Remaining for Phase 1: ADDICE/SIMELT (ice formation/melt-out), lake mixing (documented no-op in Track A
 too), then JAX-vectorize all Track B pieces so far (currently plain Python/NumPy reference code, correct
 but not fast), then Phase 2 (radiation via SOCRATES from Python, per user decision 2026-09-25).
+
+
+## 2026-09-27: Phase 1 item 5b DONE — tile aggregation ported (D11)
+38,040 real grid cells (6 steps x 3 dates x 3312 cells), max error <=9e-7 of field RMS (float64 rounding).
+Simple area-fraction-weighted sum over the 4 surface-type patches (FLUXES.f avg_patches_*), confirmed
+by reading the source. Test data ff_data/*/fft_*.bin.
+
+## 2026-09-27: Phase 1 item 5a completed — ADDICE + SIMELT ported (D12)
+16,214 real ADDICE calls (1,994 = 12% genuine new-ice formation) and 4,668 real SIMELT calls (376 fully
+melted out), zero exceptions. Bitwise or 1e-13-level match. Found by reading the source: SIMELT's TSIL
+output is intent(out) but left UNASSIGNED by the real Fortran whenever ice remains -- the port returns
+tsil=None in that branch rather than fabricating a value that would falsely appear "matched". This
+closes out sea-ice ground thermodynamics (SEA_ICE+SSIDEC+snowice+ADDICE+SIMELT, D10+D12).
+Then scoped Phase 2 (radiation): confirmed libsocrates.a is not -fPIC (blocks a straightforward
+ctypes/.so approach); built a small statically-linked subprocess driver around one real SOCRATES kernel
+(gauss_angle) as a proof-of-concept for the calling architecture. Not a SOCRATES rewrite -- calls the
+real, unmodified library. User then redirected: "move to the smaller remaining items (ADDICE/SIMELT,
+lake mixing, JAX-vectorization) instead" -- pausing further radiation work.
+
+## 2026-09-27: Phase 1 item 5c DONE — lake mixing ported (D13)
+3,644 real GROUND_LK calls (6 steps x 3 dates), 648 with genuine frazil-ice formation, zero exceptions,
+**bitwise-exact match on the first attempt** for both LKSOURC and chained LKMIX. Track A's lakes_jax.py
+lkmix was a documented no-op; this ports the real two-layer physics (static-stability mixing, implicit
+heat diffusion, TKE entrainment). Coverage gap found by reading the source: GROUND_LK always calls
+LKMIX with TKE=0. (the U2rho entrainment term is commented out in this rundeck), so LKMIX's TKE-driven
+entrainment branch is transcribed but never exercised by real calls -- documented as unvalidated in
+practice, not silently assumed correct. Test data ff_data/*/ffl2_*.bin.
+This completes all items in "the smaller remaining items" except JAX-vectorization of the Track B
+reference ports (ghy_ref.py, seaice_core_ff.py — still plain Python/NumPy), which is next.

@@ -70,3 +70,10 @@ Same SURFACE.f patch as the ocean/ice tile dump.
 
 ADDICE dumps: `ffn_<itime>.bin`, 40-double records, one per `FORM_SI` call (all water-covered cells).
 SIMELT dumps: `ffm_<itime>.bin`, 30-double records, one per `MELT_SI` call. Same `SEAICE_DRV.f.patch`.
+
+Lake mixing dumps: patch `LAKES.f` with `LAKES.f.patch` in addition to the ATM_DRV.f patch (adds
+`ffdump_lakes`). `ffl2_<itime>.bin`: 40-double records, one per lake cell (`FLAKE>0`) per `GROUND_LK`
+call (~600-1000/step depending on date, since not every cell has a lake). Column layout: see
+`fullfidelity/lakes_compare.py` module docstring. Note: `GROUND_LK` always calls `LKMIX` with `TKE=0.`
+(the `U2rho` entrainment term is commented out in this rundeck's source), so the TKE-driven entrainment
+branch inside `LKMIX` is never exercised by these dumps -- ported faithfully but unvalidated in practice.

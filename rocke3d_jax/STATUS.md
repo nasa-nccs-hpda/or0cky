@@ -587,16 +587,30 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   atmosphere mixing is ATURB. Track A's DRYCNV benchmark is therefore a stand-alone kernel result only.
 - Track A's one-step surface answer is ~13× farther from real Fortran than doing nothing (layer-1 T error
   0.36 K vs. 0.027 K signal), not fixed by real SST; it also used approximated constants (deltx, g, R).
-- **Track B ports validated at float64 rounding level against real Fortran call records:**
-  ATURB (T, Q, TKE, PBL height, U/V B-grid diffusion, A-grid winds; 3 dates, max error 1e-12 K / 1e-14 m/s,
-  `aturb_ff.py`, `aturb_uv_ff.py`) and PBL `advanc` (surface layer; 27.5k calls on 4 surface types, worst
-  max-abs/rms 5e-11, `pbl_ff.py`). 19 tests (with mutation checks).
+- **Track B ports validated at float64 rounding level against real Fortran call records** (ledger
+  rows D4–D13 in `FULL_FIDELITY_DELTAS.md`, ~50 tests total with mutation checks, zero exceptions
+  over every real call in every module):
+  - ATURB (T, Q, TKE, PBL height, U/V B-grid diffusion, A-grid winds; max error 1e-12 K / 1e-14 m/s).
+  - PBL `advanc` (surface layer; 27.5k calls on 4 surface types, worst max-abs/rms 5e-11).
+  - SURFACE ocean/lake + sea-ice tile fluxes, ice thermal properties, and land-ice tile.
+  - GHY / land (`EARTH` + `advnc` + snow model), driven by the real model's own recorded Ent
+    vegetation exports (Ent itself not ported).
+  - SEAICE ground thermodynamics: `SEA_ICE`/`SSIDEC`/`snowice` (4,524 real calls), `ADDICE`/`SIMELT`
+    new-ice-formation and melt (16,214 + 4,668 real calls) — bitwise or 1e-13-level match.
+  - Tile aggregation (`avg_patches_*`, 38,040 real cells).
+  - Lake mixing (`LKSOURC`/`LKMIX`, 3,644 real calls, **bitwise-exact** on first attempt) — Track A's
+    `lakes_jax.py` `lkmix` is a documented no-op placeholder; this is the real two-layer physics.
 - Chaos noise floor of the real model: a 1-ulp perturbation grows to 0.27 K RMS / 0.74 m/s in 5 days
   (global means agree to ~1e-3–1e-2 of that): multi-day comparisons must be statistical.
+- SOCRATES proof-of-concept: confirmed `libsocrates.a` is not `-fPIC` (a `ctypes`/`.so` approach is
+  blocked without a full recompile); one real SOCRATES kernel (`gauss_angle`) called from Python via
+  a statically-linked subprocess driver instead, establishing the calling architecture for a future
+  full radiation port. Not a SOCRATES rewrite — the intent is to call the real, unmodified library.
 
-**Not done yet (so no whole-model fidelity claim can be made):** SURFACE tile-flux logic, GHY (land),
-SEAICE/LAKES/LANDICE thermodynamics, radiation (SOCRATES), clouds/moist convection, atmospheric
-dynamics, ocean. No speed numbers for Track B yet (only float64 CPU correctness runs).
+**Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
+kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
+convection, atmospheric dynamics, ocean. All Track B reference ports are still plain Python/NumPy, not
+yet JAX-vectorized. No speed numbers for Track B yet (only float64 CPU correctness runs).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 

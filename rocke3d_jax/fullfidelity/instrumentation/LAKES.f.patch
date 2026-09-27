@@ -1,0 +1,62 @@
+--- LAKES.f.orig	2026-09-27 18:25:09.890602924 -0400
++++ LAKES.f	2026-09-27 18:26:42.026891437 -0400
+@@ -3317,6 +3317,7 @@
+ C**** fluxes
+       REAL*8 EVAPO, FIDT, FODT, RUN0, ERUN0, RUNLI, RUNE, ERUNE,
+      *     HLK1,TLK1,TLK2,TKE,SROX(2),FSR2,Egeoth  ! , U2RHO
++      REAL*8 lkrec(40)
+ C**** output from LKSOURC
+       REAL*8 ENRGFO, ACEFO, ACEFI, ENRGFI
+ #ifdef TRACERS_WATER
+@@ -3462,12 +3463,38 @@
+         FSR2=MIN(FSR2,MLAKE(2)/(MLAKE(1)+MLAKE(2)))
+ 
+ C**** Apply fluxes and calculate the amount of frazil ice formation
++        lkrec=-1d300
++        lkrec(1)=I
++        lkrec(2)=J
++        lkrec(3)=ROICE
++        lkrec(4)=MLAKE(1)
++        lkrec(5)=MLAKE(2)
++        lkrec(6)=ELAKE(1)
++        lkrec(7)=ELAKE(2)
++        lkrec(8)=RUN0
++        lkrec(9)=FODT
++        lkrec(10)=FIDT
++        lkrec(11)=SROX(1)
++        lkrec(12)=SROX(2)
++        lkrec(13)=FSR2
++        lkrec(14)=EVAPO
++        lkrec(15)=HLAKE(I,J)
++        lkrec(16)=DTSRC
+         CALL LKSOURC (I,J,ROICE,MLAKE,ELAKE,RUN0,FODT,FIDT,SROX,FSR2,
+      *                FLAKE(I,J),
+ #ifdef TRACERS_WATER
+      *       TRLAKEL,TRUN0,TREVAP,TRO,TRI,
+ #endif
+      *       EVAPO,ENRGFO,ACEFO,ACEFI,ENRGFI)
++      lkrec(17)=MLAKE(1)
++      lkrec(18)=MLAKE(2)
++      lkrec(19)=ELAKE(1)
++      lkrec(20)=ELAKE(2)
++      lkrec(21)=ENRGFO
++      lkrec(22)=ACEFO
++      lkrec(23)=ACEFI
++      lkrec(24)=ENRGFI
++
+ 
+ C**** Mixing and entrainment
+ C**** Calculate turbulent kinetic energy for lake
+@@ -3480,6 +3507,12 @@
+      *       TRLAKEL,
+ #endif
+      *       HLAKE(I,J),TKE,ROICE,DTSRC)
++        lkrec(25)=MLAKE(1)
++        lkrec(26)=MLAKE(2)
++        lkrec(27)=ELAKE(1)
++        lkrec(28)=ELAKE(2)
++        lkrec(29)=TKE
++        call ffdump_lakes(lkrec,40)
+ 
+ C**** Resave prognostic variables
+         MWL(I,J)  =(MLAKE(1)+MLAKE(2))*(FLAKE(I,J)*AXYP(I,J))

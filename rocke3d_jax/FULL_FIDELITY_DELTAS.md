@@ -219,9 +219,9 @@ variables — same cancellation pattern documented elsewhere, not a logic bug (a
 caught and fixed during validation: the first instrumentation attempt read `RUNOSI` *before* Fortran
 assigned it, showing a spurious 100% mismatch that pointed straight at the real cause).
 Tests: `fullfidelity/tests/test_seaice_core_ff.py` (5, incl. mutation checks).
-**Not ported:** ADDICE/SIMELT (ice formation/complete melt — different code paths not on the record's
-DOPOINT branch), lake mixing (LAKES.f `lkmix`, a documented no-op even in Track A), tile aggregation
-(`avg_patches_*` — the JAX-vectorization step for all Track B pieces is still pending).
+**Not ported at this point:** ADDICE/SIMELT, tile aggregation, and lake mixing — since closed out by
+D11–D13 respectively. The JAX-vectorization step for all Track B pieces (still plain Python/NumPy) is
+still pending.
 
 ## D11 — Tile aggregation (avg_patches_*) vs real Fortran
 `fullfidelity/tile_aggregate_ff.py`: the composite surface fields ATURB/PBL consume (uflux1, vflux1,
@@ -253,6 +253,30 @@ undefined value in that branch — a real, if minor, unported/undefined behavior
 This closes out the sea-ice ground-thermodynamics module (SEA_ICE + SSIDEC + snowice + ADDICE +
 SIMELT all validated; D10, D12). Tests: `fullfidelity/tests/test_addice_simelt_ff.py` (4, incl.
 mutation checks).
+
+## D13 — Lake mixing (LKSOURC/LKMIX) vs real Fortran
+`fullfidelity/lakes_ff.py` (`lksourc_full`, `lkmix`): frazil-ice formation/mass exchange between the
+two lake layers (`LKSOURC`) and static-stability mixing, implicit vertical heat diffusion, and
+TKE-driven entrainment between them (`LKMIX`). Track A's `lakes_jax.py` `lkmix` is a documented
+no-op placeholder; this ports the real two-layer physics from `LAKES.f`'s `GROUND_LK`, called every
+real DTsrc step for every lake cell (`FLAKE>0`).
+
+Validated on **3,644 real GROUND_LK calls** (6 steps × 3 dates; count varies by date since not every
+cell has `FLAKE>0`), of which **648 had genuine frazil-ice formation** (`acefo` or `acefi` ≠ 0) — not
+a rare edge case. Chained LKSOURC→LKMIX result:
+
+| Output | max relative/absolute error | Exceptions |
+|---|---|---|
+| enrgfo, acefo, acefi, enrgfi | 0 (bitwise) | 0/3,644 |
+| mlake, elake (post-LKSOURC) | 0 (bitwise) | — |
+| mlake, elake (post-LKMIX) | 0 (bitwise) | — |
+
+Bitwise-exact match on the first attempt across every real call. **Coverage gap, found by reading the
+source, not assumed:** the real `GROUND_LK` always calls `LKMIX` with `TKE=0.` (the `U2rho`
+entrainment term is commented out in this rundeck), so `LKMIX`'s TKE-driven entrainment branch is
+transcribed here but never exercised by real Fortran calls — ported faithfully, unvalidated in
+practice, same honesty standard as the SIMELT `TSIL`-undefined case in D12.
+Tests: `fullfidelity/tests/test_lakes_ff.py` (4, incl. mutation checks).
 
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).
