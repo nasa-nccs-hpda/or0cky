@@ -231,5 +231,28 @@ not assumed. Validated on **38,040 real grid cells** (6 steps × 3 dates × 3312
 ≤ 9e-7 of the field's RMS (float64 rounding level); patch fractions sum to 1.0 in every cell.
 Tests: `fullfidelity/tests/test_tile_aggregate_ff.py` (3, incl. mutation check).
 
+## D12 — Sea-ice formation (ADDICE) and lateral/complete melt (SIMELT) vs real Fortran
+`fullfidelity/seaice_core_ff.py` (`addice`, `simelt`): new-ice formation in open/partially-ice-covered
+ocean, horizontal compression/lead adjustment, and fixed-SST mass-floor correction (ADDICE); lateral
+melt parameterization and complete melt-out with property reset (SIMELT). Both called every real
+DTsrc step for every water-covered cell (`FORM_SI`/`MELT_SI` in `SEAICE_DRV.f`), not rare paths.
+
+Validated on real Fortran calls (6 steps × 3 dates): **16,214 ADDICE calls** (1,994 = 12% with genuine
+new-ice formation) and **4,668 SIMELT calls** (376 fully melted out — the one branch where SIMELT's
+`TSIL` output is actually defined; **found by reading the source**: `TSIL` is `intent(out)` but is
+left unassigned by the real Fortran whenever ice remains, so this port does not claim a match to that
+undefined value in that branch — a real, if minor, unported/undefined behavior, not swept under the rug).
+
+| Routine | Worst relative/absolute error | Exceptions |
+|---|---|---|
+| ADDICE (snow, roice, msi2, dmimp/dhimp/dsimp, ssil) | 0 (bitwise) | 0/16,214 |
+| ADDICE (hsil) | 1.3e-13 | — |
+| SIMELT (roice, snow, msi2, hsil, ssil) | 0 (bitwise) | 0/4,668 |
+| SIMELT (enrgused) | 1.5e-16 | — |
+
+This closes out the sea-ice ground-thermodynamics module (SEA_ICE + SSIDEC + snowice + ADDICE +
+SIMELT all validated; D10, D12). Tests: `fullfidelity/tests/test_addice_simelt_ff.py` (4, incl.
+mutation checks).
+
 ## Pending rows
 - D5: speed at full fidelity (single-call and chained, CPU/GPU).

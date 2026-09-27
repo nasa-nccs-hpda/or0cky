@@ -1,6 +1,46 @@
 --- SEAICE_DRV.f.orig	2026-09-27 11:48:51.580560277 -0400
-+++ SEAICE_DRV.f	2026-09-27 11:55:45.753618245 -0400
-@@ -621,6 +621,7 @@
++++ SEAICE_DRV.f	2026-09-27 18:10:24.546156322 -0400
+@@ -396,6 +396,7 @@
+       type(atmice_xchng_vars) :: atmice
+       REAL*8, DIMENSION(LMI) :: HSIL,TSIL,SSIL
+       REAL*8 MSI2,ROICE,SNOW,ENRGUSED,RUN0,SALT,POCEAN,TFO
++      REAL*8 mrec(30)
+      *     ,PWATER,Tm,DT,ENRGMAX
+ #ifdef TRACERS_WATER
+       REAL*8, DIMENSION(NTM,LMI) :: TRSIL
+@@ -490,11 +491,31 @@
+ #ifdef TRACERS_WATER
+             TRSIL(:,:)=TRSI(:,:,I,J) ! tracer content of sea ice
+ #endif
++            mrec=-1d300
++            mrec(1)=I
++            mrec(2)=J
++            mrec(3)=DT
++            mrec(4)=ROICE
++            mrec(5)=SNOW
++            mrec(6)=MSI2
++            mrec(7:10)=HSIL(1:4)
++            mrec(11:14)=SSIL(1:4)
++            mrec(15)=POCEAN
++            mrec(16)=Tm
++            mrec(17)=TFO
++            mrec(18)=ENRGMAX
+             CALL SIMELT(DT,ROICE,SNOW,MSI2,HSIL,SSIL,POCEAN,Tm,TFO,TSIL
+ #ifdef TRACERS_WATER
+      *           ,TRSIL,TRUN0
+ #endif
+      *           ,ENRGMAX,ENRGUSED,RUN0,SALT)
++            mrec(19)=ROICE
++            mrec(20)=SNOW
++            mrec(21)=MSI2
++            mrec(22:25)=HSIL(1:4)
++            mrec(26:29)=SSIL(1:4)
++            mrec(30)=ENRGUSED
++            call ffdump_simelt(mrec,30)
+ 
+ #ifndef STANDALONE_OCEAN
+ C**** Update prognostic sea ice variables + correction for rad. fluxes
+@@ -621,6 +642,7 @@
        integer :: J_0, J_1, I_0,I_1
        real*8 MSI1,SNOWL1,MICE1
        REAL*8 CMPRS
@@ -8,7 +48,7 @@
  
        call startTimer('GROUND_SI()')
  
-@@ -746,6 +747,28 @@
+@@ -746,6 +768,28 @@
  c        if (debug) print*,"si0",i,j,SNOW,ROICE,HSIL,SSIL,MSI2,F0DT,F1DT,
  c     *       EVAP,SROX,SNOW+ACE1I-SSIL(1)-SSIL(2) !, TRSIL(1,1)+TRSIL(1,2)
  
@@ -37,7 +77,7 @@
          CALL SEA_ICE(DTSRC,SNOW,ROICE,HSIL,SSIL,MSI2,F0DT,F1DT,EVAP,SROX
  #ifdef TRACERS_WATER
       *       ,TRSIL,TREVAP,FTROC,TRRUN
-@@ -757,6 +780,18 @@
+@@ -757,6 +801,18 @@
  c        if (debug) print*,"si1",i,j,SNOW,HSIL,SSIL,MSI2,FMOC,FHOC,FSOC,
  c     *       RUN,ERUN,SRUN,WETSNOW,MELT12,SNOW
  c     $       +ACE1I-SSIL(1)-SSIL(2) !, TRSIL(1,1)+TRSIL(1,2)
@@ -56,7 +96,7 @@
  C**** Decay sea ice salinity
          IF(DOMAIN.EQ.'OCEAN') THEN
            CALL SSIDEC(SNOW,MSI2,HSIL,SSIL,DTsrc,MELT12,
-@@ -812,6 +847,16 @@
+@@ -812,6 +868,16 @@
  #ifdef TRACERS_WATER
          TRSI(:,:,I,J) = TRSIL(:,:)
  #endif
@@ -73,7 +113,7 @@
          FLAG_DSWS(I,J)=WETSNOW
  
          MSI1 = ACE1I + SNOW
-@@ -864,6 +909,10 @@
+@@ -864,6 +930,10 @@
          SITOPMLT(I,J) = POICE*(RUN+MFLUX)
          MSNFLOOD(I,J) = -POICE*MSNWIC
          HSNFLOOD(I,J) = -POICE*HSNWIC
@@ -84,3 +124,52 @@
  
        END IF
  
+@@ -893,6 +963,7 @@
+       type(atmice_xchng_vars) :: atmice
+       REAL*8, DIMENSION(LMI) :: HSIL,TSIL,SSIL
+       REAL*8 SNOW,ROICE,MSI2,ENRGFO,ACEFO,ACEFI,ENRGFI,SALTO,SALTI
++      REAL*8 arec(40)
+       REAL*8 POICE,PWATER,FLEAD,POCEAN,DMIMP,DHIMP,DSIMP
+ #ifdef TRACERS_WATER
+       REAL*8, DIMENSION(NTM,LMI) :: trsil
+@@ -989,12 +1060,40 @@
+         TRI(:) = DTRSI(:,2,I,J)
+ #endif
+ 
++      arec=-1d300
++      arec(1)=I
++      arec(2)=J
++      arec(3)=0
++      if (DOMAIN.eq.'OCEAN') arec(3)=1
++      arec(4)=SNOW
++      arec(5)=ROICE
++      arec(6:9)=HSIL(1:4)
++      arec(10:13)=SSIL(1:4)
++      arec(14)=MSI2
++      arec(15)=ENRGFO
++      arec(16)=ACEFI
++      arec(17)=ENRGFI
++      arec(18)=ACEFO
++      arec(19)=SALTO
++      arec(20)=SALTI
++      arec(21)=FLEAD
++      arec(22)=0
++      if (QFIXR) arec(22)=1
+         CALL ADDICE (SNOW,ROICE,HSIL,SSIL,MSI2,TSIL,ENRGFO,ACEFO,ACEFI,
+      *       ENRGFI,SALTO,SALTI,
+ #ifdef TRACERS_WATER
+      *       TRSIL,TRO,TRI,DTRIMP,
+ #endif
+      *       DMIMP,DHIMP,DSIMP,FLEAD,QFIXR,debug)
++      arec(23)=SNOW
++      arec(24)=ROICE
++      arec(25:28)=HSIL(1:4)
++      arec(29:32)=SSIL(1:4)
++      arec(33)=MSI2
++      arec(34)=DMIMP
++      arec(35)=DHIMP
++      arec(36)=DSIMP
++      call ffdump_addice(arec,40)
+ 
+ C**** RESAVE PROGNOSTIC QUANTITIES
+         SNOWI(I,J) = SNOW

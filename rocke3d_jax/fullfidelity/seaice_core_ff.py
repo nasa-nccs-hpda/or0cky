@@ -560,3 +560,187 @@ def ground_si_other(dtsrce, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmo
     return dict(snow=si["snow"], hsil=si["hsil"], ssil=si["ssil"], msi2=si["msi2"],
                 runosi=fmoc + si["run"], erunosi=fhoc + si["erun"], srunosi=fsoc + si["srun"],
                 solar_io=si["srox2"], mflux=0.0, hflux=0.0, sflux=0.0)
+
+
+# --------------------------------------------------------------------- ADDICE
+FLEADMX = 5.0
+BYHREF = 1.1
+
+
+def addice(snow, roice, hsil, ssil, msi2, enrgfo, acefo, acefi, enrgfi, salto, salti, flead, qfixr):
+    """SEAICE.f ADDICE (no tracers). Returns dict: snow, roice, hsil, ssil, msi2, tsil, dmimp, dhimp, dsimp."""
+    hsil = list(hsil); ssil = list(ssil)
+    dmimp = dhimp = dsimp = 0.0
+    msi1 = snow + ACE1I
+    if not qfixr:
+        if roice <= 0.0 and acefo > 0.0:
+            roice = min(1.0, acefo / (ACE1I + AC2OIM))
+            msi1 = ACE1I
+            msi2 = max(AC2OIM, acefo - ACE1I)
+            snow = 0.0
+            for l in (0, 1):
+                hsil[l] = (enrgfo / acefo) * XSI[l] * msi1
+                ssil[l] = (salto / acefo) * XSI[l] * msi1
+            for l in (2, 3):
+                hsil[l] = (enrgfo / acefo) * XSI[l] * msi2
+                ssil[l] = (salto / acefo) * XSI[l] * msi2
+        elif roice > 0.0:
+            if acefi > 0.0:
+                if XSI[2] * acefi > XSI[3] * msi2:
+                    fhsi3 = -hsil[3] - (XSI[2] * acefi - XSI[3] * msi2) * enrgfi / acefi
+                    fssi3 = -ssil[3] - (XSI[2] * acefi - XSI[3] * msi2) * salti / acefi
+                else:
+                    fhsi3 = -hsil[3] * acefi * (XSI[2] / XSI[3]) / msi2
+                    fssi3 = -ssil[3] * acefi * (XSI[2] / XSI[3]) / msi2
+            else:
+                fhsi3 = fssi3 = 0.0
+            if acefo == 0.0:
+                hsil[2] -= fhsi3
+                hsil[3] += fhsi3 + enrgfi
+                ssil[2] -= fssi3
+                ssil[3] += fssi3 + salti
+                msi2 += acefi
+            else:
+                drsi = min((1.0 - roice) * acefo / (ACE1I + AC2OIM), 1.0 - roice)
+                roicen = roice + drsi
+                msi2no = max(AC2OIM, acefo - ACE1I)
+                snowl, hsnow, hice, sice, tsnw, tsil, mice = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+                snowl = [x * (roice / roicen) for x in snowl]
+                hsnow = [x * (roice / roicen) for x in hsnow]
+                for l in (0, 1):
+                    hice[l] = ((1.0 - roice) * enrgfo * XSI[l] * ACE1I / (ACE1I + msi2no) + roice * hice[l]) / roicen
+                    sice[l] = ((1.0 - roice) * salto * XSI[l] * ACE1I / (ACE1I + msi2no) + roice * sice[l]) / roicen
+                    mice[l] = ((1.0 - roice) * acefo * XSI[l] * ACE1I / (ACE1I + msi2no) + roice * mice[l]) / roicen
+                relayer_12(hsnow, hice, sice, mice, snowl)
+                snow, msi1, msi2, hsil, ssil = set_snow_ice_layer(hsnow, hice, sice, mice, snowl)
+                msi2 = (drsi * max(AC2OIM, acefo - ACE1I) + roice * (msi2 + acefi)) / roicen
+                hsil[2] = ((1.0 - roice) * enrgfo * XSI[2] * msi2no / (ACE1I + msi2no) + roice * (hsil[2] - fhsi3)) / roicen
+                hsil[3] = ((1.0 - roice) * enrgfo * XSI[3] * msi2no / (ACE1I + msi2no)
+                          + roice * (hsil[3] + fhsi3 + enrgfi)) / roicen
+                ssil[2] = ((1.0 - roice) * salto * XSI[2] * msi2no / (ACE1I + msi2no) + roice * (ssil[2] - fssi3)) / roicen
+                ssil[3] = ((1.0 - roice) * salto * XSI[3] * msi2no / (ACE1I + msi2no)
+                          + roice * (ssil[3] + fssi3 + salti)) / roicen
+                roice = roicen
+
+        havg = roice * (ACE1I + msi2) / RHOI
+        opnocn = min(0.0, flead * math.exp(-BYHREF * (havg - 1.0)))
+        if roice * (ACE1I + msi2) > FLEADMX * RHOI:
+            opnocn = 0.0
+        if msi2 < AC2OIM or roice > 1.0 - opnocn:
+            snowl, hsnow, hice, sice, tsnw, tsil, mice = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+            roicen = min(roice * (ACE1I + msi2) / (ACE1I + AC2OIM), 1.0 - opnocn)
+            drsi = roicen - roice
+            fmsi1 = -mice[0] * drsi / roicen
+            fmsi2 = -(mice[0] + mice[1]) * drsi / roicen
+            fmsi3 = fmsi2 * XSI[3]
+            fhsi1 = hice[0] * fmsi1 / (mice[0] + 1e-30)
+            fhsi2 = hice[1] * fmsi2 / mice[1]
+            fhsi3 = hice[2] * fmsi3 / (msi2 * XSI[2])
+            fssi1 = sice[0] * fmsi1 / (mice[0] + 1e-30)
+            fssi2 = sice[1] * fmsi2 / mice[1]
+            fssi3 = sice[2] * fmsi3 / (msi2 * XSI[2])
+            hice[1] = hice[1] * roice / roicen + fhsi1 - fhsi2
+            hice[2] = hice[2] * roice / roicen + fhsi2 - fhsi3
+            hice[3] = hice[3] * roice / roicen + fhsi3
+            sice[1] = sice[1] * roice / roicen + fssi1 - fssi2
+            sice[2] = sice[2] * roice / roicen + fssi2 - fssi3
+            sice[3] = sice[3] * roice / roicen + fssi3
+            msi2 = msi2 * roice / roicen + fmsi2
+            snowl = [x * roice / roicen for x in snowl]
+            hsnow = [x * roice / roicen for x in hsnow]
+            roice = roicen
+            relayer_12(hsnow, hice, sice, mice, snowl)
+            snow, msi1, msi2xx, hsil, ssil = set_snow_ice_layer(hsnow, hice, sice, mice, snowl)
+
+        if roice > 0.0:
+            havg = roice * (ACE1I + msi2) / RHOI
+            opnocn = min(0.0, flead * math.exp(-BYHREF * (havg - 1.0)))
+            if roice * (ACE1I + msi2) > FLEADMX * RHOI:
+                opnocn = 0.0
+            if roice > (1.0 - opnocn) - 1e-3:
+                roicen = 1.0 - opnocn
+                drsi = max(0.0, roicen - roice)
+                if drsi > 0.0:
+                    fmsi4 = (ACE1I + msi2) * (drsi / roicen)
+                    fhsi4 = hsil[3] * fmsi4 / (XSI[3] * msi2)
+                    fssi4 = ssil[3] * fmsi4 / (XSI[3] * msi2)
+                    fhsi3 = hsil[2] * fmsi4 / msi2
+                    fssi3 = ssil[2] * fmsi4 / msi2
+                    msi2 -= fmsi4
+                    snowl, hsnow, hice, sice, tsnw, tsil, mice = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+                    fri = [mice[0] / (ACE1I + msi2), mice[1] / (ACE1I + msi2),
+                           XSI[2] * msi2 / (ACE1I + msi2), XSI[3] * msi2 / (ACE1I + msi2)]
+                    snowl = [x * (roice / roicen) for x in snowl]
+                    hsnow = [x * (roice / roicen) for x in hsnow]
+                    for l in (0, 1):
+                        hice[l] = (roice / roicen) * (fhsi4 * fri[l] + hice[l])
+                        sice[l] = (roice / roicen) * (fssi4 * fri[l] + sice[l])
+                        mice[l] = (roice / roicen) * (fmsi4 * fri[l] + mice[l])
+                    relayer_12(hsnow, hice, sice, mice, snowl)
+                    snow, msi1, msi2, hsil, ssil = set_snow_ice_layer(hsnow, hice, sice, mice, snowl)
+                    hsil[2] = (roice / roicen) * (hsil[2] + fhsi4 * fri[2] - fhsi3)
+                    hsil[3] = (roice / roicen) * (hsil[3] + fhsi4 * fri[3] + fhsi3 - fhsi4)
+                    ssil[2] = (roice / roicen) * (ssil[2] + fssi4 * fri[2] - fssi3)
+                    ssil[3] = (roice / roicen) * (ssil[3] + fssi4 * fri[3] + fssi3 - fssi4)
+                    roice = roicen
+    else:
+        if roice > 0.0 and msi2 < AC2OIM:
+            dmimp = AC2OIM - msi2
+            dhimp = sum(hsil[l] * XSI[l] * dmimp for l in (2, 3))
+            dsimp = sum(ssil[l] * XSI[l] * dmimp for l in (2, 3))
+            for l in (2, 3):
+                hsil[l] *= AC2OIM / msi2
+                ssil[l] *= AC2OIM / msi2
+            msi2 = AC2OIM
+    tsil = tice(hsil, ssil, msi1, msi2)
+    return dict(snow=snow, roice=roice, hsil=hsil, ssil=ssil, msi2=msi2, tsil=tsil,
+                dmimp=dmimp, dhimp=dhimp, dsimp=dsimp)
+
+
+# --------------------------------------------------------------------- SIMELT
+SILMFAC = 1.0e-7
+SILMPOW = 1.36
+
+
+def simelt(dt, roice, snow, msi2, hsil, ssil, pocean, tm, tfo, enrgmax):
+    """SEAICE.f SIMELT (no tracers). Returns dict: roice, snow, msi2, hsil, ssil, tsil, enrgused, run0, salt."""
+    hsil = list(hsil); ssil = list(ssil)
+    if roice < 1e-3:
+        drsi = roice
+    else:
+        dtemp = max(tm - tfo, 0.0)
+        drsi = dt * SILMFAC * dtemp ** SILMPOW
+        if roice - drsi < 1e-3:
+            drsi = roice
+        if enrgmax + drsi * sum(hsil) < 0:
+            drsi = -enrgmax / sum(hsil)
+        if roice - drsi > 1:
+            drsi = 1 - roice
+    enrgused = -drsi * sum(hsil)
+    run0 = drsi * (snow + ACE1I + msi2)
+    salt = drsi * sum(ssil)
+    roice = min(1.0, roice - drsi)
+    if roice < 1e-10:
+        roice = 0.0
+        snow = 0.0
+        msi2 = AC2OIM
+        if pocean > 0.0:
+            for l in (0, 1):
+                ssil[l] = SSI0 * XSI[l] * ACE1I
+            for l in (2, 3):
+                ssil[l] = SSI0 * XSI[l] * AC2OIM
+        else:
+            ssil = [0.0] * LMI
+        for l in (0, 1):
+            hsil[l] = (XSI[l] * ACE1I) * Ei(tfo, 1e3 * ssil[l] / (XSI[l] * ACE1I))
+        for l in (2, 3):
+            hsil[l] = (XSI[l] * AC2OIM) * Ei(tfo, 1e3 * ssil[l] / (XSI[l] * AC2OIM))
+        tsil = [tfo] * LMI
+        if tfo > Ti(0.0, 1e3 * SSI0) and tfo != 0.0:
+            hsil = [0.0] * LMI
+    else:
+        # SEAICE.f leaves TSIL (intent(out)) UNASSIGNED in this branch -- there is no well-defined
+        # Fortran reference value to validate against here, so this port does not claim one either.
+        tsil = None
+    return dict(roice=roice, snow=snow, msi2=msi2, hsil=hsil, ssil=ssil, tsil=tsil,
+                enrgused=enrgused, run0=run0, salt=salt)

@@ -67,3 +67,6 @@ GROUND_SI call. Column layout: see `fullfidelity/seaice_compare.py` module docst
 Tile-aggregation dumps: `fft_<itime>.bin`, 40-double records, one per grid cell (3312/step): 4 patches'
 ftype/uflux1/vflux1/dth1/dq1/tsavg/qsavg (cols 3-30) then the composite atmsrf values (cols 31-36).
 Same SURFACE.f patch as the ocean/ice tile dump.
+
+ADDICE dumps: `ffn_<itime>.bin`, 40-double records, one per `FORM_SI` call (all water-covered cells).
+SIMELT dumps: `ffm_<itime>.bin`, 30-double records, one per `MELT_SI` call. Same `SEAICE_DRV.f.patch`.
