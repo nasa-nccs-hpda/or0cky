@@ -301,6 +301,39 @@ calls `run_planet_rad` (or `RCOMPX` directly) the same stdin/stdout way, (3) val
   by line count of real Fortran touched (~1,500+ lines of setup alone, before SOCRATES's own 90k-line
   library). It deserves a dedicated session using the same dump-hook methodology, not a rushed
   shortcut.
+- **Continued 2026-09-28: read `RCOMPX`'s actual body (`RADIATION.f:1696-1942`) and the rundeck's
+  RADPAR overrides, replacing the "~1,500 lines, ~100 scalars" estimate above with a concrete,
+  traced call graph** for this exact build (`USE_PLANET_RAD`+`GISS_RAD_OFF`) -- a real narrowing,
+  not a guess:
+  - With `GISS_RAD_OFF` defined, the classic-GISS blocks inside `RCOMPX` itself (`TAUGAS`, `GETCLD`,
+    `THERML`, `SOLARM`) are `#ifndef`'d OUT — they never run at all, confirming SOCRATES is not just
+    "the active scheme" but the *only* code path inside `RCOMPX`, alongside a few small
+    unconditional helpers.
+  - **Aerosols/dust are effectively off, not just unused:** `RADPAR`'s defaults are `MADAER=0,
+    MADDST=0` (never overridden in `ModelE_Support/huge_space/P2SAoM40/I`) and `NTRACE=0`, so the
+    `IF(MADAER.ne.0.OR.NTRACE>0)` guard is always false — `getaer`/`getdst` are **never called**;
+    `SRAEXT`/`SRASCT`/`SRAGCB`/`TRAALK` and the dust equivalents are just zeroed. Only `MADVOL=2`
+    (the rundeck's one override) is active, so the only real aerosol-column work is
+    `get_volc_column` + `getvol` (volcanic).
+  - `GETEPS` (cloud heterogeneity, called unconditionally) turned out to be trivial for this
+    rundeck: `KCLDEP=4` (default) makes it a **static per-(ILON,JLAT) climatology lookup**
+    (`EPLOW`/`EPMID`/`EPHIG` arrays selected by pressure level), not a live computation — read once,
+    index per column.
+  - The real per-column work inside `RCOMPX`, in call order, is now known to be exactly: gas
+    absorber amounts (`seth2o`, `getgas`, `fpxscalegas` — real atmospheric composition), volcanic
+    aerosol column (`get_volc_column`+`getvol`), surface albedo/emissivity (`GETSUR` — genuinely
+    substantial, takes ~25 named inputs covering every surface type's temperature/snow/ice state),
+    cloud heterogeneity (`GETEPS`, now known-trivial), then `set_planet_alb_param` +
+    **`run_planet_rad`** (the real SOCRATES call, explicit args `ULGAS, CLDEPS, PRNB, PRNX` plus
+    whatever it reads from `RADPAR`/`planet_rad` module state internally — not yet traced), then
+    `get_planet_radout`.
+  - **Not yet done:** tracing `run_planet_rad`'s own full input surface (planet_rad.F90, not read
+    this session), `getgas`/`getvol`/`GETSUR`'s own bodies in detail, and everything from the
+    original plan (dump-hook, BIND(C) shim, Python driver, validation). The estimate above (6-10
+    weeks) is not revised by this narrowing — `GETSUR` and `run_planet_rad` are still real, and
+    SOCRATES's own 90k-line library is unaffected — but the "setup" work is now known to be smaller
+    and more concrete than "~1,500 lines, ~100 scalars" implied, which should make the next session's
+    dump-hook step faster to scope correctly.
 
 RADIA is 65.6% of Fortran runtime, and the graybody stand-in is the most
 visible fidelity gap. Options, to be decided at Phase 0 from measurements:

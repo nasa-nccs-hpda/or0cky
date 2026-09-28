@@ -289,3 +289,22 @@ tile aggregation, GHY) is jax.jit-compilable with a measured real-data speedup -
 gaps for the 8-stage comparison are (1) no single chained whole-model Track B step yet (each module is
 fast on its own but not wired together the way Track A's run_steps_device chains one atmosphere step),
 and (2) no GPU access on any node used this session (a hardware blocker, not a scoping choice).
+
+## 2026-09-28: resumed Phase 2 radiation scoping (all smaller items now closed out)
+With ADDICE/SIMELT, lake mixing, and JAX-vectorization (sea-ice, GHY, lakes) all done, picked radiation
+back up -- the item explicitly paused earlier ("move to the smaller remaining items instead"). Read
+RCOMPX's actual body (RADIATION.f:1696-1942, not read in the earlier 2026-09-27 scoping pass) and the
+rundeck's RADPAR overrides, which narrowed the earlier vague "~1,500 lines, ~100 scalars" estimate to
+a concrete traced call graph: with GISS_RAD_OFF defined, TAUGAS/GETCLD/THERML/SOLARM (the classic-GISS
+blocks) never run at all inside RCOMPX itself, not just "unused" -- SOCRATES is the only real code
+path. MADAER=0 and MADDST=0 are RADPAR's defaults and are never overridden in the P2SAoM40 rundeck, so
+getaer/getdst (aerosol/dust optical properties) are NEVER CALLED -- only MADVOL=2 (volcanic) is active.
+GETEPS turned out to be a trivial static per-column climatology lookup (KCLDEP=4 default), not a live
+computation. The real remaining per-column work is now known precisely: seth2o/getgas/fpxscalegas (gas
+amounts), get_volc_column+getvol (volcanic aerosol only), GETSUR (surface albedo, genuinely
+substantial, ~25 named inputs), GETEPS (now known trivial), then set_planet_alb_param+run_planet_rad
+(the real SOCRATES call) and get_planet_radout. Not yet traced: run_planet_rad's own full input
+surface (planet_rad.F90), or getgas/getvol/GETSUR's bodies in detail. Documented in
+FULL_FIDELITY_PLAN.md's Phase 2 section rather than rushing into the dump-hook/shim implementation --
+this narrows the estimate's uncertainty without changing its size (still a multi-week undertaking:
+GETSUR and run_planet_rad are real, and SOCRATES's own 90k-line library is unaffected by any of this).
