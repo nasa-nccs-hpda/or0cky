@@ -592,6 +592,37 @@ iteration -- a new control-flow pattern for this project (everything so far has 
 Python unrolls). The inner linear solve (`RELAX`) being tridiagonal, not generic-sparse, is the key
 de-risking finding: it fits the same "small bounded solve, vectorized across many independent instances"
 pattern already proven in GHY (D9/D15), just applied per grid row/column instead of per soil layer.
+
+**RELAX's full structure, now read in full (not just skimmed) -- this is the last major unknown, now resolved:**
+It is a textbook 2-step ADI (Alternating Direction Implicit) method, run once for U then once for V (4 tridiagonal
+solves total per `RELAX` call):
+1. **U, I-direction (cyclic)**: builds `AU/BU/CU` (rheology + drag + mass/dt coefficients, per grid point) and
+   `URT` (a RHS built from `FXY`, itself built from **`UICEC`/`VICEC`** -- the frozen copy taken at the *start* of
+   the current pseudo-timestep, not updated mid-sweep). Solves `TRIDIAG_cyclic` along I, independently for every
+   J row -- **a batched cyclic tridiagonal solve, rows are mutually independent** (matches `aturb_ff.py`'s
+   existing tridiag usage and GHY's `heat_eq`, D9/D15, just applied along a grid direction instead of soil depth).
+2. **U, J-direction**: builds new `AV/BV/CV`/`VRT` -- crucially, `VRT`'s I-neighbor terms now use the
+   **just-updated** `UICE(I+1/-1,J,1)` from step 1 (a real, deliberate sequential dependency on step 1's result),
+   while J-neighbor terms stay implicit (going into the solve). Solves `TRIDIAG_new` along J (domain-decomposed,
+   `grid_ICDYN`-aware) -- **independent for every I column**.
+3. **V, I-direction**: same shape as step 1 but for V, using **frozen `UICEC`** again (a new freeze point, not
+   step 1/2's updated U).
+4. **V, J-direction**: same shape as step 2 but for V, using step 3's just-updated V for I-neighbor terms.
+
+So within `RELAX`, the four solves are strictly sequential (each depends on the previous one's output), but
+**each individual solve is a batch of independent 1D tridiagonal solves** or its transpose -- ideal for
+`jax.vmap`/batched Thomas-algorithm solves, the same pattern already proven correct and fast elsewhere in this
+project. `PLAST` (94 lines, called from `FORM`) is pure fixed-stencil per-grid-point arithmetic (finite-difference
+strain rates -> nonlinear viscosity via the elliptical yield curve, clamped to `[ZMIN,ZMAX]`) -- as tractable as
+GHY's flux calculations, no new technique needed.
+
+**Revised confidence:** every piece of `DYNSI`'s real numerics (`FORM`, `PLAST`, `RELAX`'s 4 ADI sub-solves,
+`VPICEDYN`'s outer convergence loop) is now understood in enough detail to implement, not just estimate. The two
+genuinely new JAX patterns needed are `jax.lax.while_loop` (data-dependent outer convergence) and a handful of
+batched tridiagonal solves along a spatial grid axis (mechanically identical to existing tridiag uses, just a
+different axis). No unknown numerical method remains. Grid geometry constants specific to the ice-dyn B-grid
+(`DXU/DYU/CSU/TNG/BYDX2/BYDY2/...`, analogous to `GEOM_B.f`'s atmosphere geometry) still need to be traced/sourced
+before implementation -- not yet done.
 | `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — per-cell, likely tractable like GROUND_SI |
 | `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | trivial |
 | `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
