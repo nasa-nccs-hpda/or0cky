@@ -616,18 +616,24 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   hidden. GHY (`ghy_ref.py`) is still plain Python -- a stateful multi-layer column solver, a
   separate and larger effort (see D14).
 
-- GHY JAX-vectorization is **scoped, not implemented** (`FULL_FIDELITY_PLAN.md`, after Phase 1):
-  every technique needed has a precedent elsewhere in this project, but GHY needs several at once
-  (per-cell soil-layer count, per-substep snow-layer count, per-cell-per-step adaptive substep
-  count from Ent), and two specific risk points were checked empirically rather than assumed --
-  both corrected the initial guess (the bisection "exact" branch fires 7.2% of the time, not rarely;
-  naive `dts=0`/`dts≈0` substep padding either crashes or silently perturbs accumulator scalars by
-  up to 1.8, so any implementation needs a per-lane whole-substep mask instead).
+- GHY JAX-vectorization is **done** (`ghy_jax.py`, D15): the full `GhyColumn.advnc()` pipeline --
+  soil hydraulics (bisection), the full flux chain, and the complete snow model (`SNOW.f`, including
+  a closed-form reformulation of `snow_redistr`'s while-loop as a conservative overlap-matrix remap,
+  verified equivalent to 2e-9 over 20,000 random trials) -- matches real Fortran across all 9,036 real
+  land-cell substeps at the same tolerance the plain-Python reference itself achieves (D9), including
+  sharing that reference's one documented chaos-sensitive field (`aruns`/`aeruns` runoff-activation
+  branch flips). Measuring speed (not just declaring correctness done) surfaced a real bug: the first
+  working version unrolled its 11-substep loop in Python, which duplicated the whole per-substep
+  computation graph and measured as *slower than plain Python* in eager mode and impractical to
+  `jax.jit`-compile; switched to `jax.lax.scan` (compiles the substep body once) for a **~20x speedup**
+  (112μs/cell cached vs. 2.2ms/cell plain-Python), re-verified bit-for-bit identical to the already
+  real-Fortran-validated unrolled version on all 9,036 cells. All of Track B's validated physics is
+  now JAX-vectorized.
 
 **Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
 kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
-convection, atmospheric dynamics, ocean, GHY JAX-vectorization (scoped only), and GPU speed numbers
-(no GPU available on the node used so far).
+convection, atmospheric dynamics, ocean, GHY speed measurement, and GPU speed numbers (no GPU
+available on the node used so far).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 

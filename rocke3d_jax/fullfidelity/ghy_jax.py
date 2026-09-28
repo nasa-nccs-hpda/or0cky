@@ -21,7 +21,16 @@ State is a dict of jnp arrays with a leading batch axis (N,). ibv (0=bare,1=vege
 layer, 0=canopy..NGM=6) are always full-size axes; `n` (active layer count, per-cell, invariant
 across a cell's own timesteps -- set from the static soil-depth config) and `nsn` (active snow-layer
 count per ibv, dynamic within a cell, only ever 0/1/3) are handled with masks, not dynamic shapes.
+
+`advnc()`'s per-cell substep loop uses `jax.lax.scan`, not a Python-level unroll -- an earlier
+unrolled version was correct but measured as slower than plain Python in eager mode and
+impractically slow to `jax.jit`-compile (duplicating the whole per-substep graph 11 times), fixed
+by switching to scan (compiles the substep body once); see FULL_FIDELITY_DELTAS.md D15 for the
+measurements. Every other bounded loop in this module (hydra's bisection, tridiag, relayer_12, ...)
+stays a small Python unroll deliberately -- those are 2-6 iterations of a small body, not 11
+iterations of a huge one, so they don't hit the same problem.
 """
+import jax
 import jax.numpy as jnp
 
 import ghy_ref as R   # reuse constants and the once-computed THM/HLM/XKLM/DLM soil tables verbatim
@@ -1264,6 +1273,203 @@ def snow(static, tp, snshs, srht, trht, drips, dripw, htdrips, htdripw, devapbs_
     return dict(flmlt=flmlt, fhsng=fhsng, flmlt_scale=flmlt_scale, fhsng_scale=fhsng_scale,
                thrmsn=thrmsn, nsn=nsn_out, fr_snow=fr_snow_out, dzsn=dzsn_out, wsn=wsn_out,
                hsn=hsn_out, evapbs=evapbs_out, evapvs=evapvs_out, snshs=snshs_out)
+
+
+def accm_zero(N):
+    z = jnp.zeros(N)
+    return dict(atrg=z, ashg=z, aevap=z, aruns=z, aeruns=z, arunu=z, aerunu=z, ae0=z, af1dt=z, aedifs=z,
+               abetad=z, alhg=z, atrht=z, asrht=z)
+
+
+def accm(acc, static, tp, thrm_tot, snsh_tot, evap_tot, rnf, rnff, f, fh, srht, trht, htpr, dts):
+    """GHY.f accm: one substep's accumulator increment. acc: dict from accm_zero (or a prior accm
+    call); returns the updated dict plus atrht/asrht/alhg (last-substep-wins, not accumulated)."""
+    n = static["n"]; fb, fv = static["fb"], static["fv"]
+    atrht = trht - (thrm_tot[:, 0] * fb + thrm_tot[:, 1] * fv)
+    asrht = srht
+    atrg = acc["atrg"] + (thrm_tot[:, 0] * fb + thrm_tot[:, 1] * fv) * dts
+    ashg = acc["ashg"] + (snsh_tot[:, 0] * fb + snsh_tot[:, 1] * fv) * dts
+    aevap = acc["aevap"] + (evap_tot[:, 0] * fb + evap_tot[:, 1] * fv) * dts
+    alhg = ELH * aevap
+    aruns = acc["aruns"] + (fb * rnf[:, 0] + fv * rnf[:, 1]) * dts
+    aeruns = acc["aeruns"] + SHW * (fb * jnp.maximum(tp[:, 1, 0], 0.0) * rnf[:, 0]
+                                    + fv * jnp.maximum(tp[:, 1, 1], 0.0) * rnf[:, 1]) * dts
+
+    kmask = static["kmask"]
+    tp_k0 = jnp.maximum(tp[:, 1:, 0], 0.0); tp_k1 = jnp.maximum(tp[:, 1:, 1], 0.0)
+    arunu_terms = jnp.where(kmask, rnff[:, :, 0] * fb[:, None] + rnff[:, :, 1] * fv[:, None], 0.0)
+    arunu = acc["arunu"] + jnp.sum(arunu_terms, axis=1) * dts
+    aerunu_terms = jnp.where(kmask, tp_k0 * rnff[:, :, 0] * fb[:, None] + tp_k1 * rnff[:, :, 1] * fv[:, None], 0.0)
+    aerunu = acc["aerunu"] + SHW * jnp.sum(aerunu_terms, axis=1) * dts
+
+    cond_n2 = n >= 2
+    dedifs0 = jnp.where(f[:, 1, 0] >= 0.0, tp[:, 2, 0], tp[:, 1, 0]) * f[:, 1, 0]
+    dedifs0 = jnp.where(cond_n2, dedifs0, 0.0)
+    dedifs1 = jnp.where(f[:, 1, 1] >= 0.0, tp[:, 2, 1], tp[:, 1, 1]) * f[:, 1, 1]
+    dedifs1 = jnp.where(cond_n2, dedifs1, 0.0)
+    aedifs = acc["aedifs"] - dts * SHW * dedifs0 * fb - dts * SHW * dedifs1 * fv
+
+    ae0 = acc["ae0"] - dts * (
+        -srht - trht - htpr
+        + (thrm_tot[:, 0] + snsh_tot[:, 0] + ELH * evap_tot[:, 0]) * fb
+        + (thrm_tot[:, 1] + snsh_tot[:, 1] + ELH * evap_tot[:, 1]) * fv)
+    af1dt = acc["af1dt"] - dts * (fb * fh[:, 1, 0] + fv * fh[:, 1, 1])
+
+    out = dict(acc)
+    out.update(atrg=atrg, ashg=ashg, aevap=aevap, aruns=aruns, aeruns=aeruns, arunu=arunu, aerunu=aerunu,
+              aedifs=aedifs, ae0=ae0, af1dt=af1dt, atrht=atrht, asrht=asrht, alhg=alhg)
+    return out
+
+
+def accm_final(acc, static, fb, fv, snsh_tot, evap_tot, dt, rho, ch, ts, gusti, tprime, vs):
+    """GHY.f accm_final. Returns dict with aruns,arunu,aevap (RHOW-scaled), af1dt (aedifs-adjusted),
+    tbcs, tsns."""
+    aruns = acc["aruns"] * RHOW
+    arunu = acc["arunu"] * RHOW
+    aevap = acc["aevap"] * RHOW
+    af1dt = acc["af1dt"] - acc["aedifs"]
+    dt_safe = jnp.where(dt == 0.0, 1.0, dt)
+    tbcs = jnp.sqrt(jnp.sqrt(jnp.maximum(acc["atrg"] / (dt_safe * STBO), 0.0))) - TFRZ
+    cna = ch * vs
+    cna_safe = jnp.where(cna == 0.0, 1.0, cna)
+    tsns = ((snsh_tot[:, 0] * fb + snsh_tot[:, 1] * fv) / (SHA * rho * ch)
+           + gusti * tprime) / jnp.where(vs == 0.0, 1.0, vs) + ts - TFRZ
+    return dict(aruns=aruns, arunu=arunu, aevap=aevap, af1dt=af1dt, tbcs=tbcs, tsns=tsns)
+
+
+def _sel(active, new, old):
+    """Broadcast a (N,) boolean mask against a (N, ...) array and select. Used to gate a whole
+    substep's candidate state against the prior state -- see advnc()."""
+    extra = new.ndim - active.ndim
+    a = active.reshape(active.shape + (1,) * extra) if extra > 0 else active
+    return jnp.where(a, new, old)
+
+
+def advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm,
+         max_substeps=11):
+    """GHY.f advnc, batched, fixed max_substeps via jax.lax.scan (11 covers 100% of the real
+    ffg_*.bin record -- max observed ffnit is 10, see FULL_FIDELITY_PLAN.md's GHY scoping note).
+
+    Uses lax.scan rather than a Python-level `for i in range(max_substeps)` unroll: an unrolled
+    version is correct (and was the first implementation, validated against real Fortran) but
+    duplicates the ENTIRE per-substep computation graph 11 times, which measured as both slower
+    than plain-Python in eager mode (the per-substep body is large: hydra/xklh/evap_limits/.../snow's
+    own nested heat_eq calls) and impractically slow to jax.jit-compile (XLA's own
+    slow-compile warning fired, still not finished after several minutes) -- scan compiles the
+    substep body ONCE and applies it via an XLA-level loop, which is the fix for both. Each substep
+    still runs the FULL body unconditionally and is masked in via `i < n_substeps` per cell with
+    `_sel`, which replaces the ENTIRE candidate state with the prior state for an inactive lane --
+    this sidesteps the dts=0/dts~0 pitfalls found while scoping this (padding lanes can produce
+    inf/nan internally without consequence, since none of it is ever blended into the kept state,
+    only fully discarded).
+
+    ent_dts/ent_cnc/ent_lai: (N, max_substeps); ent_betadl: (N, max_substeps, NGM). Returns a dict
+    with final w, ht, nsn, dzsn, wsn, hsn, fr_snow, tp, fice, plus the ledger-comparable scalars
+    (tbcs, tsns, ashg, alhg, aevap, aruns, arunu, aeruns, aerunu, ae0, abetad)."""
+    N = dynamic0["w"].shape[0]
+    fb, fv = forcing["fb"], forcing["fv"]
+    static = dict(static0, process_bare=fb > 0.0, process_vege=fv > 0.0, fb=fb, fv=fv, sl=static0["sl"])
+
+    w0 = dynamic0["w"]; ht0 = dynamic0["ht"]; nsn0 = dynamic0["nsn"]; dzsn0 = dynamic0["dzsn"]
+    wsn0 = dynamic0["wsn"]; hsn0 = dynamic0["hsn"]; fr_snow0 = dynamic0["fr_snow"]
+
+    reth0 = reth(static, w0, nsn0, wsn0, fr_snow0, snowm)
+    retp0 = retp(static, w0, ht0, wsn0, hsn0)
+
+    init_carry = dict(
+        w=w0, ht=ht0, nsn=nsn0, dzsn=dzsn0, wsn=wsn0, hsn=hsn0, fr_snow=fr_snow0,
+        theta=reth0["theta"], fice=retp0["fice"], tp=retp0["tp"], tsn1=retp0["tsn1"],
+        fw=reth0["fw"], fd=reth0["fd"], fm=reth0["fm"], fw0=reth0["fw0"], fd0=reth0["fd0"],
+        abetad=jnp.zeros(N), snsh_tot_carry=jnp.zeros((N, 2)), evap_tot_carry=jnp.zeros((N, 2)),
+        acc=accm_zero(N),
+    )
+
+    def _substep_body(carry, x):
+        i, dts, cnc_raw, betadl_raw, lai_raw = x
+        w, ht, nsn, dzsn, wsn, hsn, fr_snow = (carry["w"], carry["ht"], carry["nsn"], carry["dzsn"],
+                                               carry["wsn"], carry["hsn"], carry["fr_snow"])
+        theta, fice, tp, tsn1 = carry["theta"], carry["fice"], carry["tp"], carry["tsn1"]
+        fw, fd, fm, fw0, fd0 = carry["fw"], carry["fd"], carry["fm"], carry["fw0"], carry["fd0"]
+        acc = carry["acc"]
+        active_i = i < n_substeps
+        cnc = jnp.where(static["process_vege"], cnc_raw, 0.0)
+        betadl = jnp.where(static["process_vege"][:, None], betadl_raw, 0.0)
+        lai = jnp.where(static["process_vege"], lai_raw, 0.0)
+
+        hydra_out = hydra(static, theta, fice)
+        xklh_out = xklh(static, w, fice, theta)
+        evap_out = evap_limits(static, w, theta, hydra_out["d"], tp, fice, tsn1, nsn, wsn, fr_snow, dt,
+                               forcing["pr"], betadl, cnc, forcing["ch"], forcing["vs"], forcing["rho"],
+                               forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"],
+                               forcing["qm1"], lai, fm)
+        fw_i, fd_i = evap_out["fw"], evap_out["fd"]
+        drip_out = drip_from_canopy(static, w, forcing["htpr"], forcing["htprs"], forcing["pr"],
+                                    forcing["prs"], evap_out["evapvw"], fw_i, fm, fr_snow, fd0, dts, tp)
+        sh_out = sensible_heat(tp, tsn1, forcing["ts"], forcing["vs"], forcing["ch"], forcing["rho"],
+                               forcing["gusti"], forcing["tprime"])
+        snow_out = snow(static, tp, sh_out["snshs"], forcing["srht"], forcing["trht"], drip_out["drips"],
+                        drip_out["dripw"], drip_out["htdrips"], drip_out["htdripw"], evap_out["devapbs_dt"],
+                        evap_out["devapvs_dt"], sh_out["dsnsh_dt"], evap_out["evap_min"], dts, static["dz"],
+                        dzsn, wsn, hsn, nsn, fr_snow, evap_out["evapbs"], evap_out["evapvs"], fm)
+        f_out = fl(static, hydra_out["h"], hydra_out["xk"])
+        flg_out = flg(static, f_out["f"], snow_out["flmlt"], snow_out["flmlt_scale"], drip_out["dripw"],
+                      drip_out["drips"], evap_out["evapb"], evap_out["evapvg"], snow_out["fr_snow"],
+                      forcing["pr"], evap_out["evapvw"], snow_out["evapbs"], snow_out["evapvs"],
+                      evap_out["evapvd"], fw_i, fd_i, fm)
+        runoff_out = runoff(static, w, flg_out["f"], f_out["xinfc"], drip_out["dripw"],
+                            drip_out["dripw_scale"], evap_out["evapb"], evap_out["evapvg"],
+                            snow_out["fr_snow"], forcing["pr"], hydra_out["xku"], static["sl"])
+        fllmt_out = fllmt(static, w, flg_out["f"], runoff_out["rnff"], runoff_out["rnf"],
+                          evap_out["evapdl"], snow_out["fr_snow"], fm, dts)
+        flh_out = flh(static, xklh_out["xkhm"], tp, fllmt_out["f"], forcing["geothermal_heat"])
+        flhg_out = flhg(static, flh_out["fh"], tp, snow_out["fhsng"], snow_out["fhsng_scale"],
+                        drip_out["htdripw"], drip_out["htdrips"], evap_out["evapb"], evap_out["evapvg"],
+                        evap_out["evapvw"], evap_out["evapvd"], sh_out["snshg"], sh_out["snshv"],
+                        snow_out["snshs"], snow_out["thrmsn"], snow_out["fr_snow"], forcing["srht"],
+                        forcing["trht"], forcing["htpr"], fw_i, fd_i, fm)
+        apply_out = apply_fluxes(static, w, ht, fllmt_out["f"], flhg_out["fh"], flg_out["fc"],
+                                 flhg_out["fch"], fllmt_out["rnf"], fllmt_out["rnff"], tp,
+                                 evap_out["evapdl"], snow_out["fr_snow"], fm, dts)
+        acc_new = accm(acc, static, tp, flhg_out["thrm_tot"], flhg_out["snsh_tot"], flg_out["evap_tot"],
+                       fllmt_out["rnf"], fllmt_out["rnff"], fllmt_out["f"], flhg_out["fh"], forcing["srht"],
+                       forcing["trht"], forcing["htpr"], dts)
+
+        w_new, ht_new = apply_out["w"], apply_out["ht"]
+        nsn_new, dzsn_new = snow_out["nsn"], snow_out["dzsn"]
+        wsn_new, hsn_new, fr_snow_new = snow_out["wsn"], snow_out["hsn"], snow_out["fr_snow"]
+        reth_new = reth(static, w_new, nsn_new, wsn_new, fr_snow_new, snowm)
+        retp_new = retp(static, w_new, ht_new, wsn_new, hsn_new)
+
+        new_carry = dict(
+            w=_sel(active_i, w_new, w), ht=_sel(active_i, ht_new, ht),
+            nsn=_sel(active_i, nsn_new, nsn), dzsn=_sel(active_i, dzsn_new, dzsn),
+            wsn=_sel(active_i, wsn_new, wsn), hsn=_sel(active_i, hsn_new, hsn),
+            fr_snow=_sel(active_i, fr_snow_new, fr_snow),
+            theta=_sel(active_i, reth_new["theta"], theta), fice=_sel(active_i, retp_new["fice"], fice),
+            tp=_sel(active_i, retp_new["tp"], tp), tsn1=_sel(active_i, retp_new["tsn1"], tsn1),
+            fw=_sel(active_i, reth_new["fw"], fw), fd=_sel(active_i, reth_new["fd"], fd),
+            fm=_sel(active_i, reth_new["fm"], fm),
+            fw0=_sel(active_i, reth_new["fw0"], fw0), fd0=_sel(active_i, reth_new["fd0"], fd0),
+            abetad=_sel(active_i, evap_out["abetad"], carry["abetad"]),
+            snsh_tot_carry=_sel(active_i, flhg_out["snsh_tot"], carry["snsh_tot_carry"]),
+            evap_tot_carry=_sel(active_i, flg_out["evap_tot"], carry["evap_tot_carry"]),
+            acc={k: _sel(active_i, acc_new[k], acc[k]) for k in acc},
+        )
+        return new_carry, None
+
+    xs = (jnp.arange(max_substeps), ent_dts.T, ent_cnc.T, ent_betadl.transpose(1, 0, 2), ent_lai.T)
+    final_carry, _ = jax.lax.scan(_substep_body, init_carry, xs, length=max_substeps)
+
+    acc = final_carry["acc"]
+    final = accm_final(acc, static, fb, fv, final_carry["snsh_tot_carry"], final_carry["evap_tot_carry"],
+                       dt, forcing["rho"], forcing["ch"], forcing["ts"], forcing["gusti"], forcing["tprime"],
+                       forcing["vs"])
+    return dict(w=final_carry["w"], ht=final_carry["ht"], nsn=final_carry["nsn"], dzsn=final_carry["dzsn"],
+               wsn=final_carry["wsn"], hsn=final_carry["hsn"], fr_snow=final_carry["fr_snow"],
+               tp=final_carry["tp"], fice=final_carry["fice"],
+               tbcs=final["tbcs"], tsns=final["tsns"], ashg=acc["ashg"], alhg=acc["alhg"],
+               aevap=final["aevap"], aruns=final["aruns"], arunu=final["arunu"], aeruns=acc["aeruns"],
+               aerunu=acc["aerunu"], ae0=acc["ae0"], abetad=final_carry["abetad"])
 
 
 def retp(static, w, ht, wsn, hsn):

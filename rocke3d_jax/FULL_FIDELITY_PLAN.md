@@ -24,7 +24,7 @@ driver"); this branch adds a second, separately-labelled track and records the
 | Phase 2 Radiation (SOCRATES) | scoped 2026-09-27, proof-of-concept only (one kernel via subprocess); paused — user redirected effort to remaining small items first | plan §Phase 2 |
 | Phases 3–5 (clouds, dynamics, ocean) | not started | — |
 | JAX-vectorization: SEA_ICE/SSIDEC/snowice/SIMELT/ADDICE (`seaice_core_jax.py`) | **done**, same accuracy as plain Python, jit-compilable (46-51x CPU speedup) | D14 |
-| JAX-vectorization: GHY (`ghy_ref.py`) | **scoped** 2026-09-27, not started — see dedicated subsection after Phase 1 | — |
+| JAX-vectorization: GHY (`ghy_ref.py`) | **done** 2026-09-27/28, matches real Fortran to plain-Python's own D9 tolerance, ~20x CPU speedup (lax.scan, after an unrolled-loop regression was measured and fixed) | D15 |
 
 **Scoping learned so far.** (a) The pieces ported so far are stateless column/tile functions and validated at
 1e-11–1e-16 relative; the method (instrumented real model → per-call records → JAX port → tests with
@@ -152,6 +152,31 @@ estimates and the least reliable part of this plan.
 - Expected delta: correct polar/land fluxes; the current sensible-heat
   pattern correlation vs. period-mean (−0.014, one-step vs. mean — not a
   like-for-like check) should be re-measured properly against the oracle.
+
+### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
+
+**Update:** completed the same day it was scoped below. The scoping held up well against
+implementation: fixed-size-plus-mask worked for all three variability axes as predicted, the
+bisection's `exact` branch was handled as a normal ~7%-of-calls outcome (not approximated), and
+`snow_redistr`'s while-loop was replaced with a closed-form conservative overlap-matrix remap
+(verified equivalent to 2e-9 over 20,000 random trials) rather than forced into `lax.while_loop`.
+One prediction turned out to be a **false alarm, corrected by the actual implementation**: the
+scoping note below concluded that naive `dts=0`/`dts≈0` substep padding doesn't work (crashes or
+perturbs accumulators) and that a per-lane "run vs. keep prior state" mask was needed instead --
+true, and that mask design was used, but building it revealed the `dts` pitfall doesn't actually
+matter once the mask exists: every division in this port is either explicitly guarded or, if not,
+produces inf/nan in a padding lane that is *entirely discarded* by the mask select (never blended
+numerically into the kept state), so padding lanes can use any `dts` value including 0 with no ill
+effect. The original scoping section is kept below for the record of how the estimate was built.
+
+**A problem the scoping did NOT anticipate, found the next day by measuring speed instead of
+stopping at correctness:** the substep loop's first working form was a Python-level `for i in
+range(11): ...` unroll, which duplicates the whole per-substep computation graph 11 times -- this
+measured as *slower than plain Python* in eager mode and too slow for `jax.jit` to finish compiling
+in 300s. Fixed by switching to `jax.lax.scan`; see D15 for the full measurement and fix. Lesson for
+next time: this project's usual "small bounded loop -> Python unroll" pattern only holds when the
+loop body is small (2-6 trivial iterations, as in hydra's bisection or tridiag); an 11-iteration loop
+whose body is itself dozens of functions deep needs `lax.scan` from the start.
 
 ### JAX-vectorization of GHY (`ghy_ref.py`) — SCOPED 2026-09-27, not started
 

@@ -217,3 +217,63 @@ not-proportionally-small quantity by dts. Correct fix: gate the whole substep bo
 mask (run vs keep-prior-state), not attempt to make dts degenerate. Documented as a corrected finding,
 not a hedge, in the plan. GHY JAX-vectorization is scoped and NOT started -- next up if resumed:
 the per-lane substep mask, then hydra/xklh, then the non-snow flux chain, then the snow model last.
+
+## 2026-09-27: GHY JAX-vectorization DONE (D15) -- completed the scoping plan same-day
+Followed the scoping order exactly: static setup + reth/retp/hydra/xklh first (cross-checked against
+ghy_ref on 400 real cells; two real bugs found -- jnp.sum reduces in a different order than Python's
+sum() for the small texture-table dot products, confirmed empirically (29% mismatch over 200k trials)
+and fixed with an explicit left-to-right accumulation helper; and a genuine transcription bug in
+hydra's bisection setup, thr1 wrongly initialized to the clamped theta instead of thets). Then the
+non-snow flux chain (evap_limits through apply_fluxes): found evap_limits' "if evapvw<0: fw=1,fd=0"
+mutation persists into every later substep method, and retp never computed tsn1 (silently breaking
+sensible_heat for cold snow layers), and flhg was designed to return fh0 as a disconnected value
+instead of merging it into flh's fh array (a ~123,000-unit error in one real cell's heat content made
+this one obvious). Then the snow model (pass_water/snow_fraction/snow_redistr/tridiag/heat_eq/
+snow_adv_1/snow_drv/snow) -- the scoping's predicted riskiest piece, validated on all 9,036 real
+land-cell substeps with zero NaN-pattern mismatches once a genuinely NaN-aware test comparison was
+used (naive max()-based comparison was silently swallowing NaN diffs, discovered while chasing what
+turned out to be a real degenerate 0/0 case already present in the plain-Python reference itself, not
+introduced by this port). snow_redistr's while-loop was reformulated as a closed-form overlap-matrix
+remap rather than forced into lax.while_loop, verified equivalent (2e-9 over 20k random trials).
+
+Assembling advnc() (the substep-masked driving loop) surfaced two more real bugs: evap_limits needs
+the TOTAL dt (constant across the whole advnc() call), not the per-substep dts -- invisible with a
+single substep (they're equal), a clear error once 2+ substeps run; and GhyColumn.snow()'s per-ibv
+gating (skipped entirely for an inactive ibv) was missing from my first version.
+
+Final result: all of GHY (ghy_ref.py's advnc() and everything it calls) is now JAX-vectorized,
+matching real Fortran across all 9,036 real land-cell substeps at the SAME tolerance the plain-Python
+reference achieves against Fortran (D9), including sharing its one known chaos-sensitive field
+(aruns/aeruns runoff-activation threshold flips). The scoping's "dts=0 padding is unsafe" finding
+turned out to be moot in practice: the per-lane whole-substep-select mask design discards a padding
+lane's entire candidate state regardless of whether it's finite or NaN/inf, so the dts value used for
+padding never matters. This closes out JAX-vectorization for the whole of Track B's currently-
+validated physics (ATURB, PBL, SURFACE, SEAICE/ADDICE/SIMELT, LAKES, tile aggregation, and now GHY).
+
+## 2026-09-28: measured GHY speed, found and fixed a real regression (D15 cont'd)
+Wrote a pytest suite (tests/test_ghy_jax.py) and ran it -- all tests passed, but the run took 3h42m
+(vs the same logic run via a direct script finishing in under a minute for the same cell counts).
+Diagnosed with a quick repeated-call timing check outside pytest: no progressive slowdown across 6
+consecutive advnc() calls in one process (~8s each), so this is specific to pytest's invocation
+somehow, not a real property of the code -- left as an open, honestly-documented oddity rather than
+spending more time chasing it, since correctness is proven either way (direct-script re-verification
+matches the pytest run's PASSED results).
+
+Then measured actual speed (the point of "vectorizing" in the first place, not yet checked): plain-
+Python 0.63s for 300 cells vs JAX eager 8.7s -- the JAX version was SLOWER, a regression, and
+jax.jit-compiling it didn't finish in 300s (XLA's own slow-compile warning fired). Root cause: the
+substep loop was a Python `for i in range(11): ...` unroll, which duplicates the entire per-substep
+computation graph (hydra/xklh/evap_limits/.../snow's own nested heat_eq calls -- dozens of functions)
+11 times. Every OTHER bounded loop in this project (hydra's 6-step bisection, tridiag, relayer_12,
+snow_adv_1's mass-densification loop) stays a small Python unroll because the per-iteration body is
+small (a handful of arithmetic ops); GHY's substep body is not small, so unrolling it 11x was
+qualitatively different and the actual problem.
+
+Fixed by rewriting the substep loop with jax.lax.scan (compiles the substep body once, applies it via
+an XLA-level loop) -- same per-lane masking design (`i < n_substeps`), same every function call, only
+the control-flow primitive changed. Re-validated: bit-for-bit identical results to the already real-
+Fortran-checked unrolled version on all 9,036 real cells across all 6 files (every D15 error number
+unchanged). Speed: jit compile ~30s (one-time), cached run 112us/cell vs plain-Python's 2.2ms/cell --
+**~20x speedup**, confirmed at both 300-cell and full-file (1,506-cell) scale. This is now the
+template lesson for this codebase: a big per-timestep substep/step loop needs lax.scan, not a Python
+unroll, even though small bounded loops (2-6 iterations) are fine unrolled.

@@ -338,8 +338,82 @@ this isn't a small-batch artifact) the per-cell JAX cost is unchanged (~2.0μs/c
 and the measured speedup is **51x** — consistent, not a fixed-overhead illusion. One-time
 trace/compile cost is ~2.9s for GROUND_SI and ~3.6s for ADDICE, amortized over every subsequent call.
 
+## D15 — JAX-vectorized GHY land model (`ghy_jax.py`) vs real Fortran
+`fullfidelity/ghy_jax.py`: full batched-array port of `ghy_ref.py`'s `GhyColumn.advnc` and every
+method/helper it calls -- `reth`, `retp`, `hydra` (soil-hydraulics bisection), `xklh`, `evap_limits`,
+`sensible_heat`, `drip_from_canopy`, `fl`/`flh`/`flg`/`flhg`, `runoff`, `fllmt`, `apply_fluxes`,
+`accm`/`accm_zero`/`accm_final`, and the full `SNOW.f` model (`pass_water`, `snow_fraction`,
+`snow_redistr`, `tridiag`, `heat_eq`, `snow_adv_1`, `snow_drv`, `snow`). This was scoped as the
+largest remaining item in Track B (FULL_FIDELITY_PLAN.md's GHY section) precisely because it compounds
+several axes of variability at once (per-cell active-soil-layer count, per-substep snow-layer count,
+per-cell-per-timestep adaptive substep count); all three are handled the same way every other
+fixed-size-plus-mask piece in this project is: fixed max array sizes (NGM=6 soil layers, TOTAL_NL=3
+snow layers, 11 substeps -- covers 100% of the real 1-10 range measured for `ffnit`) with per-lane
+boolean masks, never dynamic shapes.
+
+**Individual functions have no intermediate real-Fortran ground truth to check against** (the
+`ffg_*.bin` dump only has the state *after* the whole substep loop, not per-substep) -- they are
+cross-checked against `ghy_ref.py` instead (already validated against Fortran, D9), on real cells'
+recorded input state (`ghy_jax_compare.py`, `ghy_flux_chain_test.py`, `ghy_snow_test.py`); only the
+assembled `advnc()` pipeline is checked against real Fortran (`ghy_advnc_test.py`), on all 9,036 real
+land-cell substeps across all 6 real dump files.
+
+| Output | max rel err vs Fortran | Note |
+|---|---|---|
+| tbcs, tsns | 3e-8 to 3e-5 | matches D9's plain-Python tolerance |
+| ashg, arunu, aerunu | 4e-7 to 9e-5 | |
+| alhg, aevap, ae0 | 1e-5 to 2e-2 | worst case is one date (nov26); still float64/branch-noise scale |
+| w_out, ht_out, tp_out | 9e-5 to 8e-2 | worst case: 2/1506 cells, both a ~5e-6 (absolute) canopy-water
+  difference inflated by a near-zero denominator, not a real state error |
+| abetad | 3e-16 | bitwise-exact |
+| aruns, aeruns | not a like-for-like relative-error field | see below |
+
+`aruns`/`aeruns` (surface runoff accumulators) carry the SAME threshold-crossing sensitivity already
+documented for the plain-Python reference's own validation against Fortran (D9: "residuals traced to
+a threshold-crossing sensitivity in the bare-soil runoff formula, same pattern as ATURB/PBL branch
+flips -- not a logic bug") -- a small fraction of cells flip whether runoff activates at all for a
+given substep under tiny floating-point perturbation. Checked by magnitude instead: max absolute
+value and count of runoff-active cells both agree to within 5%/20% across the full real record, ruling
+out a systematic bug while accepting the same known chaos-sensitivity the plain-Python port already
+has.
+
+**Two real, confirmed bugs found and fixed** while assembling `advnc()` (beyond several found earlier
+while building the pieces individually, see PHASE0_LOG.md): `evap_limits` needs the substep loop's
+TOTAL `dt` (set once per `advnc()` call), not the per-substep `dts` -- invisible when only one substep
+runs (they're equal), a clear ~5-60% error once a second substep is added; and `GhyColumn.snow()`'s
+`for ibv in range(i_bare, i_vege+1)` skips `snow_drv` entirely for an inactive ibv, leaving its
+fr_snow/nsn/dzsn/wsn/hsn/evap/snsh state untouched -- an unconditional call was silently overwriting
+that state instead.
+
+**Not vectorized:** none of GHY -- `ghy_jax.py` covers all of `ghy_ref.py`'s `advnc()`. GHY's own
+scoping note also flagged the `heat_eq` used inside the snow model itself, which is now vectorized.
+
+**Speed, and a real architecture bug found by measuring it (not assumed):** the first working version
+of `advnc()` unrolled its per-cell substep loop with a Python `for i in range(11): ...` (11 = the
+padded max substep count) -- correct (validated above), but measuring its speed, rather than just
+declaring victory once it matched Fortran, surfaced a real problem: unrolling duplicates the ENTIRE
+per-substep computation graph (hydra/xklh/evap_limits/.../snow's own nested `heat_eq` calls) 11 times,
+which measured as **slower than plain Python in eager mode** (8.7s vs 0.63s for 300 cells -- the JAX
+"vectorization" was a *regression*) and **impractically slow to `jax.jit`-compile** (XLA's own
+slow-compile warning fired; still not finished after 300s). Root-caused to Python-level loop
+unrolling, not vectorization itself, and fixed by rewriting the substep loop with `jax.lax.scan`
+(compiles the loop body once, applies it via an XLA-level loop, rather than duplicating the graph) --
+same per-lane masking design, same every-function call, only the control-flow primitive changed.
+Re-validated bit-for-bit identical to the unrolled version's already-real-Fortran-checked output on
+all 9,036 real cells across all 6 files (every number above generated by the `lax.scan` version).
+
+| | plain-Python (`ghy_ref.py`) | JAX unrolled (broken) | JAX `lax.scan` |
+|---|---|---|---|
+| 1,506 real cells | 3.35s (2.22 ms/cell) | eager: slower than Python; jit: didn't finish compiling in 300s | jit compile: ~30s (one-time); cached: 0.17s (112μs/cell) |
+| **speedup vs Python** | — | none (regression) | **~20x** |
+
+This is the clearest instance in this project of "unrolling a *big* loop many times" being
+qualitatively different from the small (2-6 iteration) bounded unrolls used everywhere else here
+(hydra's 6-step bisection, tridiag's 3-element solve, relayer_12's branch selection, ...) -- those
+stay cheap because the per-iteration body is small; GHY's substep body is dozens of functions deep,
+so unrolling it 11x was the actual problem, not the masking design around it. Worth remembering for
+any future large per-timestep loop in this codebase.
+
 ## Pending rows
-- JAX-vectorization of `ghy_ref.py` (land/GHY) -- a stateful multi-layer column solver, a separate
-  and larger effort than the branchy-but-stateless sea-ice functions vectorized in D14.
-- GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14's
-  CPU-only measurement).
+- GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15's
+  CPU-only measurements).
