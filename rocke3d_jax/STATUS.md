@@ -613,8 +613,7 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   speedup vs. the per-cell Python loop it replaces, confirmed at 20x scale to rule out a small-batch
   artifact. 2 of ADDICE's 5 leaf branches (0 real occurrences in the 3-date record) are validated
   against the plain-Python reference on synthetic inputs instead of Fortran -- documented, not
-  hidden. GHY (`ghy_ref.py`) is still plain Python -- a stateful multi-layer column solver, a
-  separate and larger effort (see D14).
+  hidden.
 
 - GHY JAX-vectorization is **done** (`ghy_jax.py`, D15): the full `GhyColumn.advnc()` pipeline --
   soil hydraulics (bisection), the full flux chain, and the complete snow model (`SNOW.f`, including
@@ -627,13 +626,19 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   computation graph and measured as *slower than plain Python* in eager mode and impractical to
   `jax.jit`-compile; switched to `jax.lax.scan` (compiles the substep body once) for a **~20x speedup**
   (112μs/cell cached vs. 2.2ms/cell plain-Python), re-verified bit-for-bit identical to the already
-  real-Fortran-validated unrolled version on all 9,036 cells. All of Track B's validated physics is
-  now JAX-vectorized.
+  real-Fortran-validated unrolled version on all 9,036 cells.
+
+- Lake mixing JAX-vectorization is **done** (`lakes_core_jax.py`, D16): matches the plain-Python
+  reference bitwise on all 3,644 real lake cells, **~104x** CPU speedup. This was the last
+  still-plain-Python piece of Track B's currently-validated physics -- everything (ATURB, PBL,
+  SURFACE, SEAICE/ADDICE/SIMELT, LAKES, tile aggregation, GHY) is now `jax.jit`-compilable with a
+  measured real-data speedup. See the 8-stage comparison table below for the honest remaining gap
+  (no single chained whole-model Track B step yet, and no GPU access).
 
 **Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
 kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
-convection, atmospheric dynamics, ocean, GHY speed measurement, and GPU speed numbers (no GPU
-available on the node used so far).
+convection, atmospheric dynamics, ocean, a chained whole-model Track B step, and GPU speed numbers
+(no GPU available on the node used so far).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 
@@ -777,7 +782,7 @@ Honest status of each stage, with sources:
 | 4 | Track A, JAX, optimized, GPU | done | 0.74 ms/step chained device-resident (`lax.scan`), **5.8x** vs GPU baseline, **~24x** vs CPU baseline | STATUS.md "Round 2 optimization" |
 | 5 | Track B, full fidelity, original, CPU | done, per-module (not yet one chained whole-model step) | see table below | D4-D15 |
 | 6 | Track B, full fidelity, original, GPU | **blocked** | no GPU hardware on any node used this session | — |
-| 7 | Track B, full fidelity, optimized, CPU | done for GHY and the sea-ice hot path | GHY: 112us/cell, **~20x** vs plain-Python (`lax.scan`, after an unrolled-loop version measured as a *regression*); sea-ice: 46-51x (batched `jnp.where`, no scan needed since sea-ice has no per-cell substep loop) | D14, D15 |
+| 7 | Track B, full fidelity, optimized, CPU | done for GHY, sea-ice, and lake mixing | GHY: 112us/cell, **~20x** vs plain-Python (`lax.scan`, after an unrolled-loop version measured as a *regression*); sea-ice: 46-51x; lakes: **~104x** (both batched `jnp.where`, no scan needed -- neither has a per-cell substep loop) | D14, D15, D16 |
 | 8 | Track B, full fidelity, optimized, GPU | **blocked** | same hardware gap as #6 | — |
 
 **Stage 5/7 detail — Track B CPU speed by module** (each validated against real Fortran first,
@@ -789,7 +794,7 @@ not a further profiling pass beyond that):
 | ATURB, PBL `advanc` | 27.5k+ | validated at rounding-level; not yet re-benchmarked for speed under this session's methodology (see D4/D5; Track A's numbers above cover the *representative*, not full-fidelity, ATURB/PBL) |
 | SEAICE (SEA_ICE/SSIDEC/snowice/ADDICE/SIMELT) | 25,406 | **46-51x** (`seaice_core_jax.py`, batched `jnp.where`) |
 | GHY (soil, canopy, snow) | 9,036 | **~20x** (`ghy_jax.py`, `jax.lax.scan` over substeps) |
-| LAKES (LKSOURC/LKMIX) | 3,644 | not yet benchmarked (still plain Python, `lakes_ff.py`) |
+| LAKES (LKSOURC/LKMIX) | 3,644 | **~104x** (`lakes_core_jax.py`, batched `jnp.where`) |
 | Tile aggregation | 38,040 | simple reduction, not separately benchmarked |
 
 **What "done" does NOT mean here:** Track B's per-module CPU speedups are real and measured, but

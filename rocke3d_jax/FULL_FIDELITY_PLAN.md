@@ -20,7 +20,8 @@ driver"); this branch adds a second, separately-labelled track and records the
 | Phase 1.4 GHY / land (EARTH + `advnc` + snow) | **done, F0** (Ent vegetation exports taken as recorded input, not ported) | D9 |
 | Phase 1.5a SEAICE ground thermodynamics (SEA_ICE/SSIDEC/snowice/ADDICE/SIMELT) | **done, F0** | D10, D12 |
 | Phase 1.5b Tile aggregation (`avg_patches_*`) | **done, F0** | D11 |
-| Phase 1.5c Lake mixing (LAKES.f `LKSOURC`/`LKMIX`) | **done, F0 bitwise** (TKE-entrainment branch dead code in this rundeck, unvalidated) | D13 |
+| Phase 1.5c Lake mixing (LAKES.f `LKSOURC`/`LKMIX`) | **done, F0 bitwise** (TKE-entrainment branch dead code in this rundeck, cross-checked synthetically) | D13 |
+| JAX-vectorization: lake mixing (`lakes_core_jax.py`) | **done** 2026-09-28, bitwise match, ~104x CPU speedup | D16 |
 | Phase 2 Radiation (SOCRATES) | scoped 2026-09-27, proof-of-concept only (one kernel via subprocess); paused — user redirected effort to remaining small items first | plan §Phase 2 |
 | Phases 3–5 (clouds, dynamics, ocean) | not started | — |
 | JAX-vectorization: SEA_ICE/SSIDEC/snowice/SIMELT/ADDICE (`seaice_core_jax.py`) | **done**, same accuracy as plain Python, jit-compilable (46-51x CPU speedup) | D14 |

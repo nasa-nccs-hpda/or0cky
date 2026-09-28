@@ -414,6 +414,28 @@ stay cheap because the per-iteration body is small; GHY's substep body is dozens
 so unrolling it 11x was the actual problem, not the masking design around it. Worth remembering for
 any future large per-timestep loop in this codebase.
 
+## D16 — JAX-vectorized lake mixing (`lakes_core_jax.py`) vs real Fortran
+`fullfidelity/lakes_core_jax.py`: batched-array port of `lakes_ff.py`'s `LKSOURC`/`LKMIX` (D13). No
+per-cell loop or dynamic layer count here -- lakes_ff.py is a small, fixed two-layer (upper/lower)
+model, so this is a direct branch-by-branch `jnp.where` transcription, not a new technique. Matches
+the plain-Python reference **bitwise (0.0 relative error)** on all 3,644 real lake cells across all 6
+dump files (648 with genuine frazil-ice freezing), same as D13's own match to real Fortran. `lkmix`'s
+`tke>0` branch (dead code in this rundeck -- `GROUND_LK` always calls `LKMIX` with `TKE=0.`, per D13)
+is cross-checked against `lakes_ff.py` on 5,000 synthetic random inputs instead: bitwise match there
+too. No NaN/Inf anywhere.
+
+**Speed**: `jax.jit`-compiled, no `lax.scan` needed (lakes has no per-cell substep loop unlike GHY).
+0.10μs/cell cached vs. the plain-Python reference's 9.95μs/cell -- **~104x speedup** on all 3,644
+real cells. Tests: `fullfidelity/tests/test_lakes_jax.py` (5, incl. the tke>0 synthetic check,
+jit-equivalence, and a mutation check).
+
+This closes the last "still plain Python" gap flagged in STATUS.md's 8-stage comparison table --
+every currently-validated piece of Track B physics (ATURB, PBL, SURFACE, SEAICE/ADDICE/SIMELT, LAKES,
+tile aggregation, GHY) is now `jax.jit`-compilable with a measured real-data speedup.
+
 ## Pending rows
-- GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15's
+- GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
+- A single chained whole-model Track B step (wiring ATURB/PBL/SURFACE/SEAICE/LAKES/GHY together the
+  way Track A's `run_steps_device` chains one full atmosphere step) -- each module is fast and
+  jit-able on its own, but hasn't been integrated into one driver yet (see STATUS.md's 8-stage table).

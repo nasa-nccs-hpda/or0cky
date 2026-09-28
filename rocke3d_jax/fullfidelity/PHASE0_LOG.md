@@ -277,3 +277,15 @@ unchanged). Speed: jit compile ~30s (one-time), cached run 112us/cell vs plain-P
 **~20x speedup**, confirmed at both 300-cell and full-file (1,506-cell) scale. This is now the
 template lesson for this codebase: a big per-timestep substep/step loop needs lax.scan, not a Python
 unroll, even though small bounded loops (2-6 iterations) are fine unrolled.
+
+Also wrote the 8-stage Real-Fortran/Track-A/Track-B comparison summary into STATUS.md, per the user's
+explicit request for that structure. Writing it out honestly surfaced that lake mixing (lakes_ff.py)
+was the last piece of Track B's currently-validated physics still plain Python -- closed that gap
+immediately: lakes_core_jax.py (LKSOURC/LKMIX, no per-cell loop so no lax.scan needed, straightforward
+jnp.where transcription) matches the plain-Python reference BITWISE on all 3,644 real lake cells, plus
+a synthetic check of lkmix's dead-code tke>0 branch (also bitwise match, D16). ~104x CPU speedup. This
+now means every currently-validated Track B module (ATURB, PBL, SURFACE, SEAICE/ADDICE/SIMELT, LAKES,
+tile aggregation, GHY) is jax.jit-compilable with a measured real-data speedup -- the honest remaining
+gaps for the 8-stage comparison are (1) no single chained whole-model Track B step yet (each module is
+fast on its own but not wired together the way Track A's run_steps_device chains one atmosphere step),
+and (2) no GPU access on any node used this session (a hardware blocker, not a scoping choice).
