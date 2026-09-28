@@ -455,3 +455,11 @@ detail or dead-code-excluded) -- bigger than the entire project to date. Written
 Phase 5. PREC_SI already checked to need only one new helper (Fi, ~20 lines) beyond what D10/D14 already ported.
 Plan: Stage 1 (ice dynamics, closes the actual D25 gap) first, Stage 2 (ocean numerics) scoped in detail only
 after Stage 1, mirroring how radiation's GETSUR/RCOMPX were read before estimating further.
+
+## 2026-09-28 (night): D26 -- PRECIP_SI ported, first Stage 1 deliverable
+Built new Fortran instrumentation for PRECIP_SI, rebuilt in a fresh scratch copy, reran all 3 real dates (found
+and fixed a stale doc bug along the way: `-l run.PRT` isn't a real CLI flag, corrected to `-i I`). Plain-Python
+and JAX ports both match real Fortran at float64 rounding level on all 13,572 real cells, first try after fixing
+one NameError (forgot to unpack mice2/mice3). Only one genuinely new helper needed (Fi, ~20 lines); everything
+else reused already-ported SEAICE.f functions. Reran the full sea-ice (33) and GHY test suites to confirm no
+regression. New dump files (ffw_*.bin) copied into the shared ff_data/ directory alongside the existing dumps.

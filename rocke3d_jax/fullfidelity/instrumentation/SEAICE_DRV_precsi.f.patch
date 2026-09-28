@@ -1,0 +1,60 @@
+--- SEAICE_DRV.f.orig	2026-09-28 17:35:03.002905025 -0400
++++ SEAICE_DRV.f	2026-09-28 17:07:34.031066568 -0400
+@@ -49,6 +49,7 @@
+       USE CONSTANT, only : teeny,grav,tf,bylhm
+       USE EXCHANGE_TYPES, only : atmice_xchng_vars,iceocn_xchng_vars
+       USE SEAICE_COM, only : icestate
++      USE MODEL_COM, only : dtsrc
+ #ifdef TRACERS_WATER
+       USE SEAICE, only : ntm
+ #endif
+@@ -59,6 +60,8 @@
+       type(atmice_xchng_vars) :: atmice
+       REAL*8, DIMENSION(LMI) :: HSIL,TSIL,SSIL
+       REAL*8 SNOW,MSI2,PRCP,ENRGP,RUN0,POICE,SRUN0,ERUN0
++      REAL*8 prec_rec(40), prec_snow0, prec_msi20
++      REAL*8, DIMENSION(LMI) :: prec_hsil0, prec_ssil0
+ #ifdef TRACERS_WATER
+       REAL*8, DIMENSION(NTM,LMI) :: TRSIL
+       REAL*8, DIMENSION(NTM) :: TRUN0,TRPRCP
+@@ -141,6 +144,10 @@
+         TRPRCP(:)=TRPREC(:,I,J)   ! tracer in precip
+ #endif
+         CMPRS=0d0
++        prec_snow0=SNOW
++        prec_msi20=MSI2
++        prec_hsil0=HSIL
++        prec_ssil0=SSIL
+ 
+ C**** CALL SUBROUTINE FOR CALCULATION OF PRECIPITATION OVER SEA ICE
+ 
+@@ -151,6 +158,29 @@
+ #endif
+      *       WETSNOW,CMPRS)
+ 
++        prec_rec=-1d300
++        prec_rec(1)=I
++        prec_rec(2)=J
++        prec_rec(3)=DTSRC
++        prec_rec(4)=prec_snow0
++        prec_rec(5)=prec_msi20
++        prec_rec(6:9)=prec_hsil0
++        prec_rec(10:13)=prec_ssil0
++        prec_rec(14)=PRCP
++        prec_rec(15)=ENRGP
++        prec_rec(16)=SNOW
++        prec_rec(17)=MSI2
++        prec_rec(18:21)=HSIL
++        prec_rec(22:25)=SSIL
++        prec_rec(26:29)=TSIL
++        prec_rec(30)=RUN0
++        prec_rec(31)=SRUN0
++        prec_rec(32)=ERUN0
++        prec_rec(33)=0
++        if (WETSNOW) prec_rec(33)=1
++        prec_rec(34)=CMPRS
++        call ffdump_precsi(prec_rec,40)
++
+         SNOWI(I,J)  =SNOW
+         RUNPSI(I,J) =RUN0
+         SRUNPSI(I,J)=SRUN0

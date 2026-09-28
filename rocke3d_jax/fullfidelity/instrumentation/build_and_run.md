@@ -12,6 +12,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch PBL_DRV.f < <this dir>/PBL_DRV.f.patch     # one record per PBL call (ffp_* files)
     patch SURFACE.f < <this dir>/SURFACE.f.patch     # one record per ocean/ice tile (ffs_* files)
     patch SURFACE_LANDICE.f < <this dir>/SURFACE_LANDICE.f.patch  # land-ice tile (ffl_* files)
+    patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_precsi.f.patch     # PRECIP_SI (ffw_* files, D26) -- apply
+      AFTER SEAICE_DRV.f.patch (below); adds ffdump_precsi call site
+    patch ATM_DRV.f < <this dir>/ATM_DRV_precsi.f.patch           # adds ffdump_precsi itself -- apply
+      AFTER ATM_DRV.f.patch (above)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -24,7 +28,9 @@ Run (scratch dir; copy I, P2SAoM40, P2SAoM40ln/uln, runtime_opts, fort.1.nc from
     #   YEARE=1950,MONTHE=11,DATEE=26,HOURE=3   (6 steps from 1950-11-26 00:00)
     export LD_LIBRARY_PATH=/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/lib:$LD_LIBRARY_PATH
     export OMP_NUM_THREADS=1 MP_SET_NUMTHREADS=1
-    FFD_START=33312 FFD_NSTEP=6 ./P2SAoM40 -l run.PRT
+    FFD_START=33312 FFD_NSTEP=6 ./P2SAoM40 -i I > run.PRT 2>&1
+    # (corrected 2026-09-28, D26: `-l run.PRT` is not a real flag -- see MODELE_DRV.f's arg parser,
+    # only -r/-cold-restart/-i/--time exist; must `sh P2SAoM40ln` first to set up input-file symlinks)
 
 Dumps: `ffd_<itime>_<tag>.bin`, tags pre_condse, post_condse, post_radia,
 pre_surface, post_surface, pre_aturb, post_aturb (last two are the dummy
@@ -77,3 +83,12 @@ call (~600-1000/step depending on date, since not every cell has a lake). Column
 `fullfidelity/lakes_compare.py` module docstring. Note: `GROUND_LK` always calls `LKMIX` with `TKE=0.`
 (the `U2rho` entrainment term is commented out in this rundeck's source), so the TKE-driven entrainment
 branch inside `LKMIX` is never exercised by these dumps -- ported faithfully but unvalidated in practice.
+
+PRECIP_SI dumps (Stage 1 of the DYNSI/ocean port, D26): patch `SEAICE_DRV.f` with
+`SEAICE_DRV_precsi.f.patch` (after `SEAICE_DRV.f.patch`) and `ATM_DRV.f` with `ATM_DRV_precsi.f.patch`
+(after `ATM_DRV.f.patch`; adds `ffdump_precsi`, unit 986). `ffw_<itime>.bin`: 40-double records, one per
+sea-ice cell (`POICE>0`) per `PRECIP_SI` call, ~700-800/step (same cell population as `ffi_*`/GROUND_SI,
+since both are `si_ocn`-based). Columns: 1:i 2:j 3:dtsrc 4:snow(in) 5:msi2(in) 6:9=hsil(in) 10:13=ssil(in)
+14:prcp 15:enrgp -- after `PREC_SI` -- 16:snow 17:msi2 18:21=hsil 22:25=ssil 26:29=tsil 30:run0 31:srun0
+32:erun0 33:wetsnow 34:cmprs (0-based columns are all -1, see `fullfidelity/precsi_compare.py`).
+Lake-ice precip (`PRECIP_LK`, `LAKES.f`, 139 lines) is a separate, not-yet-instrumented routine.

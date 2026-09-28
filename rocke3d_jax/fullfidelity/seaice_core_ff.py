@@ -744,3 +744,99 @@ def simelt(dt, roice, snow, msi2, hsil, ssil, pocean, tm, tfo, enrgmax):
         tsil = None
     return dict(roice=roice, snow=snow, msi2=msi2, hsil=hsil, ssil=ssil, tsil=tsil,
                 enrgused=enrgused, run0=run0, salt=salt)
+
+
+def Fi(wat, hsi, ssi, msi):
+    """SEAICE.f Fi (seaice_thermo='BP'): liquid water that can be frozen in ice (kg/m^2)."""
+    if 1e3 * ssi / msi > 1e-10:
+        return wat
+    return min(wat, max(-hsi * BYLHM - msi, 0.0))
+
+
+SNOMAX = 1.0 * RHOS
+DSNDRN = 0.0    # SEAICE.f PREC_SI parameter dSNdRN -- always 0 in this source, so the CMPRS "rain compression"
+                 # term below is always exactly 0 (min(0, non-negative)); kept as the real formula, not simplified
+
+
+def prec_si(snow, msi2, hsil, ssil, prcp, enrgp):
+    """SEAICE.f PREC_SI (no tracers): adds precipitation to sea/lake ice. Returns dict: snow, msi1, msi2, hsil,
+    ssil, tsil, run0, srun0, erun0, wetsnow, cmprs."""
+    hsil = list(hsil); ssil = list(ssil)
+    wetsnow = False
+    run0 = srun0 = erun0 = 0.0
+    msi1 = snow + ACE1I
+    cmprs = 0.0
+    if prcp > 0.0:
+        snwf = max(0.0, min(prcp, -enrgp * BYLHM))
+        rain = prcp - snwf
+        wetsnow = rain > 1e-5 * prcp
+        melts = melti = smelti = hmelti = frezi = 0.0
+        snowl, hsnow, hice, sice, _, _, mice = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+        if snow > 0.0:
+            melts = max(0.0, (hsnow[0] + enrgp) * BYLHM + snowl[0] + snwf)
+            if melts > snowl[0] + snwf:
+                melts = snowl[0] + snwf
+                if mice[0] > 0.0:
+                    melti = Mi(hice[0] + hsnow[0] + enrgp, sice[0], mice[0])
+                    smelti = melti * sice[0] / mice[0]
+                    hmelti = melti * Em(1e3 * sice[0] / mice[0])
+                    hice[0] = hice[0] + hsnow[0] + enrgp - hmelti
+                    sice[0] -= smelti
+                    mice[0] -= melti
+                hsnow[0] = 0.0
+                snowl[0] = 0.0
+            else:
+                frezi = min(rain, max(-(hsnow[0] + enrgp) * BYLHM - snowl[0] - snwf + melts, 0.0))
+                hsnow[0] = hsnow[0] + enrgp + LHM * frezi
+                if snowl[1] > 0.0:
+                    hice[1] -= LHM * frezi
+                    mice[1] += frezi
+                else:
+                    hice[0] -= LHM * frezi
+                    mice[0] += frezi
+                snowl[0] = snowl[0] + snwf - melts
+                if snwf >= prcp and snow + snwf > SNOMAX:
+                    cmprs = snow + snwf - 0.9 * SNOMAX
+                else:
+                    cmprs = min(DSNDRN * (rain + melts), snow + snwf - melts)
+                if cmprs < snowl[1]:
+                    if snowl[1] != 0.0:
+                        hice[1] += hsnow[1] * cmprs / snowl[1]
+                        hsnow[1] *= (1.0 - cmprs / snowl[1])
+                        mice[1] += cmprs
+                        snowl[1] -= cmprs
+                else:
+                    if snowl[0] != 0.0:
+                        hice[0] += hsnow[0] * (cmprs - snowl[1]) / snowl[0]
+                        hice[1] += hsnow[1]
+                        hsnow[0] *= (1.0 - (cmprs - snowl[1]) / snowl[0])
+                        hsnow[1] = 0.0
+                        mice[0] += cmprs - snowl[1]
+                        mice[1] += snowl[1]
+                        snowl[0] -= (cmprs - snowl[1])
+                        snowl[1] = 0.0
+        else:
+            snowl[0] = snwf
+            hsnow[0] = min(enrgp, 0.0)
+            hice[0] = hice[0] + enrgp - hsnow[0]
+            melti = Mi(hice[0], sice[0], mice[0])
+            smelti = melti * sice[0] / mice[0]
+            hmelti = melti * Em(1e3 * sice[0] / mice[0])
+            hice[0] -= hmelti
+            sice[0] -= smelti
+            frezi = Fi(rain, hice[0], sice[0], mice[0])
+            mice[0] = mice[0] - melti + frezi
+
+        fmsi2 = cmprs + frezi - melti
+        relayer(fmsi2, mice, hice, sice)
+        relayer_12(hsnow, hice, sice, mice, snowl)
+        snow, msi1, msi2, hsil, ssil = set_snow_ice_layer(hsnow, hice, sice, mice, snowl)
+        run0 = melts + melti + (rain - frezi)
+        if run0 < 1e-13:
+            run0 = 0.0
+        srun0 = smelti
+        erun0 = hmelti
+
+    tsil = tice(hsil, ssil, msi1, msi2)
+    return dict(snow=snow, msi1=msi1, msi2=msi2, hsil=hsil, ssil=ssil, tsil=tsil, run0=run0, srun0=srun0,
+                erun0=erun0, wetsnow=wetsnow, cmprs=cmprs)

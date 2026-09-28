@@ -590,7 +590,8 @@ learned the hard way earlier in this project)
 
 ### Plan
 1. **Stage 1 — ice dynamics** (this is what actually closes the D25 gap for ice/lake state carry-over):
-   `PRECIP_SI`/`PREC_SI` (ready to implement — all helpers exist except `Fi`), then read+scope `DYNSI` fully,
+   `PRECIP_SI`/`PREC_SI` -- **DONE 2026-09-28, see D26** (new dumps, both ports validated on 13,572 real cells).
+   `PRECIP_LK` (lake ice precip, 139 lines) next, then read+scope `DYNSI` fully,
    `UNDERICE`, `CALC_APRESS`, `seaice_to_atmgrid`, ocean-grid `GROUND_SI`/`FORM_SI` plumbing. New Fortran
    instrumentation needed (no existing dump covers these) — batch all Stage 1 dump hooks into one patch set and
    one rebuild+rerun, matching how the original oracle build batched multiple subroutines' hooks together.

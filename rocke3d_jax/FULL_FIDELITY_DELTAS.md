@@ -649,6 +649,36 @@ next-step ice `tg1/tg2` and snow match the post-ADDICE state on only ~5% of tile
 the ocean model modify it in between -- chaining those across steps needs those inputs dumped (new instrumentation) or ported.
 Test: `tests/test_land_chain.py::test_land_state_carried_over_four_substeps_stays_small` (dec01).
 
+## D26 — PRECIP_SI/PREC_SI (Stage 1 of the DYNSI/ocean port) vs real Fortran
+First deliverable of the DYNSI/ocean-port commitment (Phase 5). New Fortran instrumentation
+(`instrumentation/SEAICE_DRV_precsi.f.patch` + `ATM_DRV_precsi.f.patch`, applied after the existing
+`SEAICE_DRV.f.patch`/`ATM_DRV.f.patch`) dumps `PRECIP_SI`'s per-cell `PREC_SI` call (sea-ice precipitation,
+`SEAICE_DRV.f`/`SEAICE.f`); rebuilt the instrumented binary in a fresh scratch copy and reran all 3 real dates
+(nov26/dec01/jan01, 6 steps each) to generate `ffw_<itime>.bin` -- a genuinely new oracle dump, not reused from
+earlier work. (Found and fixed a stale doc bug on the way: `build_and_run.md`'s run command used `-l run.PRT`,
+which is not a real flag -- `MODELE_DRV.f`'s parser only accepts `-r`/`-cold-restart`/`-i`/`--time`; corrected to
+`-i I > run.PRT`.)
+
+`fullfidelity/seaice_core_ff.py`'s new `prec_si`/`Fi` reuse `get_snow_ice_layer`/`relayer`/`relayer_12`/
+`set_snow_ice_layer`/`tice`/`Mi`/`Em` verbatim (all already ported, D10/D14) -- only `Fi` (SEAICE.f, ~20 lines,
+`seaice_thermo='BP'` case) was new. `seaice_core_jax.py`'s batched `prec_si` computes every branch (both
+"has existing snow" vs "no snow", both "all layer-1 snow melts" vs "some remains", both compression-placement
+sub-branches) for every lane and merges with `jnp.where`, the same pattern as `get_snow_ice_layer`'s existing
+P/Q merge.
+
+Validated on **13,572 real sea-ice cells** (6 steps x 3 dates, ~700-800/step, same cell population as
+`ffi_*`/GROUND_SI since both are `si_ocn`-based): `snow`/`msi2`/`ssil`/`cmprs` 0.0 error; `hsil` 3.8e-6 abs on a
+8.5e8 scale (~4.5e-15 relative); `tsil` 1.2e-8 abs (deg C); `run0`/`srun0`/`erun0` <= 5.2e-12 abs on an O(1) scale;
+`wetsnow` flag matches on all 13,572 cells. Both plain-Python and JAX versions checked against real Fortran
+directly (not just against each other). Non-vacuous: precip active on 91% of cells (nov26), melt/freeze runoff on
+21 cells, wetsnow on 27, the "no existing snow" branch on 14; the snow-compression (`CMPRS>0`, `SNOMAX` exceeded)
+and salt-in-runoff (`SRUN0!=0`, ice actually melting not just snow) branches never trigger in this 3-date record --
+documented, not hidden (same pattern as D12/D14's ADDICE branches). Tests: `fullfidelity/tests/test_precsi_jax.py`
+(6, incl. jit-equivalence and 2 mutation checks -- one forcing the compression branch to fire, confirming it is
+real code, not dead weight).
+**Scope, stated plainly:** `PRECIP_LK` (precip onto lake ice, `LAKES.f`, 139 lines, separate routine) is not yet
+instrumented/ported -- next in Stage 1.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

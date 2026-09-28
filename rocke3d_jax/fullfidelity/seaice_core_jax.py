@@ -1086,3 +1086,172 @@ def addice(snow, roice, hsil, ssil, msi2, enrgfo, acefo, acefi, enrgfi, salto, s
     tsil_out = tice(hsil_out, ssil_out, msi1_out, msi2_out)
     return dict(snow=snow_out, roice=roice_out, hsil=hsil_out, ssil=ssil_out, msi2=msi2_out,
                 tsil=tsil_out, dmimp=dmimp_out, dhimp=dhimp_out, dsimp=dsimp_out)
+
+
+def Fi(wat, hsi, ssi, msi):
+    """SEAICE.f Fi (seaice_thermo='BP')."""
+    cond = 1e3 * _safe_div(ssi, msi) > 1e-10
+    return jnp.where(cond, wat, jnp.minimum(wat, jnp.maximum(-hsi * BYLHM - msi, 0.0)))
+
+
+SNOMAX = 1.0 * RHOS
+DSNDRN = 0.0   # SEAICE.f PREC_SI parameter, always 0 here -- see seaice_core_ff.prec_si's docstring
+
+
+def prec_si(snow, msi2, hsil, ssil, prcp, enrgp):
+    """SEAICE.f PREC_SI (no tracers), batched. Returns dict: snow, msi1, msi2, hsil, ssil, tsil, run0, srun0,
+    erun0, wetsnow, cmprs. Both branches of every real-Fortran if/else are computed for every lane and merged
+    with jnp.where, mirroring get_snow_ice_layer's P/Q pattern above -- only the merged, active-lane result is
+    ever used (Stage 1 of the DYNSI/ocean port, D26)."""
+    active = prcp > 0.0
+    msi1_inactive = snow + ACE1I
+
+    snwf = jnp.maximum(0.0, jnp.minimum(prcp, -enrgp * BYLHM))
+    rain = prcp - snwf
+    wetsnow = rain > 1e-5 * jnp.where(prcp == 0.0, 1.0, prcp)
+
+    snowl, hsnow, hice, sice, _, _, mice = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+    hsnow0, hsnow1 = hsnow[..., 0], hsnow[..., 1]
+    hice0, hice1, hice2, hice3 = hice[..., 0], hice[..., 1], hice[..., 2], hice[..., 3]
+    sice0, sice1 = sice[..., 0], sice[..., 1]
+    mice0, mice1, mice2, mice3 = mice[..., 0], mice[..., 1], mice[..., 2], mice[..., 3]
+    snowl0, snowl1 = snowl[..., 0], snowl[..., 1]
+
+    has_snow = snow > 0.0
+
+    # ---- branch A: snow > 0 ----
+    melts_A = jnp.maximum(0.0, (hsnow0 + enrgp) * BYLHM + snowl0 + snwf)
+    all_melt = melts_A > snowl0 + snwf
+    melts_A = jnp.where(all_melt, snowl0 + snwf, melts_A)
+
+    # A1: all layer-1 snow melts
+    mice0_pos = mice0 > 0.0
+    si1 = 1e3 * _safe_div(sice0, mice0)
+    melti_1 = jnp.where(mice0_pos, Mi(hice0 + hsnow0 + enrgp, sice0, mice0), 0.0)
+    smelti_1 = jnp.where(mice0_pos, melti_1 * _safe_div(sice0, mice0), 0.0)
+    hmelti_1 = jnp.where(mice0_pos, melti_1 * Em(si1), 0.0)
+    hice0_1 = jnp.where(mice0_pos, hice0 + hsnow0 + enrgp - hmelti_1, hice0)
+    sice0_1 = jnp.where(mice0_pos, sice0 - smelti_1, sice0)
+    mice0_1 = jnp.where(mice0_pos, mice0 - melti_1, mice0)
+    hsnow0_1 = jnp.zeros_like(snow)
+    snowl0_1 = jnp.zeros_like(snow)
+
+    # A2: some layer-1 snow remains -- FREZI, then CMPRS
+    frezi_2 = jnp.minimum(rain, jnp.maximum(-(hsnow0 + enrgp) * BYLHM - snowl0 - snwf + melts_A, 0.0))
+    hsnow0_2 = hsnow0 + enrgp + LHM * frezi_2
+    snowl1_pos = snowl1 > 0.0
+    hice1_2 = jnp.where(snowl1_pos, hice1 - LHM * frezi_2, hice1)
+    mice1_2 = jnp.where(snowl1_pos, mice1 + frezi_2, mice1)
+    hice0_2 = jnp.where(snowl1_pos, hice0, hice0 - LHM * frezi_2)
+    mice0_2 = jnp.where(snowl1_pos, mice0, mice0 + frezi_2)
+    snowl0_2 = snowl0 + snwf - melts_A
+
+    cmprs_toomuch = (snwf >= prcp) & (snow + snwf > SNOMAX)
+    cmprs_2 = jnp.where(cmprs_toomuch, snow + snwf - 0.9 * SNOMAX,
+                        jnp.minimum(DSNDRN * (rain + melts_A), snow + snwf - melts_A))
+
+    cmprs_lt_1 = cmprs_2 < snowl1
+    # placement sub-branch (a): cmprs < snowl1, snowl1 != 0
+    snowl1_ne0 = snowl1 != 0.0
+    hice1_2a = jnp.where(snowl1_ne0, hice1_2 + hsnow1 * _safe_div(cmprs_2, snowl1), hice1_2)
+    hsnow1_2a = jnp.where(snowl1_ne0, hsnow1 * (1.0 - _safe_div(cmprs_2, snowl1)), hsnow1)
+    mice1_2a = jnp.where(snowl1_ne0, mice1_2 + cmprs_2, mice1_2)
+    snowl1_2a = jnp.where(snowl1_ne0, snowl1 - cmprs_2, snowl1)
+    hice0_2a, hsnow0_2a, mice0_2a, snowl0_2a = hice0_2, hsnow0_2, mice0_2, snowl0_2
+
+    # placement sub-branch (b): cmprs >= snowl1, snowl0 != 0
+    snowl0_ne0 = snowl0_2 != 0.0
+    hice0_2b = jnp.where(snowl0_ne0, hice0_2 + hsnow0_2 * _safe_div(cmprs_2 - snowl1, snowl0_2), hice0_2)
+    hice1_2b = hice1_2 + hsnow1
+    hsnow0_2b = jnp.where(snowl0_ne0, hsnow0_2 * (1.0 - _safe_div(cmprs_2 - snowl1, snowl0_2)), hsnow0_2)
+    hsnow1_2b = jnp.zeros_like(snow)
+    mice0_2b = jnp.where(snowl0_ne0, mice0_2 + cmprs_2 - snowl1, mice0_2)
+    mice1_2b = mice1_2 + snowl1
+    snowl0_2b = jnp.where(snowl0_ne0, snowl0_2 - (cmprs_2 - snowl1), snowl0_2)
+    snowl1_2b = jnp.zeros_like(snow)
+
+    hice0_2m = jnp.where(cmprs_lt_1, hice0_2a, hice0_2b)
+    hice1_2m = jnp.where(cmprs_lt_1, hice1_2a, hice1_2b)
+    hsnow0_2m = jnp.where(cmprs_lt_1, hsnow0_2a, hsnow0_2b)
+    hsnow1_2m = jnp.where(cmprs_lt_1, hsnow1_2a, hsnow1_2b)
+    mice0_2m = jnp.where(cmprs_lt_1, mice0_2a, mice0_2b)
+    mice1_2m = jnp.where(cmprs_lt_1, mice1_2a, mice1_2b)
+    snowl0_2m = jnp.where(cmprs_lt_1, snowl0_2a, snowl0_2b)
+    snowl1_2m = jnp.where(cmprs_lt_1, snowl1_2a, snowl1_2b)
+
+    melti_A = jnp.where(all_melt, melti_1, 0.0)
+    smelti_A = jnp.where(all_melt, smelti_1, 0.0)
+    hmelti_A = jnp.where(all_melt, hmelti_1, 0.0)
+    frezi_A = jnp.where(all_melt, 0.0, frezi_2)
+    cmprs_A = jnp.where(all_melt, 0.0, cmprs_2)
+    hice0_A = jnp.where(all_melt, hice0_1, hice0_2m)
+    hice1_A = jnp.where(all_melt, hice1, hice1_2m)
+    hsnow0_A = jnp.where(all_melt, hsnow0_1, hsnow0_2m)
+    hsnow1_A = jnp.where(all_melt, hsnow1, hsnow1_2m)
+    mice0_A = jnp.where(all_melt, mice0_1, mice0_2m)
+    mice1_A = jnp.where(all_melt, mice1, mice1_2m)
+    sice0_A = jnp.where(all_melt, sice0_1, sice0)
+    sice1_A = sice1
+    snowl0_A = jnp.where(all_melt, snowl0_1, snowl0_2m)
+    snowl1_A = jnp.where(all_melt, snowl1, snowl1_2m)
+
+    # ---- branch B: no existing snow (snow == 0) ----
+    snowl0_B = snwf
+    hsnow0_B = jnp.minimum(enrgp, 0.0)
+    hice0_pre_B = hice0 + enrgp - hsnow0_B
+    melti_B = Mi(hice0_pre_B, sice0, mice0)
+    smelti_B = melti_B * _safe_div(sice0, mice0)
+    hmelti_B = melti_B * Em(1e3 * _safe_div(sice0, mice0))
+    hice0_mid_B = hice0_pre_B - hmelti_B
+    sice0_B = sice0 - smelti_B
+    frezi_B = Fi(rain, hice0_mid_B, sice0_B, mice0)
+    mice0_B = mice0 - melti_B + frezi_B
+    hice0_B = hice0_mid_B
+    hice1_B, hsnow1_B, mice1_B, sice1_B, snowl1_B = hice1, hsnow1, mice1, sice1, jnp.zeros_like(snow)
+    cmprs_B = jnp.zeros_like(snow)
+
+    # ---- merge A/B on has_snow ----
+    melts = jnp.where(has_snow, melts_A, 0.0)
+    melti = jnp.where(has_snow, melti_A, melti_B)
+    smelti = jnp.where(has_snow, smelti_A, smelti_B)
+    hmelti = jnp.where(has_snow, hmelti_A, hmelti_B)
+    frezi = jnp.where(has_snow, frezi_A, frezi_B)
+    cmprs = jnp.where(has_snow, cmprs_A, cmprs_B)
+    hice0_m = jnp.where(has_snow, hice0_A, hice0_B)
+    hice1_m = jnp.where(has_snow, hice1_A, hice1_B)
+    hsnow0_m = jnp.where(has_snow, hsnow0_A, hsnow0_B)
+    hsnow1_m = jnp.where(has_snow, hsnow1_A, hsnow1_B)
+    mice0_m = jnp.where(has_snow, mice0_A, mice0_B)
+    mice1_m = jnp.where(has_snow, mice1_A, mice1_B)
+    sice0_m = jnp.where(has_snow, sice0_A, sice0_B)
+    sice1_m = jnp.where(has_snow, sice1_A, sice1_B)
+    snowl0_m = jnp.where(has_snow, snowl0_A, snowl0_B)
+    snowl1_m = jnp.where(has_snow, snowl1_A, snowl1_B)
+
+    mice_m = jnp.stack([mice0_m, mice1_m, mice2, mice3], axis=-1)
+    hice_m = jnp.stack([hice0_m, hice1_m, hice2, hice3], axis=-1)
+    sice_m = jnp.stack([sice0_m, sice1_m, sice[..., 2], sice[..., 3]], axis=-1)
+    hsnow_m = jnp.stack([hsnow0_m, hsnow1_m], axis=-1)
+    snowl_m = jnp.stack([snowl0_m, snowl1_m], axis=-1)
+
+    fmsi2 = cmprs + frezi - melti
+    mice_r, hice_r, sice_r = relayer(fmsi2, mice_m, hice_m, sice_m)
+    hsnow_r, hice_r, sice_r, mice_r, snowl_r = relayer_12(hsnow_m, hice_r, sice_r, mice_r, snowl_m)
+    snow_out, msi1_out, msi2_out, hsil_out, ssil_out = set_snow_ice_layer(hsnow_r, hice_r, sice_r, mice_r, snowl_r)
+
+    run0 = melts + melti + (rain - frezi)
+    run0 = jnp.where(run0 < 1e-13, 0.0, run0)
+
+    snow_f = jnp.where(active, snow_out, snow)
+    msi1_f = jnp.where(active, msi1_out, msi1_inactive)
+    msi2_f = jnp.where(active, msi2_out, msi2)
+    hsil_f = jnp.where(active[..., None], hsil_out, hsil)
+    ssil_f = jnp.where(active[..., None], ssil_out, ssil)
+    run0_f = jnp.where(active, run0, 0.0)
+    srun0_f = jnp.where(active, smelti, 0.0)
+    erun0_f = jnp.where(active, hmelti, 0.0)
+    wetsnow_f = jnp.where(active, wetsnow, False)
+    cmprs_f = jnp.where(active, cmprs, 0.0)
+    tsil_f = tice(hsil_f, ssil_f, msi1_f, msi2_f)
+    return dict(snow=snow_f, msi1=msi1_f, msi2=msi2_f, hsil=hsil_f, ssil=ssil_f, tsil=tsil_f, run0=run0_f,
+                srun0=srun0_f, erun0=erun0_f, wetsnow=wetsnow_f, cmprs=cmprs_f)
