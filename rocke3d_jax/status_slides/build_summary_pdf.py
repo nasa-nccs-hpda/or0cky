@@ -206,48 +206,67 @@ def s_stages(c):
 
 def s_profile(c):
     y = page(c, 5, "Profiling", "Where the Time Went",
-             "CPU, per step. Right panel: same busy shared node, back to back, so absolute times are ~2× the A100-node figures; proportions are the point.")
-    pw = (W - 2 * M - 24) / 2
-    # left panel: pre-fusion breakdown
-    box(c, M, y, pw, y - 60, CARD)
-    text(c, "Before Phase 1: one step ≈ 55 ms", M + 16, y - 14, pw - 32, size=14, color=INK, bold=True)
+             "CPU, per step. Lower panel: same busy shared node, back to back, so absolute times are ~2× the A100-node figures; proportions are the point.")
+    pw = W - 2 * M
+    right_edge = M + pw
+
+    def fit(x, w):
+        assert x + w <= right_edge - 8, f"bleeds off panel: {x + w:.0f} > {right_edge - 8:.0f}"
+
+    # ---- top panel: before Phase 1 (7 rows, compact)
+    ph = 166
+    box(c, M, y, pw, ph, CARD)
+    text(c, "Before Phase 1: one step ≈ 55 ms", M + 16, y - 10, 420, size=13, color=INK, bold=True)
     pre = [("Python glue between calls", 18.00, GREEN), ("Dry convection (1 call)", 13.68, BLUE),
            ("Surface-layer similarity (24 calls)", 13.35, BLUE), ("Pressure prep (Exner)", 4.56, BLUE),
            ("Wind fluxes (not JIT-compiled)", 2.58, ORANGE), ("Pressure profile (NumPy loop)", 2.34, ORANGE),
            ("Everything else", 0.95, BLUE)]
+    bx, maxw = M + 16 + 235, 230
     for i, (lab, ms, col) in enumerate(pre):
-        yy = y - 52 - i * 40
-        text(c, lab, M + 16, yy + 2, 190, size=11, color=MUTED)
-        bw = 150 * ms / 18.0
+        yy = y - 34 - i * 18
+        text(c, lab, M + 16, yy, 232, size=10.5, color=MUTED)
+        bw = max(maxw * ms / 18.0, 3)
         c.setFillColor(col)
-        c.roundRect(M + 214, yy - 16, max(bw, 3), 16, 3, stroke=0, fill=1)
-        text(c, f"{ms:.1f} ms · {100 * ms / 55.46:.0f}%", M + 214 + bw + 8, yy - 3, 100, size=10.5, color=INK2, font="Courier")
-    text(c, "Every function was compiled but called separately from Python: 33 GPU/CPU jobs per step plus glue. Phase 1 fused these into one.",
-         M + 16, y - 52 - 7 * 40 + 6, pw - 32, size=11.5, color=INK2, maxh=(y - 52 - 7 * 40 + 6) - 64)
-    # right panel: stacked
-    rx = M + pw + 24
-    box(c, rx, y, pw, y - 60, CARD)
-    text(c, "Phase 1 vs Phase 2 (stacked)", rx + 16, y - 14, pw - 32, size=14, color=INK, bold=True)
-    k = (pw - 64) / 34.0
+        c.rect(bx, yy - 12, bw, 11, stroke=0, fill=1)
+        vt = f"{ms:.1f} ms · {100 * ms / 55.46:.0f}%"
+        fit(bx + bw + 8, 100)
+        text(c, vt, bx + bw + 8, yy, 100, size=10, color=INK2, font="Courier")
+    tx = bx + maxw + 130
+    text(c, "Every function was compiled but called separately from Python: 33 jobs per step plus glue between them. Phase 1 fused these into one.",
+         tx, y - 34, right_edge - 16 - tx, size=11, color=INK2, maxh=ph - 44)
+
+    # ---- bottom panel: Phase 1 vs Phase 2 (stacked bars)
+    y2 = y - ph - 12
+    ph2 = y2 - 62
+    box(c, M, y2, pw, ph2, CARD)
+    text(c, "Phase 1 vs Phase 2, CPU (stacked)", M + 16, y2 - 10, 420, size=13, color=INK, bold=True)
+    k = 330 / 34.0
     bars = [("Phase 1", [(12.3, BLUE), (14.7, GREEN), (7.0, ORANGE)], "34.0 ms"),
             ("Phase 2, one call per step", [(1.06, BLUE), (3.05, GREEN), (2.82, ORANGE)], "6.9 ms · 4.9×"),
             ("Phase 2, chained on device", [(1.06, BLUE), (3.05, GREEN)], "4.1 ms · 8.3×")]
+    bx2 = M + 16 + 190
     for i, (lab, segs, val) in enumerate(bars):
-        yy = y - 56 - i * 54
-        text(c, lab, rx + 16, yy + 12, pw - 32, size=11.5, color=INK, bold=True)
-        xx = rx + 16
+        yy = y2 - 40 - i * 32
+        text(c, lab, M + 16, yy - 4, 185, size=11, color=INK, bold=True)
+        xx = bx2
         for ms, col in segs:
             c.setFillColor(col)
-            c.rect(xx, yy - 30, max(ms * k, 2), 22, stroke=0, fill=1)
+            c.rect(xx, yy - 20, max(ms * k, 2), 20, stroke=0, fill=1)
             xx += ms * k
-        text(c, val, xx + 8, yy - 15, 110, size=10.5, color=INK2, font="Courier")
-    ly = y - 56 - 3 * 54 - 4
-    for i, (lab, col) in enumerate([("Dry convection", BLUE), ("All other computing", GREEN), ("Copying data to/from device", ORANGE)]):
+        fit(xx + 8, 110)
+        text(c, val, xx + 8, yy - 4, 110, size=10.5, color=INK2, font="Courier")
+    ly = y2 - 40 - 3 * 32 - 4
+    lx = M + 16
+    for lab, col, wd in [("Dry convection", BLUE, 130), ("All other computing", GREEN, 150),
+                         ("Copying data to/from device, recomputing constants", ORANGE, 340)]:
         c.setFillColor(col)
-        c.rect(rx + 16, ly - 14 - i * 20, 10, 10, stroke=0, fill=1)
-        text(c, lab, rx + 32, ly - 11 - i * 20, 300, size=11, color=MUTED)
-    text(c, "Dry convection 12.3 → 1.1 ms (11×) · other computing 14.7 → 3.1 ms (4.8×) · data copying 7.0 → 2.8 ms, now 41% of a single call, which is why keeping data on the device matters.",
-         rx + 16, ly - 78, pw - 32, size=11.5, color=INK2, maxh=(ly - 78) - 64)
+        c.rect(lx, ly - 10, 9, 9, stroke=0, fill=1)
+        text(c, lab, lx + 14, ly, wd, size=10.5, color=MUTED)
+        lx += wd + 20
+    tx2 = bx2 + 330 + 130
+    text(c, "Dry convection 12.3 → 1.1 ms (11×)<br/>Other computing 14.7 → 3.1 ms (4.8×)<br/>"
+            "Data copying 7.0 → 2.8 ms: now 41% of a single call, so keeping data on the device pays.",
+         tx2, y2 - 40, right_edge - 16 - tx2, size=10.5, color=INK2, maxh=ph2 - 50)
 
 
 def s_accuracy(c):
