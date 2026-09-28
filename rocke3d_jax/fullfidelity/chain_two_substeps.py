@@ -12,6 +12,7 @@ composite ustar/lmonin for get_dbl, and the ocean tile's own state (unchanged in
 """
 import os, sys
 import numpy as np
+import jax
 import jax.numpy as jnp
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,6 +43,23 @@ def load_atm(path_in):
     return atm, dt
 
 
+_GEO = None
+
+
+def _aturb_uv(args, U, V, dt):
+    global _GEO
+    if _GEO is None:
+        _GEO = UV.geometry()
+    res = A.aturb_grid(**args, dtime=dt)
+    Un, Vn = UV.diffuse_uv(U, V, res["uflxa"], res["vflxa"], res["km"], res["uw_nl"], res["vw_nl"], res["rho"],
+                           res["rhoe"], res["dz"], res["dze"], dt, _GEO)
+    ua, va = UV.recalc_agrid_uv(Un, Vn, _GEO)
+    return res, Un, Vn, ua, va
+
+
+_aturb_uv_jit = jax.jit(_aturb_uv)   # un-jitted, the scans inside re-trace every call (~2 s per substep)
+
+
 def run_aturb(atm, fl, cells, dt):
     """fl: dict of per-cell ATURB flux arrays for `cells` (i,j 1-based columns); other columns get the same inert fill
     as aturb_compare. Returns exit-state dict in (J,I,L) layout."""
@@ -56,11 +74,7 @@ def run_aturb(atm, fl, cells, dt):
         full[k] = a
     args = {k: jnp.asarray(atm[k]) for k in ("T", "Q", "UA", "VA", "E", "PMID", "PEDN", "PK", "PEK1", "PDSIG")}
     args.update({k: jnp.asarray(v) for k, v in full.items()})
-    res = A.aturb_grid(**args, dtime=dt)
-    geo = UV.geometry()
-    Un, Vn = UV.diffuse_uv(jnp.asarray(atm["U"]), jnp.asarray(atm["V"]), res["uflxa"], res["vflxa"], res["km"],
-                           res["uw_nl"], res["vw_nl"], res["rho"], res["rhoe"], res["dz"], res["dze"], dt, geo)
-    ua, va = UV.recalc_agrid_uv(Un, Vn, geo)
+    res, Un, Vn, ua, va = _aturb_uv_jit(args, jnp.asarray(atm["U"]), jnp.asarray(atm["V"]), dt)
     return dict(T=res["t"], Q=res["q"], E=res["e"], pblht=res["pblht"], dclev=res["dclev"], U=Un, V=Vn, UA=ua, VA=va,
                 m=m)
 

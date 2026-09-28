@@ -420,3 +420,9 @@ to ghy_jax, matches at roundoff; (2) the REAL*4 `0.001` literal in the qg blend 
 (3) TRUP_in_rad for land, not dumped -> reconstructed from the recorded patch (constant across substeps). Bulk agreement excellent;
 the max is one runoff-threshold cell (D9 sensitivity). First test run had four failing tests -- all my own bounds set tighter than
 GHY's measured accuracy (dq1 99th pct 3e-7 relative etc.); reset from measurements, not to force a pass on a wrong result.
+
+## 2026-09-28 (night): D23 -- timing the chain, and what it says
+First warm timing of a full substep: GHY stage was 32 s and ATURB+UV 2.2 s until both were wrapped in jax.jit (un-jitted scans
+re-trace every call); after that 0.45 s per substep, identical on one core. The Fortran's own PRT timer table gives ~0.28 s per step
+for the same scope, so Track B on CPU is ~3x slower than Fortran (not faster). Recorded plainly in D23/STATUS; the plain-Python
+speedups quoted earlier must not be read as Fortran speedups.

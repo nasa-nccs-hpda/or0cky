@@ -811,6 +811,8 @@ roundoff (T 7e-13 K vs 4e-3 K signal; U/V 1e-11 m/s vs 9e-2) on 3 dates x 2 subs
 (`fullfidelity/chain_aggregate_aturb.py`). Scoping also closed: land-ice is trivial for P2SAoM40 (NHC=1) and ocean/ice
 PBL data flow was already validated by D6, so what remains for the chained driver is assembly, plus the Ent blocker for land.
 
+**2026-09-28, night (D23) -- speed reality check**: warm, jitted, one substep of the whole Track B surface chain (3,170 cells) takes 0.45 s on CPU (~0.9 s per DTsrc step) vs ~0.28 s for the same stage in the real Fortran (its own timer table): Track B on CPU is ~3x SLOWER than Fortran. The earlier 20-100x numbers are vs plain-Python references only. GPU numbers remain unmeasured (no GPU node).
+
 **2026-09-28, night (D22)**: the land tile is now in the chain too -- our land PBL feeding our JAX GHY, over both substeps. With every surface tile on our own numbers, the substep-2 ATURB exit state agrees with the real one to 5e-10..2e-7 K RMS (T signal 3.5e-3 K); the worst single cell on nov26 is a known GHY runoff-threshold cell (6e-5 K). Ent exports, forcing and land's TRUP_in_rad (reconstructed, not dumped) remain recorded.
 
 **2026-09-28, night (D20)**: the once-per-step GROUND_SI and GROUND_LK are chained after the two substeps on OUR accumulated
