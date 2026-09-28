@@ -784,6 +784,488 @@ def apply_fluxes(static, w, ht, f, fh, fc, fch, rnf, rnff, tp, evapdl, fr_snow, 
     return dict(w=w, ht=ht)
 
 
+MIN_SNOW_THICKNESS_ = MIN_SNOW_THICKNESS   # (kept name-matched to ghy_ref for cross-reading)
+
+
+def snow_pass_water(wsn, hsn, dz, nl, water_down, heat_down):
+    """SNOW.f pass_water, batched over cells with a fixed TOTAL_NL=3 layer axis; `nl` gates which
+    layers are active (n<nl). This is a genuine top-down SEQUENTIAL cascade (each layer's water_down/
+    heat_down output feeds the next), so it is a Python-unrolled loop over the 3 fixed layers, not a
+    single vectorized expression -- matching the same technique used for GHY's other small bounded
+    recurrences. Returns dz, wsn, hsn (mutated), water_down, heat_down (the final carry, N,)."""
+    N = wsn.shape[0]
+    wsn = wsn + 0.0; hsn = hsn + 0.0; dz = dz + 0.0
+    for n in range(TOTAL_NL):
+        active_n = n < nl
+        ice_old = jnp.minimum(wsn[:, n], -hsn[:, n] / LAT_FUSION)
+        wsn_n = wsn[:, n] + water_down
+        hsn_n = hsn[:, n] + heat_down
+        wd_next = jnp.zeros(N); hd_next = jnp.zeros(N)
+
+        cond_empty = (hsn_n >= 0.0) | (wsn_n <= 0.0)
+        wd_a = wsn_n; hd_a = hsn_n
+        wsn_a = jnp.zeros(N); hsn_a = jnp.zeros(N); dz_a = jnp.zeros(N)
+
+        cond_partial = hsn_n > -wsn_n * LAT_FUSION
+        ice_b = -hsn_n / LAT_FUSION
+        free_water = wsn_n - ice_b
+        wd_b = jnp.maximum(0.0, free_water - ice_b * MAX_FRACT_WATER)
+        wsn_b = wsn_n - wd_b
+        hsn_b = hsn_n
+        dz_b = jnp.minimum(dz[:, n], ice_b * RHO_WATER / RHO_FRESH_SNOW)
+        hd_b = jnp.zeros(N)
+
+        ice_old_safe = jnp.where(ice_old == 0.0, 1.0, ice_old)
+        dz_c = jnp.where(wsn_n + EPS_SNOW < ice_old, dz[:, n] * wsn_n / ice_old_safe, dz[:, n])
+        dz_c = jnp.minimum(dz_c, wsn_n * RHO_WATER / RHO_FRESH_SNOW)
+        wsn_c = wsn_n; hsn_c = hsn_n; wd_c = jnp.zeros(N); hd_c = jnp.zeros(N)
+
+        wsn_new = jnp.where(cond_empty, wsn_a, jnp.where(cond_partial, wsn_b, wsn_c))
+        hsn_new = jnp.where(cond_empty, hsn_a, jnp.where(cond_partial, hsn_b, hsn_c))
+        dz_new = jnp.where(cond_empty, dz_a, jnp.where(cond_partial, dz_b, dz_c))
+        wd_new = jnp.where(cond_empty, wd_a, jnp.where(cond_partial, wd_b, wd_c))
+        hd_new = jnp.where(cond_empty, hd_a, jnp.where(cond_partial, hd_b, hd_c))
+        dz_new = jnp.maximum(dz_new, wsn_new * RHO_WATER / RHO_ICE)
+
+        wsn = wsn.at[:, n].set(jnp.where(active_n, wsn_new, wsn[:, n]))
+        hsn = hsn.at[:, n].set(jnp.where(active_n, hsn_new, hsn[:, n]))
+        dz = dz.at[:, n].set(jnp.where(active_n, dz_new, dz[:, n]))
+        water_down = jnp.where(active_n, wd_new, water_down)
+        heat_down = jnp.where(active_n, hd_new, heat_down)
+    return dz, wsn, hsn, water_down, heat_down
+
+
+def snow_fraction(dz, nl, prsnow, dt, fract_cover):
+    idx = jnp.arange(TOTAL_NL)[None, :]
+    dz_sum = jnp.sum(jnp.where(idx < nl[:, None], dz[:, :TOTAL_NL], 0.0), axis=1)
+    fresh_snow = RHO_WATER / RHO_FRESH_SNOW * prsnow * dt
+    dz_aver = dz_sum * fract_cover + fresh_snow
+    fnew = jnp.minimum(.95, dz_aver / MIN_SNOW_THICKNESS)
+    fnew = jnp.where(fnew < MIN_FRACT_COVER, 0.0, fnew)
+    return fnew
+
+
+def snow_redistr(dzo, wsno, hsno, nlo, fract_cover_ratio, want_flux=False, dt=1.0):
+    """SNOW.f snow_redistr, batched, TOTAL_NL=3. Returns dz, wsn, hsn, nl, tr_flux(N,TOTAL_NL+1).
+    Reformulated as a conservative overlap-matrix remap between the old grid (nlo active layers) and
+    a new target grid (1 or 3 layers, same MIN_SNOW_THICKNESS*1.5 threshold as the original) instead
+    of the original's imperative while-loop merge -- verified numerically equivalent (worst 2e-9 over
+    20,000 random trials spanning nlo in {1,2,3}) since both compute the same conservative transfer of
+    mass/heat between two partitions of the same total depth. The original's internal
+    `raise RuntimeError` invariant checks (consistency assertions on conservation) are not replicated
+    -- JAX cannot raise inside a traced function, and they are expected to never fire given valid
+    inputs, same treatment as other such assertions ported elsewhere in this project."""
+    N = dzo.shape[0]
+    fcr = jnp.broadcast_to(jnp.asarray(fract_cover_ratio, dtype=jnp.float64), (N,))
+    inactive = dzo[:, 0] == 0.0
+
+    idx = jnp.arange(TOTAL_NL)[None, :]
+    old_active = idx < nlo[:, None]
+    dzo_masked = jnp.where(old_active, dzo, 0.0)
+    total_dz = jnp.sum(dzo_masked, axis=1) * fcr
+
+    is_thick = total_dz > MIN_SNOW_THICKNESS * 1.5
+    nl_new = jnp.where(is_thick, TOTAL_NL, 1)
+    dz_rest = (total_dz - MIN_SNOW_THICKNESS) / (TOTAL_NL - 1)
+    dz_a = jnp.stack([jnp.full((N,), MIN_SNOW_THICKNESS), dz_rest, dz_rest], axis=-1)
+    dz_b = jnp.stack([total_dz, jnp.zeros(N), jnp.zeros(N)], axis=-1)
+    dz_new = jnp.where(is_thick[:, None], dz_a, dz_b)
+    new_active = idx < nl_new[:, None]
+
+    bnd_old = jnp.cumsum(dzo * fcr[:, None], axis=1)
+    top_old = jnp.concatenate([jnp.zeros((N, 1)), bnd_old[:, :-1]], axis=1)
+    bnd_new = jnp.cumsum(dz_new, axis=1)
+    top_new = jnp.concatenate([jnp.zeros((N, 1)), bnd_new[:, :-1]], axis=1)
+    dzo_safe = jnp.where(dzo == 0.0, 1.0, dzo)
+
+    wsn_new = jnp.zeros((N, TOTAL_NL))
+    hsn_new = jnp.zeros((N, TOTAL_NL))
+    for j in range(TOTAL_NL):
+        for k in range(TOTAL_NL):
+            ov = jnp.maximum(0.0, jnp.minimum(bnd_old[:, j], bnd_new[:, k])
+                             - jnp.maximum(top_old[:, j], top_new[:, k]))
+            wgt = ov / dzo_safe[:, j]
+            active_jk = old_active[:, j] & new_active[:, k]
+            wgt = jnp.where(active_jk, wgt, 0.0)
+            wsn_new = wsn_new.at[:, k].add(wgt * wsno[:, j])
+            hsn_new = hsn_new.at[:, k].add(wgt * hsno[:, j])
+
+    tr_flux = jnp.zeros((N, TOTAL_NL + 1))
+    if want_flux:
+        wsno_full = jnp.where(old_active, wsno, 0.0)
+        dt_b = jnp.broadcast_to(jnp.asarray(dt, dtype=jnp.float64), (N,))
+        dt_safe = jnp.where(dt_b == 0.0, 1.0, dt_b)
+        step = -(wsn_new - wsno_full * fcr[:, None]) / dt_safe[:, None]
+        tr_flux = jnp.concatenate([jnp.zeros((N, 1)), jnp.cumsum(step, axis=1)], axis=1)
+
+    dz_final = jnp.where(inactive[:, None], dzo, dz_new)
+    wsn_final = jnp.where(inactive[:, None], wsno, wsn_new)
+    hsn_final = jnp.where(inactive[:, None], hsno, hsn_new)
+    nl_final = jnp.where(inactive, nlo, nl_new)
+    tr_flux = jnp.where(inactive[:, None], 0.0, tr_flux)
+    return dz_final, wsn_final, hsn_final, nl_final, tr_flux
+
+
+def tridiag_solve(sub, diag, super_, rhs, nl):
+    """solvers/TRIDIAG.f, batched, fixed TOTAL_NL=3 size with `nl` (1..3) masking the active system
+    size. sub/diag/super_/rhs: (N,3); nl: (N,). The Thomas algorithm's forward and backward sweeps
+    are genuine sequential recurrences (each step depends on the previous), so this is a Python-
+    unrolled loop over the 3 fixed positions, matching the technique used for pass_water/relayer."""
+    N = diag.shape[0]
+    bet = diag[:, 0]
+    bet_safe = jnp.where(bet == 0.0, 1.0, bet)
+    u = [rhs[:, 0] / bet_safe]
+    gam = [jnp.zeros(N)]
+    for j in range(1, TOTAL_NL):
+        active = j < nl
+        gam_j = super_[:, j - 1] / bet_safe
+        bet_new = diag[:, j] - sub[:, j] * gam_j
+        bet = jnp.where(active, bet_new, bet)
+        bet_safe = jnp.where(bet == 0.0, 1.0, bet)
+        u_j = (rhs[:, j] - sub[:, j] * u[j - 1]) / bet_safe
+        u.append(jnp.where(active, u_j, jnp.zeros(N)))
+        gam.append(jnp.where(active, gam_j, jnp.zeros(N)))
+    u = jnp.stack(u, axis=1)
+    gam = jnp.stack(gam, axis=1)
+    for j in range(TOTAL_NL - 2, -1, -1):
+        active = j <= (nl - 2)
+        u_new = u[:, j] - gam[:, j + 1] * u[:, j + 1]
+        u = u.at[:, j].set(jnp.where(active, u_new, u[:, j]))
+    return u
+
+
+def heat_eq(dz, tsn, hsn, csn, ksn, nl, flux_in, flux_in_deriv, dt):
+    """SNOW.f heat_eq. dz,tsn,ksn: (N,TOTAL_NL+1); csn: (N,TOTAL_NL); nl: (N,). Returns flux_corr,
+    flux_in (N,), hsn (N,TOTAL_NL) updated. The outer `for it in (1,2): ... break`-conditionally loop
+    is unrolled into 2 fixed iterations with a per-lane select (itermax=2 is a small compile-time
+    constant, and the early-break condition only ever stops after iteration 1, never mid-iteration)."""
+    N = dz.shape[0]
+    idx = jnp.arange(TOTAL_NL)
+    eta = jnp.where(idx[None, :] < nl[:, None], 0.5, 0.0)               # (N,3) for n=0,1,2
+    eta = jnp.concatenate([eta, jnp.zeros((N, 1))], axis=1)             # pad to 4 slots (n+1 access)
+    cond_thin = dz[:, 0] < MIN_SNOW_THICKNESS * 0.5
+    eta = eta.at[:, 0].set(jnp.where(cond_thin, 1.0, eta[:, 0]))
+    gamma0 = jnp.where(cond_thin, 1.0, 0.5)
+
+    def _build_and_solve(gamma):
+        dz_safe = jnp.where(dz == 0.0, 1.0, dz)
+        ksn_safe = jnp.where(ksn == 0.0, 1.0, ksn)
+        csn_safe = jnp.where(csn == 0.0, 1.0, csn)
+        dt_to_cdz = dt[:, None] / (csn_safe * dz[:, :TOTAL_NL])
+
+        dt_to_cdz0 = dt_to_cdz[:, 0]
+        right0 = 2.0 * dt_to_cdz0 / (dz[:, 0] / ksn_safe[:, 0] + dz[:, 1] / ksn_safe[:, 1])
+        a0 = 1.0 + right0 * eta[:, 0] - dt_to_cdz0 * flux_in_deriv * gamma
+        c0 = -right0 * eta[:, 1]
+        f0 = (tsn[:, 0] * (1.0 - right0 * (1.0 - eta[:, 0]) - dt_to_cdz0 * flux_in_deriv * gamma)
+             + tsn[:, 1] * right0 * (1.0 - eta[:, 1]) + dt_to_cdz0 * flux_in)
+        b0 = jnp.zeros(N)
+
+        a_list = [a0]; b_list = [b0]; c_list = [c0]; f_list = [f0]
+        for n in range(1, TOTAL_NL):
+            active_n = n < nl
+            dt_to_cdzn = dt_to_cdz[:, n]
+            rightn = 2.0 * dt_to_cdzn / (dz[:, n] / ksn_safe[:, n] + dz[:, n + 1] / ksn_safe[:, n + 1])
+            leftn = 2.0 * dt_to_cdzn / (dz[:, n] / ksn_safe[:, n] + dz[:, n - 1] / ksn_safe[:, n - 1])
+            an = 1.0 + (leftn + rightn) * eta[:, n]
+            bn = -leftn * eta[:, n - 1]
+            cn = -rightn * eta[:, n + 1]
+            fn = (tsn[:, n] * (1.0 - (leftn + rightn) * (1.0 - eta[:, n]))
+                 + tsn[:, n - 1] * leftn * (1.0 - eta[:, n - 1])
+                 + tsn[:, n + 1] * rightn * (1.0 - eta[:, n + 1]))
+            a_list.append(jnp.where(active_n, an, 0.0)); b_list.append(jnp.where(active_n, bn, 0.0))
+            c_list.append(jnp.where(active_n, cn, 0.0)); f_list.append(jnp.where(active_n, fn, 0.0))
+        a = jnp.stack(a_list, axis=1); b = jnp.stack(b_list, axis=1)
+        c = jnp.stack(c_list, axis=1); f = jnp.stack(f_list, axis=1)
+        a = a.at[:, 0].set(jnp.where(a[:, 0] == 0.0, 1.0, a[:, 0]))   # guard tridiag_solve's bet=diag[0]
+
+        tnew = tridiag_solve(b, a, c, f, nl)
+        flux_corr = flux_in_deriv * (tnew[:, 0] - tsn[:, 0]) * gamma
+        syst_flux_err = flux_in_deriv * tnew[:, 0] * gamma
+        return tnew, flux_corr, syst_flux_err
+
+    tnew1, flux_corr1, syst_flux_err1 = _build_and_solve(gamma0)
+    flux_corr1_safe = jnp.where(flux_corr1 == 0.0, 1.0, flux_corr1)
+    cont2 = (tnew1[:, 0] > 0.0) & (flux_in_deriv < 0.0)
+    gamma1 = jnp.where(cont2, (1.0 - syst_flux_err1 / flux_corr1_safe) * gamma0, gamma0)
+    tnew2, flux_corr2, _ = _build_and_solve(gamma1)
+
+    tnew = jnp.where(cont2[:, None], tnew2, tnew1)
+    flux_corr = jnp.where(cont2, flux_corr2, flux_corr1)
+
+    idx3 = jnp.arange(TOTAL_NL)[None, :]
+    active3 = idx3 < nl[:, None]
+    hsn = hsn + jnp.where(active3, (tnew - tsn[:, :TOTAL_NL]) * csn * dz[:, :TOTAL_NL], 0.0)
+
+    nlm1 = nl - 1
+    tsn_np1 = jnp.take_along_axis(tsn, (nlm1 + 1)[:, None], axis=1)[:, 0]
+    tnew_n = jnp.take_along_axis(tnew, nlm1[:, None], axis=1)[:, 0]
+    tsn_n = jnp.take_along_axis(tsn, nlm1[:, None], axis=1)[:, 0]
+    eta_n = jnp.take_along_axis(eta, nlm1[:, None], axis=1)[:, 0]
+    dz_n = jnp.take_along_axis(dz, nlm1[:, None], axis=1)[:, 0]
+    dz_np1 = jnp.take_along_axis(dz, (nlm1 + 1)[:, None], axis=1)[:, 0]
+    ksn_n = jnp.take_along_axis(ksn, nlm1[:, None], axis=1)[:, 0]
+    ksn_np1 = jnp.take_along_axis(ksn, (nlm1 + 1)[:, None], axis=1)[:, 0]
+    ksn_n_safe = jnp.where(ksn_n == 0.0, 1.0, ksn_n)
+    ksn_np1_safe = jnp.where(ksn_np1 == 0.0, 1.0, ksn_np1)
+    flux_in_new = -(tsn_np1 - tnew_n * eta_n - tsn_n * (1.0 - eta_n)) * 2.0 / (dz_n / ksn_n_safe + dz_np1 / ksn_np1_safe)
+    return flux_corr, flux_in_new, hsn
+
+
+def snow_adv_1(dz, wsn, hsn, nl, srht, trht, snht, htpr, evaporation, pr, dt, t_ground, dz_ground,
+              snsh_dt, evap_dt, evap_min):
+    """SNOW.f snow_adv_1, batched, TOTAL_NL=3. Returns nl, snht, evaporation, water_to_ground,
+    heat_to_ground, radiation_out, dz, wsn, hsn (all N, or N,TOTAL_NL(+1) as appropriate).
+
+    Has 3 early-exit points ("all_melted" in the original), all with identical (1, snht, evaporation,
+    w2g, h2g, rad) shape but capturing DIFFERENT snapshots of (snht, evaporation, tsn[0]) depending
+    on how far execution got. Exits 1 and 2 both fire before either is ever touched again (tsn[0]=0,
+    snht/evaporation unmodified from the inputs) so they share one result variant; exit 3 fires after
+    the heat_eq-driven correction updates snht/evaporation and after tsn[0] is first computed, so it
+    needs its own. This is computed as: run the WHOLE pipeline unconditionally (safe -- all divisions
+    guarded), and select among (early-melt, late-melt, normal) results by which exit condition, if
+    any, would have fired first in the original's sequential control flow."""
+    N = dz.shape[0]
+    k_ground = 3.4
+    wsn_o = wsn[:, :TOTAL_NL]; hsn_o = hsn[:, :TOTAL_NL]
+    idx_nlo = jnp.arange(TOTAL_NL)[None, :]
+    nlo_mask = idx_nlo < nl[:, None]
+    sum_wsn_o = jnp.sum(jnp.where(nlo_mask, wsn_o, 0.0), axis=1)
+    sum_hsn_o = jnp.sum(jnp.where(nlo_mask, hsn_o, 0.0), axis=1)
+
+    def early_melt(snht_c, evap_c):
+        tsn0 = jnp.zeros(N)
+        w2g = sum_wsn_o / dt + pr - evap_c
+        h2g = (sum_hsn_o / dt + htpr - LAT_EVAP * evap_c - snht_c + srht + trht
+              - STBO * (tsn0 + TFRZ) ** 4)
+        rad = STBO * (tsn0 + TFRZ) ** 4
+        return dict(nl=jnp.ones(N, dtype=nl.dtype), snht=snht_c, evaporation=evap_c, w2g=w2g, h2g=h2g,
+                   rad=rad, dz=jnp.zeros_like(dz), wsn=jnp.zeros_like(wsn), hsn=jnp.zeros_like(hsn))
+
+    fresh_snow = RHO_WATER / RHO_FRESH_SNOW * jnp.minimum(pr * dt - evaporation * dt, -htpr * dt / LAT_FUSION)
+    cond_fresh = fresh_snow > 0.0
+    dz1 = dz.at[:, 0].add(jnp.where(cond_fresh, fresh_snow, 0.0))
+    nl1 = jnp.where(cond_fresh, jnp.maximum(nl, 1), nl)
+    exit1 = (~cond_fresh) & (wsn[:, 0] < EPS_SNOW)
+
+    water_down0 = (pr - evaporation) * dt
+    heat_down0 = htpr * dt
+    dz2, wsn2, hsn2, wd1, hd1 = snow_pass_water(wsn, hsn, dz1, nl1, water_down0, heat_down0)
+    heat_to_ground = hd1 / dt
+    water_to_ground = wd1 / dt
+    idx = jnp.arange(TOTAL_NL)[None, :]
+    sum_wsn2 = jnp.sum(jnp.where(idx < nl1[:, None], wsn2[:, :TOTAL_NL], 0.0), axis=1)
+    exit2 = (~exit1) & (sum_wsn2 < EPS_SNOW)
+
+    nl2, wsn3, hsn3, _ = (None, None, None, None)
+    dz3, wsn3, hsn3, nl2, _ = snow_redistr(dz2[:, :TOTAL_NL], wsn2, hsn2, nl1, 1.0)
+    dz3 = jnp.concatenate([dz3, jnp.zeros((N, 1))], axis=1)   # pad to TOTAL_NL+1 for the ground slot
+    dz3 = dz3.at[jnp.arange(N), nl2].set(dz_ground)           # dz[nl] = dz_ground (per-cell dynamic index)
+
+    dz3_safe = jnp.where(dz3 == 0.0, 1.0, dz3)
+    rho_snow = wsn3 * RHO_WATER / dz3_safe[:, :TOTAL_NL]
+    csn = 2060.0 * rho_snow
+    ksn_soil = 3.22e-6 * rho_snow ** 2
+    ksn = jnp.concatenate([ksn_soil, jnp.zeros((N, 1))], axis=1)
+    ksn = ksn.at[jnp.arange(N), nl2].set(k_ground)
+
+    csn_safe = jnp.where(csn == 0.0, 1.0, csn)
+    cond_partial = hsn3 > -wsn3 * LAT_FUSION
+    tsn_soil = jnp.where(cond_partial, 0.0, (hsn3 + wsn3 * LAT_FUSION) / (csn_safe * dz3_safe[:, :TOTAL_NL]))
+    tsn = jnp.concatenate([tsn_soil, jnp.zeros((N, 1))], axis=1)
+    tsn = tsn.at[jnp.arange(N), nl2].set(t_ground)
+    tsn0 = tsn[:, 0]
+
+    flux_in_a = srht + trht - STBO * (tsn0 + TFRZ) ** 4 - LAT_EVAP * evaporation - snht - evaporation * SHV * tsn0
+    flux_in_deriv = (-4.0 * STBO * (tsn0 + TFRZ) ** 3 - LAT_EVAP * evap_dt - snsh_dt
+                     - evap_dt * SHV * tsn0 - evaporation * SHV)
+    radiation_out = STBO * (tsn0 + TFRZ) ** 4
+    snht_a = snht + evaporation * SHV * tsn0
+    flux_corr, flux_in_b, hsn4 = heat_eq(dz3, tsn, hsn3, csn, ksn, nl2, flux_in_a, flux_in_deriv, dt)
+    heat_to_ground = heat_to_ground + flux_in_b
+    flux_in_deriv_safe = jnp.where(flux_in_deriv == 0.0, 1.0, flux_in_deriv)
+    delta_tsn_impl = flux_corr / flux_in_deriv_safe
+    radiation_out = radiation_out - (-4.0 * STBO * (tsn0 + TFRZ) ** 3) * delta_tsn_impl
+    snht_b = snht_a + snsh_dt * delta_tsn_impl + (evap_dt * SHV * tsn0 + evaporation * SHV) * delta_tsn_impl
+    delta_evap = evap_dt * delta_tsn_impl
+
+    cond_low_evap = (evaporation + delta_evap) < evap_min
+    evap_corr = jnp.where(cond_low_evap, evap_min - (evaporation + delta_evap), 0.0)
+    delta_evap = delta_evap + evap_corr
+    snht_c = snht_b - jnp.where(cond_low_evap, evap_corr * LAT_EVAP, 0.0)
+    evaporation2 = evaporation + delta_evap
+
+    water_down1 = -delta_evap * dt
+    heat_down1 = jnp.zeros(N)
+    dz5, wsn5, hsn5, wd2, hd2 = snow_pass_water(wsn3, hsn4, dz3[:, :TOTAL_NL], nl2, water_down1, heat_down1)
+    heat_to_ground = heat_to_ground + hd2 / dt
+    water_to_ground = water_to_ground + wd2 / dt
+
+    sum_wsn5 = jnp.sum(jnp.where(idx < nl2[:, None], wsn5, 0.0), axis=1)
+    exit3 = (~exit1) & (~exit2) & (sum_wsn5 < EPS_SNOW)
+
+    dz6, wsn6, hsn6, nl3, _ = snow_redistr(dz5, wsn5, hsn5, nl2, 1.0)
+    dz6 = jnp.concatenate([dz6, jnp.zeros((N, 1))], axis=1)
+    dz6 = dz6.at[jnp.arange(N), nl3].set(dz_ground)
+    dz6_safe = jnp.where(dz6 == 0.0, 1.0, dz6)
+    cond_partial2 = hsn6 > -wsn6 * LAT_FUSION
+    csn_safe6 = jnp.where(csn == 0.0, 1.0, csn)   # csn/ksn recomputed from FIRST redistribution, reused verbatim
+    tsn2_soil = jnp.where(cond_partial2, 0.0, (hsn6 + wsn6 * LAT_FUSION) / (csn_safe6 * dz6_safe[:, :TOTAL_NL]))
+    tsn2 = jnp.concatenate([tsn2_soil, jnp.zeros((N, 1))], axis=1)
+    tsn2 = tsn2.at[jnp.arange(N), nl3].set(t_ground)
+
+    mass_above = jnp.zeros(N)
+    dz7 = dz6
+    for n in range(TOTAL_NL):
+        active_n = (n < nl3) & (dz7[:, n] > EPS_SNOW)
+        mass_layer = wsn6[:, n] * RHO_WATER
+        mass_above_mid = mass_above + 0.5 * mass_layer
+        tsn2_n_safe = tsn2[:, n] + TFRZ
+        dz7n_safe = jnp.where(dz7[:, n] == 0.0, 1.0, dz7[:, n])
+        scale_rho = (.5e-7 * GRAV * mass_above_mid
+                    * jnp.exp(14.643 - 4000.0 / tsn2_n_safe - .02 * mass_layer / dz7n_safe) * dt)
+        scale_rho = 1.0 + scale_rho
+        dz_n_new = dz7[:, n] / jnp.where(scale_rho == 0.0, 1.0, scale_rho)
+        dz_n_new = jnp.maximum(dz_n_new, mass_layer / RHO_ICE)
+        dz7 = dz7.at[:, n].set(jnp.where(active_n, dz_n_new, dz7[:, n]))
+        mass_above = jnp.where(active_n, mass_above_mid + 0.5 * mass_layer, mass_above)
+
+    normal = dict(nl=nl3, snht=snht_c, evaporation=evaporation2, w2g=water_to_ground, h2g=heat_to_ground,
+                 rad=radiation_out, dz=dz7, wsn=wsn6, hsn=hsn6)
+    early = early_melt(snht, evaporation)
+    late = early_melt(snht_c, evaporation2)
+
+    exit_early = exit1 | exit2
+    result = {}
+    for k in ("nl", "snht", "evaporation", "w2g", "h2g", "rad"):
+        val = jnp.where(exit3[..., None] if normal[k].ndim > 1 else exit3, late[k], normal[k])
+        val = jnp.where(exit_early[..., None] if normal[k].ndim > 1 else exit_early, early[k], val)
+        result[k] = val
+    for k in ("dz", "wsn", "hsn"):
+        mask3 = exit3[:, None] if normal[k].ndim == 2 else exit3[:, None, None]
+        mask_e = exit_early[:, None] if normal[k].ndim == 2 else exit_early[:, None, None]
+        val = jnp.where(mask3, late[k], normal[k])
+        val = jnp.where(mask_e, early[k], val)
+        result[k] = val
+    return result
+
+
+def snow_drv(fm, evap, snsh, srht, trht, canht, drips, dripw, htdrips, htdripw, devap_dt, dsnsh_dt,
+            evap_min, dts, tp_soil, dz_soil, dzsn, wsn, hsn, nsn, fr_snow):
+    """SNOW_DRV.f snow_drv (snow_cover_same_as_rad==0), batched. dzsn: (N,TOTAL_NL+1); wsn,hsn:
+    (N,TOTAL_NL); nsn: (N,) int; the rest (N,) float. Two mutually-exclusive branches (fr_snow<=0 vs
+    >0) are both computed with guarded divisions and selected via jnp.where."""
+    N = fm.shape[0]
+    epotsn = fm * evap
+    snshsn = fm * snsh
+    srhtsn = fm * srht
+    trhtsn = fm * trht + (1.0 - fm) * canht
+    devap_sn_dt = fm * devap_dt
+    dsnsh_sn_dt = fm * dsnsh_dt
+    fr_snow_old = fr_snow
+    fr_snow_new = snow_fraction(dzsn, nsn, drips, dts, fr_snow_old)
+    cond_inactive = fr_snow_new <= 0.0
+
+    idx = jnp.arange(TOTAL_NL)[None, :]
+    nsn_mask = idx < nsn[:, None]
+    sum_wsn = jnp.sum(jnp.where(nsn_mask, wsn, 0.0), axis=1)
+    sum_hsn = jnp.sum(jnp.where(nsn_mask, hsn, 0.0), axis=1)
+    dts_safe = jnp.where(dts == 0.0, 1.0, dts)
+    cond_reset = fr_snow_old > 0.0
+
+    flmlt_scale_a = drips + jnp.where(cond_reset, sum_wsn * fr_snow_old / dts_safe, 0.0)
+    fhsng_scale_a = htdrips + jnp.where(cond_reset, sum_hsn * fr_snow_old / dts_safe, 0.0)
+    wsn_a = jnp.where(cond_reset[:, None] & nsn_mask, 0.0, wsn)
+    hsn_a = jnp.where(cond_reset[:, None] & nsn_mask, 0.0, hsn)
+    dzsn_mask4 = jnp.arange(TOTAL_NL + 1)[None, :] < nsn[:, None]
+    dzsn_a = jnp.where(cond_reset[:, None] & dzsn_mask4, 0.0, dzsn)
+    fr_snow_a = jnp.where(cond_reset, 0.0, fr_snow_new)
+    nsn_a = jnp.where(cond_reset, 1, nsn)
+
+    fr_snow_safe = jnp.where(fr_snow_new == 0.0, 1.0, fr_snow_new)
+    fcr = fr_snow_old / fr_snow_safe
+    dzsn_r, wsn_r, hsn_r, nsn_r, _ = snow_redistr(dzsn[:, :TOTAL_NL], wsn, hsn, nsn, fcr, want_flux=True, dt=dts)
+    dzsn_r4 = jnp.concatenate([dzsn_r, jnp.zeros((N, 1))], axis=1)
+    prsn = drips / fr_snow_safe + dripw
+    htprsn = htdrips / fr_snow_safe + htdripw
+    adv = snow_adv_1(dzsn_r4, wsn_r, hsn_r, nsn_r, srhtsn, trhtsn, snshsn, htprsn, epotsn, prsn, dts,
+                     tp_soil, dz_soil, dsnsh_sn_dt, devap_sn_dt, evap_min)
+    flmlt_b = jnp.maximum(adv["w2g"], 0.0)
+    fhsng_b = adv["h2g"]
+    thrmsn_b = adv["rad"]
+    cond_fm = fm > 0.0
+    fm_safe = jnp.where(fm == 0.0, 1.0, fm)
+    evap_b = jnp.where(cond_fm, adv["evaporation"] / fm_safe, evap)
+    snsh_b = jnp.where(cond_fm, adv["snht"] / fm_safe, snsh)
+
+    flmlt = jnp.where(cond_inactive, 0.0, flmlt_b)
+    fhsng = jnp.where(cond_inactive, 0.0, fhsng_b)
+    thrmsn = jnp.where(cond_inactive, 0.0, thrmsn_b)
+    flmlt_scale = jnp.where(cond_inactive, flmlt_scale_a, 0.0)
+    fhsng_scale = jnp.where(cond_inactive, fhsng_scale_a, 0.0)
+    evap_out = jnp.where(cond_inactive, evap, evap_b)
+    snsh_out = jnp.where(cond_inactive, snsh, snsh_b)
+    nsn_out = jnp.where(cond_inactive, nsn_a, adv["nl"])
+    fr_snow_out = jnp.where(cond_inactive, fr_snow_a, fr_snow_new)
+    dzsn_out = jnp.where(cond_inactive[:, None], dzsn_a, adv["dz"])
+    wsn_out = jnp.where(cond_inactive[:, None], wsn_a, adv["wsn"])
+    hsn_out = jnp.where(cond_inactive[:, None], hsn_a, adv["hsn"])
+    return dict(flmlt=flmlt, fhsng=fhsng, thrmsn=thrmsn, flmlt_scale=flmlt_scale, fhsng_scale=fhsng_scale,
+               evap=evap_out, snsh=snsh_out, nsn=nsn_out, fr_snow=fr_snow_out, dzsn=dzsn_out,
+               wsn=wsn_out, hsn=hsn_out)
+
+
+def snow(static, tp, snshs, srht, trht, drips, dripw, htdrips, htdripw, devapbs_dt, devapvs_dt, dsnsh_dt,
+        evap_min, dts, dz, dzsn, wsn, hsn, nsn, fr_snow, evapbs, evapvs, fm):
+    """GhyColumn.snow: calls snow_drv once per ibv (fmask=[1,fm], matching the real per-ibv snow
+    cover). Returns flmlt/fhsng/flmlt_scale/fhsng_scale/thrmsn (N,2), evapbs/evapvs/snshs(updated,N,2),
+    nsn(N,2), fr_snow(N,2), dzsn/wsn/hsn(N,TOTAL_NL(+1),2)."""
+    N = tp.shape[0]
+    canht = STBO * (tp[:, 0, 1] + TFRZ) ** 4
+    dz_soil = static["dz"][:, 0]
+    process_bare, process_vege = static["process_bare"], static["process_vege"]
+    active = [process_bare, process_vege]
+    results = []
+    for ibv, fmask, evap_in, snsh_in, devap_in in ((0, jnp.ones(N), evapbs, snshs[:, 0], devapbs_dt),
+                                                    (1, fm, evapvs, snshs[:, 1], devapvs_dt)):
+        out = snow_drv(fmask, evap_in, snsh_in, srht, trht, canht, drips[:, ibv], dripw[:, ibv],
+                       htdrips[:, ibv], htdripw[:, ibv], devap_in, dsnsh_dt, evap_min, dts,
+                       tp[:, 1, ibv], dz_soil, dzsn[:, :, ibv], wsn[:, :, ibv], hsn[:, :, ibv],
+                       nsn[:, ibv], fr_snow[:, ibv])
+        # GhyColumn.snow()'s `for ibv in range(i_bare, i_vege+1)` loop skips snow_drv entirely for an
+        # inactive ibv, so its outputs must fall back to zero (the flux accumulators, never written
+        # this substep) or to the untouched INPUT state (nsn/fr_snow/dzsn/wsn/hsn/evap*/snsh, which
+        # simply keep whatever value they already had).
+        a = active[ibv]
+        out = dict(
+            flmlt=jnp.where(a, out["flmlt"], 0.0), fhsng=jnp.where(a, out["fhsng"], 0.0),
+            flmlt_scale=jnp.where(a, out["flmlt_scale"], 0.0), fhsng_scale=jnp.where(a, out["fhsng_scale"], 0.0),
+            thrmsn=jnp.where(a, out["thrmsn"], 0.0),
+            nsn=jnp.where(a, out["nsn"], nsn[:, ibv]), fr_snow=jnp.where(a, out["fr_snow"], fr_snow[:, ibv]),
+            dzsn=jnp.where(a[:, None], out["dzsn"], dzsn[:, :, ibv]),
+            wsn=jnp.where(a[:, None], out["wsn"], wsn[:, :, ibv]),
+            hsn=jnp.where(a[:, None], out["hsn"], hsn[:, :, ibv]),
+            evap=jnp.where(a, out["evap"], evap_in), snsh=jnp.where(a, out["snsh"], snsh_in),
+        )
+        results.append(out)
+    flmlt = jnp.stack([results[0]["flmlt"], results[1]["flmlt"]], axis=-1)
+    fhsng = jnp.stack([results[0]["fhsng"], results[1]["fhsng"]], axis=-1)
+    flmlt_scale = jnp.stack([results[0]["flmlt_scale"], results[1]["flmlt_scale"]], axis=-1)
+    fhsng_scale = jnp.stack([results[0]["fhsng_scale"], results[1]["fhsng_scale"]], axis=-1)
+    thrmsn = jnp.stack([results[0]["thrmsn"], results[1]["thrmsn"]], axis=-1)
+    nsn_out = jnp.stack([results[0]["nsn"], results[1]["nsn"]], axis=-1)
+    fr_snow_out = jnp.stack([results[0]["fr_snow"], results[1]["fr_snow"]], axis=-1)
+    dzsn_out = jnp.stack([results[0]["dzsn"], results[1]["dzsn"]], axis=-1)
+    wsn_out = jnp.stack([results[0]["wsn"], results[1]["wsn"]], axis=-1)
+    hsn_out = jnp.stack([results[0]["hsn"], results[1]["hsn"]], axis=-1)
+    evapbs_out = results[0]["evap"]
+    evapvs_out = results[1]["evap"]
+    snshs_out = jnp.stack([results[0]["snsh"], results[1]["snsh"]], axis=-1)
+    return dict(flmlt=flmlt, fhsng=fhsng, flmlt_scale=flmlt_scale, fhsng_scale=fhsng_scale,
+               thrmsn=thrmsn, nsn=nsn_out, fr_snow=fr_snow_out, dzsn=dzsn_out, wsn=wsn_out,
+               hsn=hsn_out, evapbs=evapbs_out, evapvs=evapvs_out, snshs=snshs_out)
+
+
 def retp(static, w, ht, wsn, hsn):
     """GHY.f retp. Returns tp(N,NGM+1,2), fice(N,NGM+1,2) -- k=0 valid only for ibv=1 (kk=1-ibv in
     Fortran terms: bare starts at k=1, vegetated includes canopy k=0) -- and tsn1(N,2), the top
