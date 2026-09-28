@@ -25,6 +25,7 @@ import pbl_compare as PC
 import aturb_compare as AC
 import aturb_ff as A
 import aturb_uv_ff as UV
+import landice_tile_ff as LI
 from ffdump_reader import read_dump
 
 NISURF = 2
@@ -66,10 +67,43 @@ def chained_ocean_ice_patches(dd, itime, ns, blk, patch):
     return len(t)
 
 
-def run_to_aturb(dd, itime, ns, chained=True, fluxes_override=None):
+def chained_landice_patch(dd, itime, ns, blk, patch):
+    """Overwrite the land-ice patch (k=2) with values from OUR PBL (itype 3 records) + land-ice tile flux (D7).
+    ffl records carry no substep column: they are dumped in substep order, so substep `ns` is the ns-th equal slice."""
+    pbl = PC.load(f"{dd}/ffp_{itime}.bin")
+    rec = LI.load(f"{dd}/ffl_{itime}.bin")
+    p = pbl[pbl[:, 2] == 3]
+    assert len(p) == len(rec) and len(rec) % NISURF == 0
+    n = len(rec) // NISURF
+    sl = slice((ns - 1) * n, ns * n)
+    p, rec = p[sl], rec[sl]
+    assert np.array_equal(p[:, :2], rec[:, :2]), "land-ice PBL/tile record order mismatch"
+    out = PC.run(p)
+    d = LI.to_inputs(rec)
+    ddml = p[:, 23] > 0.5
+    d.update(us=jnp.asarray(out["us"]), vs=jnp.asarray(out["vs"]), ws=jnp.asarray(out["ws"]),
+             gusti=jnp.asarray(p[:, 113]), qsrf=jnp.asarray(out["qsrf"]), cm=jnp.asarray(out["cm"]),
+             ch=jnp.asarray(out["ch"]), cq=jnp.asarray(out["cq"]), ts=jnp.asarray(out["tsv"]),
+             dskin=jnp.asarray(out["dskin"]), tsv=jnp.asarray(out["tsv"]),
+             tprime=jnp.asarray(np.where(ddml, p[:, 25] - p[:, 7], 0.0)),
+             qprime=jnp.asarray(np.where(ddml, p[:, 26] - p[:, 39], 0.0)))
+    got = LI.tile_fluxes(d)
+    idx = _cell_lookup(blk)[rec[:, 0].astype(int), rec[:, 1].astype(int)]
+    assert (idx >= 0).all()
+    patch["uflux1"][idx, 2] = np.asarray(got["uflux1"])
+    patch["vflux1"][idx, 2] = np.asarray(got["vflux1"])
+    patch["dth1"][idx, 2] = np.asarray(got["dth1"])
+    patch["dq1"][idx, 2] = np.asarray(got["dq1"])
+    patch["tsavg"][idx, 2] = np.asarray(out["tsv"]) / (1.0 + np.asarray(out["qsrf"]) * XDELT)
+    patch["qsavg"][idx, 2] = np.asarray(out["qsrf"])
+    return len(rec)
+
+
+def run_to_aturb(dd, itime, ns, chained=True, fluxes_override=None, landice=False):
     """One NIsurf substep: aggregate -> ATURB flux inputs -> ATURB (A-grid + velocity) vs the real exit state.
 
     chained=True : ocean+ice patches from our PBL/tile chain; land-ice/land recorded.
+    landice=True : additionally the land-ice patch from our PBL(itype 3) + land-ice tile flux.
     chained=False: all four patches recorded (aggregation + conversion + ATURB only).
     fluxes_override: optional dict of ATURB flux arrays (cell-ordered like `blk`) replacing the composed ones
     (used by the mutation test). Returns (rows, info)."""
@@ -79,6 +113,7 @@ def run_to_aturb(dd, itime, ns, chained=True, fluxes_override=None):
     ftype, patch, comp_ref = TA.unpack(blk)
     patch = {k: np.array(v) for k, v in patch.items()}
     n_tiles = chained_ocean_ice_patches(dd, itime, ns, blk, patch) if chained else 0
+    n_li = chained_landice_patch(dd, itime, ns, blk, patch) if landice else 0
     comp = {k: np.asarray(v) for k, v in TA.aggregate(jnp.asarray(ftype), {k: jnp.asarray(v) for k, v in patch.items()}).items()}
 
     path_in = f"{dd}/ffa_{itime}_c{ns}_in.bin"
@@ -129,7 +164,7 @@ def run_to_aturb(dd, itime, ns, chained=True, fluxes_override=None):
         rows[k] = row
     flux_err = {k: float(np.abs(np.asarray(fl[k]) - fl_rec[k]).max()) for k in fl}
     flux_scale = {k: float(np.abs(fl_rec[k]).max()) for k in fl}
-    info = dict(n_cells=len(blk), n_tiles_chained=n_tiles, flux_err=flux_err, flux_scale=flux_scale)
+    info = dict(n_cells=len(blk), n_tiles_chained=n_tiles, n_landice_chained=n_li, flux_err=flux_err, flux_scale=flux_scale)
     return rows, info
 
 
@@ -138,7 +173,7 @@ if __name__ == "__main__":
     itime = int(sys.argv[2])
     for ns in (1, 2):
         for chained in (False, True):
-            rows, info = run_to_aturb(dd, itime, ns, chained)
+            rows, info = run_to_aturb(dd, itime, ns, chained, landice=chained)
             print(f"ns={ns} chained={chained} tiles={info['n_tiles_chained']} flux_err="
                   + " ".join(f"{k}:{v:.2e}" for k, v in info["flux_err"].items()))
             for k, r in rows.items():

@@ -77,6 +77,18 @@ def test_chained_ocean_ice_through_aggregation_and_aturb_match_fortran(d, it, ns
             assert scale > 1e-6                              # non-vacuous: the step really changes the field
 
 
+@pytest.mark.parametrize("d,it,ns", CASES)
+def test_chained_ocean_ice_and_landice_through_aggregation_and_aturb_match_fortran(d, it, ns):
+    """Same as above with the land-ice patch also from OUR PBL(itype 3) + land-ice tile flux; only land is recorded."""
+    rows, info = C.run_to_aturb(f"{FF}/{d}", it, ns, chained=True, landice=True)
+    assert info["n_landice_chained"] > 100
+    for k, e in info["flux_err"].items():
+        assert e <= 1e-8 * max(info["flux_scale"][k], 1e-30), (k, e)
+    for k, r in rows.items():
+        scale = r.get("fortran_change_rms", 1.0)
+        assert r["max_abs"] < (1e-7 * scale if k != "pblht" else 1e-6), (k, r)
+
+
 def test_mutation_perturbed_flux_is_detected():
     """0.1% error in the conversion changes T by far more than the pass tolerance -> the check can fail."""
     d, it, ns = CASES[0]

@@ -509,9 +509,11 @@ arrays, and aggregation reproducing the recorded composite. Mutation checks: 0.1
 by >1e3x the pass error; dropping the land patch from the aggregation is clearly visible.
 Tests: `tests/test_chain_aggregate_aturb.py`. Small change to a validated file: `surface_chain_ff.run_chain`
 gained an optional `return_pbl` flag (default unchanged) so callers can also get PBL's `tsv`/`qsrf`.
-**Scope, stated plainly:** land-ice and land patches are recorded (land-ice's own tile flux is validated in
-D7 but was not re-run here; land needs Ent). This validates the chain for the ocean/ice share of the composite,
-and the aggregation-and-conversion formulas for all four patches.
+**Land-ice added the same day:** `chained_landice_patch` also computes the land-ice patch from our PBL (itype-3
+records) + `landice_tile_ff` (D7), leaving **only land recorded**. 346-ish land-ice tiles per substep; errors
+unchanged at roundoff (nov26 step 33312 ns=1: T 6.3e-13, U 2.5e-12, PBL height 4.7e-10), 6/6 test cases pass.
+**Scope, stated plainly:** the land patch (GHY, needs Ent) is the only recorded piece; everything else in the
+composite is our own code from real inputs.
 
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
