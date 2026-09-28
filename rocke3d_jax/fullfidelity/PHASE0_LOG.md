@@ -391,3 +391,7 @@ switch the checkout back under whoever moved it. Traced the SURFACE.f code betwe
 verified with 0.0 error against the recorded ATURB entry arrays. Built `chain_aggregate_aturb.py`: our PBL+ocean/ice
 tile chain -> our aggregation (recorded land-ice/land) -> our ATURB vs the real exit state; roundoff-level agreement on
 3 dates x 2 substeps (D18). Not yet: land-ice tile from our own code in the composite, land/Ent, the lax.scan driver.
+
+Correction to the 2026-09-28 tracing entry above: `END DO ! end of surface time step` is at SURFACE.f:1178, right after
+ATM_DIFFUS, so the NS loop wraps only ocean/ice tiles, land ice, EARTH, aggregation and ATURB. GROUND_SI/GROUND_LK
+(and RIVERF, FORM_SI) run once per DTsrc step after the loop. Found while checking what a substep-to-substep chain needs.

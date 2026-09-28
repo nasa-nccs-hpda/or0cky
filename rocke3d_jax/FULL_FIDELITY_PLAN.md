@@ -199,10 +199,13 @@ opposite of what the first pass guessed without checking).
    complete `lksourc_full`+`lkmix` chain.
 
 All 7 steps live inside the **same single Fortran subroutine** (`SURFACE.f:21 SUBROUTINE SURFACE`),
-called once per `DTsrc` step from `MODELE.f:332`, with its own internal `SURFACE.f:385 DO NS=1,NIsurf`
-loop wrapping steps 1-7 -- i.e. the real per-cell chain to reproduce is one iteration of that DO-NS
-loop body, executed `NIsurf` times per `DTsrc` step (matching Track A's own `NIsurf` sub-iteration in
-`p2saom40_driver.py`'s `_step_dev`, so the two tracks' step-granularity already lines up).
+called once per `DTsrc` step from `MODELE.f:332`. **Correction (2026-09-28, later):** they are NOT all inside the
+`SURFACE.f:385 DO NS=1,NIsurf` loop. That loop (`END DO` at `SURFACE.f:1178`) wraps steps 1-5 only (ocean/ice
+tiles, land ice, EARTH, aggregation + first-layer update, ATM_DIFFUS), executed `NIsurf`=2 times per step.
+`GROUND_SI` (:1230) and `GROUND_LK` (:1232) run **once per DTsrc step after the loop**, on fluxes accumulated over
+the substeps (followed by `RIVERF`, `FORM_SI`/ADDICE). Each NS iteration also starts with `loadbl` (PBL state
+load), `recalc_agrid_uv`, `atm_exports_phasesrf` and `get_dbl`, which are further links not yet ported. Verified
+empirically: PBL profiles (`upbl/vpbl/tpbl/qpbl/epbl`) carry over bitwise from one substep's outputs to the next.
 
 **Bug found and fixed while adding step 6**: `seaice_core_jax.py`, `ghy_jax.py`, and
 `lakes_core_jax.py` never called `jax.config.update("jax_enable_x64", True)` themselves — they
@@ -265,7 +268,7 @@ reasonable choices for different questions, not one clearly subsuming the other.
 
 What's genuinely new work, not already-validated pieces waiting to be wired together: (a) assembling
 the ocean/ice/land-ice/lakes branches (all now fully scoped and closeable, per above) into one
-`jax.lax.scan`-chained driver over the verified `DO NS=1,NIsurf` step body, the way
+`jax.lax.scan`-chained driver over the NS=1..NIsurf body (steps 1-5) followed by the once-per-step GROUND_SI/GROUND_LK, the way
 `p2saom40_driver.py`'s `run_steps_device` does for Track A -- deferring land/GHY to single-step,
 dump-fed mode (matching D9/D15's existing validation) rather than blocking the whole driver on
 porting Ent. Given how much is already built, validated, and now precisely traced (land-ice's call

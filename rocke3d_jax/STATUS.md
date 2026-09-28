@@ -814,8 +814,8 @@ PBL data flow was already validated by D6, so what remains for the chained drive
 **2026-09-28 update**: scoped the chained-driver integration by tracing the real per-cell call order
 against the persistent (non-scratch) source tree, line-precisely — confirmed all 7 steps (ocean/ice
 tiles, land ice, EARTH/GHY, tile aggregation, ATURB, GROUND_SI, GROUND_LK) live in one Fortran
-subroutine (`SURFACE.f`'s `SURFACE`) with its own `DO NS=1,NIsurf` loop, matching Track A's own
-`NIsurf` sub-stepping. Almost every piece needed already exists and is validated; the one missing
+subroutine (`SURFACE.f`'s `SURFACE`); steps 1-5 sit in its `DO NS=1,NIsurf` loop (matching Track A's `NIsurf`
+sub-stepping), while GROUND_SI/GROUND_LK run once per step after it. Almost every piece needed already exists and is validated; the one missing
 piece, a `ground_si` wrapper (SEAICE→SSIDEC→snowice with ocean/lake domain gating), is now built and
 validated (D17, <1e-9 rel. error on all 4,524 real cells). D17 also fixed a real bug found while
 validating it: `seaice_core_jax.py`/`ghy_jax.py`/`lakes_core_jax.py` never enabled JAX's float64 mode
