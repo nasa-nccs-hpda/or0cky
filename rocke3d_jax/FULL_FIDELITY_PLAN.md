@@ -222,23 +222,59 @@ correct regardless of caller/import order. Re-validated at <1e-9 rel. error post
 
 Land-ice's call site is now located precisely (step 2 above) — it is **not** a fourth `ITYPE` inside
 the ocean/ice loop as first guessed, it's a separate loop over `atmglas(ipatch)` glacial-ice patches
-that runs strictly *before* `EARTH`. `atmglas` patches are a distinct array from the (I,J) grid-cell
-tiles the ITYPE loop and `EARTH`/`GHY` iterate over — routing between the two (which grid cells map to
-which `ipatch`, i.e. the land-ice fraction/index array) is still untraced and is the real remaining
-question for wiring this step in, not the call site itself.
+that runs strictly *before* `EARTH`.
 
-What's genuinely new work, not already-validated pieces waiting to be wired together: (a) the
-`ipatch`↔`(I,J)` mapping for land ice (just found to be a patch array, not a grid tile — see above),
-(b) the actual per-cell **data flow** between the other calls -- what `PBL_ARGS`/tile fraction arrays
-route between PBL and each `SURFACE` tile call, and how state persists across `earth`'s `NIsurf`
-substeps (already handled inside `ghy_jax.advnc`'s own scan, per D15) -- and (c) assembling all of it
-into one `jax.lax.scan`-chained driver over the verified `DO NS=1,NIsurf` step body, the way
-`p2saom40_driver.py`'s `run_steps_device` does for Track A. Given how much is already built and
-validated, this looks more tractable than the original "biggest remaining item" framing suggested;
-effort estimate pending further tracing. Not yet attempted: SEAICE/LAKES/GHY's own prognostic state
-(ice thickness, lake temperature, soil moisture) feeding back into the NEXT step's tile
-fractions/properties -- the genuine "whole model" coupling loop, distinct from one step's tile-flux
-computation.
+**`ipatch`↔`(I,J)` mapping — RESOLVED, trivial for P2SAoM40**: `atmglas` is allocated as
+`atmglas(1-min(nhc_local,2)/2 : nhc_local)` (`FLUXES.f:1782`), where `nhc_local` comes from
+`call sync_param("NHC", nhc_local)` (only reached because `GLINT2` is undefined here) with a Fortran
+default of `NHC_LOCAL = 1` if the rundeck doesn't override it — and P2SAoM40's rundeck
+(`decks/P2SAoM40.R`) has no `NHC` line, so `nhc_local` stays `1`, making `atmglas` a **single-element
+array** (`atmglas(1:1)`). So for this configuration `do ipatch=1,ubound(atmglas,1)` is `do ipatch=1,1`
+— there is no real patch-routing problem at all, just one land-ice "patch" that is itself a full
+(I,J)-grid-sized tile (`SURFACE_LANDICE.f:181-182`'s own `DO J.../DO I...` loop), gated per-cell by
+`if (igla%ftype(i,j) <= 0) cycle` (`SURFACE_LANDICE.f:188`) exactly like the ocean/ice `ITYPE` loop's
+own `ptype`/`ftype` gating — and `landice_tile_ff.py` (D7) already takes `ptype` as a named input, so
+no new plumbing is needed here at all. (`NHC>1`, multiple height classes, is a real code path for
+other rundecks but not this one — not a scoping gap for P2SAoM40 specifically.)
+
+**Ocean/ice PBL↔SURFACE data flow — already validated, not new work**: traced the real exchange
+(`SURFACE.f:614-635` fills `pbl_args%TG/TR4/TGV/dtsurf/qg_sat/uocean/vocean/ocean/snow/sss_loc` from
+tile state, `SURFACE.f:641/643 CALL PBL(I,J,1,ITYPE,PTYPE,pbl_args,atmocn/atmice)`, then
+`SURFACE.f:649-658` reads back `pbl_args%us/vs/ws/ws0/gusti/qsrf/cm/ch/cq/TSV`) -- and it turns out D6
+already validates exactly this composition end-to-end (`surface_chain_ff.py`: "PBL advanc → tile
+fluxes reproduces the tile outputs to ≤ 6e-11 of their spread", explicitly **not** using recorded PBL
+outputs). So for ocean/ice this item is already closed, just not previously cross-referenced from the
+chained-driver section.
+
+**Land's PBL↔advnc data flow — the real remaining structural question, already honestly scoped by
+D9, not a new finding**: `earth()`'s real `CALL ADVNC(entcells(i,j), Ca, ...)` (`GHY_DRV.f:~1227`)
+passes the live `entcells(i,j)` Ent object directly into `advnc`, which calls into Ent *internally*
+during its own execution (not as a separate call in `earth()` before/after `advnc`) -- confirming,
+not contradicting, D9's stated scope: dynamic vegetation (Ent: canopy conductance, LAI, GPP, soil
+betas, Ci, IPP) is genuinely not ported, and `ghy_jax.advnc`'s `ent_dts`/`ent_cnc`/`ent_betadl`/
+`ent_lai` inputs are real per-substep Ent exports recorded from the instrumented dump, not computed.
+This is fine for the single-step, dump-fed validation D9/D15 already did, but it is the real blocker
+for a genuinely self-contained, **multi-step** chained land branch: without a ported Ent (a
+substantial separate effort, not scoped here), a chained driver's land branch can only run one step
+at a time using recorded Ent exports, not evolve its own vegetation state step-to-step the way a true
+`run_steps_device`-style loop would need to. Ocean/ice/land-ice/lakes have no such dependency and are
+fully closeable now; land is the one branch where "chained" and "full fidelity" pull against each
+other, which is worth surfacing plainly rather than glossing over -- it's a concrete answer to why
+Track A's simpler, chainable design and Track B's faithful-but-harder-to-chain design are both
+reasonable choices for different questions, not one clearly subsuming the other.
+
+What's genuinely new work, not already-validated pieces waiting to be wired together: (a) assembling
+the ocean/ice/land-ice/lakes branches (all now fully scoped and closeable, per above) into one
+`jax.lax.scan`-chained driver over the verified `DO NS=1,NIsurf` step body, the way
+`p2saom40_driver.py`'s `run_steps_device` does for Track A -- deferring land/GHY to single-step,
+dump-fed mode (matching D9/D15's existing validation) rather than blocking the whole driver on
+porting Ent. Given how much is already built, validated, and now precisely traced (land-ice's call
+site/patch question and the ocean/ice PBL data flow are both fully closed above), this looks
+considerably more tractable than the original "biggest remaining item" framing suggested -- the
+scoping is essentially complete; what's left is implementation, not further tracing. Not yet
+attempted: SEAICE/LAKES/GHY's own prognostic state (ice thickness, lake temperature, soil moisture)
+feeding back into the NEXT step's tile fractions/properties -- the genuine "whole model" coupling
+loop, distinct from one step's tile-flux computation.
 
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 
