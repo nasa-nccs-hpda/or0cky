@@ -190,3 +190,60 @@ def lkmix(mlake0, mlake1, elake0, elake1, hlake, tke, roice, dtsrc):
     elake0_out = jnp.where(cond_m1pos, jnp.where(cond_unstable, elake0_a, elake0_b), elake0)
     elake1_out = jnp.where(cond_m1pos, jnp.where(cond_unstable, elake1_a, elake1_b), elake1)
     return dict(mlake0=mlake0_out, mlake1=mlake1_out, elake0=elake0_out, elake1=elake1_out)
+
+
+TEENY = 1e-30
+
+
+def precip_lk(flake, flice, rsi, prcp, enrgp, runpsi, runo_li, melti, emelti, axyp, mwl0, gml0, tlake0, mldlk0,
+             gtemp0, gtemp20, gtempr0):
+    """LAKES.f PRECIP_LK, batched. Both branches computed for every lane and merged with jnp.where. Returns
+    dict: mwl, gml, tlake, mldlk, dlake, glake, gtemp, gtemp2, gtempr, run0, erun0."""
+    active = (flake + flice) > 0.0
+    flake_pos = flake > 0.0
+
+    polake = (1.0 - rsi) * flake
+    plkice = rsi * flake
+    run0 = polake * prcp + plkice * runpsi + flice * runo_li
+    erun0 = polake * enrgp
+    run0 = jnp.where(flake_pos, run0 + melti, run0)
+    erun0 = jnp.where(flake_pos, erun0 + emelti, erun0)
+    mwl = mwl0 + run0 * axyp
+    gml = gml0 + erun0 * axyp
+
+    flake_safe = jnp.where(flake_pos, flake, 1.0)
+    hlk1 = tlake0 * mldlk0 * RHOW * SHW
+    mldlk_L = mldlk0 + run0 / (flake_safe * RHOW)
+    tlake_L = (hlk1 * flake_safe + erun0) / (mldlk_L * flake_safe * RHOW * SHW)
+    dlake_L = mwl / (RHOW * flake_safe * axyp)
+    glake_L = gml / (flake_safe * axyp)
+    gtemp_L = tlake_L
+    gtempr_L = tlake_L + TF
+    cond_thick = mwl > (1e-10 + mldlk_L) * RHOW * flake_safe * axyp
+    gtemp2_L = jnp.where(cond_thick,
+                         (gml - tlake_L * SHW * mldlk_L * RHOW * flake_safe * axyp) /
+                         (SHW * (mwl - mldlk_L * RHOW * flake_safe * axyp)), tlake_L)
+
+    tlake_E = gml / (mwl * SHW + TEENY)
+
+    tlake = jnp.where(flake_pos, tlake_L, tlake_E)
+    mldlk = jnp.where(flake_pos, mldlk_L, mldlk0)
+    dlake = jnp.where(flake_pos, dlake_L, 0.0)
+    glake = jnp.where(flake_pos, glake_L, 0.0)
+    gtemp = jnp.where(flake_pos, gtemp_L, gtemp0)
+    gtemp2 = jnp.where(flake_pos, gtemp2_L, gtemp20)
+    gtempr = jnp.where(flake_pos, gtempr_L, gtempr0)
+
+    mwl = jnp.where(active, mwl, mwl0)
+    gml = jnp.where(active, gml, gml0)
+    tlake = jnp.where(active, tlake, tlake0)
+    mldlk = jnp.where(active, mldlk, mldlk0)
+    dlake = jnp.where(active, dlake, 0.0)
+    glake = jnp.where(active, glake, 0.0)
+    gtemp = jnp.where(active, gtemp, gtemp0)
+    gtemp2 = jnp.where(active, gtemp2, gtemp20)
+    gtempr = jnp.where(active, gtempr, gtempr0)
+    run0 = jnp.where(active, run0, 0.0)
+    erun0 = jnp.where(active, erun0, 0.0)
+    return dict(mwl=mwl, gml=gml, tlake=tlake, mldlk=mldlk, dlake=dlake, glake=glake, gtemp=gtemp, gtemp2=gtemp2,
+                gtempr=gtempr, run0=run0, erun0=erun0)

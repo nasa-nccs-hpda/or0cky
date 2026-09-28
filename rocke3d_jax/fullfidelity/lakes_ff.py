@@ -145,3 +145,47 @@ def lkmix(mlake, elake, hlake, tke, roice, dtsrc):
                     elake[0] = hlt
                     elake[1] = 0.0
     return dict(mlake=mlake, elake=elake)
+
+
+TEENY = 1e-30
+
+
+def precip_lk(flake, flice, rsi, prcp, enrgp, runpsi, runo_li, melti, emelti, axyp, mwl0, gml0, tlake0, mldlk0,
+             gtemp0, gtemp20, gtempr0):
+    """LAKES.f PRECIP_LK (no tracers, no SCM, no irrigation): applies precipitation/land-ice runoff/lake-ice
+    melt to the lake mass/energy reservoir. Runs (per real Fortran) at every land+lake grid box (FLAKE+FLICE>0);
+    a genuinely inactive cell passes every state field through unchanged. Returns dict: mwl, gml, tlake, mldlk,
+    dlake, glake, gtemp, gtemp2, gtempr, run0, erun0."""
+    if flake + flice <= 0.0:
+        return dict(mwl=mwl0, gml=gml0, tlake=tlake0, mldlk=mldlk0, dlake=0.0, glake=0.0, gtemp=gtemp0,
+                    gtemp2=gtemp20, gtempr=gtempr0, run0=0.0, erun0=0.0)
+    polake = (1.0 - rsi) * flake
+    plkice = rsi * flake
+    plice = flice
+    run0 = polake * prcp + plkice * runpsi + plice * runo_li
+    erun0 = polake * enrgp
+    if flake > 0.0:
+        run0 += melti
+        erun0 += emelti
+    mwl = mwl0 + run0 * axyp
+    gml = gml0 + erun0 * axyp
+    if flake > 0.0:
+        hlk1 = tlake0 * mldlk0 * RHOW * SHW
+        mldlk = mldlk0 + run0 / (flake * RHOW)
+        tlake = (hlk1 * flake + erun0) / (mldlk * flake * RHOW * SHW)
+        dlake = mwl / (RHOW * flake * axyp)
+        glake = gml / (flake * axyp)
+        gtemp = tlake
+        gtempr = tlake + TF
+        if mwl > (1e-10 + mldlk) * RHOW * flake * axyp:
+            gtemp2 = (gml - tlake * SHW * mldlk * RHOW * flake * axyp) / (SHW * (mwl - mldlk * RHOW * flake * axyp))
+        else:
+            gtemp2 = tlake
+    else:
+        tlake = gml / (mwl * SHW + TEENY)
+        mldlk = mldlk0
+        dlake = 0.0
+        glake = 0.0
+        gtemp, gtemp2, gtempr = gtemp0, gtemp20, gtempr0
+    return dict(mwl=mwl, gml=gml, tlake=tlake, mldlk=mldlk, dlake=dlake, glake=glake, gtemp=gtemp, gtemp2=gtemp2,
+                gtempr=gtempr, run0=run0, erun0=erun0)

@@ -14,8 +14,12 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch SURFACE_LANDICE.f < <this dir>/SURFACE_LANDICE.f.patch  # land-ice tile (ffl_* files)
     patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_precsi.f.patch     # PRECIP_SI (ffw_* files, D26) -- apply
       AFTER SEAICE_DRV.f.patch (below); adds ffdump_precsi call site
+    patch LAKES.f < <this dir>/LAKES_precip_lk.f.patch            # PRECIP_LK (ffv_* files, D27) -- apply
+      AFTER LAKES.f.patch (below); adds ffdump_precip_lk call site
     patch ATM_DRV.f < <this dir>/ATM_DRV_precsi.f.patch           # adds ffdump_precsi itself -- apply
       AFTER ATM_DRV.f.patch (above)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_precip_lk.f.patch        # adds ffdump_precip_lk itself -- apply
+      AFTER ATM_DRV_precsi.f.patch (immediately above)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -91,4 +95,13 @@ sea-ice cell (`POICE>0`) per `PRECIP_SI` call, ~700-800/step (same cell populati
 since both are `si_ocn`-based). Columns: 1:i 2:j 3:dtsrc 4:snow(in) 5:msi2(in) 6:9=hsil(in) 10:13=ssil(in)
 14:prcp 15:enrgp -- after `PREC_SI` -- 16:snow 17:msi2 18:21=hsil 22:25=ssil 26:29=tsil 30:run0 31:srun0
 32:erun0 33:wetsnow 34:cmprs (0-based columns are all -1, see `fullfidelity/precsi_compare.py`).
-Lake-ice precip (`PRECIP_LK`, `LAKES.f`, 139 lines) is a separate, not-yet-instrumented routine.
+PRECIP_LK dumps (D27): patch `LAKES.f` with `LAKES_precip_lk.f.patch` (after `LAKES.f.patch`) and `ATM_DRV.f`
+with `ATM_DRV_precip_lk.f.patch` (after `ATM_DRV_precsi.f.patch`; adds `ffdump_precip_lk`, unit 985).
+`ffv_<itime>.bin`: 40-double records, one per lake+land-ice cell (`FLAKE+FLICE>0`, both scalars not
+per-tile) per `PRECIP_LK` call, ~950-1000/step. Columns: 1:i 2:j 3:flake 4:flice 5:rsi 6:prcp 7:enrgp
+8:runpsi 9:runo_li(atmgla%RUNO) 10:melti 11:emelti 12:axyp 13:mwl(in) 14:gml(in) 15:tlake(in) 16:mldlk(in)
+-- after `PRECIP_LK` -- 17:mwl 18:gml 19:tlake 20:mldlk 21:dlake 22:glake 23:gtemp 24:gtemp2 25:gtempr
+(0-based columns are all -1, see `fullfidelity/precip_lk_compare.py`).
+`IRRIG_LK` (irrigation withdrawal, `LAKES.f`, 128 lines, real for this rundeck -- `IRRIGATION_ON` is
+defined) and `PRECIP_LI` (land-ice precip, `LANDICE_DRV.f`, 146 lines) are called just before `PRECIP_LK`
+(`SURFACE.f:~300-322`) and remain not-yet-instrumented.

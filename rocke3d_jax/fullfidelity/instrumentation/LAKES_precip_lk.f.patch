@@ -1,0 +1,56 @@
+--- LAKES.f.orig	2026-09-28 17:53:03.167373899 -0400
++++ LAKES.f	2026-09-28 17:41:26.733139292 -0400
+@@ -3036,6 +3036,7 @@
+       REAL*8 PRCP,ENRGP,PLICE,PLKICE,RUN0,ERUN0,POLAKE,HLK1
+       INTEGER :: J_0,J_1,J_0H,J_1H,J_0S,J_1S,I_0H,I_1H,I_0,I_1
+       INTEGER I,J,ITYPE
++      REAL*8 plk_rec(40), plk_mwl0, plk_gml0, plk_tlake0, plk_mldlk0
+ #ifdef TRACERS_WATER
+       REAL*8, DIMENSION(NTM) :: TRUN0
+ #endif
+@@ -3074,6 +3075,10 @@
+         PLICE=FLICE(I,J)
+         PRCP=PREC(I,J)
+         ENRGP=EPREC(I,J)        ! energy of precipitation
++        plk_mwl0=MWL(I,J)
++        plk_gml0=GML(I,J)
++        plk_tlake0=TLAKE(I,J)
++        plk_mldlk0=MLDLK(I,J)
+ 
+ C**** calculate fluxes over whole box
+         RUN0 =POLAKE*PRCP  + PLKICE* RUNPSI(I,J) +
+@@ -3142,6 +3147,34 @@
+ 
+ C**** save area diag
+         AIJ(I,J,IJ_LK) = AIJ(I,J,IJ_LK) + FLAKE(I,J)
++
++        plk_rec=-1d300
++        plk_rec(1)=I
++        plk_rec(2)=J
++        plk_rec(3)=FLAKE(I,J)
++        plk_rec(4)=FLICE(I,J)
++        plk_rec(5)=RSI(I,J)
++        plk_rec(6)=PRCP
++        plk_rec(7)=ENRGP
++        plk_rec(8)=RUNPSI(I,J)
++        plk_rec(9)=atmgla%RUNO(I,J)
++        plk_rec(10)=MELTI(I,J)
++        plk_rec(11)=EMELTI(I,J)
++        plk_rec(12)=AXYP(I,J)
++        plk_rec(13)=plk_mwl0
++        plk_rec(14)=plk_gml0
++        plk_rec(15)=plk_tlake0
++        plk_rec(16)=plk_mldlk0
++        plk_rec(17)=MWL(I,J)
++        plk_rec(18)=GML(I,J)
++        plk_rec(19)=TLAKE(I,J)
++        plk_rec(20)=MLDLK(I,J)
++        plk_rec(21)=DLAKE(I,J)
++        plk_rec(22)=GLAKE(I,J)
++        plk_rec(23)=GTEMP(I,J)
++        plk_rec(24)=GTEMP2(I,J)
++        plk_rec(25)=GTEMPR(I,J)
++        call ffdump_precip_lk(plk_rec,40)
+       END IF
+       END DO
+       END DO

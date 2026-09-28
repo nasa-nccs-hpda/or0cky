@@ -679,6 +679,34 @@ real code, not dead weight).
 **Scope, stated plainly:** `PRECIP_LK` (precip onto lake ice, `LAKES.f`, 139 lines, separate routine) is not yet
 instrumented/ported -- next in Stage 1.
 
+## D27 — PRECIP_LK (Stage 1 of the DYNSI/ocean port) vs real Fortran
+Second Stage 1 deliverable. New Fortran instrumentation (`LAKES_precip_lk.f.patch` + `ATM_DRV_precip_lk.f.patch`,
+applied after the D26 patches) dumps `PRECIP_LK`'s per-cell call (`SURFACE.f:322`, inside the `DO NS` loop, called
+every substep, not once per step). Reran all 3 real dates with the newly rebuilt binary; **found and fixed a real
+operational mistake along the way**: the second run silently executed zero steps because the FIRST run's own
+checkpointing had overwritten both `fort.1.nc` and `fort.2.nc` in the scratch run directory with the post-6-step
+state (GISS ModelE's double-buffered restart), so the "restart" file no longer held the original start time --
+caught because the timer table showed 0 trips for every routine, not by assuming success. Fixed by re-copying the
+untouched source restart files before every rerun. Confirmed the rebuild did not perturb `PRECIP_SI`'s own D26
+output (`ffw_*.bin` byte-identical to the pre-rebuild dumps).
+
+`fullfidelity/lakes_ff.py`'s new `precip_lk` is pure algebra (mass/energy bookkeeping for the lake reservoir plus
+land-ice/sea-ice runoff and lake-ice melt, reusing `RHOW`/`SHW`/`TF` already defined) -- no new physics helpers
+needed, unlike D26. `lakes_core_jax.py`'s batched version computes the `flake>0` and `flake<=0` branches for every
+lane and merges with `jnp.where`.
+
+Validated on **17,040 real lake/land-ice cells** (6 steps x 3 dates, ~950-1000/step): `mwl`/`gml`/`tlake`/`mldlk`/
+`dlake`/`glake` **bitwise exact (0.0 error)** on all cells (both plain-Python and JAX); `gtemp`/`gtemp2`/`gtempr`
+bitwise exact on the 10,932 `flake>0` cells where they are genuinely computed -- the `flake<=0` (land-ice-only)
+pass-through case (6,108 cells) is correct by inspection (a bare return of the given value) but not independently
+checked, since this dump does not separately capture the pre-call `gtemp`/`gtemp2`/`gtempr` (documented, not
+hidden, in `precip_lk_compare.py`'s module docstring). Non-vacuous: 10,932 `flake>0` cells, 6,108 land-ice-only
+cells, real lake-ice melt (`MELTI!=0`) on several hundred cells. Tests: `fullfidelity/tests/test_precip_lk_jax.py`
+(6, incl. jit-equivalence and a mutation check).
+**Scope, stated plainly:** `IRRIG_LK` (irrigation withdrawal, 128 lines, real for this rundeck -- `IRRIGATION_ON`
+is defined) and `PRECIP_LI` (land-ice precip, 146 lines), both called immediately before `PRECIP_LK` in the same
+`SURFACE.f` block, are not yet instrumented/ported.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

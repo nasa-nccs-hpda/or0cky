@@ -463,3 +463,13 @@ and JAX ports both match real Fortran at float64 rounding level on all 13,572 re
 one NameError (forgot to unpack mice2/mice3). Only one genuinely new helper needed (Fi, ~20 lines); everything
 else reused already-ported SEAICE.f functions. Reran the full sea-ice (33) and GHY test suites to confirm no
 regression. New dump files (ffw_*.bin) copied into the shared ff_data/ directory alongside the existing dumps.
+
+## 2026-09-28 (night): D27 -- PRECIP_LK ported; caught a real operational mistake
+Added PRECIP_LK instrumentation, rebuilt, reran all 3 dates -- second run silently did ZERO steps because the
+first run's own checkpointing overwrote both fort.1.nc and fort.2.nc in the run directory with the post-run state
+(GISS ModelE double-buffers restart writes across both files). Caught this from the timer table showing 0 trips
+for every routine, not by trusting "Terminated normally". Fixed by re-copying fresh restart files from the
+untouched source before every rerun -- worth remembering for any future multi-run cycle in a shared scratch
+directory. Confirmed the rebuild didn't perturb PRECIP_SI's own D26 dumps (byte-identical). precip_lk itself was
+pure bookkeeping (bitwise-exact both ports, no new physics helpers) -- the real cost of this increment was the
+run-directory mistake, not the port.

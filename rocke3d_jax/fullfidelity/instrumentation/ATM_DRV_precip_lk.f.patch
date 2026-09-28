@@ -1,0 +1,35 @@
+--- ATM_DRV.f.orig	2026-09-28 17:53:17.278313786 -0400
++++ ATM_DRV.f	2026-09-28 17:43:01.056061594 -0400
+@@ -2494,3 +2494,32 @@
+       endif
+       write(fu) rec
+       end subroutine ffdump_precsi
++
++      subroutine ffdump_precip_lk(rec,nrec)
++!@sum full-fidelity-port instrumentation: PRECIP_LK record (Stage 1, ice dynamics)
++      use model_com, only : itime
++      implicit none
++      integer :: nrec
++      real*8 :: rec(nrec)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=985
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffv_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) rec
++      end subroutine ffdump_precip_lk
