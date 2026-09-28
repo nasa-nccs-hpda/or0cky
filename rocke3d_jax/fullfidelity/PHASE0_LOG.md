@@ -408,3 +408,7 @@ Accumulation identities verified with 0.0 error (ice-tile f0dt/f1dt/evap summed 
 sum srheat*dtsurf; lake fodt/evapo/srox from open-water tile accumulators). Chained both stages on our two-substep results;
 outputs match the recorded-input baseline (lakes 2.5e-11 relative). One test-harness detail: fully ice-covered lake cells have
 no open-water tile (accumulators default to 0).
+
+## 2026-09-28 (night): D21 -- lake ADDICE chained
+ADDICE lake inputs are exactly LKSOURC outputs + GROUND_SI final state (0.0 error). Chained on our results: outputs <= 8.6e-14
+relative. The lake-side surface chain is now complete on our own numbers up to FORM_SI.

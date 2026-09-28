@@ -259,7 +259,7 @@ def ground_si_stage(dd, it, state=None):
     return in_err, errs(out2), errs(run(rec)), dict(rec=rec, out={k: np.asarray(v) for k, v in out2.items()})
 
 
-def ground_lk_stage(dd, it, state, gs):
+def ground_lk_stage(dd, it, state, gs, return_arrays=False):
     """Once-per-step GROUND_LK (SURFACE.f:1232) fed by OUR chain: open-lake accumulators fodt/evapo/srox(1) from the two
     substeps' open-water tile outputs, ice-lake fluxes run0/fidt/srox(2) from our chained GROUND_SI outputs. Lake state
     (mlake/elake, incl. land runoff already added by GROUND_LK itself), roice, fsr2, hlake stay recorded. Returns
@@ -300,7 +300,44 @@ def ground_lk_stage(dd, it, state, gs):
     rec2 = np.array(rec)
     for q, nm in enumerate(order):
         rec2[:, cols[nm]] = mine[:, q]
-    return in_err, errs(run(rec2)), errs(run(rec))
+    out2 = run(rec2)
+    if return_arrays:
+        return in_err, errs(out2), errs(run(rec)), dict(rec=rec, src={k: np.asarray(v) for k, v in out2["src"].items()})
+    return in_err, errs(out2), errs(run(rec))
+
+
+def form_si_lake_stage(dd, it, gs, lk):
+    """FORM_SI/ADDICE (D12/D14) for the lake cells after GROUND_LK: sea-ice state from OUR chained GROUND_SI (where the
+    cell had an ice record, else the recorded state), frazil fluxes enrgfo/acefo/acefi/enrgfi from OUR chained LKSOURC.
+    Ocean cells need the ocean model's fluxes and stay out. Returns (input errors, output errors, baseline errors)."""
+    import addice_compare as AD
+    import seaice_core_jax as J
+    ffn = AD.load(f"{dd}/ffn_{it}.bin")
+    rec = ffn[ffn[:, 2] == 0]
+    gmap = {(int(x[0]), int(x[1])): q for q, x in enumerate(gs["rec"])}
+    lmap = {(int(x[0]), int(x[1])): q for q, x in enumerate(lk["rec"])}
+    new = np.array(rec)
+    for q, x in enumerate(rec):
+        k = (int(x[0]), int(x[1]))
+        g = gmap.get(k)
+        if g is not None:
+            new[q, 3] = gs["out"]["snow"][g]; new[q, 5:9] = gs["out"]["hsil"][g]
+            new[q, 9:13] = gs["out"]["ssil"][g]; new[q, 13] = gs["out"]["msi2"][g]
+        l_ = lmap[k]
+        new[q, 14] = lk["src"]["enrgfo"][l_]; new[q, 17] = lk["src"]["acefo"][l_]
+        new[q, 15] = lk["src"]["acefi"][l_]; new[q, 16] = lk["src"]["enrgfi"][l_]
+    in_err = dict(state=float(np.abs(new[:, 3:14] - rec[:, 3:14]).max()), fluxes=float(np.abs(new[:, 14:18] - rec[:, 14:18]).max()))
+
+    def run(r):
+        a = lambda c: jnp.asarray(r[:, c])
+        return J.addice(a(3), a(4), jnp.asarray(r[:, 5:9]), jnp.asarray(r[:, 9:13]), a(13), a(14), a(17), a(15), a(16),
+                        a(18), a(19), a(20), a(21) > 0.5)
+    ref = dict(snow=rec[:, 22], roice=rec[:, 23], hsil=rec[:, 24:28], ssil=rec[:, 28:32], msi2=rec[:, 32],
+               dmimp=rec[:, 33], dhimp=rec[:, 34], dsimp=rec[:, 35])
+
+    def errs(o):
+        return {k: float(np.max(np.abs(np.asarray(o[k]) - ref[k]) / np.maximum(np.abs(ref[k]), 1e-6))) for k in ref}
+    return in_err, errs(run(new)), errs(run(rec))
 
 
 if __name__ == "__main__":

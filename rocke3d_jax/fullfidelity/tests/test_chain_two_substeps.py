@@ -112,3 +112,16 @@ def test_mutation_missing_second_substep_is_detected():
     r2["tile"] = tile; st["r2"] = r2
     in_err, out, base, _ = T2.ground_si_stage(f"{FF}/{d}", it, st)
     assert in_err["f0dt"] > 1e3
+
+
+@pytest.mark.parametrize("d,it", CASES)
+def test_lake_addice_after_ground_lk_matches_real(d, it):
+    """FORM_SI/ADDICE for lake cells on OUR chained GROUND_SI state and OUR chained LKSOURC frazil fluxes."""
+    st = _full(d, it)[2]
+    gs = _gs_stage(d, it)[3]
+    lk = T2.ground_lk_stage(f"{FF}/{d}", it, st, gs, return_arrays=True)[3]
+    in_err, out, base = T2.form_si_lake_stage(f"{FF}/{d}", it, gs, lk)
+    assert in_err["state"] < 1e-3 and in_err["fluxes"] < 1e-3
+    for k, v in out.items():
+        assert v < 1e-9, (k, v)
+    assert np.abs(lk["src"]["acefo"]).max() > 0 or np.abs(lk["src"]["acefi"]).max() > 0   # non-vacuous: frazil ice forms
