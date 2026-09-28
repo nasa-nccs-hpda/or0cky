@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pbl_ff as P, pbl_compare as PC, surface_tile_ff as S, ice_props_ff as I
 
 
-def run_chain(pbl_rec, tile_rec):
+def run_chain(pbl_rec, tile_rec, return_pbl=False):
     """pbl_rec: (N,154) PBL calls for itype<=2 in call order; tile_rec: (N,90) matching tile records."""
     assert np.array_equal(pbl_rec[:, [0, 1, 2]], tile_rec[:, [0, 1, 2]]), "PBL/tile record order mismatch"
     out = PC.run(pbl_rec)
@@ -25,4 +25,5 @@ def run_chain(pbl_rec, tile_rec):
     ddml = pbl_rec[:, 23] > 0.5
     d["tprime"] = jnp.asarray(np.where(ddml, pbl_rec[:, 25] - pbl_rec[:, 7], 0.0))
     d["qprime"] = jnp.asarray(np.where(ddml, pbl_rec[:, 26] - pbl_rec[:, 39], 0.0))
-    return S.tile_fluxes(d)
+    res = S.tile_fluxes(d)
+    return (res, out) if return_pbl else res

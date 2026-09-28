@@ -482,6 +482,37 @@ nothing else) never reproduced it. The exact JAX-internal mechanism wasn't chase
 the isolated repro, and the 36x post-fix speedup are consistent enough that the practical outcome
 (correct precision, fast tests) is what matters here.
 
+## D18 — Tile outputs -> aggregation -> ATURB, as a real composition (`chain_aggregate_aturb.py`)
+The SURFACE.f per-substep chain had one link no earlier row checked *as a composition*: D4 fed ATURB the
+model's own recorded entry fluxes, D6 stopped at the ocean/ice tile outputs, and D11 aggregated recorded
+per-tile fields. `fullfidelity/chain_aggregate_aturb.py` closes it. Ocean and sea-ice patch fields
+(uflux1, vflux1, dth1, dq1, tsavg, qsavg) come from **our** PBL `advanc` + tile-flux chain (D5/D6, no recorded
+PBL or tile outputs), are aggregated by **our** `tile_aggregate_ff.aggregate` together with the **recorded**
+land-ice and land patches (land is dump-fed for the same reason as D9: Ent is not ported), converted to the
+ATURB arrays as SURFACE.f:1091-1092 does (`tflux1=-dth1*MA(1)/dtsurf`, `qflux1=-dq1*MA(1)/dtsurf`, U/V/ts/qs
+pass-through), and run through **our** `aturb_ff`/`aturb_uv_ff`. Result vs the real ATURB exit state:
+3 dates x 2 NIsurf substeps, ~3,340-3,490 chained ocean+ice tiles per substep, all 3,170 cells.
+
+| Field | max abs error (worst of 6 runs) | Fortran change (RMS) | recorded-flux baseline (D4-style) |
+|---|---|---|---|
+| T (K) | 7.4e-13 | 3.4e-3 to 4.4e-3 | 6.3e-13 |
+| Q | 2.2e-14 | ~2e-5 | 7e-18 |
+| TKE e | 2.2e-11 | ~9e-2 | 5e-15 |
+| PBL height (m) | 2.2e-9 | — | 9e-13 |
+| U, V (m/s) | 1.0e-11 | 6e-2 to 9e-2 | 1.4e-14 |
+| UA, VA (m/s) | 6.1e-12 | ~5e-2 | 7e-15 |
+
+Errors are 8+ orders below the signal; the chained-vs-baseline gap comes only from the ~1e-13 relative
+differences in our tile fluxes (D6), amplified slightly by ATURB's PBL-top search (PBL height, TKE).
+Verified exactly (0.0 error on every cell): the conversion identities against the recorded ATURB entry
+arrays, and aggregation reproducing the recorded composite. Mutation checks: 0.1% error in `tflux1` moves T
+by >1e3x the pass error; dropping the land patch from the aggregation is clearly visible.
+Tests: `tests/test_chain_aggregate_aturb.py`. Small change to a validated file: `surface_chain_ff.run_chain`
+gained an optional `return_pbl` flag (default unchanged) so callers can also get PBL's `tsv`/`qsrf`.
+**Scope, stated plainly:** land-ice and land patches are recorded (land-ice's own tile flux is validated in
+D7 but was not re-run here; land needs Ent). This validates the chain for the ocean/ice share of the composite,
+and the aggregation-and-conversion formulas for all four patches.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

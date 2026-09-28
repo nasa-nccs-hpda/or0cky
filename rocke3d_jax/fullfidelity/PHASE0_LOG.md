@@ -382,3 +382,12 @@ that NIsurf sub-stepping already matches Track A's own NIsurf loop in `p2saom40_
 FULL_FIDELITY_PLAN.md's chained-driver section with the corrected order and exact line numbers.
 Remaining before assembly: the `ipatch`<->`(I,J)` mapping for land ice, and the PBL_ARGS/tile-fraction
 data flow between PBL and each SURFACE tile call.
+
+## 2026-09-28 (late): D18 composition link built; shared checkout switched to main
+Found the shared checkout on `main` (reflog: `checkout: moving from full-fidelity-port to main`, not done by me);
+all my commits were intact and pushed, so continued in a separate git worktree (`dev/ff_worktree`) rather than
+switch the checkout back under whoever moved it. Traced the SURFACE.f code between tile aggregation and ATURB
+("UPDATE FIRST LAYER QUANTITIES"): a pure algebraic map (`tflux1=-dth1*MA1/dtsurf`, `qflux1=-dq1*MA1/dtsurf`),
+verified with 0.0 error against the recorded ATURB entry arrays. Built `chain_aggregate_aturb.py`: our PBL+ocean/ice
+tile chain -> our aggregation (recorded land-ice/land) -> our ATURB vs the real exit state; roundoff-level agreement on
+3 dates x 2 substeps (D18). Not yet: land-ice tile from our own code in the composite, land/Ent, the lax.scan driver.

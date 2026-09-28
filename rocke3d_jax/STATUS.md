@@ -805,6 +805,12 @@ Track A's Round 2 optimization did. That wiring, plus GPU access, are what would
 5-8. GPU numbers for Track B (stages 6 and 8) cannot be produced without GPU hardware -- this is a
 hard blocker, not a scoping choice, and should not be estimated or guessed at.
 
+**2026-09-28, later (D18)**: the first genuine multi-module composition beyond D6 now exists: our PBL + ocean/ice
+tile fluxes -> our tile aggregation (land-ice/land recorded) -> our ATURB reproduces the real ATURB exit state at
+roundoff (T 7e-13 K vs 4e-3 K signal; U/V 1e-11 m/s vs 9e-2) on 3 dates x 2 substeps
+(`fullfidelity/chain_aggregate_aturb.py`). Scoping also closed: land-ice is trivial for P2SAoM40 (NHC=1) and ocean/ice
+PBL data flow was already validated by D6, so what remains for the chained driver is assembly, plus the Ent blocker for land.
+
 **2026-09-28 update**: scoped the chained-driver integration by tracing the real per-cell call order
 against the persistent (non-scratch) source tree, line-precisely — confirmed all 7 steps (ocean/ice
 tiles, land ice, EARTH/GHY, tile aggregation, ATURB, GROUND_SI, GROUND_LK) live in one Fortran
