@@ -323,9 +323,473 @@ def hydra(static, theta, fice):
     return dict(h=h, d=d, xku=xku, xkus=xkus, xkusa=xkusa, xk=xk)
 
 
-def retp(static, w, ht):
+def evap_limits(static, w, theta, d, tp, fice, tsn1, nsn, wsn, fr_snow, dt, pr, betadl, cnc, ch, vs, rho,
+                pres, qs, gusti, qprime, qm1, lai, fm):
+    """GHY.f evap_limits(compute_evap=True) -- the only call site in advnc() always passes True, so
+    that is the only path implemented. Returns a dict with everything the flux chain needs:
+    evapb/evapbs/evapvw/evapvd/evapvs/evapvg (N,), evap_min(N,), devapbs_dt/devapvs_dt(N,),
+    evapdl(N,NGM), betad/abetad/acna/acnc(N,), evap_max_out/fr_sat(N,)."""
+    n = static['n']; kmask = static['kmask']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    fb, fv = static['fb'], static['fv']
+    dz = static['dz']; thetm = static['thetm'][:, 1:, :]
+    dt_safe = jnp.where(dt == 0.0, 1.0, dt)
+
+    w_soil = w[:, 1:, :]
+    evap_max_terms = jnp.where(kmask[:, :, None], (w_soil - dz[:, :, None] * thetm) / dt_safe[:, None, None], 0.0)
+    evap_max = jnp.sum(evap_max_terms, axis=1)                          # (N,2)
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    evap_max = jnp.where(ibv_active, evap_max, 0.0)
+
+    lsn_idx = jnp.arange(NLSN)[None, :, None]
+    lsn_mask = lsn_idx < nsn[:, None, :]
+    evap_max_snow = pr[:, None] + jnp.sum(jnp.where(lsn_mask, wsn, 0.0), axis=1) / dt_safe[:, None]
+    evap_max_snow = jnp.where(ibv_active, evap_max_snow, 0.0)
+
+    dz0 = dz[:, 0]; dz0_safe = jnp.where(dz0 == 0.0, 1.0, dz0)
+    d1 = d[:, 1, :]; theta1 = theta[:, 1, :]; thetm1 = thetm[:, 0, :]
+    evap_max_wet0 = evap_max[:, 0] + pr
+    evap_max_dry0 = jnp.minimum(evap_max[:, 0],
+                                2.467 * d1[:, 0] * (theta1[:, 0] - thetm1[:, 0]) / dz0_safe + pr)
+    evap_max_wet0 = jnp.where(process_bare, evap_max_wet0, 0.0)
+    evap_max_dry0 = jnp.where(process_bare, evap_max_dry0, 0.0)
+
+    cna = ch * vs
+    evap_max_vegsoil = jnp.minimum(evap_max[:, 1],
+                                   2.467 * d1[:, 1] * (theta1[:, 1] - thetm1[:, 1]) / dz0_safe + pr)
+    evap_max_vegsoil = jnp.where(process_vege, evap_max_vegsoil, 0.0)
+    evap_max_wet1 = jnp.where(process_vege, w[:, 0, 1] / dt_safe, 0.0)
+
+    betad_raw = jnp.sum(jnp.where(kmask, betadl, 0.0), axis=1)
+    betad = jnp.where(betad_raw < 1e-12, 0.0, betad_raw)
+    betad = jnp.where(process_vege, betad, 0.0)
+    abetad = betad
+    acna = jnp.where(process_vege, cna, 0.0)
+    acnc = jnp.where(process_vege, cnc, 0.0)
+    betat = cnc / (cnc + cna + 1e-12)
+    tp01 = tp[:, 0, 1]
+    pot_evap_can = betat * (rho / RHOW) * ch * (vs * (qsat(tp01 + TFRZ, LHE, pres) - qs) - gusti * qprime)
+
+    betad_safe = jnp.where(betad == 0.0, 1.0, betad)
+    dry_terms = jnp.minimum(pot_evap_can[:, None] * betadl / betad_safe[:, None],
+                            (w_soil[:, :, 1] - dz * thetm[:, :, 1]) / dt_safe[:, None])
+    dry_terms = jnp.where(kmask, dry_terms, 0.0)
+    cond_dry = (betad > 0.0) & (pot_evap_can > 0.0) & process_vege
+    evap_max_dry1 = jnp.where(cond_dry, jnp.sum(dry_terms, axis=1), 0.0)
+
+    fr_snow0, fr_snow1 = fr_snow[:, 0], fr_snow[:, 1]
+    theta01 = theta[:, 0, 1]
+    evap_max_sat = fb * fr_snow0 * evap_max_snow[:, 0]
+    evap_max_nsat = fb * (1.0 - fr_snow0) * evap_max_dry0
+    vege_sat = fv * (fr_snow1 * fm * evap_max_snow[:, 1] + (1.0 - fr_snow1 * fm) * theta01 * evap_max_wet1)
+    vege_nsat = fv * ((1.0 - fr_snow1 * fm) * (1.0 - theta01) * evap_max_dry1)
+    evap_max_sat = evap_max_sat + jnp.where(process_vege, vege_sat, 0.0)
+    evap_max_nsat = evap_max_nsat + jnp.where(process_vege, vege_nsat, 0.0)
+    fr_sat = fb * fr_snow0 + jnp.where(process_vege, fv * (fr_snow1 * fm + (1.0 - fr_snow1 * fm) * theta01), 0.0)
+
+    qm1dt = .001 * qm1 / dt_safe
+    evap_min = -qm1dt
+    qb = qsat(tp[:, 1, 0] + TFRZ, LHE, pres)
+    qv = qsat(tp01 + TFRZ, LHE, pres)
+    qbs = qsat(tsn1[:, 0] + TFRZ, LHE, pres)
+    qvs = qsat(tsn1[:, 1] + TFRZ, LHE, pres)
+    qvg = qsat(tp[:, 1, 1] + TFRZ, LHE, pres)
+    rho3 = rho / RHOW
+    v_qprime = gusti * qprime
+    epb = rho3 * ch * (vs * (qb - qs) - v_qprime)
+    epbs = rho3 * ch * (vs * (qbs - qs) - v_qprime)
+    epv = rho3 * ch * (vs * (qv - qs) - v_qprime)
+    epvs = rho3 * ch * (vs * (qvs - qs) - v_qprime)
+    fw = theta01; fd = jnp.ones_like(fw)   # matches reth's fw,fd (GHY_FD_1_HACK -> fd always 1)
+    epv1 = epv * (1.0 - fw) / (fd + 1e-12)
+    ch_dense_veg = 0.01 * cna
+    eta = jnp.exp(-(lai))
+    ch_vg = ch * eta + ch_dense_veg * (1.0 - eta)
+    epvg = rho3 * ch_vg * (vs * (qvg - qs) - v_qprime)
+
+    evapb = jnp.where(process_bare, jnp.maximum(jnp.minimum(epb, evap_max_dry0), -qm1dt), 0.0)
+    evapbs = jnp.where(process_bare, jnp.maximum(jnp.minimum(epbs, evap_max_snow[:, 0]), -qm1dt), 0.0)
+
+    evapvw_raw = jnp.maximum(jnp.minimum(epv, evap_max_wet1), -qm1dt)
+    evapvd_raw = jnp.maximum(jnp.minimum(epv1, evap_max_dry1), 0.0)
+    evapvs_raw = jnp.maximum(jnp.minimum(epvs, evap_max_snow[:, 1]), -qm1dt)
+    evapvg_a = jnp.minimum(epvg, evap_max_vegsoil)
+    evapvg_b = jnp.minimum(evapvg_a, evap_max[:, 1] - evapvd_raw * fd)
+    evapvg_c = jnp.minimum(evapvg_b, epv - evapvd_raw * fd - evapvw_raw * fw)
+    evapvg_raw = jnp.maximum(evapvg_c, 0.0)
+    # GHY.f: "if evapvw<0: fw=1,fd=0" -- an fw/fd MUTATION that carries forward into every later
+    # substep method (drip_from_canopy, flg, flhg, runoff, fllmt, apply_fluxes all read self.fw/fd).
+    cond_wet_override = process_vege & (evapvw_raw < 0.0)
+    fw = jnp.where(cond_wet_override, 1.0, fw)
+    fd = jnp.where(cond_wet_override, 0.0, fd)
+    evapvw = jnp.where(process_vege, evapvw_raw, 0.0)
+    evapvd = jnp.where(process_vege, evapvd_raw, 0.0)
+    evapvs = jnp.where(process_vege, evapvs_raw, 0.0)
+    evapvg = jnp.where(process_vege, evapvg_raw, 0.0)
+
+    devapbs_dt = rho3 * cna * qsat(tsn1[:, 0] + TFRZ, LHE, pres) * dqsatdt(tsn1[:, 0] + TFRZ, LHE)
+    devapvs_dt = rho3 * cna * qsat(tsn1[:, 1] + TFRZ, LHE, pres) * dqsatdt(tsn1[:, 1] + TFRZ, LHE)
+
+    evapdl = jnp.where(kmask & (betad > 0.0)[:, None], evapvd[:, None] * betadl / betad_safe[:, None], 0.0)
+
+    return dict(evapb=evapb, evapbs=evapbs, evapvw=evapvw, evapvd=evapvd, evapvs=evapvs, evapvg=evapvg,
+                evap_min=evap_min, devapbs_dt=devapbs_dt, devapvs_dt=devapvs_dt, evapdl=evapdl,
+                betad=betad, abetad=abetad, acna=acna, acnc=acnc, evap_max_out=evap_max_nsat,
+                fr_sat=fr_sat, fw=fw, fd=fd)
+
+
+def sensible_heat(tp, tsn1, ts, vs, ch, rho, gusti, tprime):
+    """GHY.f sensible_heat (SNSH_VEG_GROUND not defined -> eta=0). Returns snshg,snshv,snshs (N,2),
+    dsnsh_dt (N,)."""
+    cna = ch * vs
+    v_tprime = gusti * tprime
+    snshg0 = SHA * rho * ch * (vs * (tp[:, 1, 0] - ts + TFRZ) - v_tprime)
+    snshg1 = SHA * rho * ch * (vs * (tp[:, 1, 1] - ts + TFRZ) - v_tprime) * 0.0   # eta=0
+    snshg = jnp.stack([snshg0, snshg1], axis=-1)
+    snshv1 = SHA * rho * ch * (vs * (tp[:, 0, 1] - ts + TFRZ) - v_tprime) * 1.0   # (1-eta)=1
+    snshv = jnp.stack([jnp.zeros_like(snshv1), snshv1], axis=-1)
+    snshs0 = SHA * rho * ch * (vs * (tsn1[:, 0] - ts + TFRZ) - v_tprime)
+    snshs1 = SHA * rho * ch * (vs * (tsn1[:, 1] - ts + TFRZ) - v_tprime)
+    snshs = jnp.stack([snshs0, snshs1], axis=-1)
+    dsnsh_dt = SHA * rho * cna
+    return dict(snshg=snshg, snshv=snshv, snshs=snshs, dsnsh_dt=dsnsh_dt)
+
+
+def drip_from_canopy(static, w, htpr, htprs, pr, prs, evapvw, fw, fm, fr_snow, fd0, dts, tp):
+    """GHY.f drip_from_canopy. Returns dripw,htdripw,drips,htdrips,dripw_scale (N,2)."""
+    process_vege = static['process_vege']
+    ws01 = static['ws'][:, 0, 1]
+    w01 = w[:, 0, 1]
+    snowf = jnp.where(htpr < 0.0, jnp.minimum(-htpr / FSN, pr), 0.0)
+    snowfs = jnp.where(htprs < 0.0, jnp.minimum(-htprs / FSN, prs), 0.0)
+
+    can_evap = evapvw * fw * (1.0 - fm * fr_snow[:, 1])
+    ptmps = jnp.maximum(prs - snowfs - can_evap, 0.0)
+    ptmp = pr - prs - (snowf - snowfs)
+    pr_dry0 = fd0 * ptmps
+    wc_add0 = ws01 - w01
+    wc_new0 = w01 + jnp.minimum(pr_dry0 * dts, wc_add0)
+    ws01_safe = jnp.where(ws01 == 0.0, 1.0, ws01)
+    fw_new = jnp.where(ws01 > 1e-12, _safe_div(wc_new0, ws01) ** (2.0 / 3.0), 0.0)
+    fd_new = 1.0 - fw_new
+    dts_safe = jnp.where(dts == 0.0, 1.0, dts)
+    dr_scale = ptmps - (wc_new0 - w01) / dts_safe
+    tau_storm = 3600.0
+    f_prev_wet = 1.0 - (dts / tau_storm)
+    pr_dry1 = jnp.where(fw_new > PRFR, (1.0 - f_prev_wet) * fd_new * ptmp,
+                        (1.0 - f_prev_wet * fw_new / PRFR) * fd_new * ptmp)
+    wc_add1 = (1.0 - f_prev_wet) * PRFR * (ws01 - wc_new0)
+    wc_new1 = wc_new0 + jnp.minimum(pr_dry1 * dts, wc_add1)
+    dr = ptmp - (wc_new1 - w01) / dts_safe
+    dr = jnp.minimum(dr, pr - snowf - can_evap)
+    dr = jnp.maximum(dr, pr - snowf - can_evap - (ws01 - w01) / dts_safe)
+    dr = jnp.maximum(dr, 0.0)
+
+    dripw1 = jnp.where(process_vege, dr, 0.0)
+    dripw_scale1 = jnp.where(process_vege, dr_scale, 0.0)
+    htdripw1 = jnp.where(process_vege, SHW * dr * jnp.maximum(tp[:, 0, 1], 0.0), 0.0)
+    drips1 = jnp.where(process_vege, snowf, 0.0)
+    htdrips1 = jnp.where(process_vege, jnp.minimum(htpr, 0.0), 0.0)
+
+    drips0 = snowf
+    htdrips0 = jnp.minimum(htpr, 0.0)
+    dripw0 = pr - drips0
+    dripw_scale0 = prs - snowfs
+    htdripw0 = htpr - htdrips0
+
+    dripw = jnp.stack([dripw0, dripw1], axis=-1)
+    htdripw = jnp.stack([htdripw0, htdripw1], axis=-1)
+    drips = jnp.stack([drips0, drips1], axis=-1)
+    htdrips = jnp.stack([htdrips0, htdrips1], axis=-1)
+    dripw_scale = jnp.stack([dripw_scale0, dripw_scale1], axis=-1)
+    return dict(dripw=dripw, htdripw=htdripw, drips=drips, htdrips=htdrips, dripw_scale=dripw_scale)
+
+
+def fl(static, h, xk):
+    """GHY.f fl (soil moisture diffusion flux). f uses the OFFSET convention (position j = Fortran
+    f(j+1)), size (N,NGM+1,2); position 0 is a placeholder filled in later by flg(). Returns f, xinfc."""
+    n = static['n']; zc = static['zc']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    N = h.shape[0]
+    k_range = jnp.arange(2, NGM + 1)          # Fortran k=2..NGM
+    pos = k_range - 1                          # offset position (=k-1), values 1..NGM-1
+    xk_k = xk[:, k_range, :]
+    h_km1 = h[:, k_range - 1, :]
+    h_k = h[:, k_range, :]
+    zc_km2 = zc[:, k_range - 2]; zc_km1 = zc[:, k_range - 1]
+    denom = zc_km2 - zc_km1
+    denom_safe = jnp.where(denom == 0.0, 1.0, denom)[:, :, None]
+    f_tail = -xk_k * (h_km1 - h_k) / denom_safe
+
+    f = jnp.zeros((N, NGM + 1, 2))
+    f = f.at[:, 1:NGM, :].set(f_tail)
+    pos_full = jnp.arange(NGM + 1)[None, :]
+    is_boundary = pos_full == n[:, None]
+    beyond = pos_full > n[:, None]
+    f = jnp.where(is_boundary[:, :, None], 0.0, f)
+    f = jnp.where(beyond[:, :, None], 0.0, f)
+    f = jnp.where(ibv_active[:, None, :], f, 0.0)
+
+    zc0 = zc[:, 0]
+    xinfc = xk[:, 1, :] * h[:, 1, :] / zc0[:, None]
+    return dict(f=f, xinfc=xinfc)
+
+
+def flh(static, xkhm, tp, f, geothermal_heat):
+    """GHY.f flh (soil heat diffusion + upwind advection). fh: same OFFSET convention as f."""
+    n = static['n']; zc = static['zc']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    N = tp.shape[0]
+    k_range = jnp.arange(2, NGM + 1)
+    pos = k_range - 1
+    xkhm_k = xkhm[:, k_range, :]
+    tp_km1 = tp[:, k_range - 1, :]
+    tp_k = tp[:, k_range, :]
+    zc_km2 = zc[:, k_range - 2]; zc_km1 = zc[:, k_range - 1]
+    denom = zc_km2 - zc_km1
+    denom_safe = jnp.where(denom == 0.0, 1.0, denom)[:, :, None]
+    val = -xkhm_k * (tp_km1 - tp_k) / denom_safe
+    f_km1 = f[:, pos, :]
+    upwind = jnp.where(f_km1 > 0.0, f_km1 * tp_k * SHW, f_km1 * tp_km1 * SHW)
+    val = val + upwind
+
+    fh = jnp.zeros((N, NGM + 1, 2))
+    fh = fh.at[:, 1:NGM, :].set(val)
+    pos_full = jnp.arange(NGM + 1)[None, :]
+    is_boundary = pos_full == n[:, None]
+    beyond = pos_full > n[:, None]
+    fh = jnp.where(is_boundary[:, :, None], geothermal_heat[:, None, None], fh)
+    fh = jnp.where(beyond[:, :, None], 0.0, fh)
+    fh = jnp.where(ibv_active[:, None, :], fh, 0.0)
+    return dict(fh=fh)
+
+
+def flg(static, f, flmlt, flmlt_scale, dripw, drips, evapb, evapvg, fr_snow, pr, evapvw, evapbs,
+       evapvs, evapvd, fw, fd, fm):
+    """GHY.f flg. Fills the OFFSET position 0 (Fortran f(1)) of `f`, plus canopy flux `fc`(N,2) and
+    evap_tot(N,2). irrig is always 0 in this rundeck (ghy_ref hardcodes self.irrig=zeros in __init__
+    regardless of the forcing dict's irrig value -- dead input, not used, so omitted here)."""
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    f0_bare = (-flmlt[:, 0] * fr_snow[:, 0] - flmlt_scale[:, 0]
+              - (dripw[:, 0] - evapb) * (1.0 - fr_snow[:, 0]))
+    f0_vege = (-flmlt[:, 1] * fr_snow[:, 1] - flmlt_scale[:, 1]
+              - (dripw[:, 1] - evapvg) * (1.0 - fr_snow[:, 1]))
+    f0 = jnp.stack([jnp.where(process_bare, f0_bare, f[:, 0, 0]),
+                    jnp.where(process_vege, f0_vege, f[:, 0, 1])], axis=-1)
+    f = f.at[:, 0, :].set(f0)
+
+    fc0 = jnp.where(process_vege, -pr + evapvw * fw * (1.0 - fm * fr_snow[:, 1]), 0.0)
+    fc1 = jnp.where(process_vege, -dripw[:, 1] - drips[:, 1], 0.0)
+    fc = jnp.stack([fc0, fc1], axis=-1)
+
+    evap_tot0 = evapb * (1.0 - fr_snow[:, 0]) + evapbs * fr_snow[:, 0]
+    evap_tot1 = ((evapvw * fw + evapvd * fd) * (1.0 - fr_snow[:, 1] * fm)
+                + evapvs * fr_snow[:, 1] * fm + evapvg * (1.0 - fr_snow[:, 1]))
+    evap_tot = jnp.stack([evap_tot0, evap_tot1], axis=-1)
+    return dict(f=f, fc=fc, evap_tot=evap_tot)
+
+
+def runoff(static, w, f, xinfc, dripw, dripw_scale, evapb, evapvg, fr_snow, pr, xku, sl):
+    """GHY.f runoff. rnf(N,2), rnff(N,NGM,2) -- rnff uses the REDUCED convention (position j =
+    Fortran k=j+1), same alignment as kmask/thets, no extra padding slot (ghy_ref's own array has an
+    unused trailing slot from its dynamic n+1 sizing; nothing ever reads it)."""
+    n = static['n']; dz = static['dz']; ws = static['ws']; kmask = static['kmask']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    N = w.shape[0]
+    rosmp = 8.0
+
+    rnf_default = jnp.broadcast_to(pr[:, None], (N, 2))   # irrig always 0 in this rundeck
+
+    f1_conv0 = jnp.where(process_bare, -(dripw[:, 0] - evapb - dripw_scale[:, 0]), 0.0)
+    f1_conv1 = jnp.where(process_vege, -(dripw[:, 1] - evapvg - dripw_scale[:, 1]), 0.0)
+    f1_conv = jnp.stack([f1_conv0, f1_conv1], axis=-1)
+
+    w1 = w[:, 1, :]; ws1 = ws[:, 1, :]
+    satfrac = jnp.minimum(_safe_div(w1, ws1) ** rosmp, 0.6)
+    f0 = f[:, 0, :]
+    rnf_a = satfrac * jnp.maximum(-f0, 0.0)
+
+    water_down1 = jnp.maximum(0.0, -f1_conv)
+    safe1 = jnp.where(water_down1 <= 1e-30, 1.0, water_down1)
+    term1 = (1.0 - fr_snow) * (1.0 - satfrac) * water_down1 * jnp.exp(-xinfc * PRFR / safe1)
+    rnf_a = rnf_a + jnp.where(water_down1 > 1e-30, term1, 0.0)
+
+    water_down2 = jnp.maximum(-f0 - water_down1, 0.0)
+    safe2 = jnp.where(water_down2 <= 1e-30, 1.0, water_down2)
+    term2 = (1.0 - satfrac) * water_down2 * jnp.exp(-xinfc / safe2)
+    rnf_a = rnf_a + jnp.where(water_down2 > 1e-30, term2, 0.0)
+
+    rnf = jnp.where(ibv_active, rnf_a, rnf_default)
+
+    rnff = xku[:, 1:, :] * sl[:, None, None] * dz[:, :, None] / 100.0
+    rnff = jnp.where(kmask[:, :, None] & ibv_active[:, None, :], rnff, 0.0)
+    return dict(rnf=rnf, rnff=rnff)
+
+
+def flhg(static, fh, tp, fhsng, fhsng_scale, htdripw, htdrips, evapb, evapvg, evapvw, evapvd, snshg, snshv,
+        snshs, thrmsn, fr_snow, srht, trht, htpr, fw, fd, fm):
+    """GHY.f flhg. Takes the `fh` array flh() built (position 0 still a placeholder there, since flh()
+    runs before flhg() in advnc()'s real order) and fills OFFSET position 0 (Fortran fh(1)), returning
+    the merged fh -- same pattern as flg() merging into `f`. Also returns canopy heat flux `fch`(N,2)
+    and thrm_tot/snsh_tot(N,2)."""
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    thrm_can = STBO * (tp[:, 0, 1] + TFRZ) ** 4
+    thrm_soil0 = STBO * (tp[:, 1, 0] + TFRZ) ** 4
+    thrm_soil1 = STBO * (tp[:, 1, 1] + TFRZ) ** 4
+
+    fh0_bare = (-fhsng[:, 0] * fr_snow[:, 0] - fhsng_scale[:, 0]
+               + (-htdripw[:, 0] + evapb * (ELH + SHV * tp[:, 1, 0]) + snshg[:, 0]
+                  + thrm_soil0 - srht - trht) * (1.0 - fr_snow[:, 0]))
+    fh0_vege = (-fhsng[:, 1] * fr_snow[:, 1] - fhsng_scale[:, 1]
+               + (-htdripw[:, 1] + evapvg * (ELH + SHV * tp[:, 1, 1]) + snshg[:, 1]
+                  + thrm_soil1 - thrm_can) * (1.0 - fr_snow[:, 1]))
+    fh0 = jnp.stack([jnp.where(process_bare, fh0_bare, fh[:, 0, 0]),
+                    jnp.where(process_vege, fh0_vege, fh[:, 0, 1])], axis=-1)
+    fh = fh.at[:, 0, :].set(fh0)
+    snsh_vapor10 = jnp.where(process_bare, evapb * SHV * tp[:, 1, 0], 0.0)
+    snsh_vapor11 = jnp.where(process_vege, evapvg * SHV * tp[:, 1, 1], 0.0)
+
+    fch0 = jnp.where(process_vege,
+                     (-htpr + (evapvw * (ELH + SHV * tp[:, 0, 1]) * fw + snshv[:, 1] + thrm_can
+                               - srht - trht + evapvd * (ELH + SHV * tp[:, 0, 1]) * fd)
+                      * (1.0 - fm * fr_snow[:, 1])), 0.0)
+    snsh_vapor01 = jnp.where(process_vege, (evapvw * fw + evapvd * fd) * SHV * tp[:, 0, 1], 0.0)
+    fch1 = jnp.where(process_vege,
+                     (-(thrm_can - thrm_soil1) * (1.0 - fr_snow[:, 1])
+                      - (thrm_can - thrmsn[:, 1]) * fr_snow[:, 1] * (1.0 - fm)
+                      - htdripw[:, 1] - htdrips[:, 1]), 0.0)
+    fch = jnp.stack([fch0, fch1], axis=-1)
+
+    thrm_tot0 = thrm_soil0 * (1.0 - fr_snow[:, 0]) + thrmsn[:, 0] * fr_snow[:, 0]
+    thrm_tot1 = thrm_can * (1.0 - fr_snow[:, 1] * fm) + thrmsn[:, 1] * fr_snow[:, 1] * fm
+    thrm_tot = jnp.stack([thrm_tot0, thrm_tot1], axis=-1)
+
+    snsh_tot0 = (snshg[:, 0] + snsh_vapor10) * (1.0 - fr_snow[:, 0]) + snshs[:, 0] * fr_snow[:, 0]
+    snsh_tot1 = ((snshv[:, 1] + snsh_vapor01) * (1.0 - fr_snow[:, 1] * fm)
+                + snshs[:, 1] * fr_snow[:, 1] * fm
+                + (snshg[:, 1] + snsh_vapor11) * (1.0 - fr_snow[:, 1]))
+    snsh_tot = jnp.stack([snsh_tot0, snsh_tot1], axis=-1)
+    return dict(fh=fh, fch=fch, thrm_tot=thrm_tot, snsh_tot=snsh_tot)
+
+
+def fllmt(static, w, f, rnff, rnf, evapdl, fr_snow, fm, dts):
+    """GHY.f fllmt (moisture-flux truncation to keep w within [thetm*dz, ws]). Mutates f, rnff, rnf.
+    Three passes, transcribed in order: (1) a top-down k=n..2 sequential recurrence (each step reads
+    the flux the previous step may have just written), (2) a fixed k=1 correction, (3) a k=1..n
+    while-loop (bounded by NGM, frozen once rnf>=0 per lane -- same technique as hydra's bisection
+    freeze and relayer_12's branch selection). Transcribed exactly as written, including the (odd but
+    faithful) use of fr_snow[1]/fm inside the bare (ibv=0) formula -- it is multiplied by evapdl,
+    which is always 0 for ibv=0, so it has no effect there, but is kept literal rather than "fixed"."""
+    n = static['n']; dz = static['dz']; ws = static['ws']; thetm = static['thetm']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    trunc = 0.0
+    dts_b = dts[:, None]
+    evapdl_full = jnp.stack([jnp.zeros_like(evapdl), evapdl], axis=-1)   # (N,NGM,2), position=k-1
+    fd_factor = (1.0 - fr_snow[:, 1] * fm)[:, None]
+
+    for k in range(NGM, 1, -1):
+        active_k = (k <= n)[:, None] & ibv_active
+        w_k = w[:, k, :]
+        f_k = f[:, k, :]; f_km1 = f[:, k - 1, :]; rnff_km1 = rnff[:, k - 1, :]
+        evd = evapdl_full[:, k - 1, :]
+        wn = w_k + (f_k - f_km1 - rnff_km1 - fd_factor * evd) * dts_b
+        ws_k = ws[:, k, :]; thetm_k = thetm[:, k, :]; dz_km1 = dz[:, k - 1][:, None]
+
+        cond1 = (wn - ws_k) > trunc
+        f_km1_a = jnp.where(cond1, f_km1 + (wn - ws_k + trunc) / dts_b, f_km1)
+        cond2 = (wn - dz_km1 * thetm_k) < trunc
+        rnff_km1_a = jnp.where(cond2, rnff_km1 + (wn - dz_km1 * thetm_k - trunc) / dts_b, rnff_km1)
+        cond3 = cond2 & (rnff_km1_a < 0.0)
+        f_km1_a = jnp.where(cond3, f_km1_a + rnff_km1_a, f_km1_a)
+        rnff_km1_a = jnp.where(cond3, 0.0, rnff_km1_a)
+
+        f = f.at[:, k - 1, :].set(jnp.where(active_k, f_km1_a, f_km1))
+        rnff = rnff.at[:, k - 1, :].set(jnp.where(active_k, rnff_km1_a, rnff_km1))
+
+    evd1 = evapdl_full[:, 0, :]
+    wn1 = w[:, 1, :] + (f[:, 1, :] - f[:, 0, :] - rnf - rnff[:, 0, :] - fd_factor * evd1) * dts_b
+    ws1 = ws[:, 1, :]; thetm1 = thetm[:, 1, :]; dz0 = dz[:, 0][:, None]
+    cond_a = (wn1 - ws1) > trunc
+    rnf = jnp.where(cond_a & ibv_active, rnf + (wn1 - ws1 + trunc) / dts_b, rnf)
+    cond_b = (wn1 - dz0 * thetm1) < trunc
+    rnf = jnp.where(cond_b & ibv_active, rnf + (wn1 - dz0 * thetm1 - trunc) / dts_b, rnf)
+
+    for k in range(1, NGM + 1):
+        active_lane = (rnf < 0.0) & (k <= n)[:, None] & ibv_active
+        if k > 1:
+            evdl = evapdl_full[:, k - 1, :]
+            dz_km1 = dz[:, k - 1][:, None]
+            f_k = f[:, k, :]; w_k = w[:, k, :]; thetm_k = thetm[:, k, :]
+            f_km1 = f[:, k - 1, :]; rnff_km1 = rnff[:, k - 1, :]
+            dflux = f_k + (w_k - dz_km1 * thetm_k) / dts_b - f_km1 - rnff_km1 - fd_factor * evdl
+            f_km1_new = f_km1 - rnf
+            rnf_new = rnf + jnp.minimum(-rnf, dflux)
+            f = f.at[:, k - 1, :].set(jnp.where(active_lane, f_km1_new, f_km1))
+            rnf = jnp.where(active_lane, rnf_new, rnf)
+        rnff_km1_cur = rnff[:, k - 1, :]
+        drnf = jnp.minimum(-rnf, rnff_km1_cur)
+        rnf2 = rnf + drnf
+        rnff_km1_new = rnff_km1_cur - drnf
+        rnf = jnp.where(active_lane, rnf2, rnf)
+        rnff = rnff.at[:, k - 1, :].set(jnp.where(active_lane, rnff_km1_new, rnff_km1_cur))
+    rnf = jnp.maximum(rnf, 0.0)
+    return dict(f=f, rnff=rnff, rnf=rnf)
+
+
+def apply_fluxes(static, w, ht, f, fh, fc, fch, rnf, rnff, tp, evapdl, fr_snow, fm, dts):
+    """GHY.f apply_fluxes. Returns updated w, ht (N,NGM+1,2)."""
+    n = static['n']; dz = static['dz']; ws = static['ws']; thetm = static['thetm']
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    kmask = static['kmask']
+    dts_b = dts[:, None]
+    evapdl_full = jnp.stack([jnp.zeros_like(evapdl), evapdl], axis=-1)
+    fd_factor = (1.0 - fr_snow[:, 1] * fm)[:, None]
+
+    w01 = w[:, 0, 1] + (fc[:, 1] - fc[:, 0]) * dts
+    ht01 = ht[:, 0, 1] + (fch[:, 1] - fch[:, 0]) * dts
+    w = w.at[:, 0, 1].set(jnp.where(process_vege, w01, w[:, 0, 1]))
+    ht = ht.at[:, 0, 1].set(jnp.where(process_vege, ht01, ht[:, 0, 1]))
+
+    w1 = w[:, 1, :] - rnf * dts_b
+    ht1 = ht[:, 1, :] - SHW * jnp.maximum(tp[:, 1, :], 0.0) * rnf * dts_b
+    w = w.at[:, 1, :].set(jnp.where(ibv_active, w1, w[:, 1, :]))
+    ht = ht.at[:, 1, :].set(jnp.where(ibv_active, ht1, ht[:, 1, :]))
+
+    k_idx = jnp.arange(1, NGM + 1)                    # Fortran k=1..NGM (direct positions)
+    w_k = w[:, k_idx, :]; f_k = f[:, k_idx, :]; f_km1 = f[:, k_idx - 1, :]; rnff_km1 = rnff[:, k_idx - 1, :]
+    evdl_k = evapdl_full[:, k_idx - 1, :]
+    w_new = w_k + (f_k - f_km1 - rnff_km1 - fd_factor[:, None, :] * evdl_k) * dts_b[:, None, :]
+    fh_k = fh[:, k_idx, :]; fh_km1 = fh[:, k_idx - 1, :]
+    ht_new = (ht[:, k_idx, :] + (fh_k - fh_km1 - SHW * jnp.maximum(tp[:, k_idx, :], 0.0) * rnff_km1)
+             * dts_b[:, None, :])
+    active_k = kmask[:, :, None] & ibv_active[:, None, :]
+    w = w.at[:, 1:, :].set(jnp.where(active_k, w_new, w[:, 1:, :]))
+    ht = ht.at[:, 1:, :].set(jnp.where(active_k, ht_new, ht[:, 1:, :]))
+
+    w = w.at[:, 0, 1].set(jnp.where((process_vege) & (w[:, 0, 1] < 0.0), 0.0, w[:, 0, 1]))
+
+    # final clamp: GHY.f loops `for ibv in (0,1)` here, NOT gated by process_bare/vege (unlike
+    # everything else in this function) -- an inactive ibv's stale w still gets clamped into
+    # [dz*thetm, ws], which is harmless (those bounds are static, computed identically either way)
+    # but must not be skipped to stay faithful to the real control flow.
+    dz_padded = jnp.concatenate([jnp.zeros((w.shape[0], 1)), dz], axis=1)[:, :, None]
+    w_clamped = jnp.clip(w, thetm * dz_padded, ws)
+    clamp_mask = jnp.concatenate([jnp.zeros((w.shape[0], 1), dtype=bool), kmask], axis=1)[:, :, None]
+    w = jnp.where(jnp.broadcast_to(clamp_mask, w.shape), w_clamped, w)
+    return dict(w=w, ht=ht)
+
+
+def retp(static, w, ht, wsn, hsn):
     """GHY.f retp. Returns tp(N,NGM+1,2), fice(N,NGM+1,2) -- k=0 valid only for ibv=1 (kk=1-ibv in
-    Fortran terms: bare starts at k=1, vegetated includes canopy k=0)."""
+    Fortran terms: bare starts at k=1, vegetated includes canopy k=0) -- and tsn1(N,2), the top
+    snow-layer temperature used by sensible_heat, NOT gated by process_bare/vege (ghy_ref's
+    `for ibv in range(i_bare,i_vege+1)` here still only fires for active ibv, so inactive stays 0;
+    tsn1 has its own condition on wsn[0,ibv] independent of ibv-activity in general)."""
     shc = static['shc']; kmask = static['kmask']    # kmask: (N,NGM) for k=1..n
     k_full_mask = jnp.concatenate([jnp.zeros((kmask.shape[0], 1), dtype=bool), kmask], axis=1)  # (N,NGM+1), k=1..n
     is_k0 = jnp.arange(k_full_mask.shape[1]) == 0
@@ -347,4 +811,11 @@ def retp(static, w, ht):
     fice = jnp.where(cond_ice, 1.0, jnp.where(cond_warm, 0.0, fice_partial))
     tp = jnp.where(active, tp, 0.0)
     fice = jnp.where(active, fice, 0.0)
-    return dict(tp=tp, fice=fice)
+
+    process_bare, process_vege = static['process_bare'], static['process_vege']
+    ibv_active = jnp.stack([process_bare, process_vege], axis=-1)
+    wsn0 = wsn[:, 0, :]; hsn0 = hsn[:, 0, :]
+    wsn0_safe = jnp.where(wsn0 == 0.0, 1.0, wsn0)
+    cond_tsn1 = (wsn0 > 1e-6) & ((hsn0 + wsn0 * FSN) < 0.0) & ibv_active
+    tsn1 = jnp.where(cond_tsn1, (hsn0 + wsn0 * FSN) / (wsn0_safe * SHI), 0.0)
+    return dict(tp=tp, fice=fice, tsn1=tsn1)

@@ -70,7 +70,8 @@ if __name__ == "__main__":
     static = build_static(batch)
     reth_out = J.reth(static, jnp.asarray(batch["w"]), jnp.asarray(batch["nsn"]), jnp.asarray(batch["wsn"]),
                       jnp.asarray(batch["fr_snow"]), jnp.asarray(batch["snowm"]))
-    retp_out = J.retp(static, jnp.asarray(batch["w"]), jnp.asarray(batch["ht"]))
+    retp_out = J.retp(static, jnp.asarray(batch["w"]), jnp.asarray(batch["ht"]), jnp.asarray(batch["wsn"]),
+                      jnp.asarray(batch["hsn"]))
     hydra_out = J.hydra(static, reth_out["theta"], retp_out["fice"])
     xklh_out = J.xklh(static, jnp.asarray(batch["w"]), retp_out["fice"], reth_out["theta"])
 
