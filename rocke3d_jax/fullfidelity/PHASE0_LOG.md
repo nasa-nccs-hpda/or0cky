@@ -439,3 +439,19 @@ Checked what carries exactly across a step boundary: GHY state and PBL land prof
 precip/dynamics/ocean act in between). Built run_land_multistep (4 substeps). Errors: state drifts slowly (2e-5 relative), flux errors
 amplify ~500x from recorded-state level then saturate at ~1e-5 K RMS. Also reported the fresh-start baseline so the amplification is
 attributed to carry-over, not to step-2 data.
+
+## 2026-09-28 (night): DYNSI + prognostic ocean scoped -- committed to full port
+User decision after D25: port DYNSI and the prognostic ocean too, not a reduced/mixed-layer approximation.
+Traced the real per-step order (PRECIP_SI/PRECIP_OC before SURFACE; DYNSI/UNDERICE/ocean-grid GROUND_SI/CALC_APRESS/
+OCEANS/FORM_SI/ADVSI in ocean_driver, right AFTER SURFACE in the same step, not "between steps" as first assumed).
+New finding: GROUND_SI/FORM_SI(ADDICE) run TWICE per step on two grids (atm-grid si_atm inside SURFACE, already
+chained D17-D24; ocean-grid si_ocn inside ocean_driver, not yet). Confirmed real, not cubed-sphere (Atm72x46);
+confirmed dead code: OTIDE=0 (tides never run), TRACERS_OCEAN and TRACERS_OceanBiology not defined (no ocean
+tracers, no obio) -- real prognostic ocean state here is just mass/heat/salt, not the full N-tracer machinery.
+Real subroutine-level line counts: ice-dynamics side (PRECIP_SI+PREC_SI+DYNSI+UNDERICE+CALC_APRESS+
+seaice_to_atmgrid+FORM_SI) ~1,460 lines, tractable, comparable to work already done; ocean numerical core
+(OCNDYN.f+OCNQUS+OCNKPP+OCNMESO_DRV/OCNTDMIX/OCNGM+OSTRAITS) ~19,000 lines at the file level (not yet read in
+detail or dead-code-excluded) -- bigger than the entire project to date. Written up in FULL_FIDELITY_PLAN.md
+Phase 5. PREC_SI already checked to need only one new helper (Fi, ~20 lines) beyond what D10/D14 already ported.
+Plan: Stage 1 (ice dynamics, closes the actual D25 gap) first, Stage 2 (ocean numerics) scoped in detail only
+after Stage 1, mirroring how radiation's GETSUR/RCOMPX were read before estimating further.

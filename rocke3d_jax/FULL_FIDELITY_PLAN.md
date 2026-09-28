@@ -510,11 +510,103 @@ first phase with genuine communication/stencil structure; decide sharding
 strategy (single-GPU is enough at 72×46×40) only after profiling.
 - Gate F2: 1-day run vs. Fortran, chaos-aware metrics.
 
-### Phase 5 — Stretch: ice dynamics and ocean (decision point)
-ICEDYN (3.7k) and the ocean GCM (≥12.5k: OCNDYN, KPP, GM, straits, …) are
-required for F3. Recommend **not committing now**; decide after Phase 4 based
-on what HQ's skepticism actually needs. A cheaper F3-lite is prescribed-SST /
-data-ocean from the restart.
+### Phase 5 — Ice dynamics and ocean — SCOPED 2026-09-28, COMMITTED (was "stretch, decision point")
+
+**Status change:** the 2026-09-24 estimate below (kept for history) recommended NOT committing to this and
+deciding later. User decision 2026-09-28, after D25 exposed that ice/lake/ocean state cannot be carried across
+DTsrc steps the way land's can (real precipitation/moist-convection, sea-ice dynamics, and the full ocean model
+all act on that state between steps): commit to the full faithful port, not a reduced ocean. This is now the
+largest single item in the project.
+
+**Why this is being done at all:** D25 (two-substep land chain) exposed that ice/lake/ocean state cannot be
+carried across DTsrc steps the way land's can, because real precipitation (moist convection), sea-ice dynamics
+and the ocean model all act on that state between one step's `SURFACE`/`GROUND_SI`/`GROUND_LK` and the next
+step's. User decision (2026-09-28): port these too, at the same rigor as everything else — not a reduced or
+approximate treatment. This is now the largest single item in the project, larger than everything done to date.
+
+### Real per-DTsrc-step call order (traced from `MODELE.f:315-340`, corrects the earlier "SURFACE ends the
+per-cell physics" framing)
+```
+call atm_phase1
+CALL PRECIP_SI(si_ocn, iceocn, atmice)   ! precip onto sea ice -- ocean-grid state (si_ocn), NOT si_atm
+CALL PRECIP_OC(atmocn, iceocn)           ! precip onto open ocean
+CALL SURFACE                             ! everything chained in D18-D25 (atm-grid si_atm GROUND_SI/GROUND_LK inside)
+call ocean_driver                        ! DYNSI, UNDERICE, GROUND_SI(ocean-grid!), CALC_APRESS, OCEANS, FORM_SI, ADVSI
+call atm_phase2
+```
+`ocean_driver` (`OCN_DRV.f:3-60`, real body is the `#else` branch of `#ifdef CUBED_SPHERE` — **not cubed-sphere
+here**, confirmed: rundeck uses `Atm72x46`/lat-lon, not `CUBED_SPHERE`) runs, in order: `seaice_to_atmgrid`,
+`DYNSI(atmice,iceocn,si_ocn)` (called once, not twice — the twice-call in the source is the dead
+`#ifdef CUBED_SPHERE` branch), `UNDERICE`, `GROUND_SI(si_ocn,...)`, `CALC_APRESS`, `OCEANS`, `FORM_SI`,
+`seaice_to_atmgrid` (again), `ADVSI`, `SI_diags`.
+
+**Real, new finding: `GROUND_SI`/`FORM_SI`(=ADDICE) are called TWICE per step, on two grids.** Once inside
+`SURFACE` on the atmosphere-grid ice state (`si_atm` — this is everything D17/D20/D21/D24 already chained), and
+once inside `ocean_driver` on the ocean-grid ice state (`si_ocn`). Grids are the SAME resolution here (both
+72x46, confirmed: no `CUBED_SPHERE`, `Atm72x46` for atm, ocean also 4x5deg per `OCEAN_hycom`-adjacent naming /
+`o: dynamic 4x5 horizontal resolution with 13 layer ocean` in the rundeck header) but are logically separate
+state arrays reconciled by `seaice_to_atmgrid`, so this is real new plumbing to trace (not just "call the same
+function again"), though the underlying subroutine bodies (`sea_ice`/`ssidec`/`snowice`/`addice`) are already
+ported and validated (D10/D12/D14/D17) and should apply directly to the ocean-grid call once its own inputs are
+traced and dumped.
+
+### Dead code confirmed and excluded (checked against P2SAoM40.R, not assumed)
+- `#ifdef CUBED_SPHERE` branches throughout `ICEDYN_DRV.f`/`OCN_DRV.f` (cs2ll regrid, `ICE2CSint`, height-point
+  handling) — rundeck is lat-lon (`Atm72x46`), confirmed no `CUBED_SPHERE` define.
+- Ocean tides: `OTIDEV`/`OTIDEW` calls in `OCNDYN2.f` are gated `If (OTIDE > 0)`; rundeck sets `OTIDE = 0`
+  (`decks/P2SAoM40.R:175`) — never executes. `OTIDELL.f` (tide-generating-potential source) doesn't even exist
+  in this source tree despite being named in the rundeck's component list — a further sign it's inert here.
+- Ocean tracers (age/vent/gasx/CFC/watermass) and all `TRMO`/`TXMO`... moment arrays: gated `#ifdef
+  TRACERS_OCEAN`, not defined for P2SAoM40 (no `TRACERS_OCEAN` in the rundeck). `CARBON`/`NITR` diagnostic calls
+  are gated the same way.
+- Ocean biogeochemistry (`obio_model`, `#ifdef TRACERS_OceanBiology`): not defined for P2SAoM40 — dead code.
+  This also means `OCNGISS_TURB`/`OCNGISS_SM` (linked components, but need to confirm whether their real bodies
+  are called outside the obio-only path — **not yet checked, do before starting KPP/mixing work**).
+So the real prognostic ocean state for this rundeck is only **mass, heat (G0M), and salt (S0M)** — 3 fields, not
+the full N-tracer machinery the source supports. `use_qus` (a runtime flag, need to confirm its value for this
+rundeck) selects `OADVT3` (a fancier flux form) vs `OADVT2` (the simpler moment-advection path) for the same
+heat/salt advection — check before assuming which one runs.
+
+### Real line counts (subroutine bodies, not whole files — whole-file counts overcount unrelated subroutines,
+learned the hard way earlier in this project)
+| Piece | File | Lines | Note |
+|---|---|---|---|
+| `PRECIP_SI` | `SEAICE_DRV.f` | 140 | driver, per-cell loop |
+| `PREC_SI` | `SEAICE.f` | 246 | the real physics; reuses `get_snow_ice_layer`/`relayer`/`relayer_12`/`set_snow_ice_layer`/`tice`/`Mi`/`Em` (**already ported**, D10/D14); needs one new function `Fi` (~20 lines, read in full, trivial) |
+| `DYNSI` | `ICEDYN_DRV.f:328-877` | 550 | ice velocity dynamics on its own B/C-grid; genuinely new class of physics for this project (2D momentum solve with air/water stress, Coriolis, internal ice pressure, not a per-cell formula) — **not yet read past the header, do next** |
+| `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — per-cell, likely tractable like GROUND_SI |
+| `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | trivial |
+| `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
+| `FORM_SI` (=ocean-grid ADDICE) | `SEAICE_DRV.f` | 198 | driver around the **already-ported** `addice`/`simelt` (D12/D14); likely small new work, mostly plumbing |
+| **Ice-dynamics subtotal** | | **~1,460** | tractable, comparable to work already done |
+| `OCEANS` (driver) | `OCNDYN2.f:33-699` | 666 | calls into everything below |
+| `OCNDYN.f` | | 6,062 | base dynamical-core routines (`ODHORZ`/`ODHORZ0`/`ODIFF`/`OFLUXV`/`OCONV`/`OBDRAG2`/`OCOAST`/`OSTRES2`/`CONSERV_OCE`/...) — **not yet read**, whole-file count, real vs. dead-code split unknown |
+| `OCNQUS.f` (advection) | | 1,846 | `OADVT2`/`OADVT3` — 2nd-order-moment flux-form advection, **not yet read** |
+| `OCNKPP.f` (vertical mixing) | | 3,714 | K-profile boundary-layer mixing — **not yet read** |
+| `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f` (mesoscale/GM-Redi mixing) | | 1,217+2,030+1,270 = 4,517 | eddy parameterization — **not yet read**; `OCNGISS_TURB.f`/`OCNGISS_SM.f` (904+348=1,252) may be an alternate/dead path here, needs checking |
+| `OSTRAITS.f`+`OSTRAITS_COM.f` (straits) | | 1,036+183 = 1,219 | parameterized narrow channels (real geography, `OSTRAITS=OSTRAITS_72x46.nml` in rundeck) — **not yet read** |
+| **Ocean-core subtotal (excl. GISS_TURB/SM until checked)** | | **~17,624** | before excluding any further dead code within these files |
+| **Grand total, everything in this item** | | **~19,000+** | comparable to or larger than the entire rest of this project (D1-D25) |
+
+### Plan
+1. **Stage 1 — ice dynamics** (this is what actually closes the D25 gap for ice/lake state carry-over):
+   `PRECIP_SI`/`PREC_SI` (ready to implement — all helpers exist except `Fi`), then read+scope `DYNSI` fully,
+   `UNDERICE`, `CALC_APRESS`, `seaice_to_atmgrid`, ocean-grid `GROUND_SI`/`FORM_SI` plumbing. New Fortran
+   instrumentation needed (no existing dump covers these) — batch all Stage 1 dump hooks into one patch set and
+   one rebuild+rerun, matching how the original oracle build batched multiple subroutines' hooks together.
+2. **Stage 2 — ocean core**: read `OCNDYN.f`, `OCNQUS.f`, `OCNKPP.f`, `OCNMESO_DRV.f`/`OCNTDMIX.f`/`OCNGM.f`,
+   `OSTRAITS.f` in full before estimating further (the ~19k figure above is file-level, not yet
+   subroutine-level or dead-code-excluded the way Stage 1's figures are) — do not commit to a firmer schedule
+   until that reading is done, the same discipline used for radiation's `GETSUR`/`RCOMPX` scoping.
+3. Validate every piece against real Fortran with the same dump-hook-and-validate method used throughout
+   (F0: bit-for-bit/float64-rounding match on real dumps; JAX-vectorize only after F0 is proven, per the GHY
+   lesson — unrolling a big per-cell loop, or here a big per-timestep grid solve, naively can be a *regression*,
+   not a speedup, so measure before declaring victory).
+4. User has explicitly chosen the full faithful port (not a reduced/mixed-layer-only ocean) — do not silently
+   substitute a simplified ocean; if a genuine simplification looks warranted after Stage 2 reading, surface it
+   as a decision, the same way SOCRATES-as-black-box and this ocean scope itself were surfaced.
+
+
 
 ## 5. Capturing deltas (the requirement that findings "complement" existing ones)
 
