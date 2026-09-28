@@ -167,8 +167,9 @@ PRED_COLS = dict(zs1=5, tgv=6, tkv=7, qg_sat=8, qg_aver=9, tg=18, dbl=29, ug=31,
                  utop=37, vtop=38, qtop=39, ztop=40)
 
 
-def run_two_substeps(dd, it):
-    """Returns (rows vs the real substep-2 ATURB exit state, diag of predicted-vs-recorded substep-2 input columns)."""
+def run_two_substeps(dd, it, return_state=False):
+    """Returns (rows vs the real substep-2 ATURB exit state, diag of predicted-vs-recorded substep-2 input columns)
+    [+ a state dict with both substeps' results if return_state]."""
     p = PC.load(f"{dd}/ffp_{it}.bin"); t = S.load(f"{dd}/ffs_{it}.bin"); l = LI.load(f"{dd}/ffl_{it}.bin")
     fft = TA.load(f"{dd}/fft_{it}.bin")
     n = len(p) // 2; nt = len(t) // 2; nl = len(l) // 2; B = len(fft) // 2
@@ -218,7 +219,88 @@ def run_two_substeps(dd, it):
         if k in ini:
             row["fortran_change_rms"] = float(np.sqrt(((r - ini[k])[mm] ** 2).mean()))
         rows[k] = row
+    if return_state:
+        return rows, diag, dict(r1=r1, r2=r2, ta=ta, tb=tnew)
     return rows, diag
+
+
+def ground_si_stage(dd, it, state=None):
+    """Once-per-step GROUND_SI (SURFACE.f:1230, after the NS loop) fed by OUR two-substep ice-tile fluxes.
+    Replaces the recorded accumulated inputs f0dt, f1dt, evap (sum over substeps of the ice tile outputs) and srox0
+    (sum of srheat*dtsurf) by ours; everything else (ocean fluxes fmoc/fhoc/fsoc, mixed-layer tm/sm, sea-ice state) is
+    the recorded step-start value. Returns (worst input error dict, worst output error dict, baseline output error
+    with fully recorded inputs), all vs the real GROUND_SI outputs, plus our chained outputs for downstream stages."""
+    import seaice_compare as SCMP
+    import seaice_core_jax as J
+    if state is None:
+        _, _, state = run_two_substeps(dd, it, return_state=True)
+    rec = SCMP.load(f"{dd}/ffi_{it}.bin")
+    acc = {}
+    for tiles, r in ((state["ta"], state["r1"]), (state["tb"], state["r2"])):
+        m = tiles[:, 2] == 2
+        ij = tiles[m][:, :2].astype(int)
+        f0 = np.asarray(r["tile"]["f0dt"])[m]; f1 = np.asarray(r["tile"]["f1dt"])[m]; ev = np.asarray(r["tile"]["evap"])[m]
+        sr = tiles[m][:, S.IN["srheat"]] * tiles[m][:, S.IN["dtsurf"]]
+        for k, a, b, c, d in zip(map(tuple, ij), f0, f1, ev, sr):
+            v = acc.setdefault(k, np.zeros(4)); v += [a, b, c, d]
+    mine = np.array([acc[(int(x[0]), int(x[1]))] for x in rec])
+    in_err = {nm: float(np.abs(mine[:, q] - rec[:, c]).max()) for q, (nm, c) in enumerate((("f0dt", 15), ("f1dt", 16), ("evap", 17), ("srox0", 18)))}
+
+    def run(recx):
+        a = lambda c: jnp.asarray(recx[:, c])
+        return J.ground_si(a(2) > 0.5, a(3), a(4), jnp.asarray(recx[:, 6:10]), jnp.asarray(recx[:, 10:14]), a(14), a(15), a(16),
+                           a(17), a(18), a(19), a(20), a(21), a(22) > 0.5, a(23), a(24))
+    ref = dict(snow=rec[:, 42], hsil=rec[:, 43:47], ssil=rec[:, 47:51], msi2=rec[:, 51], runosi=rec[:, 52],
+               erunosi=rec[:, 53], srunosi=rec[:, 54])
+    rec2 = np.array(rec); rec2[:, 15:19] = mine
+    def errs(out):
+        return {k: float(np.max(np.abs(np.asarray(out[k]) - ref[k]) / np.maximum(np.abs(ref[k]), 1e-6))) for k in ref}
+    out2 = run(rec2)
+    return in_err, errs(out2), errs(run(rec)), dict(rec=rec, out={k: np.asarray(v) for k, v in out2.items()})
+
+
+def ground_lk_stage(dd, it, state, gs):
+    """Once-per-step GROUND_LK (SURFACE.f:1232) fed by OUR chain: open-lake accumulators fodt/evapo/srox(1) from the two
+    substeps' open-water tile outputs, ice-lake fluxes run0/fidt/srox(2) from our chained GROUND_SI outputs. Lake state
+    (mlake/elake, incl. land runoff already added by GROUND_LK itself), roice, fsr2, hlake stay recorded. Returns
+    (input errors, output errors vs real LKSOURC+LKMIX outputs, baseline errors with recorded inputs)."""
+    import lakes_compare as LC
+    import lakes_core_jax as LJ
+    rec = LC.load(f"{dd}/ffl2_{it}.bin")
+    acc = {}
+    for tiles, r in ((state["ta"], state["r1"]), (state["tb"], state["r2"])):
+        m = tiles[:, 2] == 1
+        for row, a, b, c in zip(tiles[m], np.asarray(r["tile"]["f0dt"])[m], np.asarray(r["tile"]["evap"])[m],
+                                 tiles[m][:, S.IN["srheat"]] * tiles[m][:, S.IN["dtsurf"]]):
+            v = acc.setdefault((int(row[0]), int(row[1])), np.zeros(3)); v += [a, b, c]
+    gsr, gso = gs["rec"], gs["out"]
+    gmap = {(int(x[0]), int(x[1])): q for q, x in enumerate(gsr)}
+    mine = np.zeros((len(rec), 6))
+    for q, x in enumerate(rec):
+        k = (int(x[0]), int(x[1]))
+        f0, ev, so = acc.get(k, (0.0, 0.0, 0.0))   # fully ice-covered lake cell: no open-water tile
+        g = gmap.get(k)
+        run0, fidt, s2 = (gso["runosi"][g], gso["erunosi"][g], gso["solar_io"][g]) if g is not None else (0.0, 0.0, 0.0)
+        mine[q] = [f0, ev, so, run0, fidt, s2]
+    cols = dict(fodt=8, evapo=13, srox0=10, run0=7, fidt=9, srox1=11)
+    order = ["fodt", "evapo", "srox0", "run0", "fidt", "srox1"]
+    in_err = {nm: float(np.abs(mine[:, q] - rec[:, cols[nm]]).max()) for q, nm in enumerate(order)}
+
+    def run(recx):
+        a = lambda c: jnp.asarray(recx[:, c])
+        src = LJ.lksourc_full(a(2), a(3), a(4), a(5), a(6), a(7), a(8), a(9), a(10), a(11), a(12), a(13))
+        mix = LJ.lkmix(src["mlake0"], src["mlake1"], src["elake0"], src["elake1"], a(14), jnp.zeros_like(a(2)), a(2), a(15))
+        return dict(src=src, mix=mix)
+    ref = dict(enrgfo=rec[:, 20], acefo=rec[:, 21], acefi=rec[:, 22], enrgfi=rec[:, 23],
+               mlake0=rec[:, 24], mlake1=rec[:, 25], elake0=rec[:, 26], elake1=rec[:, 27])
+
+    def errs(o):
+        got = dict(o["src"]); got.update({k: o["mix"][k] for k in ("mlake0", "mlake1", "elake0", "elake1")})
+        return {k: float(np.max(np.abs(np.asarray(got[k]) - ref[k]) / np.maximum(np.abs(ref[k]), 1e-6))) for k in ref}
+    rec2 = np.array(rec)
+    for q, nm in enumerate(order):
+        rec2[:, cols[nm]] = mine[:, q]
+    return in_err, errs(run(rec2)), errs(run(rec))
 
 
 if __name__ == "__main__":

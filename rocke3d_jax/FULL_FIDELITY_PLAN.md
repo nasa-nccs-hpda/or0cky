@@ -283,6 +283,8 @@ loop, distinct from one step's tile-flux computation.
 
 **Progress 2026-09-28 (D19):** the NS=1 -> NS=2 chain (steps 1-5 over two substeps) is validated with land recorded. Remaining before a `lax.scan` driver: GROUND_SI/GROUND_LK/FORM_SI after the loop, a step-to-step chain (needs the other physics that runs between steps: radiation, dynamics, clouds), and land/Ent.
 
+**Progress 2026-09-28 (D20):** GROUND_SI and GROUND_LK are chained after the two substeps. Remaining for a whole DTsrc step: ocean fluxes into GROUND_SI, FORM_SI/ADDICE+SIMELT in the chain (D12/D14 exist), land/Ent, then a lax.scan wrapper and the between-step physics (radiation, dynamics, clouds).
+
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 
 **Update:** completed the same day it was scoped below. The scoping held up well against

@@ -26,10 +26,23 @@ import substep_chain as SC        # noqa: E402
 _cache = {}
 
 
-def _run(d, it):
+def _full(d, it):
     if (d, it) not in _cache:
-        _cache[(d, it)] = T2.run_two_substeps(f"{FF}/{d}", it)
+        _cache[(d, it)] = T2.run_two_substeps(f"{FF}/{d}", it, return_state=True)
     return _cache[(d, it)]
+
+
+def _run(d, it):
+    return _full(d, it)[:2]
+
+
+_gs = {}
+
+
+def _gs_stage(d, it):
+    if (d, it) not in _gs:
+        _gs[(d, it)] = T2.ground_si_stage(f"{FF}/{d}", it, _full(d, it)[2])
+    return _gs[(d, it)]
 
 
 @pytest.mark.parametrize("d,it", CASES)
@@ -65,3 +78,37 @@ def test_mutation_wrong_dbl_is_detected(monkeypatch):
     worst = max(rows[k]["max_abs"] / rows[k]["fortran_change_rms"] for k in ("t", "q", "e", "U", "V"))
     assert worst > 1e3 * max(base[k]["max_abs"] / base[k]["fortran_change_rms"] for k in ("t", "q", "e", "U", "V"))
     assert worst > 1e-6
+
+
+@pytest.mark.parametrize("d,it", CASES)
+def test_ground_si_after_two_substeps_matches_real(d, it):
+    """GROUND_SI (once per step, after the NS loop) on OUR accumulated ice-tile fluxes: accumulated inputs agree with the
+    recorded ones and the outputs are exactly as accurate as with recorded inputs (D10 residuals)."""
+    in_err, out, base, gs = _gs_stage(d, it)
+    assert in_err["f0dt"] < 1e-3 and in_err["f1dt"] < 1e-3 and in_err["evap"] < 1e-9 and in_err["srox0"] < 1e-6
+    for k, v in out.items():
+        assert v <= 2 * base[k] + 1e-11, (k, v, base[k])
+    assert (gs["rec"][:, 15] != 0).sum() > 100 and (gs["rec"][:, 18] != 0).sum() > 50   # non-vacuous
+
+
+@pytest.mark.parametrize("d,it", CASES)
+def test_ground_lk_after_ground_si_matches_real(d, it):
+    """GROUND_LK on OUR open-water accumulators and OUR chained GROUND_SI ice-lake fluxes (lake state recorded)."""
+    st = _full(d, it)[2]
+    gs = _gs_stage(d, it)[3]
+    in_err, out, base = T2.ground_lk_stage(f"{FF}/{d}", it, st, gs)
+    assert in_err["fodt"] < 1e-3 and in_err["evapo"] < 1e-9 and in_err["run0"] < 1e-6 and in_err["fidt"] < 1e-6
+    for k, v in out.items():
+        assert v < 1e-9, (k, v)
+    assert base["mlake0"] < 1e-12
+
+
+def test_mutation_missing_second_substep_is_detected():
+    """Dropping substep 2's ice-tile flux from the accumulation must show up in GROUND_SI's recorded inputs."""
+    d, it = CASES[0]
+    st = dict(_full(d, it)[2])
+    r2 = dict(st["r2"]); tile = dict(r2["tile"])
+    tile["f0dt"] = np.zeros_like(np.asarray(tile["f0dt"]))
+    r2["tile"] = tile; st["r2"] = r2
+    in_err, out, base, _ = T2.ground_si_stage(f"{FF}/{d}", it, st)
+    assert in_err["f0dt"] > 1e3

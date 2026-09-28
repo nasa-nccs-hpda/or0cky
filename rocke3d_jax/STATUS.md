@@ -811,6 +811,11 @@ roundoff (T 7e-13 K vs 4e-3 K signal; U/V 1e-11 m/s vs 9e-2) on 3 dates x 2 subs
 (`fullfidelity/chain_aggregate_aturb.py`). Scoping also closed: land-ice is trivial for P2SAoM40 (NHC=1) and ocean/ice
 PBL data flow was already validated by D6, so what remains for the chained driver is assembly, plus the Ent blocker for land.
 
+**2026-09-28, night (D20)**: the once-per-step GROUND_SI and GROUND_LK are chained after the two substeps on OUR accumulated
+fluxes (accumulation identities verified exactly); outputs are as accurate as with recorded inputs (lakes <= 2.5e-11 relative).
+Track B now runs a real DTsrc step's surface chain end to end -- PBL, tiles, aggregation, ATURB x2, GROUND_SI, GROUND_LK --
+with only land (GHY/Ent), ocean fluxes and the between-step physics taken from the real dumps.
+
 **2026-09-28, later (D19)**: two consecutive NIsurf substeps are now chained from real step-start state: our own
 PBL/tile/aggregation/ATURB at substep 1, then substep 2 on inputs derived only from substep 1's results (new links: layer-1
 exports, `get_dbl`, profile/ground-state carry-over) reproduces the real substep-2 ATURB exit state at roundoff on 3 dates

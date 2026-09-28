@@ -402,3 +402,9 @@ Checked what substep 2's PBL/tile inputs depend on: PBL profiles and cm/ch/cq ca
 `z0m` is provably irrelevant (output unchanged when perturbed). Built `substep_chain.py` (layer-1 exports, get_dbl, THBAR)
 and `chain_two_substeps.py`; per-column diff caught a Coriolis bug of mine (land-ice dbl 66 m off) that a plain
 end-result check would have blamed on physics. Final substep-2 exit state matches the real one at roundoff on 3 dates.
+
+## 2026-09-28 (night): D20 -- GROUND_SI / GROUND_LK after the loop
+Accumulation identities verified with 0.0 error (ice-tile f0dt/f1dt/evap summed over substeps = GROUND_SI inputs; srox0 =
+sum srheat*dtsurf; lake fodt/evapo/srox from open-water tile accumulators). Chained both stages on our two-substep results;
+outputs match the recorded-input baseline (lakes 2.5e-11 relative). One test-harness detail: fully ice-covered lake cells have
+no open-water tile (accumulators default to 0).
