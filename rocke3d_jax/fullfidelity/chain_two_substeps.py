@@ -387,6 +387,38 @@ def form_si_lake_stage(dd, it, gs, lk):
     return in_err, errs(run(new)), errs(run(rec))
 
 
+def form_si_ocean_stage(dd, it, gs):
+    """FORM_SI/ADDICE for OCEAN cells: sea-ice state from OUR chained GROUND_SI (cells with an ice record; others keep their
+    unchanged state), frazil/ocean fluxes enrgfo/acefo/acefi/enrgfi/salto/salti/flead RECORDED (they come from the ocean
+    model, which is not ported). Returns (state input error, output errors vs real post-ADDICE, baseline errors)."""
+    import addice_compare as AD
+    import seaice_core_jax as J
+    ffn = AD.load(f"{dd}/ffn_{it}.bin")
+    rec = ffn[ffn[:, 2] == 1]
+    gmap = {(int(x[0]), int(x[1])): q for q, x in enumerate(gs["rec"])}
+    new = np.array(rec)
+    n_chained = 0
+    for q, x in enumerate(rec):
+        g = gmap.get((int(x[0]), int(x[1])))
+        if g is not None:
+            n_chained += 1
+            new[q, 3] = gs["out"]["snow"][g]; new[q, 5:9] = gs["out"]["hsil"][g]
+            new[q, 9:13] = gs["out"]["ssil"][g]; new[q, 13] = gs["out"]["msi2"][g]
+    in_err = dict(state=float(np.abs(new[:, 3:14] - rec[:, 3:14]).max()), n_chained=n_chained,
+                  state_rel=float(np.abs(new[:, 3:14] - rec[:, 3:14]).max() / np.abs(rec[:, 3:14]).max()))
+
+    def run(r):
+        a = lambda c: jnp.asarray(r[:, c])
+        return J.addice(a(3), a(4), jnp.asarray(r[:, 5:9]), jnp.asarray(r[:, 9:13]), a(13), a(14), a(17), a(15), a(16),
+                        a(18), a(19), a(20), a(21) > 0.5)
+    ref = dict(snow=rec[:, 22], roice=rec[:, 23], hsil=rec[:, 24:28], ssil=rec[:, 28:32], msi2=rec[:, 32],
+               dmimp=rec[:, 33], dhimp=rec[:, 34], dsimp=rec[:, 35])
+
+    def errs(o):
+        return {k: float(np.max(np.abs(np.asarray(o[k]) - ref[k]) / np.maximum(np.abs(ref[k]), 1e-6))) for k in ref}
+    return in_err, errs(run(new)), errs(run(rec))
+
+
 if __name__ == "__main__":
     dd, it = sys.argv[1], int(sys.argv[2])
     rows, diag = run_two_substeps(dd, it)

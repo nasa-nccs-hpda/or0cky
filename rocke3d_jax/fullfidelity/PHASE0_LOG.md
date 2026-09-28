@@ -426,3 +426,10 @@ First warm timing of a full substep: GHY stage was 32 s and ATURB+UV 2.2 s until
 re-trace every call); after that 0.45 s per substep, identical on one core. The Fortran's own PRT timer table gives ~0.28 s per step
 for the same scope, so Track B on CPU is ~3x slower than Fortran (not faster). Recorded plainly in D23/STATUS; the plain-Python
 speedups quoted earlier must not be read as Fortran speedups.
+
+## 2026-09-28 (night): D24 -- ocean ADDICE, SIMELT scoping, glue profile
+Ocean-cell ADDICE chained on our GROUND_SI state (error = upstream residual). SIMELT's input state matches neither GROUND_SI input nor
+ADDICE output (it runs after sea-ice dynamics/ocean), so it is out of the surface chain. Lake runoff addition cannot be chained
+without step-start lake state (not dumped). cProfile of a warm substep: glue is ~1/3 of the time, compute floor ~0.3 s -> still ~2x
+Fortran; not the lever. Test-writing note: two of my first bounds here were wrong references (exact baseline vs upstream residual;
+absolute vs relative) -- fixed by reasoning about what the stage can and cannot correct, not by loosening until green.

@@ -125,3 +125,16 @@ def test_lake_addice_after_ground_lk_matches_real(d, it):
     for k, v in out.items():
         assert v < 1e-9, (k, v)
     assert np.abs(lk["src"]["acefo"]).max() > 0 or np.abs(lk["src"]["acefi"]).max() > 0   # non-vacuous: frazil ice forms
+
+
+@pytest.mark.parametrize("d,it", CASES)
+def test_ocean_addice_on_chained_ground_si_state(d, it):
+    """FORM_SI/ADDICE for ocean cells on OUR chained GROUND_SI state (ocean-model frazil fluxes recorded). ADDICE passes the
+    state through, so its error is bounded by the upstream GROUND_SI residuals (D10), not by the exact recorded-input baseline."""
+    _, gs_out, _, gs = _gs_stage(d, it)
+    in_err, out, base = T2.form_si_ocean_stage(f"{FF}/{d}", it, gs)
+    assert in_err["n_chained"] > 100 and in_err["state_rel"] < 1e-7
+    for k in ("snow", "hsil", "ssil", "msi2"):
+        assert out[k] <= 2 * gs_out[k] + 1e-9, (k, out[k], gs_out[k])
+    for k in ("roice", "dmimp", "dhimp", "dsimp"):
+        assert out[k] < 1e-9, k
