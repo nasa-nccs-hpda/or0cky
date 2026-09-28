@@ -149,8 +149,8 @@ def s_results(c):
     y = page(c, 3, "Results", "Five Stages, from Fortran to 356× Faster",
              "Log-scale bars (shorter = faster); one 30-minute model step, real P2SAoM40 data. Stage 1 timed on a different GPU-less node; stages 3–4 on an A100 node.")
     top = y - 40
-    label_w, bar_x = 190, M + 190 + 10
-    maxbar = 470
+    label_w, bar_x = 175, M + 175 + 8
+    maxbar = 380
     lo, hi = math.log10(0.74), math.log10(264.0)
     rowh = 46
     for i, (lab, ms, col) in enumerate(STAGES):
@@ -160,19 +160,19 @@ def s_results(c):
         c.setFillColor(col)
         c.roundRect(bar_x, yy - 26, w, 24, 4, stroke=0, fill=1)
         val = f"{ms:.2f} ms" if ms < 1 else f"{ms:.1f} ms"
-        text(c, val, bar_x + w + 10, yy - 9, 110, size=12.5, color=INK, bold=True, font="Courier")
+        text(c, val, bar_x + w + 8, yy - 9, 100, size=12.5, color=INK, bold=True, font="Courier")
     # table on right
-    tx = bar_x + maxbar + 130
+    tx = bar_x + maxbar + 120
     tw = W - M - tx
-    text(c, "Speed-up vs. Fortran", tx, y - 4, 92, size=10.5, color=MUTED, bold=True)
-    text(c, "vs. previous stage", tx + 100, y - 4, 92, size=10.5, color=MUTED, bold=True)
+    text(c, "Speed-up vs. Fortran", tx, y - 4, 88, size=10.5, color=MUTED, bold=True)
+    text(c, "vs. previous stage", tx + 96, y - 4, 88, size=10.5, color=MUTED, bold=True)
     prev = [None, None, 59.56, 32.96, 4.26]
     for i, (lab, ms, col) in enumerate(STAGES):
         yy = top - i * rowh - 2
         vf = FORTRAN_MS / ms
         text(c, "1×" if i == 0 else f"{vf:,.0f}×" if vf >= 10 else f"{vf:.1f}×", tx, yy - 2, 90, size=15, color=col, bold=True, font="Courier")
         if prev[i]:
-            text(c, f"{prev[i] / ms:.1f}×", tx + 100, yy - 3, 90, size=13, color=INK2, font="Courier")
+            text(c, f"{prev[i] / ms:.1f}×", tx + 96, yy - 3, 80, size=13, color=INK2, font="Courier")
     # bottom callouts
     cy = top - 5 * rowh - 6
     ch = cy - 58
@@ -234,7 +234,7 @@ def s_profile(c):
             ("Phase 2, chained on device", [(1.06, BLUE), (3.05, GREEN)], "4.1 ms · 8.3×")]
     for i, (lab, segs, val) in enumerate(bars):
         yy = y - 56 - i * 54
-        text(c, lab, rx + 16, yy + 2, pw - 32, size=11.5, color=INK, bold=True)
+        text(c, lab, rx + 16, yy + 12, pw - 32, size=11.5, color=INK, bold=True)
         xx = rx + 16
         for ms, col in segs:
             c.setFillColor(col)
