@@ -99,3 +99,20 @@ def test_two_substeps_with_land_chained(d, it):
         assert scale > 1e-6
     assert diag["itype4.cm"] < 1e-11 and diag["profiles4"] < 1e-9
     assert diag["itype4.tg"] < 1e-3 and diag["itype4.qg_aver"] < 1e-4
+
+
+def test_land_state_carried_over_four_substeps_stays_small():
+    """D25: land state (GHY prognostic state, PBL land profiles/columns) carried by our code over two consecutive steps (4
+    substeps), atmosphere/forcing/Ent recorded. Errors amplify at first then saturate far below the signal; the prognostic
+    soil water drifts only slowly."""
+    d, it = "dec01", 33552
+    if not os.path.exists(f"{FF}/{d}/ffg_{it + 1}.bin") or not os.path.exists(f"{FF}/{d}/ffp_{it + 1}.bin"):
+        pytest.skip("second-step dumps not available")
+    rows = LC.run_land_multistep(f"{FF}/{d}", [it, it + 1])
+    assert len(rows) == 4
+    for r in rows:
+        assert r["tbcs"][1] < 1e-3 and r["tbcs"][0] < 5e-2          # rms/max in K on a ~50 C field
+        assert r["w"][1] < 1e-6 and r["w"][0] < 1e-4                # soil water (m), scale ~0.8
+        assert r["alhg"][1] < 1e-4 * r["alhg"][2]
+    assert rows[0]["tbcs"][1] < 1e-7                                 # first substep: recorded state, model error only
+    assert rows[3]["w"][1] >= rows[0]["w"][1]                        # non-vacuous: carried error is visible and grows

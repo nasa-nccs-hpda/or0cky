@@ -433,3 +433,9 @@ ADDICE output (it runs after sea-ice dynamics/ocean), so it is out of the surfac
 without step-start lake state (not dumped). cProfile of a warm substep: glue is ~1/3 of the time, compute floor ~0.3 s -> still ~2x
 Fortran; not the lever. Test-writing note: two of my first bounds here were wrong references (exact baseline vs upstream residual;
 absolute vs relative) -- fixed by reasoning about what the stage can and cannot correct, not by loosening until green.
+
+## 2026-09-28 (night): D25 -- land carried over two steps
+Checked what carries exactly across a step boundary: GHY state and PBL land profiles do (0.0); ice state does not (5% match --
+precip/dynamics/ocean act in between). Built run_land_multistep (4 substeps). Errors: state drifts slowly (2e-5 relative), flux errors
+amplify ~500x from recorded-state level then saturate at ~1e-5 K RMS. Also reported the fresh-start baseline so the amplification is
+attributed to carry-over, not to step-2 data.
