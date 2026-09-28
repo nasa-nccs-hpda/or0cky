@@ -44,3 +44,5 @@ automatically. Everything here is a snapshot as of 2026-09-22.
 4-slide deck (they predate the 2026-09-24 refresh).** `slides/*.html` and
 `deck.json` here match the live deck; regenerate the PDF (edit `build_pdf.py`
 to the new content) before sharing it from the filesystem.
+
+**`summary_deck.pdf`** (2026-09-28, 9 slides; source `build_summary_pdf.py`, reportlab): concise summary of the whole exercise — approach, the five-stage results table and chart, plain-language description of each stage, profile comparison, accuracy, scope caveats, and lessons for repeating the exercise with a full-fidelity port in a separate branch. Rebuild: `python3 build_summary_pdf.py summary_deck.pdf`. Text overflow is checked at build time; layout has not been eyeballed in a renderer (none available here).
