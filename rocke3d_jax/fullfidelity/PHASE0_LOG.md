@@ -175,3 +175,22 @@ by the 3-date real record; rushing its jnp.where conversion would add more untes
 than the lake-mixing/ADDICE-Python effort has real data to validate against. Full test suite (62
 tests across fullfidelity/) still green after this change. Remaining JAX-vectorization work: ADDICE,
 GHY (ghy_ref.py, a much larger stateful multi-layer column solver).
+
+## 2026-09-27: measured real speedup, then vectorized ADDICE anyway (D14 cont'd)
+Measured actual speedup (had only shown jit-compiles + correctness before): 46x at the real 4,524-
+cell record (0.458s Python vs 0.0100s JAX cached), 51x at 20x scale (90,480 cells, to rule out a
+small-batch artifact) -- per-cell JAX cost flat at ~2us/cell at both scales.
+
+Then re-examined ADDICE (deferred above as "too branchy to vectorize safely") and found the earlier
+assessment overstated the risk: ADDICE's Python original is a SEQUENCE of if-blocks (new-ice
+formation, then an unconditionally-checked downward lead-fraction rebalance, then an unconditionally-
+checked upward rebalance), not one wide decision tree like relayer_12 -- so it doesn't carry
+relayer_12's combinatorial branch-count risk even though it's comparably long. Built it as a chain of
+state=where(cond,f(state),state) merges reusing the already-vectorized relayer_12, validated on all
+16,214 real ADDICE calls: bitwise/near-bitwise match to Fortran and to seaice_core_ff (same tolerances
+as D12), zero NaN/Inf, jax.jit-compiles (13ms cached for 16,214 cells vs 3.6s compile). Coverage gap
+found and handled honestly: 2 of ADDICE's 5 leaf paths (new ice in fully open ocean; the qfixr msi2-
+floor correction) occur 0 times in the real 3-date record -- validated against seaice_core_ff on
+synthetic inputs instead (bitwise/near-bitwise match), documented as such rather than silently
+assumed correct. seaice_core_jax.py's module docstring updated to reflect ADDICE now being in scope.
+Full test suite green. Remaining JAX-vectorization work: GHY only (ghy_ref.py).

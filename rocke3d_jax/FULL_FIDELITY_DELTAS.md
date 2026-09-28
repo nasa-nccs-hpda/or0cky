@@ -278,25 +278,34 @@ transcribed here but never exercised by real Fortran calls — ported faithfully
 practice, same honesty standard as the SIMELT `TSIL`-undefined case in D12.
 Tests: `fullfidelity/tests/test_lakes_ff.py` (4, incl. mutation checks).
 
-## D14 — JAX-vectorized SEA_ICE/SSIDEC/snowice/SIMELT (`seaice_core_jax.py`) vs real Fortran
-`fullfidelity/seaice_core_jax.py`: batched-array (jnp.where in place of Python if/else) port of the
-per-DTsrc-step hot path from `seaice_core_ff.py` -- `sea_ice`, `ssidec`, `snowice`, their shared
-`relayer`/`relayer_12`/`get_snow_ice_layer`/`set_snow_ice_layer`/`tice` helpers, and `simelt`. Runs
-all real cells from a file in one call instead of a Python loop (JIT-compilable: 4,524 cells run in
-4.6 ms cached on CPU after a 2.9 s one-time trace/compile, vs. the reference's per-cell Python loop).
+## D14 — JAX-vectorized SEA_ICE/SSIDEC/snowice/SIMELT/ADDICE (`seaice_core_jax.py`) vs real Fortran
+`fullfidelity/seaice_core_jax.py`: batched-array (jnp.where in place of Python if/else) port of
+*all* of `seaice_core_ff.py` -- `sea_ice`, `ssidec`, `snowice`, `simelt`, `addice`, and their shared
+`relayer`/`relayer_12`/`get_snow_ice_layer`/`set_snow_ice_layer`/`tice` helpers. Runs all real cells
+from a file in one call instead of a Python loop (JIT-compilable: 4,524 GROUND_SI cells run in
+4.6 ms cached on CPU after a 2.9 s one-time trace/compile, vs. the reference's per-cell Python loop;
+16,214 ADDICE cells run in 13 ms cached after a 3.6 s compile).
 
-**ADDICE is intentionally not vectorized** (see the module's docstring): it composes 4 sequential
-decision blocks whose leaves are themselves nested branches (~15 mutually-exclusive paths overall),
-several of which are lead-fraction rebalancing corrections only lightly exercised by the available
-3-date real record. `relayer_12` alone (needed by `sea_ice`/`snowice`) already has 9 leaf branches,
-each hand-derived as a closed form in the pre-branch inputs and selected with nested `jnp.where`
-matching the original's if/elif/else precedence -- ADDICE would need a comparable derivation on top
-of that, with less real-data coverage to catch a mistake in a rare branch. It stays plain Python.
+`relayer_12` (needed by `sea_ice`/`snowice`/`addice`) has 9 mutually-exclusive leaf branches, each
+hand-derived as a closed form in the pre-branch inputs and selected with nested `jnp.where` matching
+the original's if/elif/else precedence. `addice` looks comparably long but is structurally easier:
+its Python original is a *sequence* of if-blocks (new-ice formation, then an unconditionally-checked
+downward lead-fraction rebalance, then an unconditionally-checked upward rebalance) rather than one
+wide decision tree, so it was built as a chain of `state = where(cond, f(state), state)` merges that
+reuse `relayer_12` exactly where the Fortran does -- avoiding the combinatorial branch-count risk
+initially flagged for it in the first version of this module (see PHASE0_LOG.md).
 
-Validated on the **same 4,524 real GROUND_SI cells and 4,668 real SIMELT cells** as D10/D12, three
-independent ways: directly against the real Fortran dumps, against `seaice_core_ff` row-for-row
-(worst case 7e-15 relative, i.e. float64-rounding-level agreement with the already-validated plain
-Python), and for exact eager/`jax.jit` equivalence. No NaN/Inf anywhere in 4,524+4,668 real cells.
+**Coverage gap, found by inspection, not assumed:** 2 of ADDICE's 5 leaf paths -- new ice forming in
+fully open ocean (`roice<=0 & acefo>0`) and the `qfixr` msi2-floor correction -- occur 0 times in the
+available 3-date real record. Both are cross-checked against `seaice_core_ff` on synthetic inputs
+instead (bitwise/near-bitwise match, see `test_addice_synthetic_branches_match_plain_python`), which
+is validation against the plain-Python port, not against Fortran, and is documented as such.
+
+Validated on the **same 4,524 real GROUND_SI cells, 4,668 real SIMELT cells, and 16,214 real ADDICE
+cells** as D10/D12, three independent ways: directly against the real Fortran dumps, against
+`seaice_core_ff` row-for-row (worst case 7e-15 relative for GROUND_SI, 1e-6 for ADDICE, i.e.
+float64-rounding-level agreement with the already-validated plain Python), and for exact eager/
+`jax.jit` equivalence. No NaN/Inf anywhere in any of the 25,406 real cells.
 
 | Output | max rel err vs Fortran (batched) | vs D10/D12 (plain Python) |
 |---|---|---|
@@ -307,22 +316,30 @@ Python), and for exact eager/`jax.jit` equivalence. No NaN/Inf anywhere in 4,524
 | GROUND_SI runosi/erunosi/srunosi | 3.4e-5 / 6.5e-5 / 3.1e-4 | 3e-5 to 3e-4 |
 | SIMELT (roice/snow/msi2/hsil/ssil) | 0 (bitwise) | 0 (bitwise) |
 | SIMELT enrgused | 4.0e-16 | 1.5e-16 |
+| ADDICE (roice/dmimp/dhimp/dsimp) | 0 (bitwise) | 0 (bitwise) |
+| ADDICE (snow/msi2) | ~2-3e-16 | ~2-3e-16 |
+| ADDICE hsil | 1.8e-13 | 1.3e-13 |
+| ADDICE ssil | 1.7e-14 | — |
 
 Essentially identical accuracy to the plain-Python reference at every field -- vectorizing did not
 loosen any tolerance. `tsil` in SIMELT's `roice>0` branch is `NaN` (a sentinel, not a computed
 value), matching the plain-Python `tsil=None` for the same documented-undefined-Fortran-output case.
-Tests: `fullfidelity/tests/test_seaice_jax_vectorized.py` (6, incl. mutation checks, jit-equivalence,
-and a cross-check against `seaice_core_ff`).
+Of ADDICE's 16,214 real calls, 1,994 (12%) have genuine new-ice formation (`acefo`/`acefi`≠0),
+matching D12's count; 1,972 of those exercise `relayer_12` inside `addice` (branch 2b-ii). 215 real
+cells exercise the downward lead-fraction rebalance (branch 3); the upward rebalance (branch 4) and
+the two zero-coverage leaves are discussed above. Tests:
+`fullfidelity/tests/test_seaice_jax_vectorized.py` (11, incl. mutation checks, jit-equivalence, a
+cross-check against `seaice_core_ff`, and the ADDICE synthetic-branch checks).
 
 **Speed** (CPU only, no GPU on this node; single `jax.jit`-compiled call vs. the plain-Python
-per-cell loop it replaces): at the real 4,524-cell record, 0.458s (Python) vs. 0.0100s (JAX,
-cached) = **46x**; scaled to 90,480 cells (20x replication of the same real record, to check this
-isn't a small-batch artifact) the per-cell JAX cost is unchanged (~2.0μs/cell at both scales) and
-the measured speedup is **51x** — consistent, not a fixed-overhead illusion. One-time trace/compile
-cost is ~2.9s, amortized over every subsequent call in a run.
+per-cell loop it replaces): at the real 4,524-cell GROUND_SI record, 0.458s (Python) vs. 0.0100s
+(JAX, cached) = **46x**; scaled to 90,480 cells (20x replication of the same real record, to check
+this isn't a small-batch artifact) the per-cell JAX cost is unchanged (~2.0μs/cell at both scales)
+and the measured speedup is **51x** — consistent, not a fixed-overhead illusion. One-time
+trace/compile cost is ~2.9s for GROUND_SI and ~3.6s for ADDICE, amortized over every subsequent call.
 
 ## Pending rows
-- JAX-vectorization of `ghy_ref.py` (land/GHY) and `addice` (sea-ice formation) -- both still plain
-  Python; ADDICE's scope decision is documented in D14 / `seaice_core_jax.py`'s module docstring.
+- JAX-vectorization of `ghy_ref.py` (land/GHY) -- a stateful multi-layer column solver, a separate
+  and larger effort than the branchy-but-stateless sea-ice functions vectorized in D14.
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14's
   CPU-only measurement).

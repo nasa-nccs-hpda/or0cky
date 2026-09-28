@@ -1,7 +1,9 @@
-"""Tests: seaice_core_jax (batched/vectorized SEA_ICE+SSIDEC+snowice+SIMELT) vs the SAME real-Fortran
-dumps used for seaice_core_ff (plain Python, already validated -- D10/D12), and cross-checked against
-that plain-Python reference row-for-row. ADDICE is out of scope here (see seaice_core_jax.py module
-docstring for why)."""
+"""Tests: seaice_core_jax (batched/vectorized SEA_ICE+SSIDEC+snowice+SIMELT+ADDICE) vs the SAME
+real-Fortran dumps used for seaice_core_ff (plain Python, already validated -- D10/D12), and
+cross-checked against that plain-Python reference row-for-row. Two of ADDICE's leaf branches (new
+ice in fully open ocean, and the qfixr msi2-floor correction) are never exercised by the available
+real record -- those are checked with synthetic inputs against the plain-Python reference instead
+(see test_addice_synthetic_branches_match_plain_python), not against Fortran."""
 import os, sys, glob
 
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
@@ -18,11 +20,16 @@ FFI_FILES = sorted(glob.glob(f"{FF}/*/ffi_*.bin"))
 FFM_FILES = sorted(glob.glob(f"{FF}/*/ffm_*.bin"))
 pytestmark = pytest.mark.skipif(len(FFI_FILES) < 6 or len(FFM_FILES) < 6,
                                 reason="real-Fortran GROUND_SI/SIMELT dumps not available")
+_FFN_SKIP = pytest.mark.skipif(len(sorted(glob.glob(f"{FF}/*/ffn_*.bin"))) < 6,
+                               reason="real-Fortran ADDICE dumps not available")
 
 import seaice_core_jax as J       # noqa: E402
 import seaice_core_ff as S        # noqa: E402
 import seaice_compare as C        # noqa: E402
 import seaice_jax_compare as JC   # noqa: E402
+import addice_compare as A        # noqa: E402
+
+FFN_FILES = sorted(glob.glob(f"{FF}/*/ffn_*.bin"))
 
 
 def relerr(got, ref):
@@ -38,6 +45,11 @@ def ffi_rec():
 @pytest.fixture(scope="module")
 def ffm_rec():
     return JC.load_all_ffm(FFM_FILES)
+
+
+@pytest.fixture(scope="module")
+def ffn_rec():
+    return JC.load_all_ffn(FFN_FILES)
 
 
 def test_ground_si_matches_fortran_at_same_tolerance_as_plain_python(ffi_rec):
@@ -132,3 +144,105 @@ def test_mutations_are_detected(ffi_rec, ffm_rec):
         assert relerr(out_m2["roice"], out_m["roice"]) > 1e-6
     finally:
         J.SILMFAC = old
+
+
+@_FFN_SKIP
+def test_addice_matches_fortran(ffn_rec):
+    out = JC.batched_addice(ffn_rec)
+    ref = dict(snow=ffn_rec[:, 22], roice=ffn_rec[:, 23], hsil=ffn_rec[:, 24:28], ssil=ffn_rec[:, 28:32],
+               msi2=ffn_rec[:, 32], dmimp=ffn_rec[:, 33], dhimp=ffn_rec[:, 34], dsimp=ffn_rec[:, 35])
+    for k in ("snow", "roice", "msi2", "dmimp", "dhimp", "dsimp"):
+        assert relerr(out[k], ref[k]) < 1e-9, k
+    assert relerr(out["hsil"], ref["hsil"]) < 1e-6
+    assert relerr(out["ssil"], ref["ssil"]) < 1e-6
+
+    active = (np.abs(ffn_rec[:, 17]) > 1e-12) | (np.abs(ffn_rec[:, 15]) > 1e-12)   # acefo or acefi != 0
+    assert active.sum() > 500   # new-ice formation genuinely exercised (D12: ~1,994/16,214)
+
+
+@_FFN_SKIP
+def test_addice_no_nan_or_inf(ffn_rec):
+    out = JC.batched_addice(ffn_rec)
+    for k, v in out.items():
+        v = np.asarray(v)
+        assert not np.isnan(v).any(), k
+        assert not np.isinf(v).any(), k
+
+
+@_FFN_SKIP
+def test_addice_matches_plain_python_row_for_row(ffn_rec):
+    out = JC.batched_addice(ffn_rec)
+    idx = np.linspace(0, len(ffn_rec) - 1, 300).astype(int)
+    worst = 0.0
+    for i in idx:
+        py = A.run_row(ffn_rec[i])
+        for k in ("snow", "roice", "msi2", "dmimp", "dhimp", "dsimp"):
+            worst = max(worst, abs(float(out[k][i]) - py[k]) / max(abs(py[k]), 1e-6))
+        worst = max(worst, float(np.max(np.abs(np.asarray(out["hsil"])[i] - np.asarray(py["hsil"])))))
+        worst = max(worst, float(np.max(np.abs(np.asarray(out["ssil"])[i] - np.asarray(py["ssil"])))))
+    assert worst < 1e-6
+
+
+def test_addice_synthetic_branches_match_plain_python():
+    """The real 3-date record never exercises (a) new ice forming in fully open ocean (roice<=0,
+    acefo>0) or (b) the qfixr msi2-floor correction (0 real calls each, per FULL_FIDELITY_DELTAS.md
+    D14) -- cross-check those two leaves against seaice_core_ff on synthetic inputs instead."""
+    rng = np.random.default_rng(0)
+    N = 20
+    RHOI, ACE1I, AC2OIM = 916.6, 0.1 * 916.6, 0.1 * 916.6
+
+    # branch 1: roice<=0, acefo>0
+    snow = np.zeros(N); roice = np.zeros(N)
+    hsil = np.tile([-5e4, -5e4, -5e4, -5e4], (N, 1)) + rng.normal(0, 1e3, (N, 4))
+    ssil = np.abs(rng.normal(0.05, 0.01, (N, 4)))
+    msi2 = np.full(N, 200.0)
+    enrgfo = -3e8 * rng.uniform(0.5, 1.5, N)
+    acefo = rng.uniform(50, 500, N)
+    acefi = np.zeros(N); enrgfi = np.zeros(N)
+    salto = rng.uniform(0.1, 1.0, N); salti = np.zeros(N)
+    flead = np.full(N, 2.0); qfixr = np.zeros(N, dtype=bool)
+
+    out = J.addice(jnp.asarray(snow), jnp.asarray(roice), jnp.asarray(hsil), jnp.asarray(ssil),
+                   jnp.asarray(msi2), jnp.asarray(enrgfo), jnp.asarray(acefo), jnp.asarray(acefi),
+                   jnp.asarray(enrgfi), jnp.asarray(salto), jnp.asarray(salti), jnp.asarray(flead),
+                   jnp.asarray(qfixr))
+    worst = 0.0
+    for i in range(N):
+        py = S.addice(snow[i], roice[i], list(hsil[i]), list(ssil[i]), msi2[i], enrgfo[i], acefo[i],
+                      acefi[i], enrgfi[i], salto[i], salti[i], flead[i], False)
+        for k in ("snow", "roice", "msi2", "dmimp", "dhimp", "dsimp"):
+            worst = max(worst, abs(float(out[k][i]) - py[k]) / max(abs(py[k]), 1e-6))
+        worst = max(worst, float(np.max(np.abs(np.asarray(out["hsil"])[i] - np.asarray(py["hsil"])))))
+    assert worst < 1e-9
+
+    # branch 5: qfixr=True with msi2 < AC2OIM (forces the floor-correction cond5)
+    snow2 = rng.uniform(0, 50, N); roice2 = rng.uniform(0.1, 1.0, N)
+    hsil2 = np.tile([-5e4, -5e4, -3e4, -3e4], (N, 1))
+    ssil2 = np.abs(rng.normal(0.05, 0.01, (N, 4)))
+    msi2_small = rng.uniform(1, AC2OIM * 0.9, N)
+    zeros = np.zeros(N)
+    out2 = J.addice(jnp.asarray(snow2), jnp.asarray(roice2), jnp.asarray(hsil2), jnp.asarray(ssil2),
+                    jnp.asarray(msi2_small), jnp.asarray(zeros), jnp.asarray(zeros), jnp.asarray(zeros),
+                    jnp.asarray(zeros), jnp.asarray(zeros), jnp.asarray(zeros), jnp.full(N, 2.0),
+                    jnp.ones(N, dtype=bool))
+    worst2 = 0.0
+    for i in range(N):
+        py = S.addice(snow2[i], roice2[i], list(hsil2[i]), list(ssil2[i]), msi2_small[i], 0.0, 0.0, 0.0,
+                      0.0, 0.0, 0.0, 2.0, True)
+        for k in ("snow", "roice", "msi2", "dmimp", "dhimp", "dsimp"):
+            worst2 = max(worst2, abs(float(out2[k][i]) - py[k]) / max(abs(py[k]), 1e-6))
+        worst2 = max(worst2, float(np.max(np.abs(np.asarray(out2["hsil"])[i] - np.asarray(py["hsil"])))))
+    assert worst2 < 1e-9
+    assert bool(np.all(msi2_small < AC2OIM))   # confirms cond5 is actually triggered for every row
+
+
+@_FFN_SKIP
+def test_addice_mutations_are_detected(ffn_rec):
+    out = JC.batched_addice(ffn_rec)
+    old = J.LHM
+    try:
+        J.LHM = 3.0e5
+        out2 = JC.batched_addice(ffn_rec)
+        assert relerr(out2["hsil"], out["hsil"]) > 1e-4
+    finally:
+        J.LHM = old

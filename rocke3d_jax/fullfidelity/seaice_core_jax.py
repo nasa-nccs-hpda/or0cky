@@ -7,15 +7,22 @@ instead of Python loops over one cell at a time, using jnp.where in place of Pyt
 every branch is data-dependent per-cell rather than a Python-level control-flow choice.
 
 Scope: ported here are tfrez/Ti/Ti2b/Ei/dEidTi/Mi/Em/alami, solar_ice_frac_full,
-get_snow_ice_layer/set_snow_ice_layer, relayer/relayer_12, tice, sea_ice, ssidec, snowice, and
-simelt -- i.e. the whole per-DTsrc-step SEA_ICE/SSIDEC/snowice hot path plus SIMELT.
-**ADDICE is intentionally NOT vectorized here** -- it composes 4 sequential decision blocks whose
-leaves are themselves nested branches (roughly 15 mutually-exclusive paths overall, several of
-which are lead-fraction rebalancing corrections only lightly exercised by the available 3-date
-real-Fortran record, see FULL_FIDELITY_DELTAS.md D12). Converting it with the same jnp.where
-technique used below is mechanically possible but the bug surface is large relative to how well
-validated each rare branch could be made; it stays plain Python (seaice_core_ff.addice) rather
-than risk a vectorized version whose rare paths look right but are not actually exercised.
+get_snow_ice_layer/set_snow_ice_layer, relayer/relayer_12, tice, sea_ice, ssidec, snowice, simelt,
+and addice -- i.e. all of the per-DTsrc-step SEA_ICE/SSIDEC/snowice/ADDICE/SIMELT thermodynamics
+(GHY/land is the remaining unvectorized piece; a stateful multi-layer column solver, a separate and
+larger effort -- see ghy_ref.py).
+
+`addice` (SEAICE.f ADDICE) looks as branchy as `relayer_12` but is structurally different: its
+Python original is a SEQUENCE of if-blocks (new-ice formation, then an unconditionally-checked
+downward lead-fraction/opnocn rebalance, then an unconditionally-checked upward rebalance), each of
+which either updates the running state or leaves it alone. That is a chain of
+`state = where(cond, f(state), state)` merges, not one combinatorial decision tree, so it does not
+carry `relayer_12`'s 2^depth branch-count risk even though it is comparably long; it reuses
+`relayer_12` exactly where the Fortran does. Two of its five leaf paths (new ice in fully open
+ocean, and the `qfixr` msi2-floor correction) are transcribed but not exercised by the available
+3-date real record (0 real calls each) -- validated by inspection and against the plain-Python
+reference on synthetic inputs, not against Fortran, and documented as such rather than silently
+assumed correct (see FULL_FIDELITY_DELTAS.md D14).
 
 Every branch below was hand-derived from seaice_core_ff.py's Python control flow by writing out
 each mutually-exclusive leaf's closed-form result in terms of the ORIGINAL (pre-branch) inputs --
@@ -47,6 +54,8 @@ SSIMIN = 1e-6
 SECONDS_PER_DAY = 86400.0
 SILMFAC = 1.0e-7
 SILMPOW = 1.36
+FLEADMX = 5.0
+BYHREF = 1.1
 
 
 def _safe_div(a, b):
@@ -802,3 +811,239 @@ def simelt(dt, roice, snow, msi2, hsil, ssil, pocean, tm, tfo, enrgmax):
 
     return dict(roice=roice_out, snow=snow_out, msi2=msi2_out, hsil=hsil_out, ssil=ssil_out,
                 tsil=tsil_out, enrgused=enrgused, run0=run0, salt=salt, melted_out=cond_gone)
+
+
+def addice(snow, roice, hsil, ssil, msi2, enrgfo, acefo, acefi, enrgfi, salto, salti, flead, qfixr):
+    """SEAICE.f ADDICE (no tracers). Returns dict: snow, roice, hsil, ssil, msi2, tsil, dmimp, dhimp,
+    dsimp. Unlike relayer_12's single wide decision tree, ADDICE's Python original is a SEQUENCE of
+    if-blocks (new-ice formation, then an always-checked lead-fraction/opnocn rebalance downward,
+    then another always-checked rebalance upward), each of which either updates the running state or
+    leaves it alone -- so this is built as a chain of `state = where(cond, f(state), state)` merges
+    rather than one combinatorial branch tree. Reuses `relayer_12` (already vectorized above) exactly
+    where the Fortran does. See seaice_compare.py / addice_compare.py for the ffn_<itime>.bin layout
+    this was cross-checked against, alongside seaice_core_ff.addice row-for-row."""
+    qfixr_b = jnp.asarray(qfixr, dtype=bool)
+    h0, h1, h2, h3 = hsil[..., 0], hsil[..., 1], hsil[..., 2], hsil[..., 3]
+    s0, s1, s2, s3 = ssil[..., 0], ssil[..., 1], ssil[..., 2], ssil[..., 3]
+
+    # ---------------------------------------------------------------- branch 1: roice<=0, acefo>0
+    cond_b1 = (roice <= 0.0) & (acefo > 0.0)
+    acefo_safe = jnp.where(acefo == 0.0, 1.0, acefo)
+    roice_b1 = jnp.minimum(1.0, acefo / (ACE1I + AC2OIM))
+    msi2_b1 = jnp.maximum(AC2OIM, acefo - ACE1I)
+    snow_b1 = jnp.zeros_like(snow)
+    h0_b1 = (enrgfo / acefo_safe) * XSI[0] * ACE1I
+    h1_b1 = (enrgfo / acefo_safe) * XSI[1] * ACE1I
+    s0_b1 = (salto / acefo_safe) * XSI[0] * ACE1I
+    s1_b1 = (salto / acefo_safe) * XSI[1] * ACE1I
+    h2_b1 = (enrgfo / acefo_safe) * XSI[2] * msi2_b1
+    h3_b1 = (enrgfo / acefo_safe) * XSI[3] * msi2_b1
+    s2_b1 = (salto / acefo_safe) * XSI[2] * msi2_b1
+    s3_b1 = (salto / acefo_safe) * XSI[3] * msi2_b1
+
+    # ---------------------------------------------------------------- branch 2: roice>0
+    cond_acefi_pos = acefi > 0.0
+    cond_layer_gt = XSI[2] * acefi > XSI[3] * msi2
+    acefi_safe = jnp.where(acefi == 0.0, 1.0, acefi)
+    msi2_safe = jnp.where(msi2 == 0.0, 1.0, msi2)
+    fhsi3_a = -h3 - (XSI[2] * acefi - XSI[3] * msi2) * enrgfi / acefi_safe
+    fssi3_a = -s3 - (XSI[2] * acefi - XSI[3] * msi2) * salti / acefi_safe
+    fhsi3_b = -h3 * acefi * (XSI[2] / XSI[3]) / msi2_safe
+    fssi3_b = -s3 * acefi * (XSI[2] / XSI[3]) / msi2_safe
+    fhsi3 = jnp.where(cond_acefi_pos, jnp.where(cond_layer_gt, fhsi3_a, fhsi3_b), 0.0)
+    fssi3 = jnp.where(cond_acefi_pos, jnp.where(cond_layer_gt, fssi3_a, fssi3_b), 0.0)
+
+    cond_acefo_zero = acefo == 0.0
+    # 2b-i: acefo==0
+    h2_2bi, h3_2bi = h2 - fhsi3, h3 + fhsi3 + enrgfi
+    s2_2bi, s3_2bi = s2 - fssi3, s3 + fssi3 + salti
+    msi2_2bi = msi2 + acefi
+
+    # 2b-ii: acefo!=0 -- rescale roice's existing ice and blend in the new open-ocean ice, via relayer_12
+    drsi = jnp.minimum((1.0 - roice) * acefo / (ACE1I + AC2OIM), 1.0 - roice)
+    roicen = roice + drsi
+    roicen_safe = jnp.where(roicen == 0.0, 1.0, roicen)
+    msi2no = jnp.maximum(AC2OIM, acefo - ACE1I)
+    ace1i_msi2no_safe = jnp.where((ACE1I + msi2no) == 0.0, 1.0, ACE1I + msi2no)
+    snowl_g, hsnow_g, hice_g, sice_g, _, _, mice_g = get_snow_ice_layer(snow, msi2, hsil, ssil, False)
+    ratio = roice / roicen_safe
+    snowl_g = snowl_g * ratio[..., None]
+    hsnow_g = hsnow_g * ratio[..., None]
+    h0n = ((1.0 - roice) * enrgfo * XSI[0] * ACE1I / ace1i_msi2no_safe + roice * hice_g[..., 0]) / roicen_safe
+    h1n = ((1.0 - roice) * enrgfo * XSI[1] * ACE1I / ace1i_msi2no_safe + roice * hice_g[..., 1]) / roicen_safe
+    s0n = ((1.0 - roice) * salto * XSI[0] * ACE1I / ace1i_msi2no_safe + roice * sice_g[..., 0]) / roicen_safe
+    s1n = ((1.0 - roice) * salto * XSI[1] * ACE1I / ace1i_msi2no_safe + roice * sice_g[..., 1]) / roicen_safe
+    m0n = ((1.0 - roice) * acefo * XSI[0] * ACE1I / ace1i_msi2no_safe + roice * mice_g[..., 0]) / roicen_safe
+    m1n = ((1.0 - roice) * acefo * XSI[1] * ACE1I / ace1i_msi2no_safe + roice * mice_g[..., 1]) / roicen_safe
+    hice_g2 = jnp.stack([h0n, h1n, hice_g[..., 2], hice_g[..., 3]], axis=-1)
+    sice_g2 = jnp.stack([s0n, s1n, sice_g[..., 2], sice_g[..., 3]], axis=-1)
+    mice_g2 = jnp.stack([m0n, m1n, mice_g[..., 2], mice_g[..., 3]], axis=-1)
+    hsnow_r, hice_r, sice_r, mice_r, snowl_r = relayer_12(hsnow_g, hice_g2, sice_g2, mice_g2, snowl_g)
+    snow_2bii, _, _, hsil_2bii, ssil_2bii = set_snow_ice_layer(hsnow_r, hice_r, sice_r, mice_r, snowl_r)
+    roice_2bii = roicen
+    msi2_2bii = (drsi * jnp.maximum(AC2OIM, acefo - ACE1I) + roice * (msi2 + acefi)) / roicen_safe
+    h2_2bii = ((1.0 - roice) * enrgfo * XSI[2] * msi2no / ace1i_msi2no_safe + roice * (h2 - fhsi3)) / roicen_safe
+    h3_2bii = ((1.0 - roice) * enrgfo * XSI[3] * msi2no / ace1i_msi2no_safe
+               + roice * (h3 + fhsi3 + enrgfi)) / roicen_safe
+    s2_2bii = ((1.0 - roice) * salto * XSI[2] * msi2no / ace1i_msi2no_safe + roice * (s2 - fssi3)) / roicen_safe
+    s3_2bii = ((1.0 - roice) * salto * XSI[3] * msi2no / ace1i_msi2no_safe
+               + roice * (s3 + fssi3 + salti)) / roicen_safe
+
+    snow_2b = jnp.where(cond_acefo_zero, snow, snow_2bii)
+    roice_2b = jnp.where(cond_acefo_zero, roice, roice_2bii)
+    msi2_2b = jnp.where(cond_acefo_zero, msi2_2bi, msi2_2bii)
+    h0_2b = jnp.where(cond_acefo_zero, h0, hsil_2bii[..., 0])
+    h1_2b = jnp.where(cond_acefo_zero, h1, hsil_2bii[..., 1])
+    h2_2b = jnp.where(cond_acefo_zero, h2_2bi, h2_2bii)
+    h3_2b = jnp.where(cond_acefo_zero, h3_2bi, h3_2bii)
+    s0_2b = jnp.where(cond_acefo_zero, s0, ssil_2bii[..., 0])
+    s1_2b = jnp.where(cond_acefo_zero, s1, ssil_2bii[..., 1])
+    s2_2b = jnp.where(cond_acefo_zero, s2_2bi, s2_2bii)
+    s3_2b = jnp.where(cond_acefo_zero, s3_2bi, s3_2bii)
+
+    # ---------------------------------------------------------------- step A: combine branch1/branch2/no-op
+    cond_b2 = roice > 0.0
+    snow_A = jnp.where(cond_b1, snow_b1, jnp.where(cond_b2, snow_2b, snow))
+    roice_A = jnp.where(cond_b1, roice_b1, jnp.where(cond_b2, roice_2b, roice))
+    msi2_A = jnp.where(cond_b1, msi2_b1, jnp.where(cond_b2, msi2_2b, msi2))
+    h0_A = jnp.where(cond_b1, h0_b1, jnp.where(cond_b2, h0_2b, h0))
+    h1_A = jnp.where(cond_b1, h1_b1, jnp.where(cond_b2, h1_2b, h1))
+    h2_A = jnp.where(cond_b1, h2_b1, jnp.where(cond_b2, h2_2b, h2))
+    h3_A = jnp.where(cond_b1, h3_b1, jnp.where(cond_b2, h3_2b, h3))
+    s0_A = jnp.where(cond_b1, s0_b1, jnp.where(cond_b2, s0_2b, s0))
+    s1_A = jnp.where(cond_b1, s1_b1, jnp.where(cond_b2, s1_2b, s1))
+    s2_A = jnp.where(cond_b1, s2_b1, jnp.where(cond_b2, s2_2b, s2))
+    s3_A = jnp.where(cond_b1, s3_b1, jnp.where(cond_b2, s3_2b, s3))
+    hsil_A = jnp.stack([h0_A, h1_A, h2_A, h3_A], axis=-1)
+    ssil_A = jnp.stack([s0_A, s1_A, s2_A, s3_A], axis=-1)
+
+    # ---------------------------------------------------------------- step B: downward lead-fraction rebalance
+    havg_B = roice_A * (ACE1I + msi2_A) / RHOI
+    opnocn_B = jnp.minimum(0.0, flead * jnp.exp(-BYHREF * (havg_B - 1.0)))
+    opnocn_B = jnp.where(roice_A * (ACE1I + msi2_A) > FLEADMX * RHOI, 0.0, opnocn_B)
+    cond3 = (msi2_A < AC2OIM) | (roice_A > 1.0 - opnocn_B)
+
+    snowl3, hsnow3, hice3, sice3, _, _, mice3 = get_snow_ice_layer(snow_A, msi2_A, hsil_A, ssil_A, False)
+    roicen3 = jnp.minimum(roice_A * (ACE1I + msi2_A) / (ACE1I + AC2OIM), 1.0 - opnocn_B)
+    roicen3_safe = jnp.where(roicen3 == 0.0, 1.0, roicen3)
+    drsi3 = roicen3 - roice_A
+    mice3_0_safe = mice3[..., 0] + 1e-30    # Fortran's own +1e-30 guard, transcribed literally
+    mice3_1_safe = jnp.where(mice3[..., 1] == 0.0, 1.0, mice3[..., 1])
+    msi2A_xsi2_safe = jnp.where((msi2_A * XSI[2]) == 0.0, 1.0, msi2_A * XSI[2])
+    fmsi1_3 = -mice3[..., 0] * drsi3 / roicen3_safe
+    fmsi2_3 = -(mice3[..., 0] + mice3[..., 1]) * drsi3 / roicen3_safe
+    fmsi3_3 = fmsi2_3 * XSI[3]
+    fhsi1_3 = hice3[..., 0] * fmsi1_3 / mice3_0_safe
+    fhsi2_3 = hice3[..., 1] * fmsi2_3 / mice3_1_safe
+    fhsi3_3 = hice3[..., 2] * fmsi3_3 / msi2A_xsi2_safe
+    fssi1_3 = sice3[..., 0] * fmsi1_3 / mice3_0_safe
+    fssi2_3 = sice3[..., 1] * fmsi2_3 / mice3_1_safe
+    fssi3_3 = sice3[..., 2] * fmsi3_3 / msi2A_xsi2_safe
+    ratio3 = roice_A / roicen3_safe
+    hice3n = jnp.stack([hice3[..., 0], hice3[..., 1] * ratio3 + fhsi1_3 - fhsi2_3,
+                        hice3[..., 2] * ratio3 + fhsi2_3 - fhsi3_3, hice3[..., 3] * ratio3 + fhsi3_3], axis=-1)
+    sice3n = jnp.stack([sice3[..., 0], sice3[..., 1] * ratio3 + fssi1_3 - fssi2_3,
+                        sice3[..., 2] * ratio3 + fssi2_3 - fssi3_3, sice3[..., 3] * ratio3 + fssi3_3], axis=-1)
+    msi2_new3 = msi2_A * ratio3 + fmsi2_3       # kept explicitly ("msi2xx" in the Fortran is discarded)
+    snowl3n = snowl3 * ratio3[..., None]
+    hsnow3n = hsnow3 * ratio3[..., None]
+    hsnow3r, hice3r, sice3r, mice3r, snowl3r = relayer_12(hsnow3n, hice3n, sice3n, mice3, snowl3n)
+    snow_3, _, _, hsil_3, ssil_3 = set_snow_ice_layer(hsnow3r, hice3r, sice3r, mice3r, snowl3r)
+    roice_3 = roicen3
+
+    snow_B = jnp.where(cond3, snow_3, snow_A)
+    roice_B = jnp.where(cond3, roice_3, roice_A)
+    msi2_B = jnp.where(cond3, msi2_new3, msi2_A)
+    hsil_B = jnp.where(cond3[..., None], hsil_3, hsil_A)
+    ssil_B = jnp.where(cond3[..., None], ssil_3, ssil_A)
+
+    # ---------------------------------------------------------------- step C: upward lead-fraction rebalance
+    cond_roice_pos = roice_B > 0.0
+    havg_C = roice_B * (ACE1I + msi2_B) / RHOI
+    opnocn_C = jnp.minimum(0.0, flead * jnp.exp(-BYHREF * (havg_C - 1.0)))
+    opnocn_C = jnp.where(roice_B * (ACE1I + msi2_B) > FLEADMX * RHOI, 0.0, opnocn_C)
+    roicen4 = 1.0 - opnocn_C
+    roicen4_safe = jnp.where(roicen4 == 0.0, 1.0, roicen4)
+    drsi4 = jnp.maximum(0.0, roicen4 - roice_B)
+    cond4 = cond_roice_pos & (roice_B > roicen4 - 1e-3) & (drsi4 > 0.0)
+
+    msi2B_xsi3_safe = jnp.where((XSI[3] * msi2_B) == 0.0, 1.0, XSI[3] * msi2_B)
+    msi2B_safe = jnp.where(msi2_B == 0.0, 1.0, msi2_B)
+    fmsi4 = (ACE1I + msi2_B) * (drsi4 / roicen4_safe)
+    fhsi4 = hsil_B[..., 3] * fmsi4 / msi2B_xsi3_safe
+    fssi4 = ssil_B[..., 3] * fmsi4 / msi2B_xsi3_safe
+    fhsi3_4 = hsil_B[..., 2] * fmsi4 / msi2B_safe
+    fssi3_4 = ssil_B[..., 2] * fmsi4 / msi2B_safe
+    msi2_sub4 = msi2_B - fmsi4
+
+    snowl4, hsnow4, hice4, sice4, _, _, mice4 = get_snow_ice_layer(snow_B, msi2_sub4, hsil_B, ssil_B, False)
+    ace1i_msi2sub4_safe = jnp.where((ACE1I + msi2_sub4) == 0.0, 1.0, ACE1I + msi2_sub4)
+    fri0 = mice4[..., 0] / ace1i_msi2sub4_safe
+    fri1 = mice4[..., 1] / ace1i_msi2sub4_safe
+    fri2 = XSI[2] * msi2_sub4 / ace1i_msi2sub4_safe
+    fri3 = XSI[3] * msi2_sub4 / ace1i_msi2sub4_safe
+    ratio4 = roice_B / roicen4_safe
+    snowl4n = snowl4 * ratio4[..., None]
+    hsnow4n = hsnow4 * ratio4[..., None]
+    h0n4 = ratio4 * (fhsi4 * fri0 + hice4[..., 0])
+    h1n4 = ratio4 * (fhsi4 * fri1 + hice4[..., 1])
+    s0n4 = ratio4 * (fssi4 * fri0 + sice4[..., 0])
+    s1n4 = ratio4 * (fssi4 * fri1 + sice4[..., 1])
+    m0n4 = ratio4 * (fmsi4 * fri0 + mice4[..., 0])
+    m1n4 = ratio4 * (fmsi4 * fri1 + mice4[..., 1])
+    hice4n = jnp.stack([h0n4, h1n4, hice4[..., 2], hice4[..., 3]], axis=-1)
+    sice4n = jnp.stack([s0n4, s1n4, sice4[..., 2], sice4[..., 3]], axis=-1)
+    mice4n = jnp.stack([m0n4, m1n4, mice4[..., 2], mice4[..., 3]], axis=-1)
+    hsnow4r, hice4r, sice4r, mice4r, snowl4r = relayer_12(hsnow4n, hice4n, sice4n, mice4n, snowl4n)
+    snow_4, _, msi2_4, hsil_4, ssil_4 = set_snow_ice_layer(hsnow4r, hice4r, sice4r, mice4r, snowl4r)
+    h2_final4 = ratio4 * (hsil_4[..., 2] + fhsi4 * fri2 - fhsi3_4)
+    h3_final4 = ratio4 * (hsil_4[..., 3] + fhsi4 * fri3 + fhsi3_4 - fhsi4)
+    s2_final4 = ratio4 * (ssil_4[..., 2] + fssi4 * fri2 - fssi3_4)
+    s3_final4 = ratio4 * (ssil_4[..., 3] + fssi4 * fri3 + fssi3_4 - fssi4)
+    hsil_4f = jnp.stack([hsil_4[..., 0], hsil_4[..., 1], h2_final4, h3_final4], axis=-1)
+    ssil_4f = jnp.stack([ssil_4[..., 0], ssil_4[..., 1], s2_final4, s3_final4], axis=-1)
+    roice_4 = roicen4
+
+    snow_C = jnp.where(cond4, snow_4, snow_B)
+    roice_C = jnp.where(cond4, roice_4, roice_B)
+    msi2_C = jnp.where(cond4, msi2_4, msi2_B)
+    hsil_C = jnp.where(cond4[..., None], hsil_4f, hsil_B)
+    ssil_C = jnp.where(cond4[..., None], ssil_4f, ssil_B)
+
+    # ---------------------------------------------------------------- qfixr=True branch (msi2 floor)
+    cond5 = (roice > 0.0) & (msi2 < AC2OIM)
+    dmimp5 = AC2OIM - msi2
+    dhimp5 = (h2 * XSI[2] + h3 * XSI[3]) * dmimp5
+    dsimp5 = (s2 * XSI[2] + s3 * XSI[3]) * dmimp5
+    msi2_safe5 = jnp.where(msi2 == 0.0, 1.0, msi2)
+    h2_5 = h2 * AC2OIM / msi2_safe5
+    h3_5 = h3 * AC2OIM / msi2_safe5
+    s2_5 = s2 * AC2OIM / msi2_safe5
+    s3_5 = s3 * AC2OIM / msi2_safe5
+    snow_5 = jnp.where(cond5, snow, snow)          # unchanged either way
+    roice_5 = jnp.where(cond5, roice, roice)       # unchanged either way
+    msi2_5 = jnp.where(cond5, AC2OIM, msi2)
+    h2_5f = jnp.where(cond5, h2_5, h2)
+    h3_5f = jnp.where(cond5, h3_5, h3)
+    s2_5f = jnp.where(cond5, s2_5, s2)
+    s3_5f = jnp.where(cond5, s3_5, s3)
+    hsil_5 = jnp.stack([h0, h1, h2_5f, h3_5f], axis=-1)
+    ssil_5 = jnp.stack([s0, s1, s2_5f, s3_5f], axis=-1)
+    dmimp_5 = jnp.where(cond5, dmimp5, 0.0)
+    dhimp_5 = jnp.where(cond5, dhimp5, 0.0)
+    dsimp_5 = jnp.where(cond5, dsimp5, 0.0)
+
+    # ---------------------------------------------------------------- combine qfixr True/False
+    snow_out = jnp.where(qfixr_b, snow_5, snow_C)
+    roice_out = jnp.where(qfixr_b, roice_5, roice_C)
+    msi2_out = jnp.where(qfixr_b, msi2_5, msi2_C)
+    hsil_out = jnp.where(qfixr_b[..., None], hsil_5, hsil_C)
+    ssil_out = jnp.where(qfixr_b[..., None], ssil_5, ssil_C)
+    dmimp_out = jnp.where(qfixr_b, dmimp_5, 0.0)
+    dhimp_out = jnp.where(qfixr_b, dhimp_5, 0.0)
+    dsimp_out = jnp.where(qfixr_b, dsimp_5, 0.0)
+
+    msi1_out = snow_out + ACE1I
+    tsil_out = tice(hsil_out, ssil_out, msi1_out, msi2_out)
+    return dict(snow=snow_out, roice=roice_out, hsil=hsil_out, ssil=ssil_out, msi2=msi2_out,
+                tsil=tsil_out, dmimp=dmimp_out, dhimp=dhimp_out, dsimp=dsimp_out)

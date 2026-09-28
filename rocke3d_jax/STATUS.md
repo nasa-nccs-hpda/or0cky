@@ -607,16 +607,19 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   a statically-linked subprocess driver instead, establishing the calling architecture for a future
   full radiation port. Not a SOCRATES rewrite — the intent is to call the real, unmodified library.
 
-- JAX-vectorization: the SEA_ICE/SSIDEC/snowice/SIMELT hot path (`seaice_core_jax.py`) is now a
-  batched, `jax.jit`-compilable port (4,524 real cells: 4.6 ms cached vs. a 2.9 s one-time compile)
-  at the same accuracy as the plain-Python reference (worst case 7e-15 relative difference between
-  the two). ADDICE and GHY are still plain Python -- ADDICE's ~15-leaf branch tree is deliberately
-  deferred rather than vectorized in a rush (see D14).
+- JAX-vectorization: all of `seaice_core_ff.py` (SEA_ICE/SSIDEC/snowice/SIMELT/ADDICE) is now a
+  batched, `jax.jit`-compilable port (`seaice_core_jax.py`) at the same accuracy as the plain-Python
+  reference (worst case 7e-15 relative for GROUND_SI, 1e-6 for ADDICE) -- measured 46-51x CPU
+  speedup vs. the per-cell Python loop it replaces, confirmed at 20x scale to rule out a small-batch
+  artifact. 2 of ADDICE's 5 leaf branches (0 real occurrences in the 3-date record) are validated
+  against the plain-Python reference on synthetic inputs instead of Fortran -- documented, not
+  hidden. GHY (`ghy_ref.py`) is still plain Python -- a stateful multi-layer column solver, a
+  separate and larger effort (see D14).
 
 **Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
 kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
-convection, atmospheric dynamics, ocean, ADDICE and GHY JAX-vectorization. No speed numbers for the
-rest of Track B yet (only float64 CPU correctness runs).
+convection, atmospheric dynamics, ocean, GHY JAX-vectorization, and GPU speed numbers (no GPU
+available on the node used so far).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 

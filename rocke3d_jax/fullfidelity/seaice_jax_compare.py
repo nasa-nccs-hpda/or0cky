@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import seaice_core_jax as J
 import seaice_compare as C
 import simelt_compare as M
+import addice_compare as A
 
 
 def load_all_ffi(paths):
@@ -74,6 +75,27 @@ def batched_ground_si(rec):
         erunosi=jnp.where(m, erunosi_ocean, erunosi_other),
         srunosi=jnp.where(m, srunosi_ocean, srunosi_other),
     )
+
+
+def load_all_ffn(paths):
+    return np.concatenate([A.load(p) for p in paths], axis=0)
+
+
+def batched_addice(rec):
+    snow = jnp.asarray(rec[:, 3])
+    roice = jnp.asarray(rec[:, 4])
+    hsil = jnp.asarray(rec[:, 5:9])
+    ssil = jnp.asarray(rec[:, 9:13])
+    msi2 = jnp.asarray(rec[:, 13])
+    enrgfo = jnp.asarray(rec[:, 14])
+    acefi = jnp.asarray(rec[:, 15])
+    enrgfi = jnp.asarray(rec[:, 16])
+    acefo = jnp.asarray(rec[:, 17])
+    salto = jnp.asarray(rec[:, 18])
+    salti = jnp.asarray(rec[:, 19])
+    flead = jnp.asarray(rec[:, 20])
+    qfixr = jnp.asarray(rec[:, 21]) > 0.5
+    return J.addice(snow, roice, hsil, ssil, msi2, enrgfo, acefo, acefi, enrgfi, salto, salti, flead, qfixr)
 
 
 def batched_simelt(rec):
