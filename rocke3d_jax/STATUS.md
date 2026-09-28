@@ -616,10 +616,18 @@ working log: `fullfidelity/PHASE0_LOG.md`. Everything in this file above is **Tr
   hidden. GHY (`ghy_ref.py`) is still plain Python -- a stateful multi-layer column solver, a
   separate and larger effort (see D14).
 
+- GHY JAX-vectorization is **scoped, not implemented** (`FULL_FIDELITY_PLAN.md`, after Phase 1):
+  every technique needed has a precedent elsewhere in this project, but GHY needs several at once
+  (per-cell soil-layer count, per-substep snow-layer count, per-cell-per-step adaptive substep
+  count from Ent), and two specific risk points were checked empirically rather than assumed --
+  both corrected the initial guess (the bisection "exact" branch fires 7.2% of the time, not rarely;
+  naive `dts=0`/`dts≈0` substep padding either crashes or silently perturbs accumulator scalars by
+  up to 1.8, so any implementation needs a per-lane whole-substep mask instead).
+
 **Not done yet (so no whole-model fidelity claim can be made):** the full radiation driver (only one
 kernel proof-of-concept exists so far — paused in favor of smaller remaining items), clouds/moist
-convection, atmospheric dynamics, ocean, GHY JAX-vectorization, and GPU speed numbers (no GPU
-available on the node used so far).
+convection, atmospheric dynamics, ocean, GHY JAX-vectorization (scoped only), and GPU speed numbers
+(no GPU available on the node used so far).
 
 ## Round 2 optimization (2026-09-23) — CPU and GPU (A100) measured
 

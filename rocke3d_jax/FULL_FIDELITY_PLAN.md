@@ -24,7 +24,7 @@ driver"); this branch adds a second, separately-labelled track and records the
 | Phase 2 Radiation (SOCRATES) | scoped 2026-09-27, proof-of-concept only (one kernel via subprocess); paused — user redirected effort to remaining small items first | plan §Phase 2 |
 | Phases 3–5 (clouds, dynamics, ocean) | not started | — |
 | JAX-vectorization: SEA_ICE/SSIDEC/snowice/SIMELT/ADDICE (`seaice_core_jax.py`) | **done**, same accuracy as plain Python, jit-compilable (46-51x CPU speedup) | D14 |
-| JAX-vectorization: GHY (`ghy_ref.py`) | not started (stateful multi-layer column solver — separate, larger effort) | — |
+| JAX-vectorization: GHY (`ghy_ref.py`) | **scoped** 2026-09-27, not started — see dedicated subsection after Phase 1 | — |
 
 **Scoping learned so far.** (a) The pieces ported so far are stateless column/tile functions and validated at
 1e-11–1e-16 relative; the method (instrumented real model → per-call records → JAX port → tests with
@@ -152,6 +152,79 @@ estimates and the least reliable part of this plan.
 - Expected delta: correct polar/land fluxes; the current sensible-heat
   pattern correlation vs. period-mean (−0.014, one-step vs. mean — not a
   like-for-like check) should be re-measured properly against the oracle.
+
+### JAX-vectorization of GHY (`ghy_ref.py`) — SCOPED 2026-09-27, not started
+
+The rest of Track B's correctness-validated Python (ATURB, PBL, SURFACE, SEAICE/SSIDEC/snowice/
+ADDICE/SIMELT, LAKES, tile aggregation) is now JAX-vectorized (batched arrays + `jnp.where`,
+`jax.jit`-compilable, D14). GHY is the one holdout, and it is not comparable in difficulty — the
+plan flagged this back at Phase 1 scoping ("expect it to be the longest single item in Phase 1") and
+a full read of `ghy_ref.py` (1,253 lines) confirms why, concretely rather than by guess:
+
+- **Two axes of genuinely variable per-cell array size**, not just branchiness:
+  1. `n`, the number of active soil layers (1..`NGM`=6), set once per cell in `__init__` from the
+     static soil-depth config (`dz`) — it does not change over a cell's own timesteps, so across a
+     *batch* of cells it is a fixed-at-trace-time-per-lane integer. Fixed-size-array-plus-mask (the
+     same technique used for `LMI`=4 in `seaice_core_jax.py`) covers this cleanly: pad to `NGM`+1
+     slots, mask `k > n`.
+  2. `nsn`, the number of active snow layers, which changes **within** a cell's own substep loop
+     (0, 1, or 3 — `snow_redistr` only ever produces 1 or 3, never 2; 0 means no snow layer exists
+     yet). Also coverable with a fixed 3-slot array plus a per-substep mask, but the mask is now
+     substep-dependent, not just cell-dependent.
+- **A genuinely variable per-cell, per-real-timestep iteration count**: `advnc`'s `for it in
+  ent_iters` loop runs once per Ent-recorded adaptive substep, and that count varies cell-to-cell.
+  Measured directly from the real `ffg_*.bin` record (9,036 real land cells, 3 dates): `ffnit` ranges
+  **1 to 10**, with 38%/38%/14% of cells at 1/2/3 substeps respectively and a long thin tail out to
+  10 (0 cells ever exceed the 11-slot recording buffer). **Checked empirically, and the obvious fix
+  does NOT work**: padding every cell's substep list to a common max with `dts=0` no-op rows crashes
+  outright (`snow_adv_1` divides raw water/heat amounts by `self.dts` -- `ZeroDivisionError` on real
+  data, confirmed by running it); padding with a tiny nonzero `dts` (1e-6) instead avoids the crash
+  but is **not** a no-op either -- `w` and per-substep temperatures stay put (diff ~1e-12) but the
+  step's accumulator scalars (`tbcs`, `aruns`, etc.) move by **up to 1.8** on real cells, because
+  several formulas (`drip_from_canopy`'s `dr`/`dr_scale`, among others) divide a *not*-proportionally-
+  small quantity by `dts`, so as `dts`→0 those terms blow up rather than vanish. **Conclusion:** the
+  padding must gate the whole substep body with a per-lane mask (`jnp.where` selecting "run this
+  substep's full state update" vs. "keep the pre-substep state, this lane is done"), not attempt to
+  make a real substep degenerate by shrinking `dts` -- the same "select between two branch-local
+  candidate states" pattern used throughout `seaice_core_jax.py`, just applied at the substep-loop
+  level instead of inside one function.
+- **Two data-dependent `while`-loops** (`SNOW.f`'s `snow_redistr`, and `fllmt`'s negative-runoff
+  redistribution) whose trip counts are bounded by small constants (`TOTAL_NL`=3 and `n`≤6
+  respectively) — the same "bounded unroll with `jnp.where`-gated advance" technique used for PBL's
+  Newton solve applies, just two more instances of it.
+- **A small tridiagonal solve** (`heat_eq`, size 1–3) for the snow heat equation — fixed-size with
+  masked rows, not a new technique.
+- **A fixed-iteration (6-step) binary search** into the 65-entry soil hydraulic tables (`hydra`'s
+  bisection into `THM`/`HLM`/`XKLM`/`DLM`, called twice per substep), with an `exact=True` branch
+  (a bisection step landing on an exact table hit) that changes the loop body itself, not just the
+  answer, on that iteration. **Checked empirically, not assumed rare:** instrumented `hydra` and ran
+  it over all 9,036 real land cells (272,124 individual bisection calls) — `exact=True` fires
+  **19,605 times (7.2%)**. Not a corner case; the vectorized bisection must handle it as a normal
+  outcome (a per-iteration `jnp.where` branch, same technique as everywhere else here), not something
+  approximated away.
+- **~15 more `GhyColumn` methods** not yet touched here (`sensible_heat`, `drip_from_canopy`, `flg`,
+  `flhg`, `fl`, `flh`, `runoff`, `fllmt`, `apply_fluxes`, `gdtm`, `snow`, `accm`/`accm_zero`/
+  `accm_final`) each with 2-way bare/vegetated (`ibv`) masking and several smaller branches of their
+  own — comparable in density to what `seaice_core_ff.py` had, just roughly 1.5–2x the line count.
+
+**Net assessment:** every individual technique needed here already has a precedent elsewhere in
+Track B (fixed-size masking, bounded-unroll while-loops, small tridiagonal solves, fixed-iteration
+bisection) — this is not a new *kind* of problem, it is the same toolkit applied across more axes of
+variability at once (per-cell layer count, per-substep snow-layer count, per-cell-per-step substep
+count), which compounds the surface area for a transcription mistake without a comparable increase in
+real-data volume to catch one (9,036 real land-tile records total, vs. tens of thousands for the
+sea-ice pieces). Estimated effort: at least as large as all of `seaice_core_jax.py` (the sea-ice
+vectorization, ~750 hand-derived lines across several sessions), likely 1.5–2x that. **Recommended
+approach if/when this is picked up:** vectorize and validate one increment at a time against the
+real dumps, in this order: (1) the per-lane substep-count mask (now known to need whole-body gating,
+not a `dts` trick — see above; cheap once designed correctly, unblocks everything else), (2)
+`hydra`/`xklh` (self-contained, reuses the bisection technique already proven in this project, now
+known to need its `exact` branch handled as a normal ~7% outcome, not an edge case), (3) the non-snow
+flux/runoff chain (`sensible_heat` through `apply_fluxes`, `fr_snow=0` cells only — per the
+ATURB/PBL/SEAICE ledger this covers a majority of real cells and is the highest per-line-of-effort
+payoff), (4) the snow model last (`SNOW.f`'s functions, the most novel and riskiest piece). Not
+started; kept here as a scoping record, verified against real data on its two riskiest assumptions
+rather than a partial, unvalidated implementation.
 
 ### Phase 2 — Radiation (6–10 weeks + a decision) — biggest single item, SCOPED 2026-09-27
 

@@ -194,3 +194,26 @@ floor correction) occur 0 times in the real 3-date record -- validated against s
 synthetic inputs instead (bitwise/near-bitwise match), documented as such rather than silently
 assumed correct. seaice_core_jax.py's module docstring updated to reflect ADDICE now being in scope.
 Full test suite green. Remaining JAX-vectorization work: GHY only (ghy_ref.py).
+
+## 2026-09-27: scoped (not implemented) JAX-vectorization of GHY
+Read all 1,253 lines of ghy_ref.py and wrote a detailed scoping section into FULL_FIDELITY_PLAN.md
+(after Phase 1, before Phase 2) rather than rushing a partial implementation -- matches how Phase 2
+radiation was handled when it turned out to be similarly large. Confirmed every individual technique
+needed has a precedent already used in this project (fixed-size-plus-mask for variable layer counts,
+bounded-unroll while-loops, small tridiagonal solves, fixed-iteration bisection) but GHY needs several
+of them AT ONCE (per-cell active-soil-layer count n, per-substep snow-layer count nsn in {0,1,3}, and
+a per-cell-per-timestep substep count from Ent's adaptive stepping), which compounds risk relative to
+the sea-ice work without a comparable real-data volume to catch a mistake (9,036 real land-tile
+records vs tens of thousands for sea-ice).
+
+Verified two specific risk points empirically rather than assuming, and both corrected the initial
+guess: (1) hydra()'s bisection "exact table hit" branch, expected to be a rare edge case, actually
+fires 19,605/272,124 times (7.2%) on real data -- not rare, must be a normal branch in any vectorized
+version. (2) The obvious substep-count-padding scheme (pad every cell's Ent-iteration list to a common
+max with dts=0 "no-op" rows) does not work: dts=0 crashes with ZeroDivisionError (snow_adv_1 divides
+by self.dts), and padding with a tiny dts=1e-6 instead avoids the crash but is not a no-op either --
+key accumulator scalars (tbcs, aruns, ...) move by up to 1.8 because several formulas divide a
+not-proportionally-small quantity by dts. Correct fix: gate the whole substep body with a per-lane
+mask (run vs keep-prior-state), not attempt to make dts degenerate. Documented as a corrected finding,
+not a hedge, in the plan. GHY JAX-vectorization is scoped and NOT started -- next up if resumed:
+the per-lane substep mask, then hydra/xklh, then the non-snow flux chain, then the snow model last.
