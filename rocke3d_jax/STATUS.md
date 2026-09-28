@@ -811,6 +811,12 @@ roundoff (T 7e-13 K vs 4e-3 K signal; U/V 1e-11 m/s vs 9e-2) on 3 dates x 2 subs
 (`fullfidelity/chain_aggregate_aturb.py`). Scoping also closed: land-ice is trivial for P2SAoM40 (NHC=1) and ocean/ice
 PBL data flow was already validated by D6, so what remains for the chained driver is assembly, plus the Ent blocker for land.
 
+**2026-09-28, later (D19)**: two consecutive NIsurf substeps are now chained from real step-start state: our own
+PBL/tile/aggregation/ATURB at substep 1, then substep 2 on inputs derived only from substep 1's results (new links: layer-1
+exports, `get_dbl`, profile/ground-state carry-over) reproduces the real substep-2 ATURB exit state at roundoff on 3 dates
+(T 1e-12 K vs 3.5e-3 K signal). Land (GHY/Ent) is still recorded and GROUND_SI/GROUND_LK, which run once per step after the
+loop, are not yet in the chain.
+
 **2026-09-28 update**: scoped the chained-driver integration by tracing the real per-cell call order
 against the persistent (non-scratch) source tree, line-precisely — confirmed all 7 steps (ocean/ice
 tiles, land ice, EARTH/GHY, tile aggregation, ATURB, GROUND_SI, GROUND_LK) live in one Fortran

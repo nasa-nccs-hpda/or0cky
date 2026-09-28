@@ -281,6 +281,8 @@ loop, distinct from one step's tile-flux computation.
 
 **Progress 2026-09-28 (D18):** steps 1, 4, 5 are now checked as a composition for the ocean/ice share (`chain_aggregate_aturb.py`: our PBL+tile -> aggregation -> ATURB vs the real exit state, roundoff). Next: run our `landice_tile_ff` inside that composite, then the `lax.scan` assembly (ocean/ice/land-ice/lakes; land stays dump-fed).
 
+**Progress 2026-09-28 (D19):** the NS=1 -> NS=2 chain (steps 1-5 over two substeps) is validated with land recorded. Remaining before a `lax.scan` driver: GROUND_SI/GROUND_LK/FORM_SI after the loop, a step-to-step chain (needs the other physics that runs between steps: radiation, dynamics, clouds), and land/Ent.
+
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 
 **Update:** completed the same day it was scoped below. The scoping held up well against

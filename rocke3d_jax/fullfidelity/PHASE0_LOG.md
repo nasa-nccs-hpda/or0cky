@@ -395,3 +395,10 @@ tile chain -> our aggregation (recorded land-ice/land) -> our ATURB vs the real 
 Correction to the 2026-09-28 tracing entry above: `END DO ! end of surface time step` is at SURFACE.f:1178, right after
 ATM_DIFFUS, so the NS loop wraps only ocean/ice tiles, land ice, EARTH, aggregation and ATURB. GROUND_SI/GROUND_LK
 (and RIVERF, FORM_SI) run once per DTsrc step after the loop. Found while checking what a substep-to-substep chain needs.
+
+## 2026-09-28 (night): D19 -- two substeps chained
+Checked what substep 2's PBL/tile inputs depend on: PBL profiles and cm/ch/cq carry over bitwise; layer-1 scalars and
+`get_dbl` inputs come from the ATURB exit state; ice/land-ice ground state carries over from the tile outputs; water-tile
+`z0m` is provably irrelevant (output unchanged when perturbed). Built `substep_chain.py` (layer-1 exports, get_dbl, THBAR)
+and `chain_two_substeps.py`; per-column diff caught a Coriolis bug of mine (land-ice dbl 66 m off) that a plain
+end-result check would have blamed on physics. Final substep-2 exit state matches the real one at roundoff on 3 dates.

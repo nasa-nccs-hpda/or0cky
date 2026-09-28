@@ -1,0 +1,232 @@
+"""Track B: two consecutive NIsurf substeps chained from real step-start state (SURFACE.f `DO NS=1,NIsurf`, D19).
+
+Substep 1 runs on the REAL step-start inputs (recorded PBL/tile/ATURB entry state). Substep 2 is then run on inputs
+that are built ONLY from substep 1's results computed by our own code (no recorded substep-2 input is used except
+where stated): PBL profiles and cm/ch/cq carried over, the layer-1 atmosphere scalars and get_dbl from our ATURB
+exit state (`substep_chain`), ice/land-ice ground state from our tile outputs, e0/evapor accumulated. The final
+result (our ATURB exit state after substep 2) is compared with the real one, and every predicted substep-2 input
+column is diffed against the recorded value.
+
+Not chained (recorded, stated plainly): the land patch (GHY, needs Ent) at both substeps, its PBL outputs used in the
+composite ustar/lmonin for get_dbl, and the ocean tile's own state (unchanged inside the loop in the real model).
+"""
+import os, sys
+import numpy as np
+import jax.numpy as jnp
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tile_aggregate_ff as TA
+import surface_tile_ff as S
+import surface_chain_ff as CH
+import landice_tile_ff as LI
+import pbl_compare as PC
+import pbl_ff as P
+import aturb_compare as AC
+import aturb_ff as A
+import aturb_uv_ff as UV
+import substep_chain as SC
+import chain_aggregate_aturb as C
+from ffdump_reader import read_dump
+
+TF = S.TF
+
+
+def load_atm(path_in):
+    """Atmosphere state + statics in the ATURB (J,I,L) layout from an ffa_*_in dump."""
+    args, dt, din = AC.load_inputs(path_in)
+    atm = {k: np.array(args[k]) for k in ("T", "Q", "UA", "VA", "E", "PMID", "PEDN", "PK", "PEK1", "PDSIG")}
+    atm["U"] = np.transpose(np.asarray(din["U"]), (1, 0, 2))
+    atm["V"] = np.transpose(np.asarray(din["V"]), (1, 0, 2))
+    atm["MA1"] = np.asarray(din["MA"])[0].T
+    return atm, dt
+
+
+def run_aturb(atm, fl, cells, dt):
+    """fl: dict of per-cell ATURB flux arrays for `cells` (i,j 1-based columns); other columns get the same inert fill
+    as aturb_compare. Returns exit-state dict in (J,I,L) layout."""
+    i = cells[:, 0].astype(int) - 1
+    j = cells[:, 1].astype(int) - 1
+    shape = atm["T"].shape[:2]
+    m = AC.valid_mask(shape)
+    full = {}
+    for k in ("UFLUX1", "VFLUX1", "TFLUX1", "QFLUX1", "TSAVG", "QSAVG"):
+        a = np.full(shape, {"TSAVG": 280.0, "QSAVG": 0.0}.get(k, 1e-3))
+        a[j, i] = np.asarray(fl[k])
+        full[k] = a
+    args = {k: jnp.asarray(atm[k]) for k in ("T", "Q", "UA", "VA", "E", "PMID", "PEDN", "PK", "PEK1", "PDSIG")}
+    args.update({k: jnp.asarray(v) for k, v in full.items()})
+    res = A.aturb_grid(**args, dtime=dt)
+    geo = UV.geometry()
+    Un, Vn = UV.diffuse_uv(jnp.asarray(atm["U"]), jnp.asarray(atm["V"]), res["uflxa"], res["vflxa"], res["km"],
+                           res["uw_nl"], res["vw_nl"], res["rho"], res["rhoe"], res["dz"], res["dze"], dt, geo)
+    ua, va = UV.recalc_agrid_uv(Un, Vn, geo)
+    return dict(T=res["t"], Q=res["q"], E=res["e"], pblht=res["pblht"], dclev=res["dclev"], U=Un, V=Vn, UA=ua, VA=va,
+                m=m)
+
+
+def next_atm(atm, ex):
+    new = dict(atm)
+    for k in ("T", "Q", "E", "U", "V", "UA", "VA"):
+        new[k] = np.asarray(ex[k])
+    return new
+
+
+def substep(pbl12, tile, pbl3, li, blk, atm, dt, land_patch_rec):
+    """One substep on the given records. Returns dict with our tile/PBL outputs, aggregated fluxes and ATURB exit."""
+    ftype, patch, _ = TA.unpack(land_patch_rec)
+    patch = {k: np.array(v) for k, v in patch.items()}
+    got, pout = CH.run_chain(pbl12, tile, return_pbl=True)
+    lut = C._cell_lookup(blk)
+    idx = lut[tile[:, 0].astype(int), tile[:, 1].astype(int)]
+    k = tile[:, 2].astype(int) - 1
+    patch["uflux1"][idx, k] = np.asarray(got["dmua"]); patch["vflux1"][idx, k] = np.asarray(got["dmva"])
+    patch["dth1"][idx, k] = np.asarray(got["dth1"]); patch["dq1"][idx, k] = np.asarray(got["dq1"])
+    patch["tsavg"][idx, k] = np.asarray(pout["tsv"]); patch["qsavg"][idx, k] = np.asarray(pout["qsrf"])
+    gli, pli = C.landice_chain(pbl3, li)
+    idl = lut[li[:, 0].astype(int), li[:, 1].astype(int)]
+    patch["uflux1"][idl, 2] = np.asarray(gli["uflux1"]); patch["vflux1"][idl, 2] = np.asarray(gli["vflux1"])
+    patch["dth1"][idl, 2] = np.asarray(gli["dth1"]); patch["dq1"][idl, 2] = np.asarray(gli["dq1"])
+    patch["tsavg"][idl, 2] = np.asarray(pli["tsv"]); patch["qsavg"][idl, 2] = np.asarray(pli["qsrf"])
+    comp = {k_: np.asarray(v) for k_, v in TA.aggregate(jnp.asarray(ftype), {k_: jnp.asarray(v) for k_, v in patch.items()}).items()}
+    i = blk[:, 0].astype(int) - 1
+    j = blk[:, 1].astype(int) - 1
+    fl = C.aturb_flux_arrays(comp, atm["MA1"][j, i], dt)
+    ex = run_aturb(atm, fl, blk, dt)
+    return dict(tile=got, pbl=pout, li=gli, pbl_li=pli, comp=comp, ex=ex, ftype=ftype)
+
+
+def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_all):
+    """Predicted substep-2 records (PBL itype<=2, PBL itype 3, tile, land-ice tile) from substep-1 results r1 and the
+    substep-2 atmosphere `atm2` (our ATURB exit). Start from the recorded substep-2 rows so that columns we do not model
+    (constants, ddml flags, ...) stay as recorded; overwrite every column we predict."""
+    e = SC.layer1_exports(atm2["T"], atm2["Q"], atm2["UA"], atm2["VA"], atm2["MA1"], atm2["PEK1"], atm2["PMID"][..., 0])
+    # composite ustar/lmonin from substep-1 PBL outputs (land recorded)
+    shape = atm2["T"].shape[:2]
+    ust = np.zeros(shape); lmo = np.zeros(shape)
+    lut = C._cell_lookup(blk)
+    ft = r1["ftype"]
+    def acc(rows, ustar, lmonin, itp):
+        idx = lut[rows[:, 0].astype(int), rows[:, 1].astype(int)]
+        j = rows[:, 1].astype(int) - 1; i = rows[:, 0].astype(int) - 1
+        np.add.at(ust, (j, i), ft[idx, itp - 1] * ustar)
+        np.add.at(lmo, (j, i), ft[idx, itp - 1] * lmonin)
+    for itp in (1, 2):
+        m = a12[:, 2] == itp
+        acc(a12[m], r1["pbl"]["ustar"][m], r1["pbl"]["lmonin"][m], itp)
+    acc(a3, r1["pbl_li"]["ustar"], r1["pbl_li"]["lmonin"], 3)
+    acc(a4, a4[:, 99], a4[:, 100], 4)
+    cor = np.zeros(shape)
+    cor[b_all[:, 1].astype(int) - 1, b_all[:, 0].astype(int) - 1] = b_all[:, 36]   # per-cell constant (sinlat*omega2)
+    ug, vg, dbl = SC.get_dbl(jnp.asarray(ust), jnp.asarray(lmo), jnp.asarray(cor), jnp.asarray(atm2["pblht"]),
+                             jnp.asarray(atm2["dclev"]), jnp.asarray(atm2["T"]), jnp.asarray(atm2["Q"]),
+                             jnp.asarray(atm2["UA"]), jnp.asarray(atm2["VA"]), jnp.asarray(atm2["PMID"]),
+                             jnp.asarray(atm2["PK"]), jnp.asarray(e["ztop"]))
+    cellv = dict(utop=e["utop"], vtop=e["vtop"], qtop=e["qtop"], tkv=e["tkv"], zs1=e["zs1"], ztop=e["ztop"],
+                 dbl=dbl, ug=ug, vg=vg)
+    cols = dict(zs1=5, tkv=7, dbl=29, ug=31, vg=32, utop=37, vtop=38, qtop=39, ztop=40)
+
+    def fill(rec, out_pbl, tg1_out=None, itype_rows=None):
+        rec = np.array(rec)
+        j = rec[:, 1].astype(int) - 1; i = rec[:, 0].astype(int) - 1
+        for nm, c in cols.items():
+            rec[:, c] = np.asarray(cellv[nm])[j, i]
+        rec[:, 50:58] = out_pbl["u"]; rec[:, 58:66] = out_pbl["v"]; rec[:, 66:74] = out_pbl["t"]
+        rec[:, 74:82] = out_pbl["q"]; rec[:, 82:89] = out_pbl["e"]
+        rec[:, 33] = out_pbl["cm"]; rec[:, 34] = out_pbl["ch"]; rec[:, 35] = out_pbl["cq"]
+        return rec
+
+    p12 = fill(b12, r1["pbl"])
+    p3 = fill(b3, r1["pbl_li"])
+    # ice / land-ice ground state carried from tile outputs (ocean tile state is unchanged in the loop)
+    ice = p12[:, 2] == 2
+    tg_ice = np.asarray(r1["tile"]["tg1"])[ice] + TF
+    tg_li = np.asarray(r1["li"]["tg1"]) + TF
+    for rec, sel, tg in ((p12, ice, tg_ice), (p3, slice(None), tg_li)):
+        lh = rec[sel, 19]; ps = rec[sel, 16]
+        qs = np.asarray(P.qsat(jnp.asarray(tg), jnp.asarray(lh), jnp.asarray(ps)))
+        rec[sel, 18] = tg; rec[sel, 6] = tg; rec[sel, 8] = qs; rec[sel, 9] = qs
+    # tile records
+    tnew = np.array(tb)
+    j = tnew[:, 1].astype(int) - 1; i = tnew[:, 0].astype(int) - 1
+    tnew[:, S.IN["q1"]] = np.asarray(e["qtop"])[j, i]
+    tnew[:, S.IN["thv1"]] = np.asarray(atm2["T"])[j, i, 0] * (1.0 + np.asarray(atm2["Q"])[j, i, 0] * SC.XDELT)
+    tnew[:, S.IN["e0"]] = ta[:, S.IN["e0"]] + np.asarray(r1["tile"]["f0dt"])
+    tnew[:, S.IN["evapor"]] = ta[:, S.IN["evapor"]] + np.asarray(r1["tile"]["evap"])
+    ii = tnew[:, 2] == 2
+    tnew[ii, S.IN["tg1"]] = np.asarray(r1["tile"]["tg1"])[ii]
+    tnew[ii, S.IN["tg2"]] = np.asarray(r1["tile"]["tg2"])[ii]
+    tnew[ii, S.IN["tr4"]] = np.asarray(r1["tile"]["tr4"])[ii]
+    lnew = np.array(lb)
+    j = lnew[:, 1].astype(int) - 1; i = lnew[:, 0].astype(int) - 1
+    lnew[:, LI.IN["q1"]] = np.asarray(e["qtop"])[j, i]
+    lnew[:, LI.IN["tg1"]] = np.asarray(r1["li"]["tg1"])
+    return p12, p3, tnew, lnew
+
+
+PRED_COLS = dict(zs1=5, tgv=6, tkv=7, qg_sat=8, qg_aver=9, tg=18, dbl=29, ug=31, vg=32, cm=33, ch=34, cq=35,
+                 utop=37, vtop=38, qtop=39, ztop=40)
+
+
+def run_two_substeps(dd, it):
+    """Returns (rows vs the real substep-2 ATURB exit state, diag of predicted-vs-recorded substep-2 input columns)."""
+    p = PC.load(f"{dd}/ffp_{it}.bin"); t = S.load(f"{dd}/ffs_{it}.bin"); l = LI.load(f"{dd}/ffl_{it}.bin")
+    fft = TA.load(f"{dd}/fft_{it}.bin")
+    n = len(p) // 2; nt = len(t) // 2; nl = len(l) // 2; B = len(fft) // 2
+    (pa, pb), (ta, tb), (la, lb) = (p[:n], p[n:]), (t[:nt], t[nt:]), (l[:nl], l[nl:])
+    blk1, blk2 = fft[:B], fft[B:]
+    a12, a3, a4 = pa[pa[:, 2] <= 2], pa[pa[:, 2] == 3], pa[pa[:, 2] == 4]
+    b12, b3 = pb[pb[:, 2] <= 2], pb[pb[:, 2] == 3]
+    atm1, dt = load_atm(f"{dd}/ffa_{it}_c1_in.bin")
+    r1 = substep(a12, ta, a3, la, blk1, atm1, dt, blk1)
+    atm2 = next_atm(atm1, r1["ex"])
+    atm2["pblht"] = np.asarray(r1["ex"]["pblht"]); atm2["dclev"] = np.asarray(r1["ex"]["dclev"])
+    p12, p3, tnew, lnew = predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk1, atm2, r1["ftype"], pb)
+    diag = {}
+    for nm, c in PRED_COLS.items():
+        for lab, pr, rc, sel in (("itype1", p12, b12, b12[:, 2] == 1), ("itype2", p12, b12, b12[:, 2] == 2),
+                                 ("itype3", p3, b3, np.ones(len(b3), bool))):
+            if sel.sum() == 0:
+                continue
+            d = np.abs(pr[sel, c] - rc[sel, c])
+            diag[f"{lab}.{nm}"] = float(d.max())
+    for nm, pr, rc in (("profiles", p12[:, 50:89], b12[:, 50:89]), ("profiles3", p3[:, 50:89], b3[:, 50:89])):
+        diag[nm] = float(np.abs(pr - rc).max())
+    r2 = substep(p12, tnew, p3, lnew, blk2, atm2, dt, blk2)
+    # compare with the real substep-2 exit
+    dout = read_dump(f"{dd}/ffa_{it}_c2_out.bin", 1)
+    din2 = read_dump(f"{dd}/ffa_{it}_c2_in.bin", 1)
+    ex = r2["ex"]; m = ex["m"]
+    got = {"t": ex["T"], "q": ex["Q"], "e": ex["E"], "pblht": ex["pblht"], "U": ex["U"], "V": ex["V"],
+           "UA": ex["UA"], "VA": ex["VA"]}
+    ref = {"t": np.transpose(dout["T"], (1, 0, 2)), "q": np.transpose(dout["Q"], (1, 0, 2)),
+           "e": np.transpose(dout["EGCM"], (2, 1, 0)), "pblht": dout["PBLHT"].T,
+           "U": np.transpose(dout["U"], (1, 0, 2)), "V": np.transpose(dout["V"], (1, 0, 2)),
+           "UA": np.transpose(dout["UALIJ"], (2, 1, 0)), "VA": np.transpose(dout["VALIJ"], (2, 1, 0))}
+    ini = {"t": np.transpose(din2["T"], (1, 0, 2)), "q": np.transpose(din2["Q"], (1, 0, 2)),
+           "e": np.transpose(din2["EGCM"], (2, 1, 0)), "U": np.transpose(din2["U"], (1, 0, 2)),
+           "V": np.transpose(din2["V"], (1, 0, 2)), "UA": np.transpose(din2["UALIJ"], (2, 1, 0)),
+           "VA": np.transpose(din2["VALIJ"], (2, 1, 0))}
+    rows = {}
+    for k, r in ref.items():
+        g = np.asarray(got[k])
+        if k in ("U", "V"):
+            mm = np.ones(r.shape, bool); mm[0] = False
+        else:
+            mm = np.broadcast_to(m if r.ndim == 2 else m[..., None], r.shape)
+        d = (g - r)[mm]
+        row = dict(max_abs=float(np.abs(d).max()), n_exact=float((d == 0).mean()))
+        if k in ini:
+            row["fortran_change_rms"] = float(np.sqrt(((r - ini[k])[mm] ** 2).mean()))
+        rows[k] = row
+    return rows, diag
+
+
+if __name__ == "__main__":
+    dd, it = sys.argv[1], int(sys.argv[2])
+    rows, diag = run_two_substeps(dd, it)
+    print("predicted substep-2 input columns vs recorded (max abs):")
+    for k, v in diag.items():
+        print(f"  {k:16s} {v:.3e}")
+    print("our substep-2 ATURB exit vs real:")
+    for k, r in rows.items():
+        print(f"  {k:6s} max_abs={r['max_abs']:.3e} exact={r['n_exact']:.2f} change_rms={r.get('fortran_change_rms', float('nan')):.3e}")

@@ -67,6 +67,22 @@ def chained_ocean_ice_patches(dd, itime, ns, blk, patch):
     return len(t)
 
 
+def landice_chain(p3, rec):
+    """Our PBL (itype-3 records `p3`) -> land-ice tile flux (D7) for matched records `rec` (ffl layout).
+    Returns (tile outputs, PBL outputs)."""
+    assert np.array_equal(p3[:, :2], rec[:, :2]), "land-ice PBL/tile record order mismatch"
+    out = PC.run(p3)
+    d = LI.to_inputs(rec)
+    ddml = p3[:, 23] > 0.5
+    d.update(us=jnp.asarray(out["us"]), vs=jnp.asarray(out["vs"]), ws=jnp.asarray(out["ws"]),
+             gusti=jnp.asarray(p3[:, 113]), qsrf=jnp.asarray(out["qsrf"]), cm=jnp.asarray(out["cm"]),
+             ch=jnp.asarray(out["ch"]), cq=jnp.asarray(out["cq"]), ts=jnp.asarray(out["tsv"]),
+             dskin=jnp.asarray(out["dskin"]), tsv=jnp.asarray(out["tsv"]),
+             tprime=jnp.asarray(np.where(ddml, p3[:, 25] - p3[:, 7], 0.0)),
+             qprime=jnp.asarray(np.where(ddml, p3[:, 26] - p3[:, 39], 0.0)))
+    return LI.tile_fluxes(d), out
+
+
 def chained_landice_patch(dd, itime, ns, blk, patch):
     """Overwrite the land-ice patch (k=2) with values from OUR PBL (itype 3 records) + land-ice tile flux (D7).
     ffl records carry no substep column: they are dumped in substep order, so substep `ns` is the ns-th equal slice."""
@@ -76,19 +92,8 @@ def chained_landice_patch(dd, itime, ns, blk, patch):
     assert len(p) == len(rec) and len(rec) % NISURF == 0
     n = len(rec) // NISURF
     sl = slice((ns - 1) * n, ns * n)
-    p, rec = p[sl], rec[sl]
-    assert np.array_equal(p[:, :2], rec[:, :2]), "land-ice PBL/tile record order mismatch"
-    out = PC.run(p)
-    d = LI.to_inputs(rec)
-    ddml = p[:, 23] > 0.5
-    d.update(us=jnp.asarray(out["us"]), vs=jnp.asarray(out["vs"]), ws=jnp.asarray(out["ws"]),
-             gusti=jnp.asarray(p[:, 113]), qsrf=jnp.asarray(out["qsrf"]), cm=jnp.asarray(out["cm"]),
-             ch=jnp.asarray(out["ch"]), cq=jnp.asarray(out["cq"]), ts=jnp.asarray(out["tsv"]),
-             dskin=jnp.asarray(out["dskin"]), tsv=jnp.asarray(out["tsv"]),
-             tprime=jnp.asarray(np.where(ddml, p[:, 25] - p[:, 7], 0.0)),
-             qprime=jnp.asarray(np.where(ddml, p[:, 26] - p[:, 39], 0.0)))
-    got = LI.tile_fluxes(d)
-    idx = _cell_lookup(blk)[rec[:, 0].astype(int), rec[:, 1].astype(int)]
+    got, out = landice_chain(p[sl], rec[sl])
+    idx = _cell_lookup(blk)[rec[sl][:, 0].astype(int), rec[sl][:, 1].astype(int)]
     assert (idx >= 0).all()
     patch["uflux1"][idx, 2] = np.asarray(got["uflux1"])
     patch["vflux1"][idx, 2] = np.asarray(got["vflux1"])
