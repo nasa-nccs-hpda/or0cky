@@ -327,8 +327,18 @@ calls `run_planet_rad` (or `RCOMPX` directly) the same stdin/stdout way, (3) val
     **`run_planet_rad`** (the real SOCRATES call, explicit args `ULGAS, CLDEPS, PRNB, PRNX` plus
     whatever it reads from `RADPAR`/`planet_rad` module state internally — not yet traced), then
     `get_planet_radout`.
+  - **`GETSUR` (`ALBEDO.f:281-866`, ~585 lines) read next, confirmed genuinely substantial, not
+    reducible the way aerosols/`GETEPS` were:** computes per-surface-type (ocean/sea-ice/land-ice/
+    land/lake) visible+near-IR+thermal-band albedo and emissivity, zenith-angle- and wind-speed-
+    dependent ocean albedo, snow-age-dependent snow albedo, from ~25 named inputs (`POCEAN, POICE,
+    PEARTH, PLICE, PLAKE`, per-surface-type temperatures `TGO/TGOI/TGE/TGLI`, snow/ice amounts
+    `SNOWOI/SNOWD/SNOWLI/ZOICE/FMP/ZSNWOI`, vegetation fractions `PVT(12)`, wind `WMAG`, `COSZ`). A
+    real if-branchy port, not a table lookup like `GETEPS` turned out to be -- but its input surface
+    overlaps substantially with state this project's SURFACE/SEAICE/GHY modules already track
+    (surface-type fractions, temperatures, snow/ice mass), which may make it more tractable than a
+    from-scratch 585-line read suggests once ported; not yet attempted.
   - **Not yet done:** tracing `run_planet_rad`'s own full input surface (planet_rad.F90, not read
-    this session), `getgas`/`getvol`/`GETSUR`'s own bodies in detail, and everything from the
+    this session), `getgas`/`getvol`/`GETSUR`'s own bodies in full detail, and everything from the
     original plan (dump-hook, BIND(C) shim, Python driver, validation). The estimate above (6-10
     weeks) is not revised by this narrowing — `GETSUR` and `run_planet_rad` are still real, and
     SOCRATES's own 90k-line library is unaffected — but the "setup" work is now known to be smaller
