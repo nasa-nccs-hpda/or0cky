@@ -791,7 +791,7 @@ not a further profiling pass beyond that):
 
 | Module | Real cells tested | Speedup vs. per-cell Python/loop reference |
 |---|---|---|
-| ATURB, PBL `advanc` | 27.5k+ | validated at rounding-level; not yet re-benchmarked for speed under this session's methodology (see D4/D5; Track A's numbers above cover the *representative*, not full-fidelity, ATURB/PBL) |
+| ATURB, PBL `advanc` | 27.5k+ | already JAX from the start (no plain-Python intermediate, so no "speedup vs Python" figure exists the way D14-D16 have one); absolute cost measured in D8: PBL 26μs/call, ATURB 0.07s/3312-column call, ≈0.4s/DTsrc step combined (unoptimized, no like-for-like Fortran comparison since land/sea-ice/lake physics weren't included yet at that point) |
 | SEAICE (SEA_ICE/SSIDEC/snowice/ADDICE/SIMELT) | 25,406 | **46-51x** (`seaice_core_jax.py`, batched `jnp.where`) |
 | GHY (soil, canopy, snow) | 9,036 | **~20x** (`ghy_jax.py`, `jax.lax.scan` over substeps) |
 | LAKES (LKSOURC/LKMIX) | 3,644 | **~104x** (`lakes_core_jax.py`, batched `jnp.where`) |
