@@ -433,7 +433,7 @@ This closes the last "still plain Python" gap flagged in STATUS.md's 8-stage com
 every currently-validated piece of Track B physics (ATURB, PBL, SURFACE, SEAICE/ADDICE/SIMELT, LAKES,
 tile aggregation, GHY) is now `jax.jit`-compilable with a measured real-data speedup.
 
-## D17 — `ground_si` wrapper + a real float32-precision bug found and fixed across 3 core modules
+## D17 — `ground_si` wrapper + a float32-precision bug across 3 core modules (also explains D15's pytest mystery)
 `seaice_core_jax.ground_si(is_ocean, dtsrce, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmoc,
 fhoc, fsoc, wetsnow, tm, sm, ...)`: the one clearly-missing piece flagged in FULL_FIDELITY_PLAN.md's
 chained-driver scoping -- a general-purpose, named-argument function chaining `sea_ice`→`ssidec`→
@@ -466,6 +466,21 @@ determines import order today, this bug would have resurfaced the moment the cha
 point imported these modules in a different order than the existing test scripts do -- fixing it at
 the module level now removes that landmine before the chained driver is built, rather than after it
 silently produces wrong numbers.
+
+**Unexpected bonus: this also resolves the D15/PHASE0_LOG pytest-timing mystery.** D15 documented
+`tests/test_ghy_jax.py` taking 3h42m-4hr under pytest twice, vs. under a minute for the identical
+logic via a direct script, and left it as an open, unchased oddity after ruling out a real code
+regression. Rerunning that exact same, unmodified test file after this fix (only change: `ghy_jax.py`
+now sets `jax_enable_x64` itself instead of relying on the test file) took **6m34s** -- a ~36x drop,
+with everything else identical (same 21 tests, same machine, same day). This is a clean natural
+before/after comparison and strongly suggests the pytest-specific slowdown *was* this bug:
+`jax_enable_x64` must be set before any array/JIT activity to behave correctly, and pytest's test
+collection (which imports every file under `tests/`, not just the one being run) plausibly triggered
+some JAX activity via a sibling test module before `test_ghy_jax.py`'s own late `config.update` call
+took effect -- which would also explain why an isolated direct script (setting x64 first, importing
+nothing else) never reproduced it. The exact JAX-internal mechanism wasn't chased further; the fix,
+the isolated repro, and the 36x post-fix speedup are consistent enough that the practical outcome
+(correct precision, fast tests) is what matters here.
 
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's

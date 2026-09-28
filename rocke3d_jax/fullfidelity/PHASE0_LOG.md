@@ -259,6 +259,23 @@ somehow, not a real property of the code -- left as an open, honestly-documented
 spending more time chasing it, since correctness is proven either way (direct-script re-verification
 matches the pytest run's PASSED results).
 
+**RESOLVED, later the same day** (see the 2026-09-28 x64 bug-fix entry below, D17): once
+`jax.config.update("jax_enable_x64", True)` was moved from the test file into `ghy_jax.py` itself
+(fixing the unrelated silent-float32-fallback bug found while building `ground_si`), a full rerun of
+this exact same `tests/test_ghy_jax.py` suite (all 21 tests, unchanged) took **6m34s** -- a ~36x drop
+from the previously-observed 3h42m-4hr, with no other change to the test file or its logic. This is a
+clean natural A/B (same suite, same machine, only the x64-enable's location changed) and strongly
+suggests the pytest-specific slowdown *was* this bug all along: `jax_enable_x64` is documented
+upstream as needing to be set before any array/JIT activity, and pytest's test collection (which
+imports every file under `tests/` up front, not just the one being run) was likely triggering some
+JAX array or trace activity via a sibling test module before `test_ghy_jax.py`'s own late
+`config.update` call took effect -- plausibly explaining why a fresh, isolated direct-script call
+(which sets x64 first, before touching `jax`, and imports nothing else) never reproduced it. Not
+chasing the exact JAX-internal mechanism further since the fix, the isolated repro, and the 36x
+speedup after fixing it are all consistent and the practical outcome (correct dtype, fast pytest) is
+what matters -- but the earlier "left as an open, unexplained oddity" framing above is superseded by
+this.
+
 Then measured actual speed (the point of "vectorizing" in the first place, not yet checked): plain-
 Python 0.63s for 300 cells vs JAX eager 8.7s -- the JAX version was SLOWER, a regression, and
 jax.jit-compiling it didn't finish in 300s (XLA's own slow-compile warning fired). Root cause: the
@@ -342,3 +359,26 @@ aruns/aeruns threshold-crossing sensitivity, D9) before calling it understood.
 Remaining before the actual jax.lax.scan-chained driver can be assembled: precisely locating land-ice's
 tile-flux call site and ITYPE plumbing, and tracing the real per-cell data flow between PBL and each
 SURFACE tile call (what PBL_ARGS/tile-fraction arrays route between them).
+
+## 2026-09-28 (continued): land-ice call site traced -- corrects the earlier step order
+Found the permanent (non-scratch, not session-scoped) model source tree still exists at
+`/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0` -- no need to rebuild a scratch copy
+just to read source for tracing (rebuilding is only needed to regenerate dump files). Grepped
+SURFACE.f directly for the actual call sites instead of re-deriving from memory, and it **corrected**
+the first scoping pass's guessed order: land ice (`CALL SURFACE_LANDICE`, SURFACE.f:883/893) runs
+BEFORE `CALL EARTH` (SURFACE.f:902), not after as guessed on 2026-09-28 (originally). Also found land
+ice is not a 4th `ITYPE` in the ocean/ice loop at all -- it's a separate loop over `atmglas(ipatch)`
+glacial-ice patches, a different indexing scheme entirely (patches, not (I,J) grid tiles); `#ifdef
+GLINT2` selects a height-point variant but GLINT2 is not defined for P2SAoM40's rundeck (checked
+`decks/P2SAoM40.R`, no match), confirming the plain patch-loop branch is the real one. Located the
+tile-aggregation call precisely too: `avg_patches_pbl_exports`/`avg_patches_srfflx_exports`/
+`avg_patches_srfstate_exports` at SURFACE.f:1055-1057, confirmed to run once after all four tile types
+(ocean, ice, land-ice, land), not per-tile. And confirmed all 7 steps (ocean/ice tiles through
+GROUND_LK) live inside ONE Fortran subroutine (`SURFACE.f:21 SUBROUTINE SURFACE`), itself called once
+per DTsrc step from `MODELE.f:332`, with its own internal `DO NS=1,NIsurf` loop (SURFACE.f:385)
+wrapping all 7 steps -- so the real per-cell chain to reproduce is one DO-NS iteration's body, and
+that NIsurf sub-stepping already matches Track A's own NIsurf loop in `p2saom40_driver.py`'s
+`_step_dev`, so the two tracks' granularity lines up without extra reconciliation work. Updated
+FULL_FIDELITY_PLAN.md's chained-driver section with the corrected order and exact line numbers.
+Remaining before assembly: the `ipatch`<->`(I,J)` mapping for land ice, and the PBL_ARGS/tile-fraction
+data flow between PBL and each SURFACE tile call.

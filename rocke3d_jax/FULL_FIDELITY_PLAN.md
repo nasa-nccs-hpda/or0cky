@@ -164,26 +164,45 @@ modules but they were never wired into one driver). Read the real per-cell orche
 guess, and the finding is good news: **almost every piece already exists and is already validated**
 -- this is an *integration* task over Track B's existing D4-D16 modules, not a new porting effort.
 
-Real per-cell, per-DTsrc-step call order, traced from `SURFACE.f`/`GHY_DRV.f`:
-1. `DO ITYPE=ocean,ice: CALL PBL(...)` — surface-layer solve per tile (ocean, sea ice); **have**:
+Real per-cell, per-DTsrc-step call order, **now traced line-precisely against the persistent source**
+(`/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/model/SURFACE.f`, not a rebuilt scratch
+copy — that tree already exists and doesn't need rebuilding for read-only tracing). This corrects the
+step order from the first scoping pass above: **land ice runs BEFORE `EARTH`, not after** (the
+opposite of what the first pass guessed without checking).
+1. `SURFACE.f:472 DO ITYPE=ITYPE_MIN,ITYPE_OCEANICE` (comment: "no earth or landice type") —
+   surface-layer solve + tile fluxes per (I,J) for ocean (ITYPE=1) and sea ice (ITYPE=2); **have**:
    `pbl_ff.py` (D5).
-2. `earth(...)` (land): its own `CALL PBL(...,itype=land,...)` then, after `NIsurf` Ent-driven
-   substeps, `CALL ADVNC(...)` — the real GHY call; **have**: `pbl_ff.py`, `ghy_jax.py` (D15).
-3. Land ice tile flux (a fourth `ITYPE`, handled similarly, not yet located line-precisely); **have**:
-   `landice_tile_ff.py` (D7).
-4. Tile-flux aggregation (`avg_patches_*`, area-fraction-weighted across the 4 tiles); **have**:
+2. `SURFACE.f:883/893 CALL SURFACE_LANDICE(NS==1,MODDD,DTSURF,atmglas(ipatch),ipatch)` — land ice,
+   looped over glacial-ice `ipatch` (NOT part of the ITYPE loop above, and NOT indexed by (I,J) tiles
+   the same way — `atmglas` patches are their own array; `#ifdef GLINT2` selects a height-point
+   variant `atmglas_hp`/`ihp` instead, but **`GLINT2` is not defined for P2SAoM40**
+   (`grep GLINT2 decks/P2SAoM40.R` — no match), so the plain `atmglas`/`ipatch` branch is the real one
+   to port); **have**: `landice_tile_ff.py` (D7), already ported/validated at the per-tile-flux level
+   — the ipatch/patch-array plumbing above it (as opposed to grid (I,J)) is the still-untraced part.
+3. `SURFACE.f:902 CALL EARTH(NS,MODDSF,MODDD)` (land): its own `CALL PBL(...,itype=land,...)` then,
+   after `NIsurf` Ent-driven substeps, `CALL ADVNC(...)` — the real GHY call; **have**: `pbl_ff.py`,
+   `ghy_jax.py` (D15).
+4. `SURFACE.f:1055-1057 call avg_patches_pbl_exports/avg_patches_srfflx_exports/
+   avg_patches_srfstate_exports` — tile-flux aggregation across all tiles (ocean/ice/land-ice/land),
+   confirmed to run once, after all four tile types above, not per-tile; **have**:
    `tile_aggregate_ff.py` (D11).
-5. `CALL ATM_DIFFUS(1,1,dtsurf)` — the real ATURB call (free-atmosphere turbulent mixing, using the
-   aggregated tile fluxes); **have**: `aturb_ff.py`, `aturb_uv_ff.py` (D4).
-6. `CALL GROUND_SI(...)` — sea-ice AND lake-ice ground thermodynamics; **DONE 2026-09-28**: added
-   `seaice_core_jax.ground_si(is_ocean, ...)`, a single named-argument wrapper unifying the
-   ocean/other domain split (`sea_ice`→`ssidec`→`snowice`, D10/D12/D14) via `jnp.where(is_ocean,...)`
-   instead of a Python branch, matching `seaice_core_ff.py`'s `ground_si_ocean`/`ground_si_other`
-   split. Validated against `seaice_jax_compare.batched_ground_si` (already checked against real
-   Fortran) at <1e-9 relative error across all 4,524 real cells
-   (`test_ground_si_general_wrapper_matches_test_helper`).
-7. `CALL GROUND_LK` — lake mixing; **have**: `lakes_core_jax.py` (D16), already a complete
-   `lksourc_full`+`lkmix` chain.
+5. `SURFACE.f:1172 CALL ATM_DIFFUS(1,1,dtsurf)` — the real ATURB call (free-atmosphere turbulent
+   mixing, using the aggregated tile fluxes); **have**: `aturb_ff.py`, `aturb_uv_ff.py` (D4).
+6. `SURFACE.f:1230 CALL GROUND_SI(si_atm,icelak,atmice,atmocn)` — sea-ice AND lake-ice ground
+   thermodynamics; **DONE 2026-09-28**: added `seaice_core_jax.ground_si(is_ocean, ...)`, a single
+   named-argument wrapper unifying the ocean/other domain split (`sea_ice`→`ssidec`→`snowice`,
+   D10/D12/D14) via `jnp.where(is_ocean,...)` instead of a Python branch, matching
+   `seaice_core_ff.py`'s `ground_si_ocean`/`ground_si_other` split. Validated against
+   `seaice_jax_compare.batched_ground_si` (already checked against real Fortran) at <1e-9 relative
+   error across all 4,524 real cells (`test_ground_si_general_wrapper_matches_test_helper`).
+7. `SURFACE.f:1232 CALL GROUND_LK` — lake mixing; **have**: `lakes_core_jax.py` (D16), already a
+   complete `lksourc_full`+`lkmix` chain.
+
+All 7 steps live inside the **same single Fortran subroutine** (`SURFACE.f:21 SUBROUTINE SURFACE`),
+called once per `DTsrc` step from `MODELE.f:332`, with its own internal `SURFACE.f:385 DO NS=1,NIsurf`
+loop wrapping steps 1-7 -- i.e. the real per-cell chain to reproduce is one iteration of that DO-NS
+loop body, executed `NIsurf` times per `DTsrc` step (matching Track A's own `NIsurf` sub-iteration in
+`p2saom40_driver.py`'s `_step_dev`, so the two tracks' step-granularity already lines up).
 
 **Bug found and fixed while adding step 6**: `seaice_core_jax.py`, `ghy_jax.py`, and
 `lakes_core_jax.py` never called `jax.config.update("jax_enable_x64", True)` themselves — they
@@ -201,17 +220,25 @@ correct regardless of caller/import order. Re-validated at <1e-9 rel. error post
 5.4e3 abs. error pre-fix on the affected cell); full existing test suites (lakes: 5/5, sea-ice:
 12/12 incl. the new test) still pass.
 
-What's genuinely new work, not already-validated pieces waiting to be wired together: (a) precisely
-locating land-ice's tile-flux call site and its `ITYPE` plumbing, (b) the actual per-cell **data
-flow** between these calls -- what `PBL_ARGS`/tile fraction arrays route between PBL and each
-`SURFACE` tile call, and how state persists across `earth`'s `NIsurf` substeps (already handled
-inside `ghy_jax.advnc`'s own scan, per D15) -- and (c) assembling all of it into one
-`jax.lax.scan`-chained driver the way `p2saom40_driver.py`'s `run_steps_device` does for Track A.
-Given how much is already built and validated, this looks more tractable than the original "biggest
-remaining item" framing suggested; effort estimate pending further tracing. Not yet attempted:
-SEAICE/LAKES/GHY's own prognostic state (ice thickness, lake temperature, soil moisture) feeding
-back into the NEXT step's tile fractions/properties -- the
-genuine "whole model" coupling loop, distinct from one step's tile-flux computation.
+Land-ice's call site is now located precisely (step 2 above) — it is **not** a fourth `ITYPE` inside
+the ocean/ice loop as first guessed, it's a separate loop over `atmglas(ipatch)` glacial-ice patches
+that runs strictly *before* `EARTH`. `atmglas` patches are a distinct array from the (I,J) grid-cell
+tiles the ITYPE loop and `EARTH`/`GHY` iterate over — routing between the two (which grid cells map to
+which `ipatch`, i.e. the land-ice fraction/index array) is still untraced and is the real remaining
+question for wiring this step in, not the call site itself.
+
+What's genuinely new work, not already-validated pieces waiting to be wired together: (a) the
+`ipatch`↔`(I,J)` mapping for land ice (just found to be a patch array, not a grid tile — see above),
+(b) the actual per-cell **data flow** between the other calls -- what `PBL_ARGS`/tile fraction arrays
+route between PBL and each `SURFACE` tile call, and how state persists across `earth`'s `NIsurf`
+substeps (already handled inside `ghy_jax.advnc`'s own scan, per D15) -- and (c) assembling all of it
+into one `jax.lax.scan`-chained driver over the verified `DO NS=1,NIsurf` step body, the way
+`p2saom40_driver.py`'s `run_steps_device` does for Track A. Given how much is already built and
+validated, this looks more tractable than the original "biggest remaining item" framing suggested;
+effort estimate pending further tracing. Not yet attempted: SEAICE/LAKES/GHY's own prognostic state
+(ice thickness, lake temperature, soil moisture) feeding back into the NEXT step's tile
+fractions/properties -- the genuine "whole model" coupling loop, distinct from one step's tile-flux
+computation.
 
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 

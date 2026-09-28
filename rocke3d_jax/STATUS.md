@@ -806,15 +806,21 @@ Track A's Round 2 optimization did. That wiring, plus GPU access, are what would
 hard blocker, not a scoping choice, and should not be estimated or guessed at.
 
 **2026-09-28 update**: scoped the chained-driver integration by tracing the real per-cell call order
-(`SURFACE.f`/`GHY_DRV.f`) — almost every piece needed already exists and is validated; the one
-missing piece, a `ground_si` wrapper (SEAICE→SSIDEC→snowice with ocean/lake domain gating), is now
-built and validated (D17, <1e-9 rel. error on all 4,524 real cells). D17 also fixed a real bug found
-while validating it: `seaice_core_jax.py`/`ghy_jax.py`/`lakes_core_jax.py` never enabled JAX's
-float64 mode themselves, relying on the caller to do it first — running in float32 silently flipped
-the sign of `erunosi` by ~5,415 units on one real cell (a near-zero `tsil` division at the ice melt
-point). Fixed at the module level; every existing test suite still passes post-fix. Still pending
-before the actual chained driver: land-ice's tile-flux call site/`ITYPE` plumbing, and the real
-PBL↔SURFACE per-cell data flow. See `FULL_FIDELITY_PLAN.md`'s chained-driver section and
+against the persistent (non-scratch) source tree, line-precisely — confirmed all 7 steps (ocean/ice
+tiles, land ice, EARTH/GHY, tile aggregation, ATURB, GROUND_SI, GROUND_LK) live in one Fortran
+subroutine (`SURFACE.f`'s `SURFACE`) with its own `DO NS=1,NIsurf` loop, matching Track A's own
+`NIsurf` sub-stepping. Almost every piece needed already exists and is validated; the one missing
+piece, a `ground_si` wrapper (SEAICE→SSIDEC→snowice with ocean/lake domain gating), is now built and
+validated (D17, <1e-9 rel. error on all 4,524 real cells). D17 also fixed a real bug found while
+validating it: `seaice_core_jax.py`/`ghy_jax.py`/`lakes_core_jax.py` never enabled JAX's float64 mode
+themselves, relying on the caller to do it first — running in float32 silently flipped the sign of
+`erunosi` by ~5,415 units on one real cell (a near-zero `tsil` division at the ice melt point). Fixed
+at the module level; every existing test suite still passes post-fix, and as an unexpected bonus this
+also resolved D15's previously-unexplained "GHY pytest suite takes 3h42m-4hr" mystery — the identical
+suite, unmodified, now runs in 6m34s (~36x) with this as the only change. Still pending before the
+actual chained driver: the land-ice `ipatch`↔`(I,J)` mapping (its call site is now located precisely,
+`SURFACE.f:883/893`, strictly before `EARTH` — corrects an earlier guess that had the order reversed),
+and the real PBL↔SURFACE per-cell data flow. See `FULL_FIDELITY_PLAN.md`'s chained-driver section and
 `FULL_FIDELITY_DELTAS.md` D17.
 
 ## Open items
