@@ -573,7 +573,25 @@ learned the hard way earlier in this project)
 |---|---|---|---|
 | `PRECIP_SI` | `SEAICE_DRV.f` | 140 | driver, per-cell loop |
 | `PREC_SI` | `SEAICE.f` | 246 | the real physics; reuses `get_snow_ice_layer`/`relayer`/`relayer_12`/`set_snow_ice_layer`/`tice`/`Mi`/`Em` (**already ported**, D10/D14); needs one new function `Fi` (~20 lines, read in full, trivial) |
-| `DYNSI` | `ICEDYN_DRV.f:328-877` | 550 | ice velocity dynamics on its own B/C-grid; genuinely new class of physics for this project (2D momentum solve with air/water stress, Coriolis, internal ice pressure, not a per-cell formula) — **not yet read past the header, do next** |
+| `DYNSI` (own body) | `ICEDYN_DRV.f:328-877` | 550 | regrid (A-grid<->B-grid ice-dyn grid), air/water stress setup, pressure-gradient force, calls `VPICEDYN` then post-processes stress/velocity back to A-grid |
+| `VPICEDYN` | `ICEDYN.f:1233-1353` | 121 | outer pseudo-timestep loop (up to 20 iters, RMS-velocity convergence check via `GLOBALSUM` over the whole ice-dyn grid) calling `FORM` then `RELAX` twice per iteration (predictor + modified-Euler corrector) |
+| `FORM` | `ICEDYN.f:154-293` | 140 | **not yet read in detail** -- forms the nonlinear viscous-plastic rheology terms (strain rates -> `ETA`/`ZETA` viscosities) from the current velocity guess |
+| `RELAX` | `ICEDYN.f:390-882` | 493 | **read enough to de-risk, not line-by-line yet**: uses `TRIDIAG_new`/`TRIDIAG_cyclic` (line-by-line ADI-style implicit sweep, U-direction then V-direction) for the actual linear solve -- NOT a generic sparse/iterative solver. This is the same class of operation already handled in this project (GHY's `heat_eq` tridiagonal solve, D9/D15), just larger (per-row/column across the whole ice-dyn grid) and applied inside the outer pseudo-timestep loop |
+| **DYNSI core solve subtotal** | | **1,304** | corrects the earlier 550-line estimate, which only counted `DYNSI`'s own body, not its callees |
+
+**Grid resolution finding (de-risks the regrid layer):** `IMICDYN`/`JMICDYN` are set by a compile-time
+`#ifdef CUBED_SPHERE` gate in `ICEDYN.f:1385-1399` -- `IMICDYN=2*IM, JMICDYN=2*IM` under cubed-sphere,
+**`IMICDYN=IM, JMICDYN=JM` otherwise**. P2SAoM40 is confirmed not cubed-sphere (`Atm72x46`), so the
+ice-dynamics grid is the SAME resolution as the atmosphere (72x46), just B-grid-staggered (not a genuine
+spatial refinement) -- the A-grid<->B-grid regrid (`band_pack`/`pack_a2i`, since `#ifndef CUBED_SPHERE`) is
+a same-resolution staggering operation, not cross-resolution interpolation.
+
+**Implementation design implication:** the outer pseudo-timestep loop is a data-dependent iteration count
+(convergence-based, up to 20) requiring `jax.lax.while_loop` with a whole-grid RMS reduction each
+iteration -- a new control-flow pattern for this project (everything so far has used bounded `lax.scan`/
+Python unrolls). The inner linear solve (`RELAX`) being tridiagonal, not generic-sparse, is the key
+de-risking finding: it fits the same "small bounded solve, vectorized across many independent instances"
+pattern already proven in GHY (D9/D15), just applied per grid row/column instead of per soil layer.
 | `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — per-cell, likely tractable like GROUND_SI |
 | `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | trivial |
 | `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
