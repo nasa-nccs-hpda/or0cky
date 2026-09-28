@@ -1,4 +1,4 @@
-# Status slide deck — filesystem record
+# Status slide deck — filesystem record 
 
 Filesystem copy of the "ROCKE-3D → JAX: Status" slide deck (8 slides, last
 synced 2026-09-24: HQ-audience refresh with the five-stage Fortran→JAX progression, Phase 1 vs Phase 2 profile, and the stop-the-port recommendation), kept alongside `STATUS.md` in this directory.
