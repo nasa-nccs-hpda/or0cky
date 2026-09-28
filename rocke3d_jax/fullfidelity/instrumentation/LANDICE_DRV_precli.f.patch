@@ -1,0 +1,46 @@
+--- LANDICE_DRV.f.orig	2026-09-28 17:56:40.055191586 -0400
++++ LANDICE_DRV.f	2026-09-28 17:58:19.000719187 -0400
+@@ -534,6 +534,7 @@
+       real*8, dimension(:,:), pointer :: prec,eprec
+ 
+       REAL*8 SNOW,TG1,TG2,PRCP,ENRGP,EDIFS,DIFS,ERUN2,RUN0
++      REAL*8 preli_rec(40), preli_snow0, preli_tg10, preli_tg20
+ #ifdef TRACERS_WATER
+ !@var TRSNOW tracer amount in snow (kg/m^2)
+       REAL*8, DIMENSION(NTM) :: TRSNOW
+@@ -586,6 +587,9 @@
+         SNOW=SNOWLI(I,J,IHC)
+         TG1=TLANDI(1,I,J,IHC)
+         TG2=TLANDI(2,I,J,IHC)
++        preli_snow0=SNOW
++        preli_tg10=TG1
++        preli_tg20=TG2
+ #ifdef TRACERS_WATER
+         TRLI(:)=TRLNDI(:,I,J,IHC)
+         TRSNOW(:)=TRSNOWLI(:,I,J,IHC)
+@@ -598,6 +602,25 @@
+ #endif
+      *       EDIFS,DIFS,ERUN2,RUN0)
+ 
++        preli_rec=-1d300
++        preli_rec(1)=I
++        preli_rec(2)=J
++        preli_rec(3)=IHC
++        preli_rec(4)=atmgla%ftype(i,j)
++        preli_rec(5)=PRCP
++        preli_rec(6)=ENRGP
++        preli_rec(7)=preli_snow0
++        preli_rec(8)=preli_tg10
++        preli_rec(9)=preli_tg20
++        preli_rec(10)=SNOW
++        preli_rec(11)=TG1
++        preli_rec(12)=TG2
++        preli_rec(13)=RUN0
++        preli_rec(14)=EDIFS
++        preli_rec(15)=DIFS
++        preli_rec(16)=ERUN2
++        call ffdump_precli(preli_rec,40)
++
+ !      if (i==53.and.j==83.and.ihc==1)
+ !     &       print *,'AZZ PRECLI out',RUN0,ERUN2/RUN0
+ 

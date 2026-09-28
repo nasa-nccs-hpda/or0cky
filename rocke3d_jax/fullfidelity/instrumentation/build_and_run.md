@@ -20,6 +20,9 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
       AFTER ATM_DRV.f.patch (above)
     patch ATM_DRV.f < <this dir>/ATM_DRV_precip_lk.f.patch        # adds ffdump_precip_lk itself -- apply
       AFTER ATM_DRV_precsi.f.patch (immediately above)
+    patch LANDICE_DRV.f < <this dir>/LANDICE_DRV_precli.f.patch   # PRECIP_LI (ffx_* files, D28)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_precli.f.patch           # adds ffdump_precli itself -- apply
+      AFTER ATM_DRV_precip_lk.f.patch (immediately above)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -103,5 +106,14 @@ per-tile) per `PRECIP_LK` call, ~950-1000/step. Columns: 1:i 2:j 3:flake 4:flice
 -- after `PRECIP_LK` -- 17:mwl 18:gml 19:tlake 20:mldlk 21:dlake 22:glake 23:gtemp 24:gtemp2 25:gtempr
 (0-based columns are all -1, see `fullfidelity/precip_lk_compare.py`).
 `IRRIG_LK` (irrigation withdrawal, `LAKES.f`, 128 lines, real for this rundeck -- `IRRIGATION_ON` is
-defined) and `PRECIP_LI` (land-ice precip, `LANDICE_DRV.f`, 146 lines) are called just before `PRECIP_LK`
-(`SURFACE.f:~300-322`) and remain not-yet-instrumented.
+defined) is called just before `PRECIP_LK` (`SURFACE.f:~300-322`) and remains not-yet-instrumented
+(depends on an external prescribed irrigation-demand dataset, deferred as its own item).
+
+PRECIP_LI dumps (D28): patch `LANDICE_DRV.f` with `LANDICE_DRV_precli.f.patch` and `ATM_DRV.f` with
+`ATM_DRV_precli.f.patch` (after `ATM_DRV_precip_lk.f.patch`; adds `ffdump_precli`, unit 984). `ffx_<itime>.bin`:
+40-double records, one per land-ice tile (`ftype>0 and prcp>0`) per `PRECIP_LI` call (~200-250/step; only
+`ihc=1` present, since `NHC=1` for this rundeck, D22). Columns: 1:i 2:j 3:ihc 4:ftype 5:prcp 6:enrgp 7:snow(in)
+8:tg1(in) 9:tg2(in) -- after `PRECIP_LI` -- 10:snow 11:tg1 12:tg2 13:run0(=RUNO) 14:edifs(=E1) 15:difs(=IMPLM)
+16:erun2(=IMPLH) (0-based columns are all -1, see `fullfidelity/precli_compare.py`). Note: the real record is
+entirely cold precipitation (`ENRGP<0`); the "rain" branch is checked against synthetic inputs instead (see
+`tests/test_precli_jax.py`).

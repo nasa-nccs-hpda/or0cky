@@ -473,3 +473,13 @@ untouched source before every rerun -- worth remembering for any future multi-ru
 directory. Confirmed the rebuild didn't perturb PRECIP_SI's own D26 dumps (byte-identical). precip_lk itself was
 pure bookkeeping (bitwise-exact both ports, no new physics helpers) -- the real cost of this increment was the
 run-directory mistake, not the port.
+
+## 2026-09-28 (night): D28 -- PRECIP_LI ported; third Stage 1 item in one rebuild cycle
+Added PRECIP_LI instrumentation on top of the D27 build (batched into the same scratch tree rather than a fresh
+copy), applied the fort.1.nc/fort.2.nc restart-refresh fix immediately this time. Both ports match real Fortran
+bitwise-exact on all 3,723 real land-ice tiles, first try. Real record is entirely cold precip -- rain branch
+checked via synthetic inputs (had to fix my own synthetic-input construction once: the first attempt at forcing
+the melt-through-to-layer-2 branch used too small an ENRGP and silently exercised 0/200 cells instead of >100,
+caught by the test's own non-vacuous assertion rather than a passing-but-empty check). Read IRRIG_LK/
+irrigate_extract (373 combined lines) and scoped but deferred it: it depends on an external prescribed irrigation
+dataset, adding a "record the external forcing, port the arithmetic" pattern not yet needed elsewhere in Stage 1.

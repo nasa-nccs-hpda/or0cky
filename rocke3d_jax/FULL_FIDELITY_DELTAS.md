@@ -707,6 +707,34 @@ cells, real lake-ice melt (`MELTI!=0`) on several hundred cells. Tests: `fullfid
 is defined) and `PRECIP_LI` (land-ice precip, 146 lines), both called immediately before `PRECIP_LK` in the same
 `SURFACE.f` block, are not yet instrumented/ported.
 
+## D28 — PRECIP_LI/PRECLI (Stage 1 of the DYNSI/ocean port) vs real Fortran
+Third Stage 1 deliverable. New Fortran instrumentation (`LANDICE_DRV_precli.f.patch` + `ATM_DRV_precli.f.patch`,
+applied after the D27 patches) dumps `PRECIP_LI`'s per-tile call (`SURFACE.f:~300`, inside the `DO NS` loop, just
+before `PRECIP_LK`). Rebuilt and reran all 3 dates in one cycle (applying the fort.1.nc/fort.2.nc restart-refresh
+fix learned in D27); confirmed the earlier `ffv_*`/`ffw_*` dumps were unperturbed (byte-identical) by the rebuild.
+
+`fullfidelity/landice_precip_ff.py`'s `precli`/`precip_li` are new, self-contained (`PRECLI` "uses nothing, no
+globals involved" per the real source's own comment) -- two-layer land-ice column physics: rain either heats/melts
+the top layer (possibly melting through to the second layer, moving ice mass up) or snow accumulates (possibly
+compacting into ice, moving mass down), the same structural shape as `PREC_SI` (D26) but simpler (no salt, no
+brine-pocket thermodynamics). `landice_precip_jax.py`'s batched version merges both top-level branches (rain vs
+snow) and their sub-branches with `jnp.where`.
+
+Validated on **3,723 real land-ice tiles** (6 steps x 3 dates, ~200-250/step, `ihc=1` only per D22's trivial
+height-class finding): `snow`/`tg1`/`tg2`/`run0`/`edifs`/`difs`/`erun2` **bitwise exact (0.0 error)**, both
+plain-Python and JAX, first try. Non-vacuous: precip active on essentially every real cell; snow-compaction
+(`DIFS!=0`) fires on 4 cells. **The entire "rain" branch (`ENRGP>=0`) is never exercised** by this 3-date record
+(all real precip here is cold/snow) -- checked instead against the plain-Python reference on synthetic inputs
+covering both rain sub-branches (partial top-layer melt, and melt-through-to-layer-2 with genuine ice-mass
+transfer, confirmed >100/200 synthetic cells exercise the transfer), the same honest-scoping pattern as D14's
+ADDICE synthetic-branch test. Tests: `fullfidelity/tests/test_precli_jax.py` (7, incl. the synthetic-rain test and
+a mutation check).
+**Scope, stated plainly:** `IRRIG_LK` (irrigation withdrawal, 128 lines, real for this rundeck) is called
+immediately before `PRECIP_LK` in the same `SURFACE.f` block and remains not-yet-instrumented -- it depends on an
+external prescribed irrigation-demand dataset (`irrig_water_pot`, from the `IRRIG` NetCDF input), which would be
+recorded as an input (same pattern as Ent's forcing) rather than re-derived; deferred as its own item given the
+added complexity (year-based cyclic/transient mode selection, groundwater-fallback logic).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
