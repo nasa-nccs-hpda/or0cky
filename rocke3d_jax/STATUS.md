@@ -762,6 +762,44 @@ scripts. Chained runs must be given all N solar-scalar rows up front
   may be loop-overhead-bound on GPU (old GPU DRYCNV was 0.56 ms).
 - Only JAX code was optimized; the NumPy scripts in `mantle/` were not.
 
+## The 8-stage comparison (2026-09-28)
+
+The full picture this project is building toward, as framed by the user: **Real Fortran**, then
+**Track A** (the representative JAX driver) at original-CPU / original-GPU / optimized-GPU, then
+**Track B** (the full-fidelity port) at original-CPU / original-GPU / optimized-CPU / optimized-GPU.
+Honest status of each stage, with sources:
+
+| # | Stage | Status | Number(s) | Source |
+|---|---|---|---|---|
+| 1 | Real Fortran | done | P2SAoM40 builds and runs here; a 5-day re-run reproduces the original restart byte-for-byte | `fullfidelity/PHASE0_LOG.md` |
+| 2 | Track A, JAX, original, CPU | done | full chain 26-44 ms/step (single-call) | STATUS.md "Round 2 optimization" |
+| 3 | Track A, JAX, original, GPU | done | 3.62 ms/step single-call (A100) | STATUS.md "Round 2 optimization" |
+| 4 | Track A, JAX, optimized, GPU | done | 0.74 ms/step chained device-resident (`lax.scan`), **5.8x** vs GPU baseline, **~24x** vs CPU baseline | STATUS.md "Round 2 optimization" |
+| 5 | Track B, full fidelity, original, CPU | done, per-module (not yet one chained whole-model step) | see table below | D4-D15 |
+| 6 | Track B, full fidelity, original, GPU | **blocked** | no GPU hardware on any node used this session | — |
+| 7 | Track B, full fidelity, optimized, CPU | done for GHY and the sea-ice hot path | GHY: 112us/cell, **~20x** vs plain-Python (`lax.scan`, after an unrolled-loop version measured as a *regression*); sea-ice: 46-51x (batched `jnp.where`, no scan needed since sea-ice has no per-cell substep loop) | D14, D15 |
+| 8 | Track B, full fidelity, optimized, GPU | **blocked** | same hardware gap as #6 | — |
+
+**Stage 5/7 detail — Track B CPU speed by module** (each validated against real Fortran first,
+D4-D15; "optimized" here means using `jax.jit`/`lax.scan` rather than a naive Python-loop port,
+not a further profiling pass beyond that):
+
+| Module | Real cells tested | Speedup vs. per-cell Python/loop reference |
+|---|---|---|
+| ATURB, PBL `advanc` | 27.5k+ | validated at rounding-level; not yet re-benchmarked for speed under this session's methodology (see D4/D5; Track A's numbers above cover the *representative*, not full-fidelity, ATURB/PBL) |
+| SEAICE (SEA_ICE/SSIDEC/snowice/ADDICE/SIMELT) | 25,406 | **46-51x** (`seaice_core_jax.py`, batched `jnp.where`) |
+| GHY (soil, canopy, snow) | 9,036 | **~20x** (`ghy_jax.py`, `jax.lax.scan` over substeps) |
+| LAKES (LKSOURC/LKMIX) | 3,644 | not yet benchmarked (still plain Python, `lakes_ff.py`) |
+| Tile aggregation | 38,040 | simple reduction, not separately benchmarked |
+
+**What "done" does NOT mean here:** Track B's per-module CPU speedups are real and measured, but
+there is no single **chained, whole-model** Track-B step yet (the way Track A's `run_steps_device`
+chains one full atmosphere step end to end) -- ATURB/PBL/SURFACE/SEAICE/LAKES/GHY are each
+`jax.jit`-able and fast on their own, but haven't been wired into one `lax.scan`'d driver the way
+Track A's Round 2 optimization did. That wiring, plus GPU access, are what would complete stages
+5-8. GPU numbers for Track B (stages 6 and 8) cannot be produced without GPU hardware -- this is a
+hard blocker, not a scoping choice, and should not be estimated or guessed at.
+
 ## Open items
 
 - ~~Re-measure the fused driver on a real GPU node~~ — **done**, 4.2× GPU
