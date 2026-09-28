@@ -285,6 +285,8 @@ loop, distinct from one step's tile-flux computation.
 
 **Progress 2026-09-28 (D20):** GROUND_SI and GROUND_LK are chained after the two substeps. Remaining for a whole DTsrc step: ocean fluxes into GROUND_SI, FORM_SI/ADDICE+SIMELT in the chain (D12/D14 exist), land/Ent, then a lax.scan wrapper and the between-step physics (radiation, dynamics, clouds).
 
+**Progress 2026-09-28 (D22):** land (our PBL + JAX GHY) is in the two-substep chain; all four surface tiles are now our own numbers. Remaining recorded: Ent exports, precip/radiation forcing, land TRUP, ocean fluxes. Next: `jit`/`lax.scan` wrapper + warm timing, land runoff into the lake budget, ocean-cell ADDICE/SIMELT.
+
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 
 **Update:** completed the same day it was scoped below. The scoping held up well against

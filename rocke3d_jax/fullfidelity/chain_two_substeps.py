@@ -26,6 +26,7 @@ import aturb_ff as A
 import aturb_uv_ff as UV
 import substep_chain as SC
 import chain_aggregate_aturb as C
+import land_chain as LC
 from ffdump_reader import read_dump
 
 TF = S.TF
@@ -71,7 +72,7 @@ def next_atm(atm, ex):
     return new
 
 
-def substep(pbl12, tile, pbl3, li, blk, atm, dt, land_patch_rec):
+def substep(pbl12, tile, pbl3, li, blk, atm, dt, land_patch_rec, land=None):
     """One substep on the given records. Returns dict with our tile/PBL outputs, aggregated fluxes and ATURB exit."""
     ftype, patch, _ = TA.unpack(land_patch_rec)
     patch = {k: np.array(v) for k, v in patch.items()}
@@ -87,15 +88,23 @@ def substep(pbl12, tile, pbl3, li, blk, atm, dt, land_patch_rec):
     patch["uflux1"][idl, 2] = np.asarray(gli["uflux1"]); patch["vflux1"][idl, 2] = np.asarray(gli["vflux1"])
     patch["dth1"][idl, 2] = np.asarray(gli["dth1"]); patch["dq1"][idl, 2] = np.asarray(gli["dq1"])
     patch["tsavg"][idl, 2] = np.asarray(pli["tsv"]); patch["qsavg"][idl, 2] = np.asarray(pli["qsrf"])
+    lr = None
+    if land is not None:
+        gi = land["g"][:, 0].astype(int) - 1
+        gj = land["g"][:, 1].astype(int) - 1
+        lr = LC.land_substep(land["p4"], land["g"], atm["Q"][gj, gi, 0], land["trup"], dt, land.get("dyn"))
+        idg = lut[gi + 1, gj + 1]
+        for k_ in ("uflux1", "vflux1", "dth1", "dq1", "tsavg", "qsavg"):
+            patch[k_][idg, 3] = lr["patch"][k_]
     comp = {k_: np.asarray(v) for k_, v in TA.aggregate(jnp.asarray(ftype), {k_: jnp.asarray(v) for k_, v in patch.items()}).items()}
     i = blk[:, 0].astype(int) - 1
     j = blk[:, 1].astype(int) - 1
     fl = C.aturb_flux_arrays(comp, atm["MA1"][j, i], dt)
     ex = run_aturb(atm, fl, blk, dt)
-    return dict(tile=got, pbl=pout, li=gli, pbl_li=pli, comp=comp, ex=ex, ftype=ftype)
+    return dict(tile=got, pbl=pout, li=gli, pbl_li=pli, comp=comp, ex=ex, ftype=ftype, land=lr)
 
 
-def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_all):
+def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_all, b4=None):
     """Predicted substep-2 records (PBL itype<=2, PBL itype 3, tile, land-ice tile) from substep-1 results r1 and the
     substep-2 atmosphere `atm2` (our ATURB exit). Start from the recorded substep-2 rows so that columns we do not model
     (constants, ddml flags, ...) stay as recorded; overwrite every column we predict."""
@@ -114,7 +123,10 @@ def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_al
         m = a12[:, 2] == itp
         acc(a12[m], r1["pbl"]["ustar"][m], r1["pbl"]["lmonin"][m], itp)
     acc(a3, r1["pbl_li"]["ustar"], r1["pbl_li"]["lmonin"], 3)
-    acc(a4, a4[:, 99], a4[:, 100], 4)
+    if r1["land"] is not None:
+        acc(a4, r1["land"]["pbl"]["ustar"], r1["land"]["pbl"]["lmonin"], 4)
+    else:
+        acc(a4, a4[:, 99], a4[:, 100], 4)
     cor = np.zeros(shape)
     cor[b_all[:, 1].astype(int) - 1, b_all[:, 0].astype(int) - 1] = b_all[:, 36]   # per-cell constant (sinlat*omega2)
     ug, vg, dbl = SC.get_dbl(jnp.asarray(ust), jnp.asarray(lmo), jnp.asarray(cor), jnp.asarray(atm2["pblht"]),
@@ -137,6 +149,9 @@ def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_al
 
     p12 = fill(b12, r1["pbl"])
     p3 = fill(b3, r1["pbl_li"])
+    p4 = None
+    if r1["land"] is not None:
+        p4 = LC.next_land_pbl_columns(fill(b4, r1["land"]["pbl"]), r1["land"])
     # ice / land-ice ground state carried from tile outputs (ocean tile state is unchanged in the loop)
     ice = p12[:, 2] == 2
     tg_ice = np.asarray(r1["tile"]["tg1"])[ice] + TF
@@ -160,14 +175,14 @@ def predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk, atm2, ftype, b_al
     j = lnew[:, 1].astype(int) - 1; i = lnew[:, 0].astype(int) - 1
     lnew[:, LI.IN["q1"]] = np.asarray(e["qtop"])[j, i]
     lnew[:, LI.IN["tg1"]] = np.asarray(r1["li"]["tg1"])
-    return p12, p3, tnew, lnew
+    return p12, p3, tnew, lnew, p4
 
 
 PRED_COLS = dict(zs1=5, tgv=6, tkv=7, qg_sat=8, qg_aver=9, tg=18, dbl=29, ug=31, vg=32, cm=33, ch=34, cq=35,
                  utop=37, vtop=38, qtop=39, ztop=40)
 
 
-def run_two_substeps(dd, it, return_state=False):
+def run_two_substeps(dd, it, return_state=False, land=False):
     """Returns (rows vs the real substep-2 ATURB exit state, diag of predicted-vs-recorded substep-2 input columns)
     [+ a state dict with both substeps' results if return_state]."""
     p = PC.load(f"{dd}/ffp_{it}.bin"); t = S.load(f"{dd}/ffs_{it}.bin"); l = LI.load(f"{dd}/ffl_{it}.bin")
@@ -178,10 +193,22 @@ def run_two_substeps(dd, it, return_state=False):
     a12, a3, a4 = pa[pa[:, 2] <= 2], pa[pa[:, 2] == 3], pa[pa[:, 2] == 4]
     b12, b3 = pb[pb[:, 2] <= 2], pb[pb[:, 2] == 3]
     atm1, dt = load_atm(f"{dd}/ffa_{it}_c1_in.bin")
-    r1 = substep(a12, ta, a3, la, blk1, atm1, dt, blk1)
+    land1 = land2 = None
+    b4 = pb[pb[:, 2] == 4]
+    if land:
+        import ghy_compare as GC
+        g = GC.load(f"{dd}/ffg_{it}.bin")
+        ng = len(g) // 2
+        g1, g2 = g[:ng], g[ng:]
+        ftype1, patch1, _ = TA.unpack(blk1)
+        lut1 = C._cell_lookup(blk1)
+        idx1 = lut1[g1[:, 0].astype(int), g1[:, 1].astype(int)]
+        trup = LC.infer_trup(g1, patch1["dth1"][idx1, 3], dt)
+        land1 = dict(p4=a4, g=g1, trup=trup)
+    r1 = substep(a12, ta, a3, la, blk1, atm1, dt, blk1, land1)
     atm2 = next_atm(atm1, r1["ex"])
     atm2["pblht"] = np.asarray(r1["ex"]["pblht"]); atm2["dclev"] = np.asarray(r1["ex"]["dclev"])
-    p12, p3, tnew, lnew = predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk1, atm2, r1["ftype"], pb)
+    p12, p3, tnew, lnew, p4 = predict_ns2(a12, a3, a4, b12, b3, ta, tb, la, lb, r1, blk1, atm2, r1["ftype"], pb, b4)
     diag = {}
     for nm, c in PRED_COLS.items():
         for lab, pr, rc, sel in (("itype1", p12, b12, b12[:, 2] == 1), ("itype2", p12, b12, b12[:, 2] == 2),
@@ -192,7 +219,13 @@ def run_two_substeps(dd, it, return_state=False):
             diag[f"{lab}.{nm}"] = float(d.max())
     for nm, pr, rc in (("profiles", p12[:, 50:89], b12[:, 50:89]), ("profiles3", p3[:, 50:89], b3[:, 50:89])):
         diag[nm] = float(np.abs(pr - rc).max())
-    r2 = substep(p12, tnew, p3, lnew, blk2, atm2, dt, blk2)
+    if land:
+        land2 = dict(p4=p4, g=g2, trup=trup, dyn=r1["land"]["dyn_next"])
+        for nm, c in dict(zs1=5, tgv=6, tkv=7, qg_sat=8, qg_aver=9, tr4=11, evap_max=12, fr_sat=13, tg=18, dbl=29, ug=31,
+                          vg=32, cm=33, ch=34, cq=35, utop=37, vtop=38, qtop=39, ztop=40).items():
+            diag[f"itype4.{nm}"] = float(np.abs(p4[:, c] - b4[:, c]).max())
+        diag["profiles4"] = float(np.abs(p4[:, 50:89] - b4[:, 50:89]).max())
+    r2 = substep(p12, tnew, p3, lnew, blk2, atm2, dt, blk2, land2)
     # compare with the real substep-2 exit
     dout = read_dump(f"{dd}/ffa_{it}_c2_out.bin", 1)
     din2 = read_dump(f"{dd}/ffa_{it}_c2_in.bin", 1)
@@ -215,7 +248,7 @@ def run_two_substeps(dd, it, return_state=False):
         else:
             mm = np.broadcast_to(m if r.ndim == 2 else m[..., None], r.shape)
         d = (g - r)[mm]
-        row = dict(max_abs=float(np.abs(d).max()), n_exact=float((d == 0).mean()))
+        row = dict(max_abs=float(np.abs(d).max()), rms=float(np.sqrt((d ** 2).mean())), n_exact=float((d == 0).mean()))
         if k in ini:
             row["fortran_change_rms"] = float(np.sqrt(((r - ini[k])[mm] ** 2).mean()))
         rows[k] = row

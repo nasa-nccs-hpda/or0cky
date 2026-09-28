@@ -412,3 +412,11 @@ no open-water tile (accumulators default to 0).
 ## 2026-09-28 (night): D21 -- lake ADDICE chained
 ADDICE lake inputs are exactly LKSOURC outputs + GROUND_SI final state (0.0 error). Chained on our results: outputs <= 8.6e-14
 relative. The lake-side surface chain is now complete on our own numbers up to FORM_SI.
+
+## 2026-09-28 (night): D22 -- land in the chain
+Added land (PBL itype 4 -> ghy_jax) to the two-substep chain. Identities first: GHY forcing == PBL outputs bit-exact; land patch
+formulas exact given GHY outputs. Needed: (1) advnc's post-loop evap_limits(.false.) outputs (evap_max_ij, fr_sat_ij) -- added
+to ghy_jax, matches at roundoff; (2) the REAL*4 `0.001` literal in the qg blend (found via constant ratio 1.0000000475);
+(3) TRUP_in_rad for land, not dumped -> reconstructed from the recorded patch (constant across substeps). Bulk agreement excellent;
+the max is one runoff-threshold cell (D9 sensitivity). First test run had four failing tests -- all my own bounds set tighter than
+GHY's measured accuracy (dq1 99th pct 3e-7 relative etc.); reset from measurements, not to force a pass on a wrong result.

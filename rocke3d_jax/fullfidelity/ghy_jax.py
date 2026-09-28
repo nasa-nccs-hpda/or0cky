@@ -1465,12 +1465,29 @@ def advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_s
     final = accm_final(acc, static, fb, fv, final_carry["snsh_tot_carry"], final_carry["evap_tot_carry"],
                        dt, forcing["rho"], forcing["ch"], forcing["ts"], forcing["gusti"], forcing["tprime"],
                        forcing["vs"])
+    # GHY_DRV.f calls evap_limits(.false.) after advnc (on the final state, after a fresh hydra, with the LAST
+    # substep's Ent conductances) to get the evap_max_ij / fr_sat_ij that the next PBL call receives.
+    rows = jnp.arange(N)
+    last = jnp.clip(n_substeps - 1, 0, max_substeps - 1)
+    pv = static["process_vege"]
+    hyd_f = hydra(static, final_carry["theta"], final_carry["fice"])
+    ev_f = evap_limits(static, final_carry["w"], final_carry["theta"], hyd_f["d"], final_carry["tp"],
+                       final_carry["fice"], final_carry["tsn1"], final_carry["nsn"], final_carry["wsn"],
+                       final_carry["fr_snow"], dt, forcing["pr"],
+                       jnp.where(pv[:, None], ent_betadl[rows, last], 0.0), jnp.where(pv, ent_cnc[rows, last], 0.0),
+                       forcing["ch"], forcing["vs"], forcing["rho"], forcing["pres"], forcing["qs"],
+                       forcing["gusti"], forcing["qprime"], forcing["qm1"], jnp.where(pv, ent_lai[rows, last], 0.0),
+                       final_carry["fm"])
+    bad = jnp.isnan(ev_f["evap_max_out"])
+    evap_max_ij = jnp.where(bad, 0.0, ev_f["evap_max_out"])
+    fr_sat_ij = jnp.where(bad, 0.0, ev_f["fr_sat"])
     return dict(w=final_carry["w"], ht=final_carry["ht"], nsn=final_carry["nsn"], dzsn=final_carry["dzsn"],
                wsn=final_carry["wsn"], hsn=final_carry["hsn"], fr_snow=final_carry["fr_snow"],
                tp=final_carry["tp"], fice=final_carry["fice"],
                tbcs=final["tbcs"], tsns=final["tsns"], ashg=acc["ashg"], alhg=acc["alhg"],
                aevap=final["aevap"], aruns=final["aruns"], arunu=final["arunu"], aeruns=acc["aeruns"],
-               aerunu=acc["aerunu"], ae0=acc["ae0"], abetad=final_carry["abetad"])
+               aerunu=acc["aerunu"], ae0=acc["ae0"], abetad=final_carry["abetad"],
+               evap_max_ij=evap_max_ij, fr_sat_ij=fr_sat_ij)
 
 
 def retp(static, w, ht, wsn, hsn):
