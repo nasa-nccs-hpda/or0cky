@@ -68,6 +68,28 @@ def test_ground_si_matches_fortran_at_same_tolerance_as_plain_python(ffi_rec):
     assert len(ffi_rec) > 4000
 
 
+def test_ground_si_general_wrapper_matches_test_helper(ffi_rec):
+    """J.ground_si (the general-purpose, named-argument wrapper promoted into seaice_core_jax.py for
+    the chained whole-model driver) must match JC.batched_ground_si (the test-only helper this was
+    adapted from, already checked against real Fortran above) bitwise -- same logic, different API."""
+    is_ocean = jnp.asarray(ffi_rec[:, 2]) > 0.5
+    dtsrc = jnp.asarray(ffi_rec[:, 3]); snow = jnp.asarray(ffi_rec[:, 4])
+    hsil = jnp.asarray(ffi_rec[:, 6:10]); ssil = jnp.asarray(ffi_rec[:, 10:14])
+    msi2 = jnp.asarray(ffi_rec[:, 14]); f0dt = jnp.asarray(ffi_rec[:, 15]); f1dt = jnp.asarray(ffi_rec[:, 16])
+    evap = jnp.asarray(ffi_rec[:, 17]); srox0 = jnp.asarray(ffi_rec[:, 18])
+    fmoc = jnp.asarray(ffi_rec[:, 19]); fhoc = jnp.asarray(ffi_rec[:, 20]); fsoc = jnp.asarray(ffi_rec[:, 21])
+    wetsnow = jnp.asarray(ffi_rec[:, 22]) > 0.5
+    tm = jnp.asarray(ffi_rec[:, 23]); sm = jnp.asarray(ffi_rec[:, 24])
+
+    out = J.ground_si(is_ocean, dtsrc, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmoc, fhoc, fsoc,
+                      wetsnow, tm, sm)
+    ref = JC.batched_ground_si(ffi_rec)
+    for k in ("snow", "msi2", "runosi", "erunosi", "srunosi"):
+        assert relerr(out[k], ref[k]) < 1e-9, k
+    assert relerr(out["hsil"], ref["hsil"]) < 1e-9
+    assert relerr(out["ssil"], ref["ssil"]) < 1e-9
+
+
 def test_simelt_matches_fortran_bitwise(ffm_rec):
     out = JC.batched_simelt(ffm_rec)
     ref = dict(roice=ffm_rec[:, 18], snow=ffm_rec[:, 19], msi2=ffm_rec[:, 20],

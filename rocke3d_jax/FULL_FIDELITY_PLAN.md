@@ -154,6 +154,65 @@ estimates and the least reliable part of this plan.
   pattern correlation vs. period-mean (−0.014, one-step vs. mean — not a
   like-for-like check) should be re-measured properly against the oracle.
 
+### Chained whole-model Track B driver — SCOPED 2026-09-28, in progress
+
+Prompted by the user asking directly whether Track A and Track B are both "end-to-end" the same way:
+they aren't yet, on the *chaining* axis (Track A's `p2saom40_driver.py` fuses one real per-column
+workflow into a single device-resident `jax.lax.scan`; Track B has validated, fast, `jax.jit`-able
+modules but they were never wired into one driver). Read the real per-cell orchestration
+(`SURFACE.f`'s `SURFACE` subroutine and `GHY_DRV.f`'s `earth`) to scope this properly rather than
+guess, and the finding is good news: **almost every piece already exists and is already validated**
+-- this is an *integration* task over Track B's existing D4-D16 modules, not a new porting effort.
+
+Real per-cell, per-DTsrc-step call order, traced from `SURFACE.f`/`GHY_DRV.f`:
+1. `DO ITYPE=ocean,ice: CALL PBL(...)` — surface-layer solve per tile (ocean, sea ice); **have**:
+   `pbl_ff.py` (D5).
+2. `earth(...)` (land): its own `CALL PBL(...,itype=land,...)` then, after `NIsurf` Ent-driven
+   substeps, `CALL ADVNC(...)` — the real GHY call; **have**: `pbl_ff.py`, `ghy_jax.py` (D15).
+3. Land ice tile flux (a fourth `ITYPE`, handled similarly, not yet located line-precisely); **have**:
+   `landice_tile_ff.py` (D7).
+4. Tile-flux aggregation (`avg_patches_*`, area-fraction-weighted across the 4 tiles); **have**:
+   `tile_aggregate_ff.py` (D11).
+5. `CALL ATM_DIFFUS(1,1,dtsurf)` — the real ATURB call (free-atmosphere turbulent mixing, using the
+   aggregated tile fluxes); **have**: `aturb_ff.py`, `aturb_uv_ff.py` (D4).
+6. `CALL GROUND_SI(...)` — sea-ice AND lake-ice ground thermodynamics; **DONE 2026-09-28**: added
+   `seaice_core_jax.ground_si(is_ocean, ...)`, a single named-argument wrapper unifying the
+   ocean/other domain split (`sea_ice`→`ssidec`→`snowice`, D10/D12/D14) via `jnp.where(is_ocean,...)`
+   instead of a Python branch, matching `seaice_core_ff.py`'s `ground_si_ocean`/`ground_si_other`
+   split. Validated against `seaice_jax_compare.batched_ground_si` (already checked against real
+   Fortran) at <1e-9 relative error across all 4,524 real cells
+   (`test_ground_si_general_wrapper_matches_test_helper`).
+7. `CALL GROUND_LK` — lake mixing; **have**: `lakes_core_jax.py` (D16), already a complete
+   `lksourc_full`+`lkmix` chain.
+
+**Bug found and fixed while adding step 6**: `seaice_core_jax.py`, `ghy_jax.py`, and
+`lakes_core_jax.py` never called `jax.config.update("jax_enable_x64", True)` themselves — they
+silently ran in JAX's float32 default unless whatever script imported them happened to enable x64
+first (every existing test/compare script did, by luck of import order, which is why D9/D10/D12-D16
+never caught this). Writing a standalone validation script that imported `seaice_core_jax` directly
+(no enabling caller) exposed it immediately: cell row 1944's `ssidec` divides by a `tsil` value that
+should be ~0 at the melt point: float32 (`ghy`/`seaice`) computed a differently-signed/-scaled
+near-zero tsil than the float64 plain-Python reference and real Fortran ground truth, propagating into
+a brine-fraction division that put `erunosi` off by ~5,415 units (`hflux` sign-flipped entirely) — not
+noise, a wrong answer that would have silently shipped in any script that imported the core module
+without a caller-side x64 enable. Fixed by moving `jax.config.update("jax_enable_x64", True)` inside
+each of the three core modules (right after `import jax`, before `import jax.numpy`), so they are
+correct regardless of caller/import order. Re-validated at <1e-9 rel. error post-fix (was up to
+5.4e3 abs. error pre-fix on the affected cell); full existing test suites (lakes: 5/5, sea-ice:
+12/12 incl. the new test) still pass.
+
+What's genuinely new work, not already-validated pieces waiting to be wired together: (a) precisely
+locating land-ice's tile-flux call site and its `ITYPE` plumbing, (b) the actual per-cell **data
+flow** between these calls -- what `PBL_ARGS`/tile fraction arrays route between PBL and each
+`SURFACE` tile call, and how state persists across `earth`'s `NIsurf` substeps (already handled
+inside `ghy_jax.advnc`'s own scan, per D15) -- and (c) assembling all of it into one
+`jax.lax.scan`-chained driver the way `p2saom40_driver.py`'s `run_steps_device` does for Track A.
+Given how much is already built and validated, this looks more tractable than the original "biggest
+remaining item" framing suggested; effort estimate pending further tracing. Not yet attempted:
+SEAICE/LAKES/GHY's own prognostic state (ice thickness, lake temperature, soil moisture) feeding
+back into the NEXT step's tile fractions/properties -- the
+genuine "whole model" coupling loop, distinct from one step's tile-flux computation.
+
 ### JAX-vectorization of GHY (`ghy_ref.py`) — DONE 2026-09-27 (see D15)
 
 **Update:** completed the same day it was scoped below. The scoping held up well against

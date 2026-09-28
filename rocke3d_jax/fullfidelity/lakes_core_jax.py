@@ -6,6 +6,8 @@ jnp.where in place of Python if/else. No dynamic-shape or per-cell-loop concerns
 sea-ice) -- lakes_ff.py is a small, fixed two-layer (upper/lower) model with no data-dependent
 iteration, so this is a direct branch-by-branch transcription, not a novel technique.
 """
+import jax
+jax.config.update("jax_enable_x64", True)  # float32 is insufficient to match lakes_ff.py's Fortran-derived ops
 import jax.numpy as jnp
 
 SHW = 4185.0

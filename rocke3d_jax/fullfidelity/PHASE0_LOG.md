@@ -308,3 +308,37 @@ surface (planet_rad.F90), or getgas/getvol/GETSUR's bodies in detail. Documented
 FULL_FIDELITY_PLAN.md's Phase 2 section rather than rushing into the dump-hook/shim implementation --
 this narrows the estimate's uncertainty without changing its size (still a multi-week undertaking:
 GETSUR and run_planet_rad are real, and SOCRATES's own 90k-line library is unaffected by any of this).
+
+## 2026-09-28: chained whole-model Track B driver -- scoping, ground_si, and a real x64 bug
+User asked directly whether Track A and Track B are both "end-to-end" the way Scott's P2SAoM40
+workflow suggests -- answer: not yet on the chaining axis (Track A fuses one real per-column workflow
+into a single lax.scan; Track B has validated fast modules but no driver wiring them together).
+Traced the real per-cell orchestration (SURFACE.f's SURFACE subroutine, GHY_DRV.f's earth) to scope
+the integration properly: almost everything needed already exists and is validated (D4-D16) -- this
+is an integration task, not new porting. The one clearly-missing piece was a `ground_si` wrapper
+chaining sea_ice->ssidec->snowice with ocean/lake domain gating; the exact logic already existed as a
+test-only helper (seaice_jax_compare.batched_ground_si, unpacks a raw dump row) so promoted it into a
+proper named-argument function in seaice_core_jax.py (D17).
+
+Building a standalone script to validate the new function (deliberately NOT reusing the test suite's
+own x64-enabling import, to check the function works for an arbitrary caller) immediately surfaced a
+real bug: seaice_core_jax.py, ghy_jax.py, and lakes_core_jax.py never call
+jax.config.update("jax_enable_x64", True) themselves -- every existing test/compare script happened to
+enable x64 before importing them, so D9/D10/D12-D16 never caught this. Running seaice_core_jax's
+ground_si in JAX's float32 default got one real cell (row 1944, an ocean cell near the ice melt point)
+badly wrong: ssidec divides by tsil, which is ~0 there, and float32's less-precise near-zero tsil had
+a different sign than float64's, propagating through a brine-fraction division into erunosi being off
+by ~5,415 units -- not noise, a flipped-sign wrong answer, on a dump file that all 4,524 cells across
+were otherwise passing. Fixed by moving the x64 enable inside all three core modules themselves
+(before jax.numpy is imported), so correctness no longer depends on caller import order. Re-validated
+at <1e-9 rel. error post-fix across all 4,524 real ocean+lake cells; reran lakes (5/5) and sea-ice
+(12/12, incl. a new test cross-checking the promoted ground_si against the test helper) -- all still
+pass, confirming the fix changes nothing for code paths that were already accidentally correct.
+Documented in FULL_FIDELITY_DELTAS.md (D17) and FULL_FIDELITY_PLAN.md's chained-driver section. Per
+the "verify dramatic results" habit, didn't stop at "the number moved" -- traced the actual mechanism
+(a near-singularity division sensitive to float precision, the same class of issue as GHY's
+aruns/aeruns threshold-crossing sensitivity, D9) before calling it understood.
+
+Remaining before the actual jax.lax.scan-chained driver can be assembled: precisely locating land-ice's
+tile-flux call site and ITYPE plumbing, and tracing the real per-cell data flow between PBL and each
+SURFACE tile call (what PBL_ARGS/tile-fraction arrays route between them).

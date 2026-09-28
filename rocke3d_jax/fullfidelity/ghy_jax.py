@@ -31,6 +31,7 @@ stays a small Python unroll deliberately -- those are 2-6 iterations of a small 
 iterations of a huge one, so they don't hit the same problem.
 """
 import jax
+jax.config.update("jax_enable_x64", True)  # float64 required to match ghy_ref.py's Fortran-derived ops
 import jax.numpy as jnp
 
 import ghy_ref as R   # reuse constants and the once-computed THM/HLM/XKLM/DLM soil tables verbatim

@@ -433,9 +433,45 @@ This closes the last "still plain Python" gap flagged in STATUS.md's 8-stage com
 every currently-validated piece of Track B physics (ATURB, PBL, SURFACE, SEAICE/ADDICE/SIMELT, LAKES,
 tile aggregation, GHY) is now `jax.jit`-compilable with a measured real-data speedup.
 
+## D17 — `ground_si` wrapper + a real float32-precision bug found and fixed across 3 core modules
+`seaice_core_jax.ground_si(is_ocean, dtsrce, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmoc,
+fhoc, fsoc, wetsnow, tm, sm, ...)`: the one clearly-missing piece flagged in FULL_FIDELITY_PLAN.md's
+chained-driver scoping -- a general-purpose, named-argument function chaining `sea_ice`→`ssidec`→
+`snowice` with the ocean/other domain split done via `jnp.where(is_ocean, ...)` instead of a Python
+branch, matching `seaice_core_ff.py`'s plain-Python `ground_si_ocean`/`ground_si_other` API. Adapted
+from `seaice_jax_compare.py`'s `batched_ground_si` test helper (which unpacks a raw `(N,60)` dump
+record array -- not reusable outside a test), now with a clean signature any future driver can call
+directly. Validated against `batched_ground_si` (already checked against real Fortran, D10) at <1e-9
+relative error on all 4,524 real ocean+lake cells (`test_ground_si_general_wrapper_matches_test_helper`
+in `tests/test_seaice_jax_vectorized.py`).
+
+**Real bug found while building the standalone validation script for this**: `seaice_core_jax.py`,
+`ghy_jax.py`, and `lakes_core_jax.py` never enabled `jax_enable_x64` themselves -- they relied on
+whatever script imported them having already called `jax.config.update("jax_enable_x64", True)`
+(true of every existing test/compare script, by luck, which is why D9/D10/D12-D16 never caught this).
+A validation script that imports `seaice_core_jax` on its own, with no such caller, silently ran in
+JAX's float32 default and got real cell 1944 badly wrong: `ssidec` divides by `tsil`, which is ~0 at
+the ice melt point; float32's less-precise near-zero `tsil` had a different sign/magnitude than the
+float64 reference's, and that difference propagated through a brine-fraction division into `erunosi`
+being off by ~5,415 units (`hflux` sign-flipped entirely, not just noisy) -- silently wrong, not a
+crash. **Fixed** by moving `jax.config.update("jax_enable_x64", True)` inside each of the three core
+modules themselves (immediately after `import jax`, before `import jax.numpy`), so correctness no
+longer depends on import order. Re-validated at <1e-9 rel. error post-fix on all 4,524 cells (was up
+to 5.4e3 abs. error pre-fix on the one affected cell); reran the full existing lakes (5/5) and
+sea-ice (12/12, incl. the new test) suites -- all still pass, confirming the fix is a no-op for every
+code path that was already being exercised correctly by luck of import order.
+
+**Takeaway for the eventual chained driver**: since the driver's own top-level script is what
+determines import order today, this bug would have resurfaced the moment the chained driver's entry
+point imported these modules in a different order than the existing test scripts do -- fixing it at
+the module level now removes that landmine before the chained driver is built, rather than after it
+silently produces wrong numbers.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
-- A single chained whole-model Track B step (wiring ATURB/PBL/SURFACE/SEAICE/LAKES/GHY together the
-  way Track A's `run_steps_device` chains one full atmosphere step) -- each module is fast and
-  jit-able on its own, but hasn't been integrated into one driver yet (see STATUS.md's 8-stage table).
+- The actual `jax.lax.scan`-chained whole-model Track B step (wiring ATURB/PBL/SURFACE/SEAICE/LAKES/
+  GHY together the way Track A's `run_steps_device` chains one full atmosphere step) -- every needed
+  piece is now validated and jit-able (D17 closes the last missing one, `ground_si`), but the actual
+  driver assembly, land-ice tile-flux call site, and PBL↔SURFACE data-flow tracing are still pending
+  (see FULL_FIDELITY_PLAN.md's chained-driver section and STATUS.md's 8-stage table).

@@ -805,6 +805,18 @@ Track A's Round 2 optimization did. That wiring, plus GPU access, are what would
 5-8. GPU numbers for Track B (stages 6 and 8) cannot be produced without GPU hardware -- this is a
 hard blocker, not a scoping choice, and should not be estimated or guessed at.
 
+**2026-09-28 update**: scoped the chained-driver integration by tracing the real per-cell call order
+(`SURFACE.f`/`GHY_DRV.f`) — almost every piece needed already exists and is validated; the one
+missing piece, a `ground_si` wrapper (SEAICE→SSIDEC→snowice with ocean/lake domain gating), is now
+built and validated (D17, <1e-9 rel. error on all 4,524 real cells). D17 also fixed a real bug found
+while validating it: `seaice_core_jax.py`/`ghy_jax.py`/`lakes_core_jax.py` never enabled JAX's
+float64 mode themselves, relying on the caller to do it first — running in float32 silently flipped
+the sign of `erunosi` by ~5,415 units on one real cell (a near-zero `tsil` division at the ice melt
+point). Fixed at the module level; every existing test suite still passes post-fix. Still pending
+before the actual chained driver: land-ice's tile-flux call site/`ITYPE` plumbing, and the real
+PBL↔SURFACE per-cell data flow. See `FULL_FIDELITY_PLAN.md`'s chained-driver section and
+`FULL_FIDELITY_DELTAS.md` D17.
+
 ## Open items
 
 - ~~Re-measure the fused driver on a real GPU node~~ — **done**, 4.2× GPU

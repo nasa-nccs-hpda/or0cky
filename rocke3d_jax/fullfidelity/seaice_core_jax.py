@@ -31,6 +31,8 @@ one branch go through `_safe_div`/an inline `jnp.where(x==0,1,x)` guard so the u
 algebra never divides by a literal zero; jnp.where's per-element selection discards the unused
 branch's value regardless (no gradient support is needed or provided here -- forward-only).
 """
+import jax
+jax.config.update("jax_enable_x64", True)  # float32 corrupts near-zero tsil/brine_frac divisions
 import jax.numpy as jnp
 
 LHM = 3.34e5
@@ -811,6 +813,43 @@ def simelt(dt, roice, snow, msi2, hsil, ssil, pocean, tm, tfo, enrgmax):
 
     return dict(roice=roice_out, snow=snow_out, msi2=msi2_out, hsil=hsil_out, ssil=ssil_out,
                 tsil=tsil_out, enrgused=enrgused, run0=run0, salt=salt, melted_out=cond_gone)
+
+
+def ground_si(is_ocean, dtsrce, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmoc, fhoc, fsoc,
+             wetsnow, tm, sm, snow_ice_flag=True, qsfix=False):
+    """SEAICE_DRV.f GROUND_SI, batched, both domains (`domain='OCEAN'` vs lake/other) unified into
+    one call via `is_ocean` (N,) bool -- matches seaice_core_ff.py's `ground_si_ocean`/
+    `ground_si_other` (SEA_ICE -> SSIDEC -> snowice for ocean; SEA_ICE only for lakes), computed for
+    both branches and selected, the same pattern used throughout this module. Returns dict: snow,
+    hsil, ssil, msi2, runosi, erunosi, srunosi, solar_io, mflux, hflux, sflux."""
+    si = sea_ice(dtsrce, snow, hsil, ssil, msi2, f0dt, f1dt, evap, srox0, fmoc, fhoc, fsoc, wetsnow)
+    dec = ssidec(si["snow"], si["msi2"], si["hsil"], si["ssil"], dtsrce, si["melt12"])
+    sic = snowice(tm, sm, dec["snow"], dec["msi2"], dec["hsil"], dec["ssil"], qsfix)
+    if not snow_ice_flag:
+        sic = dict(snow=dec["snow"], msi2=dec["msi2"], hsil=dec["hsil"], ssil=dec["ssil"],
+                  msnwic=jnp.zeros_like(dec["snow"]), hsnwic=jnp.zeros_like(dec["snow"]),
+                  ssnwic=jnp.zeros_like(dec["snow"]), dsnow=jnp.zeros_like(dec["snow"]))
+
+    snow_o, hsil_o, ssil_o, msi2_o = sic["snow"], sic["hsil"], sic["ssil"], sic["msi2"]
+    runosi_o = fmoc + si["run"] + dec["mflux"] + sic["msnwic"]
+    erunosi_o = fhoc + si["erun"] + dec["hflux"] + sic["hsnwic"]
+    srunosi_o = fsoc + si["srun"] + dec["sflux"] + sic["ssnwic"]
+
+    snow_l, hsil_l, ssil_l, msi2_l = si["snow"], si["hsil"], si["ssil"], si["msi2"]
+    runosi_l = fmoc + si["run"]
+    erunosi_l = fhoc + si["erun"]
+    srunosi_l = fsoc + si["srun"]
+
+    m = is_ocean
+    zeros = jnp.zeros_like(fmoc)
+    return dict(
+        snow=jnp.where(m, snow_o, snow_l), hsil=jnp.where(m[..., None], hsil_o, hsil_l),
+        ssil=jnp.where(m[..., None], ssil_o, ssil_l), msi2=jnp.where(m, msi2_o, msi2_l),
+        runosi=jnp.where(m, runosi_o, runosi_l), erunosi=jnp.where(m, erunosi_o, erunosi_l),
+        srunosi=jnp.where(m, srunosi_o, srunosi_l), solar_io=si["srox2"],
+        mflux=jnp.where(m, dec["mflux"], zeros), hflux=jnp.where(m, dec["hflux"], zeros),
+        sflux=jnp.where(m, dec["sflux"], zeros),
+    )
 
 
 def addice(snow, roice, hsil, ssil, msi2, enrgfo, acefo, acefi, enrgfi, salto, salti, flead, qfixr):
