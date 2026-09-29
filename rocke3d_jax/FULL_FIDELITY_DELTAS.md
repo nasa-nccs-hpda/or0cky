@@ -1125,6 +1125,34 @@ cell must exercise `LMIN>1`; changed cells must be scaled by exactly `REDUCE`, n
 factor; cells with an empty `L`-range must be byte-identical before/after). Full regression: 505
 passed (488 + this delta's 17), 0 failed, no cross-delta regressions.
 
+## D38: OBDRAG2 -- implicit bottom-layer current drag
+
+Picked `OBDRAG2` (`OCNDYN2.f:2592-2682`, 91 lines) as the next `OCNDYN2.f`-live delta: applies an
+implicit bottom-drag deceleration only at the per-column deepest active layer -- `L=LMU(I,J)` for
+the east-edge U/VOD velocity pair, `L=LMV(I,J)` for the north-edge V/UOD pair, everywhere else
+untouched. The drag scales velocity by `(MO_l+MO_r)/(MO_l+MO_r+2*DTS*bdragfac)` where
+`bdragfac=BDRAGX*sqrt(WSQ)` (`BDRAGX=1.0`, `WSQ` the local squared current speed plus a 1e-20
+zero-speed floor) -- an unconditionally-stable implicit linear drag. Confirmed `OCN_GISS_TURB` is
+not `#define`d for this build (checked the compiled `rundeck_opts.h`'s active flag list directly,
+not assumed), so the tidal-enhancement branch (`taubx`/`tauby`/`rhobot`/`idrag`) never compiles
+in -- only the simple `bdragfac=BDRAGX*sqrt(WSQ)` path is live. Called unconditionally from
+`OCEANS` when `OBottom_drag==1` (true for this rundeck).
+
+D37's permanent pristine-restart archive (`ff_data/_pristine_restarts/`) paid for itself
+immediately here: restoring all three dates for this delta's rebuild was a single three-line
+copy, no bootstrap run, no debugging -- a direct payoff of the fix built one delta earlier.
+
+`fullfidelity/obdrag2_ff.py`/`obdrag2_jax.py`: float64-op-order exact against real Fortran on all
+3 dates, both ports, first try, including the `Max(J1O,J1)..JNP` J-band (J=2..JM-1 for this
+serial run) without needing an empirical correction. JAX port introduces a new technique beyond
+D36/D37's uniform-J-range masking: since the affected layer varies per column, it gathers the one
+relevant layer per cell via `jnp.take_along_axis`, computes the drag there, then scatters back
+with a broadcast layer-index-equality mask merged via `jnp.where`. `tests/test_obdrag2_jax.py`
+(17 tests): real-record validation x2 ports x3 dates, a compile-time-constants check, jit-vs-
+eager, mask non-vacuousness, a per-layer mutation check (only the bottom layer may change,
+checked layer-by-layer), and a physical-sanity check (drag never increases speed, and does fire
+somewhere real). Full regression: 522 passed (505 + this delta's 17), 0 failed.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

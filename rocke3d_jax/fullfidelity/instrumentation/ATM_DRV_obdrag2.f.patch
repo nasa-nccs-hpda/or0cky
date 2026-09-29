@@ -1,0 +1,70 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3159,3 +3159,67 @@
+       write(fu) symo1
+       close(fu)
+       end subroutine ffdump_ocoast
++
++      subroutine ffdump_obdrag2_geom(im,jm,lmu,lmv)
++!@sum full-fidelity-port instrumentation: OBDRAG2's static ocean-grid
++!@+   bathymetry masks (Stage 2, D38: bottom-layer current drag).
++!@+   Written once at first call, unconditional. Same LMU/LMV already
++!@+   validated in D36's ostres2 geom dump -- dumped fresh here too so
++!@+   this delta's compare script is self-contained.
++      implicit none
++      integer :: im,jm
++      integer :: lmu(im,jm),lmv(im,jm)
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=984
++      open(fu,file='ffz_obdrag2_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(im),dble(jm)
++      write(fu) dble(lmu)
++      write(fu) dble(lmv)
++      close(fu)
++      end subroutine ffdump_obdrag2_geom
++
++      subroutine ffdump_obdrag2(im,jm,lmo,mo,uo0,vo0,uod0,vod0,
++     &     uo1,vo1,uod1,vod1)
++!@sum full-fidelity-port instrumentation: OBDRAG2 full-grid before/
++!@+   after record (Stage 2, D38). One record per call (once per
++!@+   DTsrc step, called from OCNDYN2.f's OCEANS when OBottom_drag=1).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: mo(im,jm,lmo)
++      real*8 :: uo0(im,jm,lmo),vo0(im,jm,lmo)
++      real*8 :: uod0(im,jm,lmo),vod0(im,jm,lmo)
++      real*8 :: uo1(im,jm,lmo),vo1(im,jm,lmo)
++      real*8 :: uod1(im,jm,lmo),vod1(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, fu=985
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffz_obdrag2_',itime,'.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) mo
++      write(fu) uo0
++      write(fu) vo0
++      write(fu) uod0
++      write(fu) vod0
++      write(fu) uo1
++      write(fu) vo1
++      write(fu) uod1
++      write(fu) vod1
++      close(fu)
++      end subroutine ffdump_obdrag2

@@ -1,0 +1,33 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -2614,12 +2614,20 @@
+ #ifdef OCN_GISS_TURB
+       REAL*8 taubbyu    !magnitude of velocity flux divided by magnitude of velocity (m/s)
+ #endif
++      REAL*8 :: DBGUO0(IM,JM,LMO),DBGVO0(IM,JM,LMO)
++     &     ,DBGUOD0(IM,JM,LMO),DBGVOD0(IM,JM,LMO)
+ 
+ C**** Define decomposition band parameters
+       J1 = oGRID%J_STRT
+       JN = oGRID%J_STOP
+       JNP = JN  ;  If(JN==JM) JNP = JM-1
+-      
++
++      CALL ffdump_obdrag2_geom(IM,JM,LMU,LMV)
++      DBGUO0=UO
++      DBGVO0=VO
++      DBGUOD0=UOD
++      DBGVOD0=VOD
++
+       Call HALO_UPDATE (oGRID, MO, From=NORTH)
+ #ifdef OCN_GISS_TURB
+       Call HALO_UPDATE (oGRID, rhobot, From=NORTH)
+@@ -2677,6 +2685,8 @@
+           ENDIF
+         ENDDO
+       ENDDO
++      CALL ffdump_obdrag2(IM,JM,LMO,MO,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0,
++     &     UO,VO,UOD,VOD)
+       RETURN
+ C****
+       END Subroutine OBDRAG2
