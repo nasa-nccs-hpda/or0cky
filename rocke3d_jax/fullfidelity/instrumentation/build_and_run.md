@@ -38,6 +38,11 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
       files, D32) -- apply AFTER SEAICE_DRV_s2ag.f.patch (above)
     patch ATM_DRV.f < <this dir>/ATM_DRV_underice.f.patch         # adds ffdump_underice_ocn/_lake --
       apply AFTER ATM_DRV_s2ag.f.patch (immediately above); units 979/980
+    patch OCNDYN.f < <this dir>/OCNDYN_precip_oc.f.patch          # PRECIP_OC (ffz_precoc_* files,
+      D33 -- first Stage 2/ocean-core item)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_precip_oc.f.patch        # adds ffdump_precip_oc itself --
+      apply AFTER ATM_DRV_underice.f.patch (immediately above); unit 973 (reused from D29's vacated
+      debug-only units, re-checked for conflicts first)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -186,3 +191,11 @@ DTsrc; scale by 1800s to match `FMSI_IO`/`FHSI_IO`/`FSSI_IO`). `ffz_undlk_<itime
 `SURFACE.f`'s call): 20-double records, one per real lake-ice cell (~300-500/step). Columns: 1:i 2:j 3:tic
 4:tm 5:dh 6:mlsh 7:dlake 8:glake -- after `icelake_fluxes`+flux-limiting -- 9:mflux 10:hflux (0-based columns
 are -1, see `fullfidelity/underice_compare.py`).
+
+PRECIP_OC dumps (D33, first Stage 2/ocean-core item): patch `OCNDYN.f` with `OCNDYN_precip_oc.f.patch` and
+`ATM_DRV.f` with `ATM_DRV_precip_oc.f.patch` (after `ATM_DRV_underice.f.patch`; adds `ffdump_precip_oc`, unit
+973). `ffz_precoc_<itime>.bin`: 20-double records, one per real (`FOCEAN>0` and `oPREC>0`) ocean-grid cell
+per call (~1,810-1,893/step, once per full step). Columns: 1:i 2:j 3:focean 4:oprec 5:orsi 6:orunpsi
+7:oeprec 8:oerunpsi 9:osrunpsi 10:dxypo 11:mo(in) 12:g0m(in) 13:s0m(in) -- after `PRECIP_OC` -- 14:mo
+15:g0m 16:s0m (0-based columns are -1, see `fullfidelity/precip_oc_compare.py`). Ocean grid is IMO=72,
+JMO=46 (`ORES_5x4.F90`) -- same resolution/index space as the atmosphere grid for this rundeck.

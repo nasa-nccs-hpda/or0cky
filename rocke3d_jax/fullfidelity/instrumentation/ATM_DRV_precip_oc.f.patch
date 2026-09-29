@@ -1,0 +1,57 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2867,3 +2867,54 @@
+       rec(10)=hflux
+       write(fu) rec
+       end subroutine ffdump_underice_lake
++
++      subroutine ffdump_precip_oc(i,j,focean,oprec,orsi,orunpsi,
++     &     oeprec,oerunpsi,osrunpsi,dxypo,mo0,g0m0,s0m0,mo1,g0m1,s0m1)
++!@sum full-fidelity-port instrumentation: PRECIP_OC record (Stage 2,
++!@+   D33: first ocean-core item). One record per real (FOCEAN>0 and
++!@+   oPREC>0) ocean cell per call (once per full step).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j
++      real*8 :: focean,oprec,orsi,orunpsi,oeprec,oerunpsi,osrunpsi
++      real*8 :: dxypo,mo0,g0m0,s0m0,mo1,g0m1,s0m1
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=973
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_precoc_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=focean
++      rec(4)=oprec
++      rec(5)=orsi
++      rec(6)=orunpsi
++      rec(7)=oeprec
++      rec(8)=oerunpsi
++      rec(9)=osrunpsi
++      rec(10)=dxypo
++      rec(11)=mo0
++      rec(12)=g0m0
++      rec(13)=s0m0
++      rec(14)=mo1
++      rec(15)=g0m1
++      rec(16)=s0m1
++      write(fu) rec
++      end subroutine ffdump_precip_oc

@@ -583,3 +583,20 @@ is validated against the plain-Python reference on synthetic shallow-lake inputs
 established honest-scoping pattern rather than silently dropping the check. 76 tests added. This closes the
 ice-dynamics side of Stage 1 except the explicitly-deferred `IRRIG_LK` and the ocean-grid `GROUND_SI`/
 `FORM_SI` chaining (plumbing, not new physics).
+
+## 2026-09-29: D33 -- first Stage 2 delta, PRECIP_OC, plus OCNDYN.f's real scope
+Started Stage 2 (the ocean numerical core) by reading `OCNDYN.f` in full rather than porting anything first --
+same "read before estimating" discipline as D29's `DYNSI` correction. Found `OCNDYN.f`'s real 6,062 lines
+split into ~3,439 lines of genuine per-step physics, ~587 lines of diagnostics (`CHECKO`/`CONSERV_O*`,
+matching the existing `CHECKT` pattern), and ~1,744 lines of one-time init/restart-I/O -- a large, concrete
+de-risking of the Stage 2 estimate. Also found (`ORES_5x4.F90`) that the ocean grid is the SAME resolution as
+the atmosphere (IMO=72,JMO=46) for this rundeck -- meaning the atm<->ocean regrid layer (a general HNTR8
+utility, not physics-specific) can be treated as a recorded-input boundary exactly like D29's DYNSI regrids,
+rather than something that needs porting before any ocean-core routine can be validated.
+
+Picked `PRECIP_OC` as the first real Stage 2 port: small (84 lines), in a familiar "PRECIP_*" family (already
+ported SI/LK/LI versions for ice/lake/land-ice), and touches the ocean's own MO/G0M/S0M prognostic state for
+the first time in this project. New instrumentation dumps before/after MO/G0M/S0M plus the real recorded
+oPREC/oRSI/oRUNPSI/oEPREC/oERUNPSI/oSRUNPSI inputs. Bitwise exact on all 18 real records, first try -- no
+branches, confirms the established dump-hook-and-validate methodology scales cleanly past Stage 1 into the
+ocean core itself. 38 tests added.

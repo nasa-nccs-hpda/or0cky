@@ -1,0 +1,31 @@
+--- OCNDYN.f.orig
++++ OCNDYN.f
+@@ -5028,6 +5028,7 @@
+ c
+       INTEGER I,J
+       integer :: J_0, J_1
++      real*8 :: DBGMO0,DBGG0M0,DBGS0M0
+ #ifdef TRACERS_OCEAN
+       type(ocn_tracer_entry), dimension(:), pointer :: tlist
+ #endif
+@@ -5053,6 +5054,9 @@
+       DO J=J_0,J_1
+         DO I=1,IMAXJ(J)
+           IF(FOCEAN(I,J).gt.0. .and. oPREC(I,J).gt.0.)  THEN
++            DBGMO0=MO(I,J,1)
++            DBGG0M0=G0M(I,J,1)
++            DBGS0M0=S0M(I,J,1)
+             MO (I,J,1)= MO(I,J,1) + ((1d0-oRSI(I,J))*oPREC(I,J) +
+      *           oRSI(I,J)*oRUNPSI(I,J))*FOCEAN(I,J)
+             G0M(I,J,1)=G0M(I,J,1)
+@@ -5060,6 +5064,10 @@
+      &           +oRSI(I,J)*(oERUNPSI(I,J)*dxypo(j)))*FOCEAN(I,J)
+             S0M(I,J,1)=S0M(I,J,1)
+      &           +oRSI(I,J)*(oSRUNPSI(I,J)*dxypo(j))*FOCEAN(I,J)
++            CALL ffdump_precip_oc(I,J,FOCEAN(I,J),oPREC(I,J),
++     &           oRSI(I,J),oRUNPSI(I,J),oEPREC(I,J),oERUNPSI(I,J),
++     &           oSRUNPSI(I,J),DXYPO(J),DBGMO0,DBGG0M0,DBGS0M0,
++     &           MO(I,J,1),G0M(I,J,1),S0M(I,J,1))
+ #ifdef TRACERS_OCEAN
+ #ifdef TRACERS_WATER
+             TRMO(I,J,1,:)=TRMO(I,J,1,:)

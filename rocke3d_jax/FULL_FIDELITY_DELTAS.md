@@ -910,6 +910,38 @@ This closes the ice-dynamics side of Stage 1 except `IRRIG_LK`/`irrigate_extract
 external-dataset dependency) and the ocean-grid `GROUND_SI`/`FORM_SI` plumbing (chaining the already-ported
 physics onto `si_ocn`, not new physics to port).
 
+## D33 — PRECIP_OC (first Stage 2 deliverable: the ocean numerical core)
+The port's first delta inside the ~19,000-line ocean core proper (`OCNDYN.f`), rather than the ice-dynamics
+periphery. Before porting anything, read `OCNDYN.f`'s full subroutine list (90 subroutines) and categorized its
+real 6,062 lines: **~3,439 lines of genuine per-step dynamics/physics** (`OVtoM`/`OMtoV`/`OFLUX`/`OPFIL`/
+`OADVM`/`OADVV`/`OPGF`/`OPGF0`/the `OADVT` advection family/`OBDRAG`/`OCOAST`/`OSTRES`/`ODIFF`/`OABFILx`/
+`oabfily`/`GROUND_OC`/`OSOURC`/`PRECIP_OC`/`GLMELT`/`ADJUST_MEAN_SALT`), ~342 lines of `CHECKO`/
+`CHECKO_serial` sanity-check diagnostics (this project's already-familiar `CHECKT` pattern), ~245 lines of
+`CONSERV_O*` conservation diagnostics, and ~1,744 lines of one-time init/restart-I/O -- the same kind of
+real-vs-dead-code correction D29 made for `DYNSI` (550 -> 1,304 lines), now applied to the much larger Stage 2
+estimate. **A major de-risking finding**: `ORES_5x4.F90` confirms the ocean grid is IMO=72, JMO=46 -- the
+**same resolution as the atmosphere** for this rundeck. This means the atm<->ocean regrid (`AG2OG_precip` and
+its relatives, built on a general-purpose `HNTR8` area-weighted interpolation utility, not specific to any one
+physics routine) can be treated as a recorded-input boundary exactly the way D29 treated `GAIRX`/`GWATX` --
+Stage 2 routines can be validated against real dumps of their post-regrid inputs without needing to port the
+interpolation utility itself.
+
+`PRECIP_OC` (`OCNDYN.f:5008-5090`, 84 lines) applies precipitation (direct + through-ice runoff) to the
+ocean's own top-layer prognostic state (`MO`/`G0M`/`S0M` -- mass, mass*enthalpy, mass*salinity -- the ocean's
+OWN state, untouched by anything ported so far in this project). `TRACERS_OCEAN`/`TRACERS_WATER` both
+undefined for this rundeck (confirmed throughout this project), so the tracer branch is dead code. New
+instrumentation (`OCNDYN_precip_oc.f.patch`+`ATM_DRV_precip_oc.f.patch`, unit 973 -- reused from D29's
+now-vacated debug-only units after confirming no active conflict) dumps `MO`/`G0M`/`S0M` before and after the
+per-cell update, plus the real recorded inputs (`oPREC`/`oRSI`/`oRUNPSI`/`oEPREC`/`oERUNPSI`/`oSRUNPSI`,
+post-`AG2OG_precip`) and `FOCEAN`/`DXYPO`.
+
+`fullfidelity/precip_oc_ff.py`/`precip_oc_jax.py`: bitwise/float64-exact on all 18 real records (6 steps x 3
+dates, ~1,810-1,893 real cells/record), first try -- no branches, no ADI algebra, a clean confirmation the
+established methodology (record not-yet-ported dependencies as inputs, validate the arithmetic that's
+actually being ported) scales past Stage 1 into the ocean core proper. Tests: `tests/test_precip_oc_jax.py`
+(38: real-record validation x18 for both plain-Python and JAX, jit-vs-eager, a mutation check confirming all
+eight inputs actually affect the output).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
