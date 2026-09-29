@@ -75,6 +75,18 @@ Run (scratch dir; copy I, P2SAoM40, P2SAoM40ln/uln, runtime_opts, fort.1.nc from
     # trip count as proof this run executed a given routine either -- GISS ModelE checkpoints its
     # cumulative CPU-timer table into the restart file, so a stale count carries forward unchanged
     # across reruns from the same restart even when the routine never actually runs.
+    # CRITICAL (found in D27, sharpened in D36): before EVERY rerun in a shared/reused scratch dir,
+    # reset BOTH fort.1.nc AND fort.2.nc to the same pristine start itime -- not just fort.1.nc. The
+    # restart reader picks whichever of the two has the LATER itime (look for "RESTART DISK READ,
+    # UNIT 1" vs "UNIT 2" in run.PRT), and GISS ModelE double-buffers its checkpoint writes across
+    # both files, so a prior run in the same dir can leave fort.1.nc pristine but fort.2.nc advanced
+    # (or vice versa) -- the next run silently starts from the advanced one and does zero *useful*
+    # steps inside your FFD window even though it "terminates normally" and the timer table looks
+    # plausible. Symptom: even an unconditional, ungated dump call never fires. Verify with
+    # `python3 -c "import netCDF4 as nc; print(nc.Dataset('fort.1.nc').variables['itime'][...])"`
+    # on both files before trusting a run. Fix: copy a known-pristine fort.1.nc over BOTH names (the
+    # untouched master at `ModelE_Support/huge_space/P2SAoM40/fort.1.nc` is itime=33312, i.e. the
+    # nov26 start point, and has never been run in place -- only ever copied from).
 
 Dumps: `ffd_<itime>_<tag>.bin`, tags pre_condse, post_condse, post_radia,
 pre_surface, post_surface, pre_aturb, post_aturb (last two are the dummy

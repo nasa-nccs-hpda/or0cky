@@ -1,0 +1,35 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -2493,6 +2493,8 @@
+ 
+       IMPLICIT NONE
+       INTEGER I,J,IM1,IP1
++      REAL*8 :: DBGUO0(IMO,JMO),DBGVO0(IMO,JMO)
++     &     ,DBGUOD0(IMO,JMO),DBGVOD0(IMO,JMO)
+ 
+ C****
+ C**** All stress now defined for whole box, not just ocn or ice fraction
+@@ -2508,6 +2510,13 @@
+      *                 J_STRT_SKP=J_0S, J_STOP_SKP=J_1S,
+      *                 have_north_pole=have_north_pole)
+ 
++      DBGUO0=UO(:,:,1)
++      DBGVO0=VO(:,:,1)
++      DBGUOD0=UOD(:,:,1)
++      DBGVOD0=VOD(:,:,1)
++      CALL ffdump_ostres2_geom(IMO,JMO,LMU,LMV,DXYSO,DXYNO,DXYVO,
++     &     COSIC,SINIC,IVNP)
++
+ C****
+ C**** Surface stress is applied to U component
+ C****
+@@ -2574,6 +2583,9 @@
+           IM1=I
+         END DO
+       END DO
++      CALL ffdump_ostres2(IMO,JMO,oDMUA,oDMVA,oDMUI,oDMVI,MO(:,:,1),
++     &     DBGUO0,DBGVO0,DBGUOD0,DBGVOD0,
++     &     UO(:,:,1),VO(:,:,1),UOD(:,:,1),VOD(:,:,1))
+       RETURN
+       END SUBROUTINE OSTRES2
+ 

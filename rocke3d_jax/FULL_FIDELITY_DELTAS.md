@@ -1017,6 +1017,76 @@ bookkeeping) is now fully understood and its two real-physics pieces (D34, D35) 
 remains for `GROUND_OC` as a unit is chaining the two together plus the `OIJ` diagnostic accumulation
 (matches this project's `CHECKT`/`CONSERV_O*` pattern, likely skippable, not yet confirmed).
 
+## D36: OSTRES2 -- momentum-stress application, and OCNDYN.f's legacy core found dead
+
+**Major scope correction found while picking this delta.** OFLUX was the natural next candidate after
+D33-D35's `GROUND_OC` pieces, but reading it showed it calls `OPFIL` (polar Fourier filtering with
+land-basin masking, reading an external `AVR` reduction-matrix file, plus `OFFT`/`OFFTI`) -- a "new
+architecture" item on D29's ADI-solve scale, not a quick delta. Grepping every call site of
+`OFLUX`/`OADVM`/`OADVV`/`OPGF`/`OVtoM`/`OMtoV`/`OSTRES`/`OBDRAG`/`OPFIL` project-wide (not just within
+`OCNDYN.f`) found **all of them are dead code**: `OCNDYN.f`'s entire leapfrog-dynamics driver is
+literally named `OCEANS_old` and commented out in full (`OCNDYN.f:18-289`). The live driver is a
+complete rewrite in `OCNDYN2.f` (`SUBROUTINE OCEANS`, called from `OCN_DRV.f:41`), with its own
+renamed/restructured routines: `OFLUXV`, `ODHORZ`/`ODHORZ0`, `OPFIL2`, `OSTRES2`, `OBDRAG2`,
+`OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVUZ`. Only `OCOAST` is shared unchanged between the two
+files. `GROUND_OC` (hence D33-D35) is confirmed live, called from `OCNDYN2.f`'s real `OCEANS` at line
+114 -- those three deltas are unaffected. This resolves the earlier ambiguous "~3,439 real-physics
+lines, not fully differentiated" scoping for `OCNDYN.f`'s remainder: past `GROUND_OC`/`PRECIP_OC`/
+`OSOURC`/`OCOAST`/`CONSERV_O*`/init routines, everything else in `OCNDYN.f` is legacy and should not be
+ported -- the real remaining Stage 2 dynamical core is `OCNDYN2.f` (2,670 lines) instead. Also confirmed
+via `decks/P2SAoM40.R`'s rundeck comment that `KOCEAN=1` means "ocn is prognostic" (a genuine 13-layer
+dynamic ocean for this config, not slab/Q-flux as briefly hypothesized before rereading the comment).
+
+Also scoped and **deferred** `GLMELT` (glacial meltwater, 72 lines): called only from `daily_OCEAN`'s
+`end_of_day=.true.` branch (gated at `MODELE.f:802`), i.e. once per calendar day rather than once per
+DTsrc step -- the existing 6-step/3-hour test windows are not confirmed to cross a day boundary, so
+instrumenting it risked an unvalidatable zero-record delta. Left for a future delta with a
+day-boundary-crossing test window.
+
+Picked `OSTRES2` (`OCNDYN2.f:2478-2577`, ~100 lines) as the first delta from the corrected file: applies
+atmospheric wind stress (`oDMUA`/`oDMVA`, momentum flux into open ocean) and ice-ocean stress
+(`oDMUI`/`oDMVI`) to the ocean's layer-1 `UO`/`VO`/`UOD`/`VOD` velocities on the C/D grid. Both stress
+sources are recorded real inputs (not yet ported upstream, same pattern as D29's `GAIRX`/`GWATX`). Live,
+called unconditionally once per DTsrc step from `OCEANS` right after `GROUND_OC`; no external files, no
+FFT -- deliberately smaller than the OFLUX/OPFIL combination. Confirmed via `OGEOM.f`'s `GEOMO` that the
+needed static geometry (`DXYSO`/`DXYNO`/`DXYVO`/`COSIC`/`SINIC`) is fully analytic (same lat-lon formulas
+as the atmosphere grid, `RADIUS=6371000.0` per D29's precedent) and that `LMU`/`LMV` (the depth masks
+OSTRES2 gates on) are `MIN(LMM(i,j),LMM(i+1,j))`/`MIN(LMM(i,j),LMM(i,j+1))` (`OCNDYN.f:488,499`) --
+recorded directly here rather than re-derived from `LMM`, since this delta's dump doesn't separately carry
+the full `LMM` grid. Instrumented `OSTRES2` itself (not its caller) using variables already in its own
+`USE` scope, dumping static geometry once (unconditional, unit 976) and a full-grid before/after record
+per call (unit 981) -- avoided touching `OCEANS`'s call site or `OCNDYN.f`'s `init_OCEAN` at all. South
+pole: no special case exists in `OSTRES2` at all (unlike `OVtoM`/`OMtoV`'s dead, commented-out `QSP`
+branches) -- confirms this ocean grid's south pole sits inside Antarctic land, no polar-ocean singularity
+there; only the Arctic-side north pole needs the `IVNP`/`COSIC`/`SINIC` rotation (`IVNP=IM/4=18` confirmed
+from the dump).
+
+**A restart-file double-buffering trap cost real time before any port code ran.** First rerun produced
+zero dump files, including the unconditional geometry dump -- `OSTRES2` never executed at all. Root
+cause: GISS ModelE's restart reader picks whichever of `fort.1.nc`/`fort.2.nc` has the *later* itime
+(visible as `RESTART DISK READ, UNIT 2` vs `UNIT 1` in `run.PRT`), and checkpoints double-buffer across
+both files -- D35's prior run in the same reused scratch directory had already advanced all three run
+directories' checkpoints forward, so this rerun silently resumed from the *end* of the previous window.
+Same root cause as D27's "second run silently did zero steps," but sharper: D27's fix note said only to
+"re-copy fresh restart files" without stating that *both* files must be reset to the same pristine itime.
+Fixed by restoring `run_nov26`'s pair from the untouched persistent master
+(`ModelE_Support/huge_space/P2SAoM40/fort.1.nc`, confirmed itime=33312 via direct netCDF4 inspection --
+this file has never been run in place) and by mirroring `run_dec01`/`run_jan01`'s still-pristine
+`fort.1.nc` onto their stale `fort.2.nc`. Documented permanently in `build_and_run.md` so this doesn't
+recur.
+
+`fullfidelity/ostres2_ff.py`/`ostres2_jax.py`: static geometry validated bitwise-exact against the dump
+(analytic derivation, not read from a file). Full-grid physics matches real Fortran to float64-op-order
+noise (UO/UOD/VOD bitwise exact; VO ~1e-9 absolute, from the independently-recomputed-geometry order of
+operations) on all 3 dates, first try. JAX port fully vectorized via `jnp.roll` for the C-grid wraparound-I
+neighbor pattern (Fortran's `I=IMO; DO IP1=1,IMO ... I=IP1` idiom), matches both the real dump and the
+plain-Python reference to float64 precision once `jax_enable_x64` was set (caught a float32-silent-
+downcast before it could masquerade as a real port bug -- the initial jitless run showed ~1e-8 diffs
+consistent with float32 rounding, not wrong physics). `fullfidelity/tests/test_ostres2_jax.py` (24 tests):
+real-record validation for both ports x3 dates, geometry-derivation and `IVNP` checks, jit-vs-eager,
+land/ocean mask mutation checks (masked-out cells must be byte-identical before/after), a non-vacuous
+north-pole-exercised check, and a non-trivial-physics check (stress must actually move some real cell).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

@@ -635,3 +635,58 @@ assumed -- physically plausible since deep-layer freezing this early into a shor
 against a synthetic below-freezing input instead. 38 tests added. GROUND_OC's two real-physics pieces
 (OSOURC, D34; this sweep, D35) are both now validated; what's left for GROUND_OC as a whole is wiring them
 together plus its OIJ diagnostic bookkeeping (likely skippable, matches the CHECKT/CONSERV_O* pattern).
+
+## 2026-09-29: D36 scoping -- OCNDYN.f's legacy dynamical core is dead code; live core is OCNDYN2.f
+Investigated GLMELT (72 lines, glacial meltwater) as a D36 candidate: found it's called only from
+`daily_OCEAN`'s `end_of_day=.true.` branch (`OCNDYN.f:1548`, gated at `MODELE.f:802`), i.e. once per
+calendar day, not once per DTsrc step -- the existing 6-step/3-hour test windows are not confirmed to
+cross a day boundary, so it may dump zero records. Deferred rather than risk an unvalidatable delta.
+
+Pivoted to OFLUX (mass-flux computation) and found it depends on OPFIL, which reads an external `AVR`
+reduction-matrix file and does land-basin-aware Fourier filtering (OFFT/OFFTI) -- a "new architecture"
+item on the scale of D29's ADI solve, not a quick delta. While scoping it, grepped every call site of
+OFLUX/OADVM/OADVV/OPGF/OVtoM/OMtoV/OSTRES/OBDRAG/OPFIL project-wide and found **all of them are dead
+code**: `OCNDYN.f`'s entire driver subroutine is literally named `OCEANS_old` and commented out in full
+(`OCNDYN.f:18-289`), superseded by a live rewrite in `OCNDYN2.f` (`SUBROUTINE OCEANS`, called from
+`OCN_DRV.f:41`) with its own renamed/rewritten routines: `OFLUXV`, `ODHORZ`/`ODHORZ0`, `OPFIL2`,
+`OSTRES2`, `OBDRAG2`, `OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVUZ`. `OCOAST` is the one routine shared
+unchanged between the two (defined once in `OCNDYN.f`, called live from `OCNDYN2.f`). `GROUND_OC` (hence
+D33-D35) is also called live from `OCNDYN2.f`'s `OCEANS` (line 114), confirming those three deltas are
+sound. This resolves the earlier "6,062-line, not yet read" ambiguity for `OCNDYN.f`'s remaining
+subroutines: everything in `OCNDYN.f` past `GROUND_OC`/`PRECIP_OC`/`OSOURC`/`OCOAST` and a handful of
+`CONSERV_O*`/init routines is legacy and should not be ported. The real remaining Stage 2 dynamical core
+lives entirely in `OCNDYN2.f` (2,670 lines) instead.
+
+Confirmed the P2SAoM40 rundeck (`decks/P2SAoM40.R`) sets `KOCEAN=1` meaning "ocn is prognostic" (a real
+13-layer dynamic ocean, not slab/Q-flux as briefly hypothesized before rereading the rundeck comment) --
+so this dynamical core is genuinely live physics for this config, just relocated to a different file than
+initially assumed.
+
+## 2026-09-29: D36 -- OSTRES2 (momentum-stress application), and a restart double-buffering trap
+Picked OSTRES2 (~100 lines, `OCNDYN2.f`) as the first `OCNDYN2.f` delta: applies wind stress (`oDMUA`/
+`oDMVA`, atmosphere-ocean momentum flux) and ice-ocean stress (`oDMUI`/`oDMVI`) to the ocean's layer-1
+`UO`/`VO`/`UOD`/`VOD` velocities. Live, called unconditionally once per DTsrc step from `OCEANS` right
+after `GROUND_OC`, no external files, no FFT -- a deliberately smaller item after OFLUX/OPFIL's "new
+architecture" scale ruled that combination out for now. Confirmed via `OGEOM.f`'s `GEOMO` that the needed
+static ocean-grid geometry (`DXYSO`/`DXYNO`/`DXYVO`/`COSIC`/`SINIC`) is fully analytic (same lat-lon
+formulas as the atmosphere grid, matching D34's precedent), and that `LMU`/`LMV` (the depth masks OSTRES2
+guards on) are `MIN(LMM(i,j),LMM(i+1,j))` / `MIN(LMM(i,j),LMM(i,j+1))` respectively (`OCNDYN.f:488,499`) --
+simple derived quantities, not separately file-sourced. Instrumented `OSTRES2` itself (not the driver) to
+dump its own static geometry once (unconditional, unit 976) plus a full-grid before/after record per call
+(unit 981) using its own already-in-scope USE'd variables -- avoided touching `OCEANS`'s call site or
+`OCNDYN.f`'s `init_OCEAN` entirely. Patches: `OCNDYN2_ostres2.f.patch`, `ATM_DRV_ostres2.f.patch`. Rebuilt
+clean.
+
+First rerun produced **zero** dump files, including the unconditional geometry dump -- meaning OSTRES2
+never executed at all, not even once. Root cause was operational, not physics: GISS ModelE's restart
+reader picks whichever of `fort.1.nc`/`fort.2.nc` has the *later* itime (`RESTART DISK READ, UNIT 2` in
+the log, not UNIT 1), so after D35's prior run had already advanced all three run directories' checkpoints
+forward, this rerun silently started from the *end* of the previous window instead of its beginning --
+same root cause as D27's "second run silently did zero steps" bug, but sharper: D27's fix note said
+"re-copy fresh restart files" without stating that *both* fort.1.nc and fort.2.nc must be reset to the
+same pristine itime, since the reader takes the max of the two, not fort.1.nc specifically. `run_nov26`
+had both files advanced (restored from the untouched persistent master at
+`ModelE_Support/huge_space/P2SAoM40/fort.1.nc`, confirmed itime=33312 by inspecting it directly with
+netCDF4 -- this file has never been run in-place, only copied from); `run_dec01`/`run_jan01` still had a
+pristine `fort.1.nc` but a stale `fort.2.nc`, fixed by copying `fort.1.nc` over `fort.2.nc` in each. Rerun
+in progress.

@@ -1,0 +1,80 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3026,3 +3026,77 @@
+       rec(12)=s0ml1
+       write(fu) rec
+       end subroutine ffdump_ground_oc_sweep
++
++      subroutine ffdump_ostres2_geom(im,jm,lmu,lmv,dxyso,dxyno,dxyvo,
++     &     cosic,sinic,ivnp)
++!@sum full-fidelity-port instrumentation: OSTRES2's static ocean-grid
++!@+   geometry (Stage 2, D36: momentum-stress application). Written
++!@+   once at first call, unconditional (no FFD_START/FFD_NSTEP gating
++!@+   -- static geometry needed regardless of the test window).
++      implicit none
++      integer :: im,jm,ivnp
++      integer :: lmu(im,jm),lmv(im,jm)
++      real*8 :: dxyso(jm),dxyno(jm),dxyvo(jm),cosic(im),sinic(im)
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=976
++      open(fu,file='ffz_ostres2_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(im),dble(jm),dble(ivnp)
++      write(fu) dble(lmu)
++      write(fu) dble(lmv)
++      write(fu) dxyso
++      write(fu) dxyno
++      write(fu) dxyvo
++      write(fu) cosic
++      write(fu) sinic
++      close(fu)
++      end subroutine ffdump_ostres2_geom
++
++      subroutine ffdump_ostres2(im,jm,dmua,dmva,dmui,dmvi,mo1,
++     &     uo0,vo0,uod0,vod0,uo1,vo1,uod1,vod1)
++!@sum full-fidelity-port instrumentation: OSTRES2 full-grid before/
++!@+   after record (Stage 2, D36: momentum-stress application to
++!@+   ocean layer-1 velocities). One record per call (once per
++!@+   DTsrc step, called from the live OCEANS driver in OCNDYN2.f).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm
++      real*8 :: dmua(im,jm),dmva(im,jm),dmui(im,jm),dmvi(im,jm)
++      real*8 :: mo1(im,jm)
++      real*8 :: uo0(im,jm),vo0(im,jm),uod0(im,jm),vod0(im,jm)
++      real*8 :: uo1(im,jm),vo1(im,jm),uod1(im,jm),vod1(im,jm)
++      integer, save :: it0=-1, nst=0, init=0, fu=981
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffz_ostres2_',itime,'.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) dmua
++      write(fu) dmva
++      write(fu) dmui
++      write(fu) dmvi
++      write(fu) mo1
++      write(fu) uo0
++      write(fu) vo0
++      write(fu) uod0
++      write(fu) vod0
++      write(fu) uo1
++      write(fu) vo1
++      write(fu) uod1
++      write(fu) vod1
++      close(fu)
++      end subroutine ffdump_ostres2
