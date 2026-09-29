@@ -977,6 +977,46 @@ wasn't a theoretical edge case. Tests: `tests/test_osourc_jax.py` (40: an `init_
 check, real-record validation x18 for both ports, jit-vs-eager, a mutation check confirming the
 `LSR<LSRPD` branch and both freezing branches are genuinely exercised by real data).
 
+## D35 — GROUND_OC's below-freezing layer sweep (Stage 2)
+Third Stage 2 deliverable. The tail of `OCNDYN.f`'s `GROUND_OC` (after `OSOURC`, D34, has already updated
+layer 1): a `DO L=2,LMM(I,J)` sweep checking each lower layer for below-freezing conditions (pressure-
+corrected via `SHCGS`) and converting any below-freezing water to frazil-ice mass/salt/heat -- structurally
+the same freezing check as `OSOURC`'s own open-ocean/under-ice branches, applied per-layer with an explicit
+pressure correction to the freezing point (`GF0 = GFREZS(S0L) - SHCGS(GF00,S0L)*8.19d-8*P0L`, `TF0 =
+TFREZS(S0L) - 7.53d-8*P0L`).
+
+`SHCGS` is the one genuine external-data dependency in `GROUND_OC`'s own body (unlike D34's `FSR`/`FSRZ`/
+`LSRPD`, not re-derivable from hardcoded PARAMETERs -- it's a specific-heat table read from the `OFTAB`
+binary file at `init_OCEAN`). Rather than extracting/replicating the whole multi-dimensional lookup table,
+this delta records the one place it's used -- `PCORR = SHCGS(GF00,S0L)*8.19d-8*P0L` -- as a recorded real
+input, the established "record what's not yet ported" pattern. `P0L` (accumulated column pressure) is real
+state, not a table lookup, but is recorded too rather than re-derived, since reconstructing it would mean
+replaying the whole water column in the exact same accumulation order across two separate dump files --
+fragile for no benefit, since `P0L` itself is trivial arithmetic, not physics insight worth re-deriving.
+
+New instrumentation (`OCNDYN_ground_oc_sweep.f.patch`+`ATM_DRV_ground_oc_sweep.f.patch`, unit 975) dumps
+every real `(i,j,l)` layer triple, ~22,224 records/step (all `FOCEAN>0` cells x their real layer count,
+`L=2..LMM(I,J)`). **A design gap caught before wasting a validation cycle**: the first instrumentation
+attempt recorded `PCORR` but not `P0L` itself -- missed that `P0L` is *also* used directly in the `TF0`
+correction (`7.53d-8*P0L`, a different coefficient applied straight to the pressure, not folded into
+`PCORR`), so the freezing branch couldn't have been validated without it. Caught by rereading the source
+before writing the Python port (not by a failing test), fixed with one more instrumentation+rebuild cycle
+before any port code was written.
+
+`fullfidelity/ground_oc_sweep_ff.py`/`ground_oc_sweep_jax.py`: the non-freezing branch (all 22,224 real
+records/date, 18 records total) is bitwise exact, first try after the `P0L` fix. **The freezing branch never
+fires in this 18-record window** (checked across all records, not assumed) -- deep-ocean-layer freezing this
+short into a 6-step run is physically rare -- so it's cross-checked against a from-scratch synthetic
+below-freezing input instead, the same honest-scoping pattern as D28's rain branch and D32's shallow-lake
+flux limiting. Tests: `tests/test_ground_oc_sweep_jax.py` (38: real-record validation x18 for both ports,
+jit-vs-eager, the synthetic freezing-branch check, confirming the real window's freezing branch is genuinely
+never triggered rather than silently skipped).
+
+`GROUND_OC` itself (the whole subroutine, 238 lines: `OSOURC` call + this sweep + `OPRESS`/diagnostic
+bookkeeping) is now fully understood and its two real-physics pieces (D34, D35) both validated -- what
+remains for `GROUND_OC` as a unit is chaining the two together plus the `OIJ` diagnostic accumulation
+(matches this project's `CHECKT`/`CONSERV_O*` pattern, likely skippable, not yet confirmed).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

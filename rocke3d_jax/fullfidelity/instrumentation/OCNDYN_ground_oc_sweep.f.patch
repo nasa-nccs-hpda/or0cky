@@ -1,0 +1,37 @@
+--- OCNDYN.f.orig
++++ OCNDYN.f
+@@ -4687,6 +4687,7 @@
+      *     ,DSOI,POCEAN,POICE,P0L,S0L,G0L,TF0,SI0,EI0,DM0(LMO),DE0(LMO)
+      *     ,DS0(LMO),GF0,GFREZS,TFREZS,TEMGSP,SHCGS,GF00
+       REAL*8 :: DBGG0ML0(LMO),DBGGZML0(LMO),DBGMO10,DBGSO10
++      REAL*8 :: DBGMOL0,DBGG0ML0L,DBGS0ML0,DBGPCORR
+ #ifdef TRACERS_OCEAN
+       REAL*8, DIMENSION(tracerlist%getsize()) :: TRUNO,TRUNI,DTROO,
+      &              DTROI,TRO1,FRAC
+@@ -4800,11 +4801,15 @@
+ #endif
+         P0L=MO(I,J,1)*GRAV
+         DO L=2,LMM(I,J)
++          DBGMOL0=MO(I,J,L)
++          DBGG0ML0L=G0M(I,J,L)
++          DBGS0ML0=S0M(I,J,L)
+           G0L=G0M(I,J,L)/(MO(I,J,L)*DXYPJ)
+           S0L=S0M(I,J,L)/(MO(I,J,L)*DXYPJ)
+           P0L=P0L + MO(I,J,L)*GRAV*.5
+           GF00=GFREZS(S0L)
+-          GF0=GF00-SHCGS(GF00,S0L)*8.19d-8*P0L  ! ~GFREZSP(S0L,P0L)
++          DBGPCORR=SHCGS(GF00,S0L)*8.19d-8*P0L
++          GF0=GF00-DBGPCORR  ! ~GFREZSP(S0L,P0L)
+           IF(G0L.lt.GF0) THEN
+             TF0=TFREZS(S0L)-7.53d-8*P0L
+             SI0=FSSS*S0L
+@@ -4821,6 +4826,9 @@
+             S0M(I,J,L)=S0M(I,J,L)-DS0(L)*DXYPJ
+             G0M(I,J,L)=G0M(I,J,L)-DE0(L)*DXYPJ
+           END IF
++          CALL ffdump_ground_oc_sweep(I,J,L,DBGMOL0,DBGG0ML0L,
++     &         DBGS0ML0,DXYPJ,DBGPCORR,P0L,MO(I,J,L),G0M(I,J,L),
++     &         S0M(I,J,L))
+           P0L=P0L + MO(I,J,L)*GRAV*.5
+         END DO
+ C**** Store mass/energy/salt/tracer fluxes for formation of sea ice

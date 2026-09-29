@@ -619,3 +619,19 @@ reasoning through the Fortran's `DO L=2,LSR-1` loop semantics directly showed th
 needed strict `lsr > l`, not `lsr >= l` (Fortran's loop is empty when the upper bound is below the lower
 bound, i.e. when `LSR<=2`). Confirmed genuinely necessary, not just theoretical, once checked against real
 data: `LMIJ` (hence `LSR`) ranges 2-13 across real ocean columns in this window. 40 tests added.
+
+## 2026-09-29: D35 -- GROUND_OC's below-freezing sweep, a caught design gap before wasting a cycle
+Read GROUND_OC's tail (the L=2..LMM(I,J) below-freezing layer sweep, after OSOURC has updated layer 1) and
+designed instrumentation recording SHCGS's one use point (PCORR) as a real input, same pattern as D34's
+FSR/FSRZ. Before writing the Python port, reread the source once more and caught that P0L itself is ALSO
+used directly in the TF0 correction (a different coefficient, 7.53d-8 vs PCORR's 8.19d-8, applied straight
+to P0L rather than folded into PCORR) -- the first instrumentation pass hadn't dumped P0L, which would have
+made the freezing branch impossible to validate. Fixed with one more instrumentation+rebuild+rerun cycle
+before any port code was written, rather than discovering it via a failing test later.
+
+Non-freezing branch bitwise exact on all 18 records (22,224 real (i,j,l) triples/date) after the fix. The
+freezing branch never fires in this window at all -- checked explicitly across every record rather than
+assumed -- physically plausible since deep-layer freezing this early into a short run is rare; cross-checked
+against a synthetic below-freezing input instead. 38 tests added. GROUND_OC's two real-physics pieces
+(OSOURC, D34; this sweep, D35) are both now validated; what's left for GROUND_OC as a whole is wiring them
+together plus its OIJ diagnostic bookkeeping (likely skippable, matches the CHECKT/CONSERV_O* pattern).

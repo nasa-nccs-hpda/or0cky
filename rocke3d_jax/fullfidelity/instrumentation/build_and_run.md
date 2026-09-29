@@ -47,6 +47,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
       -- apply AFTER OCNDYN_precip_oc.f.patch (above)
     patch ATM_DRV.f < <this dir>/ATM_DRV_osourc.f.patch           # adds ffdump_osourc itself --
       apply AFTER ATM_DRV_precip_oc.f.patch (immediately above); unit 974
+    patch OCNDYN.f < <this dir>/OCNDYN_ground_oc_sweep.f.patch    # GROUND_OC below-freezing sweep
+      (ffz_gocsw_* files, D35) -- apply AFTER OCNDYN_osourc.f.patch (above)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_ground_oc_sweep.f.patch  # adds ffdump_ground_oc_sweep --
+      apply AFTER ATM_DRV_osourc.f.patch (immediately above); unit 975
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -213,3 +217,11 @@ columns: 1:i 2:j 3:roice 4:mo(in) 5:s0m(in) 6:dxypj 7:bydxypj 8:lmij 9:runo 10:r
 gzml(in), g0ml(out), gzml(out); then 6 trailing doubles: dmoo,deoo,dmoi,deoi,dsoo,dsoi (see
 `fullfidelity/osourc_compare.py` for the exact unpack). `FSR`/`FSRZ`/`LSRPD` (solar-penetration profile) are
 NOT dumped -- derived analytically in `osourc_ff.py`/`osourc_jax.py` from `OCEAN_COM.f`'s `init_solar`.
+
+GROUND_OC below-freezing sweep dumps (D35): patch `OCNDYN.f` with `OCNDYN_ground_oc_sweep.f.patch` and
+`ATM_DRV.f` with `ATM_DRV_ground_oc_sweep.f.patch` (after `ATM_DRV_osourc.f.patch`; adds
+`ffdump_ground_oc_sweep`, unit 975). `ffz_gocsw_<itime>.bin`: 20-double records, one per real `(i,j,l)`
+layer triple (`FOCEAN>0`, `L=2..LMM(I,J)`) per call (~22,224/step). Columns: 1:i 2:j 3:l 4:mo(in) 5:g0m(in)
+6:s0m(in) 7:dxypj 8:pcorr(=SHCGS(GF00,S0L)*8.19d-8*P0L, recorded since SHCGS needs the OFTAB table) 9:p0l
+(recorded, used directly in the TF0 correction too, not just via pcorr) -- after the sweep -- 10:mo 11:g0m
+12:s0m (0-based columns are -1, see `fullfidelity/ground_oc_sweep_compare.py`).

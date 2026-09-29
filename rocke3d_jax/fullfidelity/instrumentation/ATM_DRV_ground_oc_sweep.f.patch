@@ -1,0 +1,52 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2980,3 +2980,49 @@
+       write(fu) gzml1(1:lmo)
+       write(fu) dmoo,deoo,dmoi,deoi,dsoo,dsoi
+       end subroutine ffdump_osourc
++
++      subroutine ffdump_ground_oc_sweep(i,j,l,mol0,g0ml0,s0ml0,dxypj,
++     &     pcorr,p0l,mol1,g0ml1,s0ml1)
++!@sum full-fidelity-port instrumentation: GROUND_OC's below-freezing
++!@+   layer-sweep record (Stage 2, D35). One record per (i,j,l) real
++!@+   layer per call (L=2..LMM(I,J), once per full step).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,l
++      real*8 :: mol0,g0ml0,s0ml0,dxypj,pcorr,p0l,mol1,g0ml1,s0ml1
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=975
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_gocsw_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=dble(l)
++      rec(4)=mol0
++      rec(5)=g0ml0
++      rec(6)=s0ml0
++      rec(7)=dxypj
++      rec(8)=pcorr
++      rec(9)=p0l
++      rec(10)=mol1
++      rec(11)=g0ml1
++      rec(12)=s0ml1
++      write(fu) rec
++      end subroutine ffdump_ground_oc_sweep
