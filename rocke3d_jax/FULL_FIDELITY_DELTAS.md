@@ -1153,6 +1153,31 @@ eager, mask non-vacuousness, a per-layer mutation check (only the bottom layer m
 checked layer-by-layer), and a physical-sanity check (drag never increases speed, and does fire
 somewhere real). Full regression: 522 passed (505 + this delta's 17), 0 failed.
 
+## D39: polar UOD/VOD relax block + polevel() -- pole-reconstruction physics
+
+Picked the "relax UOD,VOD toward 4-pt avgs of UO,VO" block inside `OCEANS` itself
+(`OCNDYN2.f:179-228`, ~55 lines) plus its `polevel()` helper (`OCNDYN2.f:1530-1564`, ~35 lines):
+for each of the 13 ocean layers, relaxes the D-grid velocities (UOD at V-points, VOD at U-points)
+toward a 4-point average of the C-grid velocities (UO, VO), `RELFAC=0.005` (~4-day damping time
+constant). `polevel()` first reconstructs the North Pole row of UO/VO from the V-velocity ring at
+J=JM-1 via a discrete wavenumber-1 projection -- the same idiom as D29's DYNSI pole handling.
+Confirmed (again) no south-pole case exists, consistent with D36-D38.
+
+Confirmed the Fortran's precomputed `nbyzu`/`nbyzv`/`i1yzu`/`i2yzu`/`i1yzv`/`i2yzv` segment lists
+are an exact cached representation of the LMU/LMV point-masks (read their construction site
+directly, `OCNDYN.f:505-518`) -- reused the masks already validated in D36-D38 rather than
+reconstructing a new geometry primitive.
+
+`fullfidelity/polerelax_ff.py`/`polerelax_jax.py`: float64-op-order exact against real Fortran on
+all 3 dates, both ports, first try -- including both of UOD's distinct formulas (doubled term at
+the pole-adjacent row vs. non-doubled in the interior) and confirming VOD's formula never needs
+pole-row access at all. JAX port vectorizes `polevel`'s per-layer pole reconstruction across all
+13 layers at once via a masked reduction. `tests/test_polerelax_jax.py` (21 tests): real-record
+validation x2 ports x3 dates, `COSU`/`SINU` endpoint checks, jit-vs-eager, pole-row-reconstructed
+non-vacuousness, a per-row UO/VO mutation check, mask non-vacuousness, and a physical-sanity
+step-size bound (corrected once, from relative to absolute, after the relative version failed
+near VOD~0 -- caught by the test itself, the tight real-Fortran check was never at risk).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

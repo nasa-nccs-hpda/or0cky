@@ -1,0 +1,33 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -76,6 +76,8 @@
+      &     OPBOT1,OPBOT2, G0INIT,G0FINAL
+       real*8 :: relfac,dt_odiff,TIME
+       real*8 :: dtdum,byno,mrat_st
++      Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
++     &     DBGUO0,DBGVO0,DBGUOD0,DBGVOD0
+ 
+       INTEGER it,jt
+ 
+@@ -180,6 +182,11 @@
+       call halo_update(grid,uo,from=north)
+       call halo_update(grid,vo,from=south)
+       relfac = .005d0
++      CALL ffdump_polerelax_geom(IM,JM,LMU,LMV)
++      DBGUO0=UO
++      DBGVO0=VO
++      DBGUOD0=UOD
++      DBGVOD0=VOD
+       do l=1,lmo
+         if(hasNorthPole(grid)) then
+           j = jm-1
+@@ -230,6 +237,9 @@
+         enddo
+       enddo
+ 
++      CALL ffdump_polerelax(IM,JM,LMO,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0,
++     &     UO,VO,UOD,VOD)
++
+       DO L=1,LMO
+         MO1(:,:,L) = 0
+         UO1(:,:,L) = 0

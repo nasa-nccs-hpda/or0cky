@@ -757,3 +757,44 @@ validation x2 ports x3 dates, a compile-time-constants check, jit-vs-eager, mask
 a per-layer mutation check (only the bottom layer may change, checked layer-by-layer not just
 globally), and a physical-sanity check (drag never increases speed, and does fire somewhere
 real). Full regression: 522 passed (505 + this delta's 17), 0 failed.
+
+## 2026-09-29: D39 -- polar UOD/VOD relax block + polevel() ported and validated
+Picked the "relax UOD,VOD toward 4-pt avgs of UO,VO" block inside `OCEANS` itself (`OCNDYN2.f:
+179-228`, ~55 lines) plus its `polevel()` helper (`OCNDYN2.f:1530-1564`, ~35 lines) as D39: for
+each of the 13 ocean layers, relaxes the D-grid velocities (UOD at V-points, VOD at U-points --
+the cross-registration convention established since D36) toward a 4-point average of the C-grid
+velocities (UO, VO), RELFAC=0.005 (~4-day damping time constant). Before relaxing, `polevel()`
+reconstructs the North Pole row of UO/VO from the ring of V-velocities at J=JM-1 via a discrete
+wavenumber-1 (Fourier mode 1) projection, the same trigonometric idiom as D29's DYNSI pole
+handling and OVtoM/OMtoV's dead south-pole code. Confirmed no south-pole case exists here either
+(consistent with D36-D38: this ocean grid's south pole sits inside Antarctic land).
+
+Confirmed `nbyzu`/`nbyzv`/`i1yzu`/`i2yzu`/`i1yzv`/`i2yzv` (the Fortran's precomputed per-(J,L)
+contiguous-I-segment lists) are an exact cached representation of "cells where LMU(I,J)>=L" (or
+LMV) by reading their construction site directly (`OCNDYN.f:505-518`: `qexist(:) = (l <=
+lmu(:,j))` fed through a run-length-encoding helper `get_i1i2`) -- so this delta uses the LMU/LMV
+point-masks already validated in D36-D38 rather than reconstructing the segment-list structure,
+avoiding a whole new geometry primitive.
+
+Instrumented inside `OCEANS` directly (captured UO/VO/UOD/VOD pre-copies right after
+`relfac=.005d0`, dumped the full before/after record right after the L-loop closes, before the
+subsequent leapfrog-init reinitialization block) -- same pattern as D36's OSTRES2. Patches:
+`OCNDYN2_polerelax.f.patch`, `ATM_DRV_polerelax.f.patch` (units 986/987). Rebuilt clean, reran
+all 3 dates with the now-permanent pristine-restart archive (a plain three-line copy, no
+debugging), confirmed no regression against every earlier delta's dumps.
+
+`fullfidelity/polerelax_ff.py`/`polerelax_jax.py`: float64-op-order exact against real Fortran on
+all 3 dates, both ports, first try -- including getting both of UOD's two distinct formulas
+right (the pole-adjacent row's doubled `2.*uo(i,j+1,l)` term vs. the interior rows' non-doubled
+`uo(i-1,j+1,l)+uo(i,j+1,l)` pair) and confirming VOD's formula never needs pole-row access at all
+(its J,J-1 pair stays within rows 1..JM-1 for the full J=2..JM-1 range). JAX port loops over the
+13 layers implicitly via broadcast (not a Python loop), vectorizing `polevel`'s per-layer pole
+reconstruction across all layers at once via a masked reduction, and the UOD/VOD 4-point averages
+via `jnp.roll`. A first draft of the test suite's own physical-sanity check (bounding the
+relaxation step size relative to the field's own magnitude) was too strict near VOD~0 and had to
+be corrected to an absolute bound -- caught by the test itself failing, not by inspection; the
+tight `test_ff_matches_real_fortran` check was never at risk, only the looser sanity check.
+`tests/test_polerelax_jax.py` (21 tests): real-record validation x2 ports x3 dates, `COSU`/`SINU`
+endpoint checks, jit-vs-eager, a pole-row-reconstructed-nonvacuously check, a per-row mutation
+check (UO/VO must be byte-identical off the pole row), mask non-vacuousness, and the corrected
+physical-sanity bound. Full regression pending a final rerun before commit.
