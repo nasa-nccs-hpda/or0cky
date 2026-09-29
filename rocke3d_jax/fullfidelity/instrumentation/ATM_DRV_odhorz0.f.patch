@@ -1,0 +1,89 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3285,3 +3285,86 @@
+       write(fu) vod1
+       close(fu)
+       end subroutine ffdump_polerelax
++
++      subroutine ffdump_odhorz0_geom(im,jm,lmm)
++!@sum full-fidelity-port instrumentation: ODHORZ0's static ocean-grid
++!@+   bathymetry mask (Stage 2, D40: pressure/equation-of-state prep).
++!@+   Written once at first call, unconditional.
++      implicit none
++      integer :: im,jm
++      integer :: lmm(im,jm)
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=988
++      open(fu,file='ffz_odhorz0_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(im),dble(jm)
++      write(fu) dble(lmm)
++      close(fu)
++      end subroutine ffdump_odhorz0_geom
++
++      subroutine ffdump_odhorz0(im,jm,lmo,opress,g0m,gzm,s0m,szm,
++     &     mo0,uo0,vo0,vup,vdn,
++     &     opbot,gup,gdn,sup,sdn,dzgdp,vbar,dh3d,mo1,uo1,vo1)
++!@sum full-fidelity-port instrumentation: ODHORZ0 full-grid record
++!@+   (Stage 2, D40). VUP/VDN are VOLGSP's real table-lookup outputs
++!@+   (seawater equation of state, OCNFUNTAB.f/OCFUNC's OFTAB-derived
++!@+   VGSP table) -- recorded directly rather than re-deriving the
++!@+   70,520-entry lookup table, same "record what's not yet ported"
++!@+   pattern as D35's SHCGS. One record per call (once per NOCEAN
++!@+   sub-iteration within OCEANS).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: opress(im,jm)
++      real*8 :: g0m(im,jm,lmo),gzm(im,jm,lmo),s0m(im,jm,lmo)
++      real*8 :: szm(im,jm,lmo)
++      real*8 :: mo0(im,jm,lmo),uo0(im,jm,lmo),vo0(im,jm,lmo)
++      real*8 :: vup(im,jm,lmo),vdn(im,jm,lmo)
++      real*8 :: opbot(im,jm)
++      real*8 :: gup(im,jm,lmo),gdn(im,jm,lmo),sup(im,jm,lmo)
++      real*8 :: sdn(im,jm,lmo),dzgdp(im,jm,lmo),vbar(im,jm,lmo)
++      real*8 :: dh3d(im,jm,lmo)
++      real*8 :: mo1(im,jm,lmo),uo1(im,jm,lmo),vo1(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, fu=989
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffz_odhorz0_',itime,'.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) opress
++      write(fu) g0m
++      write(fu) gzm
++      write(fu) s0m
++      write(fu) szm
++      write(fu) mo0
++      write(fu) uo0
++      write(fu) vo0
++      write(fu) vup
++      write(fu) vdn
++      write(fu) opbot
++      write(fu) gup
++      write(fu) gdn
++      write(fu) sup
++      write(fu) sdn
++      write(fu) dzgdp
++      write(fu) vbar
++      write(fu) dh3d
++      write(fu) mo1
++      write(fu) uo1
++      write(fu) vo1
++      close(fu)
++      end subroutine ffdump_odhorz0

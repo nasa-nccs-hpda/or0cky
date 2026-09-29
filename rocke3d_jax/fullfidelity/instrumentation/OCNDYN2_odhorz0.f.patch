@@ -1,0 +1,45 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -1742,6 +1742,10 @@
+       Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
+      *          P
+       Real*8 :: G00,S00, PUP,PDN, V00,VUP,VDN, smean
++      Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
++     &     DBGVUP,DBGVDN
++      Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
++     &     DBGMO0,DBGUO0,DBGVO0
+ C****
+ C**** Extract domain decomposition band parameters
+ C****                          Band1  Band2  BandM
+@@ -1752,6 +1756,11 @@
+       QNP = JN==JM          !    F      F      T
+       j1a = grid%j_strt_halo
+ 
++      CALL ffdump_odhorz0_geom(IM,JM,LMOM)
++      DBGMO0=MO
++      DBGUO0=UO
++      DBGVO0=VO
++
+ C****
+       Call HALO_UPDATE (GRID, G0M)
+       Call HALO_UPDATE (GRID, GZM)
+@@ -1797,6 +1806,8 @@
+               PDN = P(I,J,L) + MO(I,J,L)*GRAV*z12eH
+               VUP = VOLGSP (GUP(I,J,L),SUP(I,J,L),PUP)
+               VDN = VOLGSP (GDN(I,J,L),SDN(I,J,L),PDN)
++              DBGVUP(I,J,L) = VUP
++              DBGVDN(I,J,L) = VDN
+               dZGdP(I,J,L) = VUP*(.5-z12eH) + VDN*(.5+z12eH)
+               VBAR(I,J,L) = (VUP + VDN)*.5
+               DH3D(I,J,L) = MO(I,J,L)*VBAR(I,J,L)
+@@ -1855,6 +1866,10 @@
+ 
+       enddo
+ 
++      CALL ffdump_odhorz0(IM,JM,LMO,OPRESS,G0M,GZM,S0M,SZM,
++     &     DBGMO0,DBGUO0,DBGVO0,DBGVUP,DBGVDN,
++     &     OPBOT,GUP,GDN,SUP,SDN,dZGdP,VBAR,DH3D,MO,UO,VO)
++
+       Return
+       End Subroutine ODHORZ0
+ 
