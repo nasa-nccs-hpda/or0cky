@@ -1,0 +1,20 @@
+--- SEAICE_DRV.f.orig
++++ SEAICE_DRV.f
+@@ -351,6 +351,8 @@
+      *               Tri,Trm,trflux,tralpha,
+ #endif
+      *               mflux,sflux,hflux)
++                CALL ffdump_underice_ocn(I,J,Tic,Si,Tm,Sm,dh,
++     &               Ustar,Coriol,mlsh,mflux,sflux,hflux)
+               ELSE ! for fixed SST assume freezing temp at base,implicit
+                 hflux=alami(Tic,Si)*(Tic-tfrez(sss(i,j)))/(dh+alpha
+      *               *dtsrc*alami(Tic,Si)/(dEidTi(Tic,Si)*XSI(LMI)*MSI(I
+@@ -390,6 +392,8 @@
+                 if (qcheck) print*,"Flux limiting",I,J,DLAKE(I,J),
+      *               FLUXLIM*DTSRC
+               END IF
++              CALL ffdump_underice_lake(I,J,Tic,Tm,dh,mlsh,
++     &             DLAKE(I,J),GLAKE(I,J),mflux,hflux)
+             END IF
+             FMSI_IO(I,J) = mflux*dtsrc   ! positive down
+             FHSI_IO(I,J) = hflux*dtsrc

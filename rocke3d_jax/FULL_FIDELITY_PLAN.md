@@ -627,7 +627,7 @@ designed, not implemented) now that a confirmed-correct plain-Python reference e
 the earlier atm-stress/ocean-current regrid inside `DYNSI`'s own body (`GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/
 `PGFVB`, `HEFF`/`AREA`/`AMASS`/`COR` derivation), still taken as recorded/real inputs since it depends on
 ocean-model fields (`OGEOZA`/`UOSURF`/`VOSURF`) not yet ported.
-| `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — depends on `atmocn%SSS`/`MLHC`/`GTEMP` (ocean-model fields, not yet ported) plus `iceocean_fluxes`/`icelake_fluxes` (not yet read); real work, not yet started |
+| `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | **DONE, see D32** — `iceocean_fluxes`/`icelake_fluxes` (the real physics) ported/validated exact; `Tm`/`Sm`/`mlsh`/`Ustar` (ocean-model fields) recorded as real inputs, same pattern as D29 |
 | `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | **DONE, see D30** — trivial, bitwise exact, first try |
 | `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | **DONE, see D31** — state copy + GTEMP/GTEMP2/GTEMPR/ZSNOWI/ZSI/FWSIM derivation ported/validated; the 3rd loop's `RESET_SURF_FLUXES` call is radiation-adjacent (touches `RAD_COM`'s FSF/TRSURF only) and deliberately not ported |
 | `FORM_SI` (=ocean-grid ADDICE) | `SEAICE_DRV.f` | 198 | driver around the **already-ported** `addice`/`simelt` (D12/D14); likely small new work, mostly plumbing |

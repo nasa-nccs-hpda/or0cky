@@ -34,6 +34,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
       -- apply AFTER SEAICE_DRV_apress.f.patch (above)
     patch ATM_DRV.f < <this dir>/ATM_DRV_s2ag.f.patch             # adds ffdump_s2ag itself -- apply
       AFTER ATM_DRV_apress.f.patch (immediately above); unit 978
+    patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_underice.f.patch   # UNDERICE (ffz_undocn_*/ffz_undlk_*
+      files, D32) -- apply AFTER SEAICE_DRV_s2ag.f.patch (above)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_underice.f.patch         # adds ffdump_underice_ocn/_lake --
+      apply AFTER ATM_DRV_s2ag.f.patch (immediately above); units 979/980
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -172,3 +176,13 @@ time i=j=1 is seen) 4:rsi 5:snowi 6:msi 7:hsi(1) 8:hsi(2) 9:ssi(1) 10:ssi(2) 11:
 2nd loop -- 13:gtemp 14:gtemp2 15:gtempr 16:zsnowi 17:zsi 18:fwsim (0-based columns are -1, see
 `fullfidelity/seaice_to_atmgrid_compare.py`). Note: the 3rd loop's `RESET_SURF_FLUXES` call (radiation-
 adjacent, touches only `RAD_COM`'s FSF/TRSURF) is deliberately not dumped/ported.
+
+UNDERICE dumps (D32): patch `SEAICE_DRV.f` with `SEAICE_DRV_underice.f.patch` (after `SEAICE_DRV_s2ag.f.patch`)
+and `ATM_DRV.f` with `ATM_DRV_underice.f.patch` (after `ATM_DRV_s2ag.f.patch`; adds `ffdump_underice_ocn` unit
+979, `ffdump_underice_lake` unit 980). `ffz_undocn_<itime>.bin` (ocean domain, from `OCN_DRV.f`'s call):
+20-double records, one per real (`DOPOINT`) sea-ice cell (~480-800/step). Columns: 1:i 2:j 3:tic 4:si 5:tm
+6:sm 7:dh 8:ustar 9:coriol 10:mlsh -- after `iceocean_fluxes` -- 11:mflux 12:sflux 13:hflux (all un-scaled by
+DTsrc; scale by 1800s to match `FMSI_IO`/`FHSI_IO`/`FSSI_IO`). `ffz_undlk_<itime>.bin` (lakes domain, from
+`SURFACE.f`'s call): 20-double records, one per real lake-ice cell (~300-500/step). Columns: 1:i 2:j 3:tic
+4:tm 5:dh 6:mlsh 7:dlake 8:glake -- after `icelake_fluxes`+flux-limiting -- 9:mflux 10:hflux (0-based columns
+are -1, see `fullfidelity/underice_compare.py`).

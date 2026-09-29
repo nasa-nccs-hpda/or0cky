@@ -1,0 +1,97 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2776,3 +2776,94 @@
+       rec(18)=fwsim
+       write(fu) rec
+       end subroutine ffdump_s2ag
++
++      subroutine ffdump_underice_ocn(i,j,tic,si,tm,sm,dh,ustar,coriol,
++     &     mlsh,mflux,sflux,hflux)
++!@sum full-fidelity-port instrumentation: UNDERICE/iceocean_fluxes
++!@+   record (Stage 1, D32: ice dynamics), OCEAN domain. One record
++!@+   per real (DOPOINT) sea-ice cell per call (~700-800/step).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j
++      real*8 :: tic,si,tm,sm,dh,ustar,coriol,mlsh,mflux,sflux,hflux
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=979
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_undocn_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=tic
++      rec(4)=si
++      rec(5)=tm
++      rec(6)=sm
++      rec(7)=dh
++      rec(8)=ustar
++      rec(9)=coriol
++      rec(10)=mlsh
++      rec(11)=mflux
++      rec(12)=sflux
++      rec(13)=hflux
++      write(fu) rec
++      end subroutine ffdump_underice_ocn
++
++      subroutine ffdump_underice_lake(i,j,tic,tm,dh,mlsh,dlake,glake,
++     &     mflux,hflux)
++!@sum full-fidelity-port instrumentation: UNDERICE/icelake_fluxes
++!@+   record (Stage 1, D32: ice dynamics), LAKES domain. One record
++!@+   per real (DOPOINT) lake-ice cell per call.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j
++      real*8 :: tic,tm,dh,mlsh,dlake,glake,mflux,hflux
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=980
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_undlk_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=tic
++      rec(4)=tm
++      rec(5)=dh
++      rec(6)=mlsh
++      rec(7)=dlake
++      rec(8)=glake
++      rec(9)=mflux
++      rec(10)=hflux
++      write(fu) rec
++      end subroutine ffdump_underice_lake

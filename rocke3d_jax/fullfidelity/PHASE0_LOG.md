@@ -560,3 +560,26 @@ squarely radiation-adjacent, matching the user's standing "SOCRATES/radiation is
 constraint. Hit the same near-zero-temperature relative-error artifact as D26's `TSIL` (documented `Ti`/`Ti2b`
 REAL*16-vs-REAL*8 approximation) on a few jan01 records; switched to absolute tolerance for the three
 temperature fields, matching the established pattern rather than treating it as a new bug. 38 tests added.
+
+## 2026-09-29: D32 -- UNDERICE/iceocean_fluxes/icelake_fluxes, one real bug found via intermediate dumps
+Read `iceocean_fluxes` (5-iteration Newton solve for ice-ocean interface T/S, ~200 lines of dense branch
+logic) and `icelake_fluxes` (closed-form, no salinity) fully. Confirmed `KOCEAN=1` for this rundeck so the
+ocean domain's fixed-SST fallback branch is dead code. Reused `tfrez`/`alami`/`dEidTi` straight from earlier
+`GROUND_SI` work -- no new thermodynamics primitives needed. New instrumentation dumps ocean-domain and
+lake-domain calls separately (units 979/980) since `UNDERICE` is called from two different sites
+(`OCN_DRV.f`/`SURFACE.f`) with genuinely different physics per domain, not just different data.
+
+First validation attempt: `mflux`/`sflux` exact immediately, `hflux` badly wrong on some cells (up to ~180%
+relative error). Found the bug fast this time (one intermediate-dump-and-compare cycle, not D29's three):
+the real Fortran's post-loop `hflux` formula uses `Tb`/`lh` exactly as they were last set *inside* the 5-
+iteration loop (from the iteration's pre-update `Sb0`), not a fresh recompute from the loop's final converged
+`Sb0` -- the port had (wrongly) added a fresh `tfrez(Sb0)` call after the loop, one iteration ahead of what
+the source actually does. Removed it; Python's loop-scoped variables naturally carry the correct last-set
+values once the erroneous recompute was gone. Bitwise exact on all 18 records after the fix, first-recheck.
+
+Checked whether the real 18-record window ever exercises UNDERICE's shallow-lake (<0.4 m) flux-limiting
+branch before writing a test that assumes it does -- it doesn't, in any of the 18 records -- so that branch
+is validated against the plain-Python reference on synthetic shallow-lake inputs instead, matching D28's
+established honest-scoping pattern rather than silently dropping the check. 76 tests added. This closes the
+ice-dynamics side of Stage 1 except the explicitly-deferred `IRRIG_LK` and the ocean-grid `GROUND_SI`/
+`FORM_SI` chaining (plumbing, not new physics).

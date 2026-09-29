@@ -875,6 +875,41 @@ Tests: `tests/test_seaice_to_atmgrid_jax.py` (38: real-record validation x18 for
 for speed) and JAX, jit-vs-eager, a mutation check confirming both `MICE1`/`SNOWL` branches are exercised in
 the real dump).
 
+## D32 — UNDERICE / iceocean_fluxes / icelake_fluxes (Stage 1 of the DYNSI/ocean port)
+Seventh Stage 1 deliverable. `SEAICE_DRV.f`'s `UNDERICE` computes basal mass/salt/heat fluxes between sea/lake
+ice and the water below via `SEAICE.f`'s `iceocean_fluxes` (ocean domain: a 5-iteration Newton solve for the
+interface temperature/salinity, `seaice_thermo='BP'`, `qsfix=.false.`, the defaults for this rundeck) or
+`icelake_fluxes` (lakes domain: closed-form, no salinity) plus a shallow-lake flux-limiting wrapper. Reused
+`tfrez`/`alami`/`dEidTi` directly from `seaice_core_ff.py`/`seaice_core_jax.py` (already ported for
+`GROUND_SI`). New instrumentation (`SEAICE_DRV_underice.f.patch`+`ATM_DRV_underice.f.patch`, units 979/980,
+`ffz_undocn_<itime>.bin`/`ffz_undlk_<itime>.bin`) dumps both domains separately since `UNDERICE` is called
+from two sites with different `si_state`/`iceocn` pairs (`OCN_DRV.f` for ocean, `SURFACE.f` for lakes) and the
+two domains use genuinely different physics, not just different data. `KOCEAN=1` for this rundeck
+(`decks/P2SAoM40.R`), so the ocean domain's "fixed SST" fallback (`KOCEAN<1`) is dead code, not ported.
+
+**One real bug, found and fixed via the same intermediate-value comparison discipline as D29**: `mflux`/`sflux`
+matched exactly on the first try, but `hflux` did not (up to ~180% relative error on some cells). Root cause:
+`Tb`/`lh` are set inside the 5-iteration Newton loop and the real Fortran's final `hflux` uses whatever `Tb`/
+`lh` were last set *inside* the loop -- i.e. computed from the iteration's *pre-update* `Sb0`, one step behind
+the loop's own final `Sb0` -- not a fresh `tfrez(Sb0)` recomputed from the final converged salinity (which is
+what the port did initially). Fixed by simply not recomputing `Tb` after the loop and letting Python's
+loop-scoped `Tb`/`lh` carry their last-set values through, matching the source's own (perhaps accidental, but
+real) behavior.
+
+`fullfidelity/underice_ff.py`/`underice_jax.py`: bitwise exact on all 18 real records (482 ocean-domain +
+301 lake-domain cells on the first record alone) after the fix. The JAX port's 5-iteration Newton loop is a
+plain Python `for` loop over batched arrays (fixed trip count, not data-dependent -- no `lax.scan` needed),
+with the freezing/melting branch computed both ways and merged via `jnp.where` per iteration, the established
+pattern. Honest scoping: the real 18-record window never has a lake shallower than the 0.4 m flux-limiting
+threshold (checked and confirmed across all records, not assumed) -- that branch is cross-checked instead
+against the plain-Python reference on synthetic shallow-lake inputs. Tests: `tests/test_underice_jax.py` (76:
+real-record validation x2 domains x18 records for both plain-Python and JAX, jit-vs-eager, a
+freezing-vs-melting mutation check, the synthetic shallow-lake branch check).
+
+This closes the ice-dynamics side of Stage 1 except `IRRIG_LK`/`irrigate_extract` (explicitly deferred,
+external-dataset dependency) and the ocean-grid `GROUND_SI`/`FORM_SI` plumbing (chaining the already-ported
+physics onto `si_ocn`, not new physics to port).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
