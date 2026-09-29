@@ -23,6 +23,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch LANDICE_DRV.f < <this dir>/LANDICE_DRV_precli.f.patch   # PRECIP_LI (ffx_* files, D28)
     patch ATM_DRV.f < <this dir>/ATM_DRV_precli.f.patch           # adds ffdump_precli itself -- apply
       AFTER ATM_DRV_precip_lk.f.patch (immediately above)
+    patch ICEDYN_DRV.f < <this dir>/ICEDYN_DRV_dynsi.f.patch      # DYNSI/VPICEDYN (ffy_*/ffz_* files, D29)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_dynsi.f.patch            # adds ffdump_geom/ffdump_dynsi_in/out --
+      apply AFTER ATM_DRV_precli.f.patch (immediately above); units 970-972 (981-983 conflict with
+      real PBL_DRV.f/other usage -- checked, do not reuse without re-grepping the whole tree first)
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -38,6 +42,15 @@ Run (scratch dir; copy I, P2SAoM40, P2SAoM40ln/uln, runtime_opts, fort.1.nc from
     FFD_START=33312 FFD_NSTEP=6 ./P2SAoM40 -i I > run.PRT 2>&1
     # (corrected 2026-09-28, D26: `-l run.PRT` is not a real flag -- see MODELE_DRV.f's arg parser,
     # only -r/-cold-restart/-i/--time exist; must `sh P2SAoM40ln` first to set up input-file symlinks)
+    # CRITICAL (found in D29, cost real debugging time): `./P2SAoM40` (the file actually executed) is
+    # a SEPARATE FILE from `P2SAoM40.bin` (the gmake build output), NOT a symlink -- copy the rebuilt
+    # binary to BOTH names in the run dir (`cp P2SAoM40.bin P2SAoM40.bin` AND `cp P2SAoM40.bin P2SAoM40`)
+    # after every rebuild, or the run silently keeps executing a stale binary with none of your new
+    # instrumentation. Symptom: your new dump files never appear and even an unconditional `STOP`
+    # statement placed as literally the first line of the routine never fires. Don't trust a timer-table
+    # trip count as proof this run executed a given routine either -- GISS ModelE checkpoints its
+    # cumulative CPU-timer table into the restart file, so a stale count carries forward unchanged
+    # across reruns from the same restart even when the routine never actually runs.
 
 Dumps: `ffd_<itime>_<tag>.bin`, tags pre_condse, post_condse, post_radia,
 pre_surface, post_surface, pre_aturb, post_aturb (last two are the dummy
@@ -117,3 +130,21 @@ PRECIP_LI dumps (D28): patch `LANDICE_DRV.f` with `LANDICE_DRV_precli.f.patch` a
 16:erun2(=IMPLH) (0-based columns are all -1, see `fullfidelity/precli_compare.py`). Note: the real record is
 entirely cold precipitation (`ENRGP<0`); the "rain" branch is checked against synthetic inputs instead (see
 `tests/test_precli_jax.py`).
+
+DYNSI/VPICEDYN dumps (D29): patch `ICEDYN_DRV.f` with `ICEDYN_DRV_dynsi.f.patch` and `ATM_DRV.f` with
+`ATM_DRV_dynsi.f.patch` (after `ATM_DRV_precli.f.patch`; adds `ffdump_geom` unit 970, `ffdump_dynsi_in` unit
+971, `ffdump_dynsi_out` unit 972). Whole-grid snapshots, not per-cell records (this is a real 2D iterative
+solve on the ice-dyn B-grid, NX1=IMICDYN+2 x NY1=JMICDYN = 74x46 for this rundeck). `ffz_geom.bin`: written
+ONCE per run (static: analytic lat-lon geometry + FOCEAN-derived masks, no dependence on any prognostic
+field) -- header `dble(nx1,ny1,imicdyn,jmicdyn)` then `DXT/DXU/BYDX2/BYDXR(1:nx1)`, `DYT/DYU/BYDY2/BYDYR/
+CST/CSU/TNGT/TNG/BYCSU(1:ny1)`, `SINEN/BYDXDY/HEFFM/UVM(1:nx1,1:ny1)` (Fortran column-major), `FOCEAN
+(1:imicdyn,1:ny1)`. `ffy_<itime>_in.bin`/`ffy_<itime>_out.bin`: one pair per `DYNSI` call (once per step, since
+this non-cubed-sphere/non-STANDALONE_HYCOM rundeck takes `OCN_DRV.f`'s single `CALL DYNSI(atmice,iceocn,
+si_ocn)` branch). `_in`: header `dble(itime)` then `iRSI/iMSI(1:imicdyn,1:ny1)`, `GAIRX/GAIRY/GWATX/GWATY/
+PGFUB/PGFVB/HEFF/AREA/AMASS/COR/UICE(:,:,1)/VICE(:,:,1)(1:nx1,1:ny1)` -- the real recorded inputs to
+`VPICEDYN` (the atm-stress/ocean-current regrid and `HEFF`/`AREA`/`AMASS`/`COR` derivation happen earlier in
+`DYNSI`'s own body and are not yet re-derived, since they depend on not-yet-ported ocean-model fields
+`OGEOZA`/`UOSURF`/`VOSURF`). `_out`: header `dble(itime)` then `UICE(:,:,1)/VICE(:,:,1)/DMU/DMV
+(1:nx1,1:ny1)`, `USI/VSI/DMUI/DMVI(1:imicdyn,1:ny1)`. See `fullfidelity/icedyn_geom_compare.py` (geometry,
+bitwise exact) and `fullfidelity/dynsi_compare.py` (VPICEDYN, NOT yet exact -- see D29 in
+`FULL_FIDELITY_DELTAS.md`) for the exact unpack layout.

@@ -1,0 +1,132 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2552,3 +2552,129 @@
+       endif
+       write(fu) rec
+       end subroutine ffdump_precli
++
++      subroutine ffdump_geom()
++!@sum full-fidelity-port instrumentation: one-time ice-dyn B-grid
++!@+   geometry dump (Stage 1, D29: DYNSI/VPICEDYN). Static for the
++!@+   whole run (analytic lat-lon geometry + FOCEAN mask), so this
++!@+   writes once and returns immediately thereafter.
++      use ICEDYN, only : dxt,dxu,bydx2,bydxr,dyt,dyu,bydy2,bydyr,
++     &     cst,csu,tngt,tng,bycsu,sinen,bydxdy,heffm,uvm,
++     &     nx1,ny1,imicdyn,jmicdyn,gfocean=>focean
++      implicit none
++      logical, save :: done=.false.
++      integer, save :: fu=970
++      if (done) return
++      done=.true.
++      open(fu,file='ffz_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(nx1),dble(ny1),dble(imicdyn),dble(jmicdyn)
++      write(fu) dxt(1:nx1)
++      write(fu) dxu(1:nx1)
++      write(fu) bydx2(1:nx1)
++      write(fu) bydxr(1:nx1)
++      write(fu) dyt(1:ny1)
++      write(fu) dyu(1:ny1)
++      write(fu) bydy2(1:ny1)
++      write(fu) bydyr(1:ny1)
++      write(fu) cst(1:ny1)
++      write(fu) csu(1:ny1)
++      write(fu) tngt(1:ny1)
++      write(fu) tng(1:ny1)
++      write(fu) bycsu(1:ny1)
++      write(fu) sinen(1:nx1,1:ny1)
++      write(fu) bydxdy(1:nx1,1:ny1)
++      write(fu) heffm(1:nx1,1:ny1)
++      write(fu) uvm(1:nx1,1:ny1)
++      write(fu) gfocean(1:imicdyn,1:ny1)
++      close(fu)
++      end subroutine ffdump_geom
++
++      subroutine ffdump_dynsi_in(nx1,ny1,imicdyn,
++     &     iRSI,iMSI,gairx,gairy,gwatx,gwaty,pgfub,pgfvb,
++     &     heff,area,amass,cor,uice0,vice0)
++!@sum full-fidelity-port instrumentation: DYNSI/VPICEDYN inputs
++!@+   (Stage 1, D29). Whole ice-dyn-grid snapshot, one record pair
++!@+   (_in/_out) per DYNSI call (once per full step).
++      use model_com, only : itime
++      implicit none
++      integer :: nx1,ny1,imicdyn
++      real*8 :: iRSI(imicdyn,ny1),iMSI(imicdyn,ny1)
++      real*8 :: gairx(nx1,ny1),gairy(nx1,ny1)
++      real*8 :: gwatx(nx1,ny1),gwaty(nx1,ny1)
++      real*8 :: pgfub(nx1,ny1),pgfvb(nx1,ny1)
++      real*8 :: heff(nx1,ny1),area(nx1,ny1)
++      real*8 :: amass(nx1,ny1),cor(nx1,ny1)
++      real*8 :: uice0(nx1,ny1),vice0(nx1,ny1)
++      integer, save :: it0=-1, nst=0, init=0, fu=971
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffy_',itime,'_in.bin'
++      open(fu,file=trim(fname),form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(itime)
++      write(fu) iRSI
++      write(fu) iMSI
++      write(fu) gairx
++      write(fu) gairy
++      write(fu) gwatx
++      write(fu) gwaty
++      write(fu) pgfub
++      write(fu) pgfvb
++      write(fu) heff
++      write(fu) area
++      write(fu) amass
++      write(fu) cor
++      write(fu) uice0
++      write(fu) vice0
++      close(fu)
++      end subroutine ffdump_dynsi_in
++
++      subroutine ffdump_dynsi_out(nx1,ny1,imicdyn,
++     &     uice1,vice1,dmu,dmv,usi,vsi,dmui,dmvi)
++!@sum full-fidelity-port instrumentation: DYNSI/VPICEDYN outputs
++!@+   (Stage 1, D29).
++      use model_com, only : itime
++      implicit none
++      integer :: nx1,ny1,imicdyn
++      real*8 :: uice1(nx1,ny1),vice1(nx1,ny1)
++      real*8 :: dmu(nx1,ny1),dmv(nx1,ny1)
++      real*8 :: usi(imicdyn,ny1),vsi(imicdyn,ny1)
++      real*8 :: dmui(imicdyn,ny1),dmvi(imicdyn,ny1)
++      integer, save :: it0=-1, nst=0, init=0, fu=972
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffy_',itime,'_out.bin'
++      open(fu,file=trim(fname),form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(itime)
++      write(fu) uice1
++      write(fu) vice1
++      write(fu) dmu
++      write(fu) dmv
++      write(fu) usi
++      write(fu) vsi
++      write(fu) dmui
++      write(fu) dmvi
++      close(fu)
++      end subroutine ffdump_dynsi_out

@@ -483,3 +483,37 @@ the melt-through-to-layer-2 branch used too small an ENRGP and silently exercise
 caught by the test's own non-vacuous assertion rather than a passing-but-empty check). Read IRRIG_LK/
 irrigate_extract (373 combined lines) and scoped but deferred it: it depends on an external prescribed irrigation
 dataset, adding a "record the external forcing, port the arithmetic" pattern not yet needed elsewhere in Stage 1.
+
+## 2026-09-28 (late night): D29 -- DYNSI/VPICEDYN/FORM/PLAST/RELAX, first genuinely unfinished delta
+Traced the ice-dyn B-grid geometry setup (`GEOMICDYN`/`ICDYN_MASKS`) fully: purely analytic, no dependence on any
+prognostic field, `RADIUS` a runtime planet parameter (`USE_PLANET_RAD`) inferred exactly from the dump rather
+than assumed -- validated bitwise exact against a new `ffz_geom.bin` dump. Read `DYNSI`'s own body, `FORM`,
+`PLAST`, and `VPICEDYN` completely (no remaining unknowns): `VPICEDYN`'s outer KKI loop runs FORM+RELAX twice per
+iteration (predictor, then modified-Euler-averaged corrector), converges via an RMS-velocity check against the
+previous iterate, capped at 20 iterations.
+
+Lost real time (would have been much longer without the user telling me directly to stop stalling and keep
+going) to a debugging dead-end: new dump files never appeared no matter what was changed in `DYNSI`'s body,
+including an unconditional `STOP` as its literal first statement -- which still didn't fire, even though the
+compiled object and linked binary both provably contained the new code (checked via `nm`/`strings`/md5sum).
+Root cause, found by comparing `ls -la` on the two files: the run script executes a file named `P2SAoM40`,
+which is NOT a symlink to `P2SAoM40.bin` -- every rebuild-and-copy cycle in this session had been updating only
+`P2SAoM40.bin`, leaving the actually-executed `P2SAoM40` untouched since a much earlier build. The stable "6"
+trip count shown for `DYNSI()` in every rerun's timer table (which looked like evidence DYNSI was running) was
+itself stale: GISS ModelE checkpoints its cumulative timer table into the restart file, so the count just
+carried forward from whatever original run produced that restart, independent of whether the current run calls
+the routine at all. Fixed `build_and_run.md` with both lessons. Once fixed, all 3 dates produced real `ffy_*`/
+`ffz_*` dumps (6 steps each, ~380KB/214KB per in/out pair).
+
+Ported `FORM`/`PLAST`/`RELAX`/`VPICEDYN` to plain Python (`icedyn_dynsi_ff.py`), using a 1-padded array
+convention (Fortran index I,J maps directly to python index [I,J]) specifically because `RELAX` is ~150 lines of
+extremely dense tridiagonal-coefficient algebra where off-by-one translation risk is high. `TRIDIAG_cyclic`/
+`TRIDIAG_new` transcribed directly from `TRIDIAG_MOD` (Sherman-Morrison-augmented Thomas algorithm for the
+cyclic I-direction solves; plain Thomas for the J-direction solves). Validated `VPICEDYN` end-to-end against
+`ffy_33312_{in,out}.bin`: runs to completion, converges in 2 KKI iterations, right order of magnitude (max abs
+ice velocity ~0.23 m/s in both reference and port), but **not exact** -- max abs error ~0.017 m/s, ~1% mean /
+~7% max relative error spread pervasively across ~1800/2150 real cells (not a boundary bug localized to a few
+cells; more likely a sign/grouping slip somewhere in the dense `RELAX` algebra). Documented honestly in
+`FULL_FIDELITY_DELTAS.md` as IN PROGRESS rather than claimed complete. Next step: add a debug dump of
+`ETA`/`ZETA`/`PRESS`/`DWATN` right after `FORM`'s first call to isolate whether the bug is in `FORM`/`PLAST` or
+in `RELAX`'s coefficient assembly.

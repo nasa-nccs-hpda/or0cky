@@ -735,6 +735,60 @@ external prescribed irrigation-demand dataset (`irrig_water_pot`, from the `IRRI
 recorded as an input (same pattern as Ent's forcing) rather than re-derived; deferred as its own item given the
 added complexity (year-based cyclic/transient mode selection, groundwater-fallback logic).
 
+## D29 — DYNSI/VPICEDYN/FORM/PLAST/RELAX (Stage 1 core, DYNSI/ocean port) -- IN PROGRESS, not yet exact
+Fourth Stage 1 deliverable, and the first that departs from this project's usual "first try bitwise/float64
+exact" outcome -- recorded honestly rather than glossed over. New Fortran instrumentation, all newly designed
+(no prior per-cell dump pattern applied to a genuine 2D grid solve before): `ICEDYN_DRV_dynsi.f.patch` (adds 3
+call sites inside `DYNSI` itself: `ffdump_geom()` once at entry, `ffdump_dynsi_in`/`ffdump_dynsi_out` bracketing
+`CALL VPICEDYN`) + `ATM_DRV_dynsi.f.patch` (the 3 dump subroutines, units 970-972 -- 973+/980+ were rejected
+after finding real conflicts, e.g. unit 981 is genuinely used by `PBL_DRV.f`'s `WRITET_PARALLEL`). Dumps are
+**whole-grid snapshots** (not per-cell records, since this is a real 2D iterative solve): `ffz_geom.bin` once
+(static geometry + FOCEAN mask), `ffy_<itime>_{in,out}.bin` once per `DYNSI` call (6/date).
+
+**A real, embarrassing debugging detour** (documented because it cost real time and the fix is reusable
+knowledge): the first several rebuild-and-rerun cycles produced zero dump files and a `DYNSI()` timer table
+entry that never changed no matter what was put in `DYNSI`'s body -- including an unconditional `STOP` statement
+as literally the first line, which still didn't fire. Root cause: the run script's `./P2SAoM40` is a **separate
+file from `P2SAoM40.bin`** in the run directory (not a symlink) -- every rebuild had been faithfully copied to
+`P2SAoM40.bin`, never to the actually-executed `P2SAoM40`, so a stale pre-D29 binary ran unchanged every time.
+The `DYNSI()` timer's stable "6" trips across all those reruns was itself a red herring: GISS ModelE checkpoints
+its cumulative CPU-timer table into the restart file, so the stale count just carried through from whatever
+un-instrumented run originally produced that restart. Lesson for `build_and_run.md`: **always copy the rebuilt
+binary to both `P2SAoM40.bin` and `P2SAoM40`** in the run directory, and don't trust a timer-table trip count as
+proof of *this* run's execution when a restart file could be carrying it forward.
+
+**Geometry (`icedyn_geom_ff.py`, `GEOMICDYN`/`ICDYN_MASKS`): validated bitwise exact**, all 15 fields (`DXT`,
+`DXU`, `BYDX2`, `BYDXR`, `DYT`, `DYU`, `BYDY2`, `BYDYR`, `CST`, `CSU`, `TNGT`, `TNG`, `BYCSU`, `SINEN`, `BYDXDY`)
+plus the `HEFFM`/`UVM` land/velocity masks, against `ffz_geom.bin`. This confirmed the ice-dyn grid geometry is
+purely analytic (no dependence on any prognostic field) and that `RADIUS` -- a *runtime* planet parameter under
+`USE_PLANET_RAD`, not the hardcoded 6371000 m default -- is inferred exactly from the dump's own `DXT` column
+(`DXT = DLON*RADIUS`, `DLON` known exactly from `IMICDYN`) rather than assumed; it happens to equal Earth's
+radius for this rundeck.
+
+**`FORM`/`PLAST`/`RELAX`/`VPICEDYN` (`icedyn_dynsi_ff.py`): implemented in full, runs end-to-end, converges
+(`KKI=2` on the first real record), produces the right order of magnitude, but is NOT yet exact.** Validated
+`VPICEDYN` as one unit (its real inputs -- post atm/ocean-regrid `GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/`PGFVB`
+plus `HEFF`/`AREA`/`AMASS`/`COR`, all recorded rather than re-derived since they depend on the not-yet-ported
+ocean model -- against its real outputs `UICE`/`VICE`(:,:,1), `DMU`/`DMV`, `USI`/`VSI`) on the nov26/33312 record:
+max abs velocity ~0.23 m/s in both reference and port (same ballpark), **max abs error ~0.017 m/s, mean abs error
+~0.0003 m/s against a mean abs magnitude of ~0.03 m/s (roughly 1% mean, up to ~7% max relative error)**, spread
+across ~1800 of 2150 real (`HEFFM=1`) cells -- i.e. a small, pervasive discrepancy, not a boundary/index bug
+localized to a few cells (those are typically much easier to spot and fix). `RELAX` is ~150 lines of dense
+tridiagonal-coefficient algebra (4 solves: `TRIDIAG_cyclic`/`TRIDIAG_new` for `UICE`, then `TRIDIAG_new`/
+`TRIDIAG_cyclic` for `VICE`); the most likely cause is one or more sign/grouping slips in that transcription,
+not yet isolated because no dump exists yet for the intermediate quantities (`ETA`/`ZETA`/`PRESS`/`DWATN`/
+`FXY`/`FXY1a`) that would let `FORM`/`PLAST` be checked independently of `RELAX`.
+**Honest status: this is real, substantial, structurally-correct progress -- not a finished, validated
+deliverable.** `TRIDIAG_cyclic`/`TRIDIAG_new`/`tridiag_thomas` are transcribed directly from `TRIDIAG_MOD`
+(Sherman-Morrison-augmented Thomas algorithm for the cyclic case) and are the most mechanically verifiable
+pieces; the KKI outer-loop control flow (predictor, modified-Euler averaging using a slot-2 UICE that `RELAX`
+itself populates as a side effect, RMS-convergence check) matches the source line-for-line as read. No JAX port
+yet (plain Python first, per this project's established order); `jax.lax.while_loop` for the KKI loop and
+batched-column tridiagonal solves remain designed but not implemented pending the exactness fix.
+**Next step:** add a debug-only whole-grid dump of `ETA`/`ZETA`/`PRESS`/`DWATN` right after `FORM`'s first call
+(before `RELAX` touches anything) to isolate whether the bug is in `FORM`/`PLAST` or in `RELAX`'s tridiagonal
+coefficient assembly, before attempting the JAX/batched version.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

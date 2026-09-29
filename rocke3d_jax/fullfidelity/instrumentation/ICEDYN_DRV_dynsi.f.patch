@@ -1,0 +1,36 @@
+--- ICEDYN_DRV.f.orig
++++ ICEDYN_DRV.f
+@@ -392,6 +392,8 @@
+ 
+       call startTimer('DYNSI()')
+ 
++      CALL ffdump_geom()
++
+       FOCEAN => ATMICE%FOCEAN
+       DMUA => ATMICE%DMUA
+       DMVA => ATMICE%DMVA
+@@ -696,6 +698,12 @@
+       END DO
+ 
+ C**** do the looping over pseudo-timesteps
++      CALL ffdump_dynsi_in(NX1,NY1,IMICDYN,
++     &     iRSI(:,1:NY1),iMSI(:,1:NY1),
++     &     GAIRX(:,1:NY1),GAIRY(:,1:NY1),GWATX(:,1:NY1),
++     &     GWATY(:,1:NY1),PGFUB(:,1:NY1),PGFVB(:,1:NY1),
++     &     HEFF(:,1:NY1),AREA(:,1:NY1),AMASS(:,1:NY1),
++     &     COR(:,1:NY1),UICE(:,1:NY1,1),VICE(:,1:NY1,1))
+       CALL VPICEDYN
+ 
+ C**** Calculate stress on ice velocity grid (B grid)
+@@ -781,6 +789,11 @@
+         DMVI(:,jmicdyn)=0.
+       END IF
+ 
++      CALL ffdump_dynsi_out(NX1,NY1,IMICDYN,
++     &     UICE(:,1:NY1,1),VICE(:,1:NY1,1),DMU(:,1:NY1),
++     &     DMV(:,1:NY1),USI(:,1:NY1),VSI(:,1:NY1),
++     &     DMUI(:,1:NY1),DMVI(:,1:NY1))
++
+ c*** diagnostics
+       DO J=iJ_0,iJ_1S
+         DO I=1,imicdyn
