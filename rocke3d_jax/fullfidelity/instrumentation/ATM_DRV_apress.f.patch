@@ -1,0 +1,46 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2678,3 +2678,43 @@
+       write(fu) dmvi
+       close(fu)
+       end subroutine ffdump_dynsi_out
++
++      subroutine ffdump_apress(i,j,srfp,rsi,snowi,msi,apress)
++!@sum full-fidelity-port instrumentation: CALC_APRESS record (Stage 1,
++!@+   D30: ice dynamics). One record per atm-grid cell per call
++!@+   (~3312/step, once per full step).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j
++      real*8 :: srfp,rsi,snowi,msi,apress
++      real*8 :: rec(10)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=977
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_apress_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=srfp
++      rec(4)=rsi
++      rec(5)=snowi
++      rec(6)=msi
++      rec(7)=apress
++      write(fu) rec
++      end subroutine ffdump_apress

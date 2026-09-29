@@ -1,0 +1,11 @@
+--- SEAICE_DRV.f.orig
++++ SEAICE_DRV.f
+@@ -33,6 +33,8 @@
+         iceocn%APRESS(I,J) = 100.*(atmice%SRFP(I,J)-1013.25d0)+
+      *       si_ocn%RSI(I,J)*
+      *       (si_ocn%SNOWI(I,J)+ACE1I+si_ocn%MSI(I,J))*GRAV
++        CALL ffdump_apress(I,J,atmice%SRFP(I,J),si_ocn%RSI(I,J),
++     &       si_ocn%SNOWI(I,J),si_ocn%MSI(I,J),iceocn%APRESS(I,J))
+       END DO
+       END DO
+       IF (atmice%HAVE_SOUTH_POLE)

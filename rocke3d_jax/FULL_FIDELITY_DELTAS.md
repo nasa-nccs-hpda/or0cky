@@ -823,6 +823,30 @@ to validate against. Also not yet ported: the earlier atm-stress/ocean-current r
 recorded/real inputs rather than re-derived, since they depend on ocean-model fields (`OGEOZA`/`UOSURF`/
 `VOSURF`) not yet ported.
 
+## D30 — CALC_APRESS (Stage 1 of the DYNSI/ocean port)
+Fifth Stage 1 deliverable, and a return to the project's usual first-try-exact pace after D29's three-bug
+detour. `SEAICE_DRV.f`'s `CALC_APRESS` computes the total atmosphere+sea-ice pressure anomaly at the ocean
+surface (`APRESS`) -- a single-formula, branch-free per-cell calculation: `100*(SRFP-1013.25) +
+RSI*(SNOWI+ACE1I+MSI)*GRAV`, with a north/south-pole replication fixup. New instrumentation
+(`SEAICE_DRV_apress.f.patch` + `ATM_DRV_apress.f.patch`, unit 977, `ffz_apress_<itime>.bin`, one record per
+atm-grid cell per call, ~3,170/step) -- built by first reverting the throwaway D29 debug instrumentation
+(`ffdump_form1`/`ffdump_relax1`/`ffdump_relax_stage1`/`ffdump_relax_coefs`, `ICEDYN.f`'s debug edits) back out
+of the scratch tree and confirming a byte-for-byte match against the reconstructed clean post-D29 baseline
+before diffing, so the new patch contains only the `CALC_APRESS` addition.
+
+`GRAV` is, like `RADIUS` in D29, a *runtime* `USE_PLANET_RAD` planet parameter rather than the hardcoded
+9.80665 m/s^2 default -- `apress_compare.py` infers it algebraically from a real ice-covered cell in the dump
+(`GRAV = (APRESS - 100*(SRFP-1013.25)) / (RSI*(SNOWI+ACE1I+MSI))`) rather than assuming it; it happens to equal
+Earth's standard gravity for this rundeck, same pattern as `RADIUS` happening to equal Earth's radius.
+
+`fullfidelity/apress_ff.py`/`apress_jax.py`: bitwise/float64-exact on all 18 real records (6 steps x 3 dates,
+3,170 real cells/record) on the first try -- no branches to get wrong, no ADI algebra to transcribe. Tests:
+`tests/test_apress_jax.py` (39: real-record validation x18 for both plain-Python and JAX, a synthetic-input
+cross-check, jit-vs-eager, a mutation check confirming all four inputs actually affect the output).
+
+Full project regression suite (196 tests across all prior deltas) reconfirmed green after the D29 fixes and
+before this delta, and after this delta's tests were added.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

@@ -627,8 +627,8 @@ designed, not implemented) now that a confirmed-correct plain-Python reference e
 the earlier atm-stress/ocean-current regrid inside `DYNSI`'s own body (`GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/
 `PGFVB`, `HEFF`/`AREA`/`AMASS`/`COR` derivation), still taken as recorded/real inputs since it depends on
 ocean-model fields (`OGEOZA`/`UOSURF`/`VOSURF`) not yet ported.
-| `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — per-cell, likely tractable like GROUND_SI |
-| `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | trivial |
+| `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — depends on `atmocn%SSS`/`MLHC`/`GTEMP` (ocean-model fields, not yet ported) plus `iceocean_fluxes`/`icelake_fluxes` (not yet read); real work, not yet started |
+| `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | **DONE, see D30** — trivial, bitwise exact, first try |
 | `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
 | `FORM_SI` (=ocean-grid ADDICE) | `SEAICE_DRV.f` | 198 | driver around the **already-ported** `addice`/`simelt` (D12/D14); likely small new work, mostly plumbing |
 | **Ice-dynamics subtotal** | | **~1,460** | tractable, comparable to work already done |

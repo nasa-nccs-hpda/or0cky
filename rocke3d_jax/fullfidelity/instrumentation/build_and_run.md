@@ -27,6 +27,9 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch ATM_DRV.f < <this dir>/ATM_DRV_dynsi.f.patch            # adds ffdump_geom/ffdump_dynsi_in/out --
       apply AFTER ATM_DRV_precli.f.patch (immediately above); units 970-972 (981-983 conflict with
       real PBL_DRV.f/other usage -- checked, do not reuse without re-grepping the whole tree first)
+    patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_apress.f.patch     # CALC_APRESS (ffz_apress_* files, D30)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_apress.f.patch           # adds ffdump_apress itself -- apply
+      AFTER ATM_DRV_dynsi.f.patch (immediately above); unit 977
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -146,5 +149,12 @@ PGFUB/PGFVB/HEFF/AREA/AMASS/COR/UICE(:,:,1)/VICE(:,:,1)(1:nx1,1:ny1)` -- the rea
 `DYNSI`'s own body and are not yet re-derived, since they depend on not-yet-ported ocean-model fields
 `OGEOZA`/`UOSURF`/`VOSURF`). `_out`: header `dble(itime)` then `UICE(:,:,1)/VICE(:,:,1)/DMU/DMV
 (1:nx1,1:ny1)`, `USI/VSI/DMUI/DMVI(1:imicdyn,1:ny1)`. See `fullfidelity/icedyn_geom_compare.py` (geometry,
-bitwise exact) and `fullfidelity/dynsi_compare.py` (VPICEDYN, NOT yet exact -- see D29 in
-`FULL_FIDELITY_DELTAS.md`) for the exact unpack layout.
+bitwise exact) and `fullfidelity/dynsi_compare.py` (VPICEDYN, bitwise/float64-exact after D29's 3 bug fixes
+-- see `FULL_FIDELITY_DELTAS.md`) for the exact unpack layout.
+
+CALC_APRESS dumps (D30): patch `SEAICE_DRV.f` with `SEAICE_DRV_apress.f.patch` and `ATM_DRV.f` with
+`ATM_DRV_apress.f.patch` (after `ATM_DRV_dynsi.f.patch`; adds `ffdump_apress`, unit 977). `ffz_apress_
+<itime>.bin`: 10-double records, one per atm-grid cell per `CALC_APRESS` call (~3,170/step, once per full
+step, same call cadence as `DYNSI`). Columns: 1:i 2:j 3:srfp(hPa) 4:rsi 5:snowi 6:msi 7:apress(Pa, output)
+(0-based columns are -1, see `fullfidelity/apress_compare.py`). `GRAV` is a `USE_PLANET_RAD` runtime
+parameter like D29's `RADIUS`; the compare script infers it algebraically from a real ice-covered cell.

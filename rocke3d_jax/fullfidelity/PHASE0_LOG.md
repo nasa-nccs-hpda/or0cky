@@ -532,5 +532,17 @@ Result: bitwise/float64-exact (~1e-8 to 4e-8 max relative error, ordinary float6
 nonlinear iterative solve) on all 18 real records (6 steps x 3 dates). `TRIDIAG_cyclic`/`TRIDIAG_new` were
 verified independently against dense-matrix residuals early on and were never the problem -- all three bugs
 were in coefficient assembly or unit handling, which is exactly why bisecting via intermediate dumps (not
-auditing the solver) was the right approach. `tests/test_dynsi_ff.py` (24 tests) added. JAX/batched port is
-the clear next step, now that a confirmed-correct plain-Python reference exists to validate it against.
+auditing the solver) was the right approach. `tests/test_dynsi_ff.py` (24 tests) added. Ran the full project
+regression suite (196 tests, ~19 min) after these fixes: all green, nothing else broke. JAX/batched port of
+DYNSI is the clear next step, now that a confirmed-correct plain-Python reference exists to validate it
+against -- deferred for now in favor of finishing the smaller remaining Stage 1 items first.
+
+## 2026-09-29: D30 -- CALC_APRESS, first-try exact
+Before adding new instrumentation, reverted D29's throwaway debug dumps out of the scratch tree
+(`ffdump_form1`/`ffdump_relax1`/`ffdump_relax_stage1`/`ffdump_relax_coefs`, `ICEDYN.f`'s debug edits) and
+confirmed the result matched a reconstructed clean post-D29 baseline byte-for-byte before diffing, so the new
+patch (`SEAICE_DRV_apress.f.patch`+`ATM_DRV_apress.f.patch`, unit 977) contains only the `CALC_APRESS` addition.
+`CALC_APRESS` itself is trivial (one branch-free formula plus a pole-replication fixup) -- ported and validated
+bitwise/float64-exact on the first try, all 18 real records, 3,170 cells/record. `GRAV` is another
+`USE_PLANET_RAD` runtime parameter (like D29's `RADIUS`); inferred algebraically from a real ice-covered dump
+cell rather than assumed, confirmed to equal Earth's standard 9.80665 m/s^2 for this rundeck. 39 tests added.
