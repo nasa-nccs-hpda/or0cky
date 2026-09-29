@@ -1,0 +1,68 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2918,3 +2918,65 @@
+       rec(16)=s0m1
+       write(fu) rec
+       end subroutine ffdump_precip_oc
++
++      subroutine ffdump_osourc(i,j,roice,mo10,so10,dxypj,bydxypj,lmij,
++     &     runo,runi,eruno,eruni,sruno,sruni,srox,g0ml0,gzml0,mo1,so1,
++     &     g0ml1,gzml1,dmoo,deoo,dmoi,deoi,dsoo,dsoi,lmo)
++!@sum full-fidelity-port instrumentation: OSOURC record (Stage 2,
++!@+   D34), called from GROUND_OC. One record per real (FOCEAN>0)
++!@+   ocean cell per call (once per full step). LMO=13 fixed for this
++!@+   rundeck (OCN_LAYERING L13); rec sized generously (90) for that.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,lmij,lmo
++      real*8 :: roice,mo10,so10,dxypj,bydxypj,runo,runi,eruno,eruni
++      real*8 :: sruno,sruni,srox(2),g0ml0(lmo),gzml0(lmo),mo1,so1
++      real*8 :: g0ml1(lmo),gzml1(lmo),dmoo,deoo,dmoi,deoi,dsoo,dsoi
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=974
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_osourc_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=roice
++      rec(4)=mo10
++      rec(5)=so10
++      rec(6)=dxypj
++      rec(7)=bydxypj
++      rec(8)=dble(lmij)
++      rec(9)=runo
++      rec(10)=runi
++      rec(11)=eruno
++      rec(12)=eruni
++      rec(13)=sruno
++      rec(14)=sruni
++      rec(15)=srox(1)
++      rec(16)=srox(2)
++      rec(17)=dble(lmo)
++      rec(18)=mo1
++      rec(19)=so1
++      write(fu) rec
++      write(fu) g0ml0(1:lmo)
++      write(fu) gzml0(1:lmo)
++      write(fu) g0ml1(1:lmo)
++      write(fu) gzml1(1:lmo)
++      write(fu) dmoo,deoo,dmoi,deoi,dsoo,dsoi
++      end subroutine ffdump_osourc

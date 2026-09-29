@@ -942,6 +942,41 @@ actually being ported) scales past Stage 1 into the ocean core proper. Tests: `t
 (38: real-record validation x18 for both plain-Python and JAX, jit-vs-eager, a mutation check confirming all
 eight inputs actually affect the output).
 
+## D34 — OSOURC (Stage 2, called from GROUND_OC)
+Second Stage 2 deliverable. `OCNDYN.f`'s `OSOURC` (123 lines, called from the not-yet-ported `GROUND_OC`)
+applies surface mass/heat/salt fluxes (river+ice-melt runoff, evaporation, solar insolation) separately over
+a cell's open-ocean and ice-covered fractions, checks each for below-freezing conditions (frazil-ice
+formation via `GFREZS`/`TFREZS`/`Ei`/`FSSS`), recombines by ice fraction, and distributes the recombined flux
+through the water column with an exponential two-band (Jerlov) solar-penetration profile. `TRACERS_OCEAN`
+undefined for this rundeck, dead code not ported.
+
+**A genuine dependency-tracing win**: `FSR`/`FSRZ`/`LSRPD` (the solar-penetration profile OSOURC needs) turned
+out to be fully re-derivable rather than another recorded-input boundary. Traced `OCEAN_COM.f`'s `init_solar`:
+`RFRAC`/`ZETA1`/`ZETA2`/`ZMAX_SOLAR` are hardcoded `PARAMETER`s (not runtime `USE_PLANET_RAD`-style values
+like D29's `RADIUS`/`GRAV`), and `OLAYERS.F90`'s `L13` layering (`OCN_LAYERING L13`, this rundeck's build
+flag) gives a fixed 13-entry `dZO` array -- so `icedyn_geom_ff.py`-style analytic reconstruction (not a real
+Fortran dump) was possible and is exactly correct: `LSRPD=3` for this rundeck, confirmed by the fact that
+every real-record test below passed bitwise exact using ONLY the derived values, no dump needed. `GFREZS`
+turned out to be a hardcoded 41-point lookup table visible directly in `OCNFUNTAB.f`'s source (not file-based
+like the `SHCGS`/`OFTAB`-table dependency `GROUND_OC` itself will need); `TFREZS` is closed-form and matches
+`seaice_core_ff.py`'s existing `tfrez` exactly (same Fofonoff & Millard 1983 coefficients, different input
+salinity units -- kg/kg vs PSU).
+
+New instrumentation (`OCNDYN_osourc.f.patch`+`ATM_DRV_osourc.f.patch`, unit 974) dumps `OSOURC`'s full
+argument list (inputs before the call, `MO`/`S0M`/`G0ML`/`GZML`/`DMOO`/`DEOO`/`DMOI`/`DEOI`/`DSOO`/`DSOI`
+after) at its one real call site inside `GROUND_OC`, ~2,095 real (`FOCEAN>0`) cells/step.
+
+`fullfidelity/osourc_ff.py`/`osourc_jax.py`: bitwise exact on all 18 real records, first try for the
+plain-Python port. The JAX port caught one real bug before it ever reached real-data testing: an off-by-one
+in the batched per-lane guard for the water-column insolation loop (`lsr >= l` where the real Fortran's `DO
+L=2,LSR-1` requires the strict `lsr > l` -- an empty loop when `LSR<=2`). Found by reasoning through the
+Fortran's `DO` loop semantics directly (start>end means zero iterations) before running the comparison, not
+by a failing test -- but confirmed genuinely necessary immediately after: the real 18-record window does
+contain shallow ocean columns with `LMIJ<LSRPD` (`LMIJ` ranges 2-13 in the first record alone), so this
+wasn't a theoretical edge case. Tests: `tests/test_osourc_jax.py` (40: an `init_solar` derivation sanity
+check, real-record validation x18 for both ports, jit-vs-eager, a mutation check confirming the
+`LSR<LSRPD` branch and both freezing branches are genuinely exercised by real data).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

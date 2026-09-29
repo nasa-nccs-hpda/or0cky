@@ -1,0 +1,32 @@
+--- OCNDYN.f.orig
++++ OCNDYN.f
+@@ -4686,6 +4686,7 @@
+      *     ,MO1,SO1,ROICE,DMOO,DMOI,DEOO,DEOI,GZML(LMO),SRUNO,SRUNI,DSOO
+      *     ,DSOI,POCEAN,POICE,P0L,S0L,G0L,TF0,SI0,EI0,DM0(LMO),DE0(LMO)
+      *     ,DS0(LMO),GF0,GFREZS,TFREZS,TEMGSP,SHCGS,GF00
++      REAL*8 :: DBGG0ML0(LMO),DBGGZML0(LMO),DBGMO10,DBGSO10
+ #ifdef TRACERS_OCEAN
+       REAL*8, DIMENSION(tracerlist%getsize()) :: TRUNO,TRUNI,DTROO,
+      &              DTROI,TRO1,FRAC
+@@ -4765,6 +4766,10 @@
+ #endif
+ #endif
+ 
++        DBGG0ML0=G0ML
++        DBGGZML0=GZML
++        DBGMO10=MO1
++        DBGSO10=SO1
+         CALL OSOURC(ROICE,MO1,G0ML,GZML,SO1,DXYPJ,BYDXYPJ,LMM(I,J),RUNO
+      *         ,RUNI,ERUNO,ERUNI,SRUNO,SRUNI,SROX,
+ #ifdef TRACERS_OCEAN
+@@ -4772,6 +4777,10 @@
+      &         tracerlist%getsize(),
+ #endif
+      *         DMOO,DEOO,DMOI,DEOI,DSOO,DSOI)
++        CALL ffdump_osourc(I,J,ROICE,DBGMO10,DBGSO10,DXYPJ,BYDXYPJ,
++     &       LMM(I,J),RUNO,RUNI,ERUNO,ERUNI,SRUNO,SRUNI,SROX,
++     &       DBGG0ML0,DBGGZML0,MO1,SO1,G0ML,GZML,DMOO,DEOO,DMOI,DEOI,
++     &       DSOO,DSOI,LMO)
+ 
+ C**** update ocean variables
+           MO(I,J,1) = MO1

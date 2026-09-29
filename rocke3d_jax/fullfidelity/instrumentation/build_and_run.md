@@ -43,6 +43,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch ATM_DRV.f < <this dir>/ATM_DRV_precip_oc.f.patch        # adds ffdump_precip_oc itself --
       apply AFTER ATM_DRV_underice.f.patch (immediately above); unit 973 (reused from D29's vacated
       debug-only units, re-checked for conflicts first)
+    patch OCNDYN.f < <this dir>/OCNDYN_osourc.f.patch             # OSOURC (ffz_osourc_* files, D34)
+      -- apply AFTER OCNDYN_precip_oc.f.patch (above)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_osourc.f.patch           # adds ffdump_osourc itself --
+      apply AFTER ATM_DRV_precip_oc.f.patch (immediately above); unit 974
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -199,3 +203,13 @@ per call (~1,810-1,893/step, once per full step). Columns: 1:i 2:j 3:focean 4:op
 7:oeprec 8:oerunpsi 9:osrunpsi 10:dxypo 11:mo(in) 12:g0m(in) 13:s0m(in) -- after `PRECIP_OC` -- 14:mo
 15:g0m 16:s0m (0-based columns are -1, see `fullfidelity/precip_oc_compare.py`). Ocean grid is IMO=72,
 JMO=46 (`ORES_5x4.F90`) -- same resolution/index space as the atmosphere grid for this rundeck.
+
+OSOURC dumps (D34, called from GROUND_OC): patch `OCNDYN.f` with `OCNDYN_osourc.f.patch` and `ATM_DRV.f`
+with `ATM_DRV_osourc.f.patch` (after `ATM_DRV_precip_oc.f.patch`; adds `ffdump_osourc`, unit 974).
+`ffz_osourc_<itime>.bin`: 78-double records (20 header + 4x13 layer arrays + 6 output scalars; LMO=13 fixed
+for this rundeck's `OCN_LAYERING L13`), one per real (`FOCEAN>0`) ocean cell per call (~2,095/step). Header
+columns: 1:i 2:j 3:roice 4:mo(in) 5:s0m(in) 6:dxypj 7:bydxypj 8:lmij 9:runo 10:runi 11:eruno 12:eruni
+13:sruno 14:sruni 15:srox(1) 16:srox(2) 17:lmo 18:mo(out) 19:s0m(out); then (all length LMO): g0ml(in),
+gzml(in), g0ml(out), gzml(out); then 6 trailing doubles: dmoo,deoo,dmoi,deoi,dsoo,dsoi (see
+`fullfidelity/osourc_compare.py` for the exact unpack). `FSR`/`FSRZ`/`LSRPD` (solar-penetration profile) are
+NOT dumped -- derived analytically in `osourc_ff.py`/`osourc_jax.py` from `OCEAN_COM.f`'s `init_solar`.

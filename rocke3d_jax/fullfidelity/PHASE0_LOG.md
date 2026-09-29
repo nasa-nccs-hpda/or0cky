@@ -600,3 +600,22 @@ the first time in this project. New instrumentation dumps before/after MO/G0M/S0
 oPREC/oRSI/oRUNPSI/oEPREC/oERUNPSI/oSRUNPSI inputs. Bitwise exact on all 18 real records, first try -- no
 branches, confirms the established dump-hook-and-validate methodology scales cleanly past Stage 1 into the
 ocean core itself. 38 tests added.
+
+## 2026-09-29: D34 -- OSOURC, FSR/FSRZ/LSRPD derived analytically instead of dumped
+Read `OSOURC` (called from `GROUND_OC`, 123 lines) fully: applies runoff/evap/solar fluxes to a cell's
+open-ocean and ice-covered fractions separately, checks each for frazil-ice formation, recombines, and
+spreads insolation down the water column. Traced its solar-penetration-profile dependency (`FSR`/`FSRZ`/
+`LSRPD`) back to `OCEAN_COM.f`'s `init_solar` and found it's fully analytic -- hardcoded `RFRAC`/`ZETA1`/
+`ZETA2`/`ZMAX_SOLAR` PARAMETERs plus `OLAYERS.F90`'s fixed `L13` layer-thickness array (this rundeck's build
+flag) -- so it was re-derived in Python rather than dumped, and its correctness is proven implicitly by every
+downstream real-record test matching exactly. `GFREZS` is a hardcoded 41-point table visible directly in
+`OCNFUNTAB.f`; `TFREZS` is closed-form and matches the project's existing `tfrez` exactly. Neither needed the
+one genuine external-data dependency in this area (`GROUND_OC`'s own `SHCGS`, which reads the `OFTAB` binary
+file at init -- deferred to when `GROUND_OC` itself is ported).
+
+New instrumentation dumps `OSOURC`'s full argument list at its one real call site. Plain-Python port bitwise
+exact on all 18 records, first try. The JAX port caught a real off-by-one before real-data testing even ran:
+reasoning through the Fortran's `DO L=2,LSR-1` loop semantics directly showed the batched per-lane guard
+needed strict `lsr > l`, not `lsr >= l` (Fortran's loop is empty when the upper bound is below the lower
+bound, i.e. when `LSR<=2`). Confirmed genuinely necessary, not just theoretical, once checked against real
+data: `LMIJ` (hence `LSR`) ranges 2-13 across real ocean columns in this window. 40 tests added.
