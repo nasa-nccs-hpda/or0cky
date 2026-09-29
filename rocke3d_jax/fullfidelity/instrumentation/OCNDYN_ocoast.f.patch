@@ -1,0 +1,39 @@
+--- OCNDYN.f.orig
++++ OCNDYN.f
+@@ -4516,7 +4516,7 @@
+ !@sum in coastline ocean grid boxes
+ !@auth Gary Russell
+       use TimeConstants_mod, only: SECONDS_PER_DAY
+-      USE OCEAN, only : im,jm,dts,lmm,gxmo,gymo,sxmo,symo
++      USE OCEAN, only : im,jm,lmo,dts,lmm,gxmo,gymo,sxmo,symo
+ #ifdef TRACERS_OCEAN
+      *     ,txmo,tymo
+       Use OCN_TRACER_COM, Only: tracerlist
+@@ -4528,11 +4528,18 @@
+       IMPLICIT NONE
+       INTEGER I,IM1,IP1,J,LMIN,L,N
+       REAL*8 REDUCE
++      REAL*8 :: DBGGXMO0(IM,JM,LMO),DBGSXMO0(IM,JM,LMO)
++     &     ,DBGGYMO0(IM,JM,LMO),DBGSYMO0(IM,JM,LMO)
+ 
+       integer :: J_0S, J_1S
+ 
+       call getDomainBounds(grid, J_STRT_SKP=J_0S, J_STOP_SKP=J_1S)
+ 
++      CALL ffdump_ocoast_geom(IM,JM,LMM)
++      DBGGXMO0=GXMO
++      DBGSXMO0=SXMO
++      DBGGYMO0=GYMO
++      DBGSYMO0=SYMO
+ 
+       REDUCE = 1d0 - DTS/(SECONDS_PER_DAY*2d1)
+ C**** Reduce West-East gradient of tracers
+@@ -4566,6 +4573,8 @@
+ #endif
+  210  CONTINUE
+   220 CONTINUE
++      CALL ffdump_ocoast(IM,JM,LMO,DBGGXMO0,DBGSXMO0,DBGGYMO0,DBGSYMO0,
++     &     GXMO,SXMO,GYMO,SYMO)
+       RETURN
+       END SUBROUTINE OCOAST
+ 

@@ -690,3 +690,41 @@ had both files advanced (restored from the untouched persistent master at
 netCDF4 -- this file has never been run in-place, only copied from); `run_dec01`/`run_jan01` still had a
 pristine `fort.1.nc` but a stale `fort.2.nc`, fixed by copying `fort.1.nc` over `fort.2.nc` in each. Rerun
 in progress.
+
+## 2026-09-29: D37 -- OCOAST ported and validated; a permanent fix for the restart-file trap
+Picked `OCOAST` (`OCNDYN.f:4514-4570`, 57 lines) as the next `OCNDYN2.f`-live delta: damps the
+X/Y horizontal gradient moments of ocean tracer fields (`GXMO`/`SXMO`/`GYMO`/`SYMO`) in coastal
+grid boxes, by a single `REDUCE = 1 - DTS/(86400*20)` factor applied to layers `LMIN..LMM(I,J)`
+where `LMIN` is one more than the shallower of the two horizontal neighbors' depth. Confirmed the
+one routine genuinely shared unchanged between `OCNDYN.f` (definition) and `OCNDYN2.f` (the live
+caller, gated `if (OCoastal_drag==1)`, true for this rundeck). No external files; `DTS=DTSRC=
+1800.0` (`OCNDYN.f:405`) and `SECONDS_PER_DAY=86400.0` are both compile-time constants, so
+`REDUCE` is fully analytic, no dump needed for it.
+
+**Hit the D36 restart double-buffering issue again, and this time fixed it permanently rather
+than patching around it per-run.** Rerunning after the rebuild found `dec01`'s restart pair had
+itself been advanced by D36's own prior rerun (D36 legitimately ran 6 real steps from `dec01`'s
+then-pristine `fort.1.nc`, consuming it) -- there was no longer any untouched pristine `dec01`
+restart anywhere, unlike `nov26` (which has a permanent untouched master at
+`ModelE_Support/huge_space/P2SAoM40/fort.1.nc`) and `jan01` (found this delta: an exact-match
+permanent archive at `ModelE_Support/huge_space/P2SAoM40/1JAN1950.rsfP2SAoM40.nc`, itime=17520,
+never run in place). Regenerated `dec01`'s pristine restart properly: built a one-off bootstrap
+run directory, copied the `nov26` master in, edited `I`'s `YEARE/MONTHE/DATEE/HOURE` to run the
+full 5 days (240 steps) from 1950-11-26 to 1950-12-01 instead of the usual 6-step/3-hour window,
+and let it run to completion (~13 minutes). **Archived all three dates' pristine restarts
+permanently** at `ff_data/_pristine_restarts/fort1_{nov26,dec01,jan01}_itime{...}.nc` so this
+never has to be regenerated or hunted for again, in this or any future session -- this is the
+fix build_and_run.md's D36 note should have prescribed from the start rather than only documenting
+the symptom. `build_and_run.md` updated accordingly.
+
+While `dec01`'s bootstrap ran in the background, ran `nov26`/`jan01` immediately (they didn't
+depend on it) and validated the port against both -- bitwise exact, first try, before `dec01`
+was even available. `fullfidelity/ocoast_ff.py`/`ocoast_jax.py`: the JAX port vectorizes the
+Fortran wraparound-I neighbor pattern via `jnp.roll` (same technique as D36's `ostres2_jax.py`)
+and the variable-length `L=LMIN..LMM(I,J)` inner loop via a broadcast layer-index comparison
+merged with `jnp.where`. Both bitwise exact on all 3 dates once `dec01`'s dump landed too.
+`tests/test_ocoast_jax.py` (17 tests): real-record validation x2 ports x3 dates, an analytic-
+`REDUCE`-constant check, jit-vs-eager, and three mutation/non-vacuousness checks (some coastal
+cell must exercise `LMIN>1`; changed cells must be scaled by exactly `REDUCE`; cells with an
+empty `L`-range must be byte-identical before/after). Full regression: 505 passed (488 + this
+delta's 17), 0 failed.

@@ -1,0 +1,65 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3100,3 +3100,62 @@
+       write(fu) vod1
+       close(fu)
+       end subroutine ffdump_ostres2
++
++      subroutine ffdump_ocoast_geom(im,jm,lmm)
++!@sum full-fidelity-port instrumentation: OCOAST's static ocean-grid
++!@+   bathymetry mask (Stage 2, D37: coastal tracer-gradient damping).
++!@+   Written once at first call, unconditional.
++      implicit none
++      integer :: im,jm
++      integer :: lmm(im,jm)
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=982
++      open(fu,file='ffz_ocoast_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(im),dble(jm)
++      write(fu) dble(lmm)
++      close(fu)
++      end subroutine ffdump_ocoast_geom
++
++      subroutine ffdump_ocoast(im,jm,lmo,gxmo0,sxmo0,gymo0,symo0,
++     &     gxmo1,sxmo1,gymo1,symo1)
++!@sum full-fidelity-port instrumentation: OCOAST full-grid before/
++!@+   after record (Stage 2, D37). One record per call (once per
++!@+   DTsrc step, called from OCNDYN2.f's OCEANS when OCoastal_drag=1).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: gxmo0(im,jm,lmo),sxmo0(im,jm,lmo)
++      real*8 :: gymo0(im,jm,lmo),symo0(im,jm,lmo)
++      real*8 :: gxmo1(im,jm,lmo),sxmo1(im,jm,lmo)
++      real*8 :: gymo1(im,jm,lmo),symo1(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, fu=983
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      write(fname,'(A,I0,A)') 'ffz_ocoast_',itime,'.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) gxmo0
++      write(fu) sxmo0
++      write(fu) gymo0
++      write(fu) symo0
++      write(fu) gxmo1
++      write(fu) sxmo1
++      write(fu) gymo1
++      write(fu) symo1
++      close(fu)
++      end subroutine ffdump_ocoast

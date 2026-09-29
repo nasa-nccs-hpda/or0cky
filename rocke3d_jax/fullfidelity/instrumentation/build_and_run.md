@@ -84,9 +84,19 @@ Run (scratch dir; copy I, P2SAoM40, P2SAoM40ln/uln, runtime_opts, fort.1.nc from
     # steps inside your FFD window even though it "terminates normally" and the timer table looks
     # plausible. Symptom: even an unconditional, ungated dump call never fires. Verify with
     # `python3 -c "import netCDF4 as nc; print(nc.Dataset('fort.1.nc').variables['itime'][...])"`
-    # on both files before trusting a run. Fix: copy a known-pristine fort.1.nc over BOTH names (the
-    # untouched master at `ModelE_Support/huge_space/P2SAoM40/fort.1.nc` is itime=33312, i.e. the
-    # nov26 start point, and has never been run in place -- only ever copied from).
+    # on both files before trusting a run. Fix: copy a known-pristine fort.1.nc over BOTH names.
+    # PERMANENT FIX (D37): all 3 test dates' pristine restarts are archived at
+    #   ff_data/_pristine_restarts/fort1_{nov26,dec01,jan01}_itime{33312,33552,17520}.nc
+    # Restore before EVERY rerun with (per run dir, using that date's archived file as SRC):
+    #   rm -f fort.1.nc fort.2.nc && cp $SRC fort.1.nc && cp $SRC fort.2.nc
+    # nov26's source is also the untouched master at
+    # `ModelE_Support/huge_space/P2SAoM40/fort.1.nc` (itime=33312, never run in place); jan01's is
+    # `ModelE_Support/huge_space/P2SAoM40/1JAN1950.rsfP2SAoM40.nc` (itime=17520, an exact match,
+    # found in D37). dec01 (itime=33552) has NO such external archive -- D36's rerun consumed the
+    # one that existed at the time -- so its ff_data/_pristine_restarts copy is the ONLY pristine
+    # source; if it's ever lost, regenerate by copying the nov26 master into a scratch run dir,
+    # editing `I`'s `YEARE=1950,MONTHE=12,DATEE=1,HOURE=0` (a full 5-day/240-step run instead of
+    # the usual 6-step window), running to completion (~13 min), and re-archiving the result.
 
 Dumps: `ffd_<itime>_<tag>.bin`, tags pre_condse, post_condse, post_radia,
 pre_surface, post_surface, pre_aturb, post_aturb (last two are the dummy
