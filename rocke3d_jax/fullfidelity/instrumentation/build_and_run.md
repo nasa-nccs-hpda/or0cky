@@ -30,6 +30,10 @@ Never edit the original tree; work in a copy (236 MB, everything but ModelE_Supp
     patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_apress.f.patch     # CALC_APRESS (ffz_apress_* files, D30)
     patch ATM_DRV.f < <this dir>/ATM_DRV_apress.f.patch           # adds ffdump_apress itself -- apply
       AFTER ATM_DRV_dynsi.f.patch (immediately above); unit 977
+    patch SEAICE_DRV.f < <this dir>/SEAICE_DRV_s2ag.f.patch       # seaice_to_atmgrid (ffz_s2ag_* files, D31)
+      -- apply AFTER SEAICE_DRV_apress.f.patch (above)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_s2ag.f.patch             # adds ffdump_s2ag itself -- apply
+      AFTER ATM_DRV_apress.f.patch (immediately above); unit 978
     (ATM_DRV.f.patch already includes ffdump_aturb; apply it once)
     source <repo>/rocke3d_jax/fullfidelity/env_modele.sh
     export SOCRATESPATH=$SRC/ModelE_Support/socrates  # required, else socrates depend fails
@@ -158,3 +162,13 @@ CALC_APRESS dumps (D30): patch `SEAICE_DRV.f` with `SEAICE_DRV_apress.f.patch` a
 step, same call cadence as `DYNSI`). Columns: 1:i 2:j 3:srfp(hPa) 4:rsi 5:snowi 6:msi 7:apress(Pa, output)
 (0-based columns are -1, see `fullfidelity/apress_compare.py`). `GRAV` is a `USE_PLANET_RAD` runtime
 parameter like D29's `RADIUS`; the compare script infers it algebraically from a real ice-covered cell.
+
+seaice_to_atmgrid dumps (D31): patch `SEAICE_DRV.f` with `SEAICE_DRV_s2ag.f.patch` (after
+`SEAICE_DRV_apress.f.patch`) and `ATM_DRV.f` with `ATM_DRV_s2ag.f.patch` (after `ATM_DRV_apress.f.patch`; adds
+`ffdump_s2ag`, unit 978). `ffz_s2ag_<itime>.bin`: 20-double records, one per atm-grid cell per call, from
+EVERY call site (`ATM_DRV.f`/`OCN_DRV.f`/`SURFACE.f` all call the same pure function; not distinguished in the
+dump, just pooled -- ~12,680-19,020 records/step). Columns: 1:i 2:j 3:ncall(diagnostic only, increments each
+time i=j=1 is seen) 4:rsi 5:snowi 6:msi 7:hsi(1) 8:hsi(2) 9:ssi(1) 10:ssi(2) 11:ssi(3) 12:ssi(4) -- after the
+2nd loop -- 13:gtemp 14:gtemp2 15:gtempr 16:zsnowi 17:zsi 18:fwsim (0-based columns are -1, see
+`fullfidelity/seaice_to_atmgrid_compare.py`). Note: the 3rd loop's `RESET_SURF_FLUXES` call (radiation-
+adjacent, touches only `RAD_COM`'s FSF/TRSURF) is deliberately not dumped/ported.

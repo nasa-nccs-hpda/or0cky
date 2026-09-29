@@ -847,6 +847,34 @@ cross-check, jit-vs-eager, a mutation check confirming all four inputs actually 
 Full project regression suite (196 tests across all prior deltas) reconfirmed green after the D29 fixes and
 before this delta, and after this delta's tests were added.
 
+## D31 — seaice_to_atmgrid (Stage 1 of the DYNSI/ocean port)
+Sixth Stage 1 deliverable. `SEAICE_DRV.f`'s `seaice_to_atmgrid` reconciles the ocean-grid sea-ice state
+(`si_ocn`, just updated by `GROUND_SI`/`FORM_SI` on the ocean grid) onto the atm-grid copy (`si_atm`) that
+`SURFACE`/`PBL`/radiation read from -- the state-copy half of D24's "`GROUND_SI`/`FORM_SI` runs twice" finding,
+and genuinely needed to close the D25 ice-state-carry-over gap. Called from several sites each step
+(`ATM_DRV.f`, `OCN_DRV.f`, `SURFACE.f`); new instrumentation (`SEAICE_DRV_s2ag.f.patch`+`ATM_DRV_s2ag.f.patch`,
+unit 978, `ffz_s2ag_<itime>.bin`) dumps every call from every site into one pool, since it's the same pure
+function regardless of caller (~12,680-19,020 records/step depending on date/step, i.e. multiple calls/step
+each covering the full atm grid).
+
+Ported the second loop (deriving `GTEMP`/`GTEMP2`/`GTEMPR`/`ZSNOWI`/`ZSI`/`FWSIM` from the just-copied state);
+the first loop is a plain field copy with no arithmetic to port. Reused `Ti`/`Ti2b` directly from
+`seaice_core_ff.py`/`seaice_core_jax.py` (already present from earlier GROUND_SI deltas) rather than
+re-deriving them. **Not ported** (radiation-adjacent, out of scope per the standing SOCRATES-is-third-party
+constraint): the third loop's conditional `RESET_SURF_FLUXES` call, which only redistributes `RAD_COM`'s
+`FSF`/`TRSURF` diagnostic accumulators across a changed ice fraction and feeds directly into the radiation
+scheme's own bookkeeping, not sea-ice prognostic state.
+
+`fullfidelity/seaice_to_atmgrid_ff.py`/`seaice_to_atmgrid_jax.py`: validated on all 18 real records (6 steps x
+3 dates, 12,680-19,020 records/record-set). `ZSNOWI`/`ZSI`/`FWSIM` (plain multiplies) are bitwise exact.
+`GTEMP`/`GTEMP2`/`GTEMPR` needed an **absolute** tolerance (1e-6 degrees C) rather than relative -- the same
+documented `Ti`/`Ti2b` REAL*16-internal/REAL*8-returned approximation already noted for `GROUND_SI`'s `TSIL`
+field in D26 (a few jan01 records showed relative error up to 1.4e-6 purely from near-zero-temperature
+denominators; absolute error at those same cells was ~1e-8 degrees, i.e. the approximation, not a new bug).
+Tests: `tests/test_seaice_to_atmgrid_jax.py` (38: real-record validation x18 for both plain-Python (subsampled
+for speed) and JAX, jit-vs-eager, a mutation check confirming both `MICE1`/`SNOWL` branches are exercised in
+the real dump).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

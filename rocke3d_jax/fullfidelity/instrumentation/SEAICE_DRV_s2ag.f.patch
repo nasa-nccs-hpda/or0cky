@@ -1,0 +1,15 @@
+--- SEAICE_DRV.f.orig
++++ SEAICE_DRV.f
+@@ -1925,6 +1925,12 @@
+ #endif
+         atmice%FWSIM(I,J) = si_atm%RSI(I,J)*
+      &       (MSI1+si_atm%MSI(I,J)-SUM(si_atm%SSI(1:LMI,I,J)))
++        CALL ffdump_s2ag(I,J,si_atm%RSI(I,J),si_atm%SNOWI(I,J),
++     &       si_atm%MSI(I,J),si_atm%HSI(1,I,J),si_atm%HSI(2,I,J),
++     &       si_atm%SSI(1,I,J),si_atm%SSI(2,I,J),si_atm%SSI(3,I,J),
++     &       si_atm%SSI(4,I,J),atmice%GTEMP(I,J),atmice%GTEMP2(I,J),
++     &       atmice%GTEMPR(I,J),atmice%ZSNOWI(I,J),si_atm%ZSI(I,J),
++     &       atmice%FWSIM(I,J))
+       END DO
+       END DO
+ 

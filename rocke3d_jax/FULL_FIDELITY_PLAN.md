@@ -629,7 +629,7 @@ the earlier atm-stress/ocean-current regrid inside `DYNSI`'s own body (`GAIRX`/`
 ocean-model fields (`OGEOZA`/`UOSURF`/`VOSURF`) not yet ported.
 | `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — depends on `atmocn%SSS`/`MLHC`/`GTEMP` (ocean-model fields, not yet ported) plus `iceocean_fluxes`/`icelake_fluxes` (not yet read); real work, not yet started |
 | `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | **DONE, see D30** — trivial, bitwise exact, first try |
-| `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
+| `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | **DONE, see D31** — state copy + GTEMP/GTEMP2/GTEMPR/ZSNOWI/ZSI/FWSIM derivation ported/validated; the 3rd loop's `RESET_SURF_FLUXES` call is radiation-adjacent (touches `RAD_COM`'s FSF/TRSURF only) and deliberately not ported |
 | `FORM_SI` (=ocean-grid ADDICE) | `SEAICE_DRV.f` | 198 | driver around the **already-ported** `addice`/`simelt` (D12/D14); likely small new work, mostly plumbing |
 | **Ice-dynamics subtotal** | | **~1,460** | tractable, comparable to work already done |
 | `OCEANS` (driver) | `OCNDYN2.f:33-699` | 666 | calls into everything below |

@@ -546,3 +546,17 @@ patch (`SEAICE_DRV_apress.f.patch`+`ATM_DRV_apress.f.patch`, unit 977) contains 
 bitwise/float64-exact on the first try, all 18 real records, 3,170 cells/record. `GRAV` is another
 `USE_PLANET_RAD` runtime parameter (like D29's `RADIUS`); inferred algebraically from a real ice-covered dump
 cell rather than assumed, confirmed to equal Earth's standard 9.80665 m/s^2 for this rundeck. 39 tests added.
+
+## 2026-09-29: D31 -- seaice_to_atmgrid, reused Ti/Ti2b from earlier deltas
+Ported `seaice_to_atmgrid`'s state-derivation loop (`GTEMP`/`GTEMP2`/`GTEMPR`/`ZSNOWI`/`ZSI`/`FWSIM`), the
+piece that reconciles ocean-grid sea-ice state back onto the atm-grid copy after `GROUND_SI`/`FORM_SI` --
+directly closes part of the D24 "runs twice" gap. New instrumentation dumps every call from every call site
+(`ATM_DRV.f`/`OCN_DRV.f`/`SURFACE.f` all call the same pure function each step) into one pool rather than
+distinguishing sites, since there's nothing site-specific to the function itself. Reused `Ti`/`Ti2b` straight
+from `seaice_core_ff.py`/`seaice_core_jax.py` (already ported for `GROUND_SI`) -- no new thermodynamics to
+derive. Deliberately did NOT port the third loop's `RESET_SURF_FLUXES` call: read it first, confirmed it only
+touches `RAD_COM`'s `FSF`/`TRSURF` diagnostic accumulators for the next radiation call, not sea-ice state --
+squarely radiation-adjacent, matching the user's standing "SOCRATES/radiation is third-party, don't touch it"
+constraint. Hit the same near-zero-temperature relative-error artifact as D26's `TSIL` (documented `Ti`/`Ti2b`
+REAL*16-vs-REAL*8 approximation) on a few jan01 records; switched to absolute tolerance for the three
+temperature fields, matching the established pattern rather than treating it as a new bug. 38 tests added.

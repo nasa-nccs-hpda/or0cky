@@ -1,0 +1,64 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2718,3 +2718,61 @@
+       rec(7)=apress
+       write(fu) rec
+       end subroutine ffdump_apress
++
++      subroutine ffdump_s2ag(i,j,rsi,snowi,msi,hsi1,hsi2,ssi1,ssi2,
++     &     ssi3,ssi4,gtemp,gtemp2,gtempr,zsnowi,zsi,fwsim)
++!@sum full-fidelity-port instrumentation: seaice_to_atmgrid record
++!@+   (Stage 1, D31: ice dynamics). One record per atm-grid cell per
++!@+   call (called from several sites each step -- ATM_DRV.f,
++!@+   OCN_DRV.f, SURFACE.f -- all dumped, same pure function).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j
++      real*8 :: rsi,snowi,msi,hsi1,hsi2,ssi1,ssi2,ssi3,ssi4
++      real*8 :: gtemp,gtemp2,gtempr,zsnowi,zsi,fwsim
++      real*8 :: rec(20)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=978
++      integer :: st, ncall
++      character(len=64) :: buf
++      character(len=200) :: fname
++      save ncall
++      data ncall/0/
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        ncall=0
++        write(fname,'(A,I0,A)') 'ffz_s2ag_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      if (i.eq.1 .and. j.eq.1) ncall=ncall+1
++      rec=-1d0
++      rec(1)=dble(i)
++      rec(2)=dble(j)
++      rec(3)=dble(ncall)
++      rec(4)=rsi
++      rec(5)=snowi
++      rec(6)=msi
++      rec(7)=hsi1
++      rec(8)=hsi2
++      rec(9)=ssi1
++      rec(10)=ssi2
++      rec(11)=ssi3
++      rec(12)=ssi4
++      rec(13)=gtemp
++      rec(14)=gtemp2
++      rec(15)=gtempr
++      rec(16)=zsnowi
++      rec(17)=zsi
++      rec(18)=fwsim
++      write(fu) rec
++      end subroutine ffdump_s2ag
