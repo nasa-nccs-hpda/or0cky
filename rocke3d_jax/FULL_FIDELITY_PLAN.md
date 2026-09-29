@@ -616,13 +616,17 @@ project. `PLAST` (94 lines, called from `FORM`) is pure fixed-stencil per-grid-p
 strain rates -> nonlinear viscosity via the elliptical yield curve, clamped to `[ZMIN,ZMAX]`) -- as tractable as
 GHY's flux calculations, no new technique needed.
 
-**Revised confidence:** every piece of `DYNSI`'s real numerics (`FORM`, `PLAST`, `RELAX`'s 4 ADI sub-solves,
-`VPICEDYN`'s outer convergence loop) is now understood in enough detail to implement, not just estimate. The two
-genuinely new JAX patterns needed are `jax.lax.while_loop` (data-dependent outer convergence) and a handful of
-batched tridiagonal solves along a spatial grid axis (mechanically identical to existing tridiag uses, just a
-different axis). No unknown numerical method remains. Grid geometry constants specific to the ice-dyn B-grid
-(`DXU/DYU/CSU/TNG/BYDX2/BYDY2/...`, analogous to `GEOM_B.f`'s atmosphere geometry) still need to be traced/sourced
-before implementation -- not yet done.
+**DONE, see D29.** `DYNSI`'s own body's geometry setup (`GEOMICDYN`/`ICDYN_MASKS`) and the full numerical core
+(`FORM`, `PLAST`, `RELAX`'s 4 ADI sub-solves, `VPICEDYN`'s outer convergence loop) are ported to plain Python
+(`fullfidelity/icedyn_geom_ff.py`, `fullfidelity/icedyn_dynsi_ff.py`) and validated bitwise/float64-exact on all
+18 real records (6 steps x 3 dates). Three real bugs found and fixed along the way (`osurf_tilt` default,
+`BYDTS` unit convention, an `AA1+AA2`-vs-`AA3+AA4` transcription slip in `RELAX`'s `VICE` equations) -- see D29
+in `FULL_FIDELITY_DELTAS.md` for the full bisection story. Remaining for this item: the JAX/batched version
+(`jax.lax.while_loop` for the outer convergence loop, batched column tridiagonal solves -- both still just
+designed, not implemented) now that a confirmed-correct plain-Python reference exists to validate against; and
+the earlier atm-stress/ocean-current regrid inside `DYNSI`'s own body (`GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/
+`PGFVB`, `HEFF`/`AREA`/`AMASS`/`COR` derivation), still taken as recorded/real inputs since it depends on
+ocean-model fields (`OGEOZA`/`UOSURF`/`VOSURF`) not yet ported.
 | `UNDERICE` | `SEAICE_DRV.f:187-375` | 188 | heat exchange between ice bottom and ocean mixed layer — per-cell, likely tractable like GROUND_SI |
 | `CALC_APRESS` | `SEAICE_DRV.f:10-43` | 33 | trivial |
 | `seaice_to_atmgrid` | `SEAICE_DRV.f:1716-1819` | 103 | regrid/reconcile the two ice-state copies; same-resolution grids so likely a masked copy, not real interpolation — **not yet read** |
@@ -640,11 +644,12 @@ before implementation -- not yet done.
 ### Plan
 1. **Stage 1 — ice dynamics** (this is what actually closes the D25 gap for ice/lake state carry-over):
    `PRECIP_SI`/`PREC_SI` -- **DONE, see D26**. `PRECIP_LK` -- **DONE, see D27**. `PRECIP_LI`/`PRECLI` --
-   **DONE, see D28** (3,723 real cells). `IRRIG_LK`/`irrigate_extract` (373 lines, external dataset dependency)
-   deferred as its own item; next is reading+scoping `DYNSI` fully,
-   `UNDERICE`, `CALC_APRESS`, `seaice_to_atmgrid`, ocean-grid `GROUND_SI`/`FORM_SI` plumbing. New Fortran
-   instrumentation needed (no existing dump covers these) — batch all Stage 1 dump hooks into one patch set and
-   one rebuild+rerun, matching how the original oracle build batched multiple subroutines' hooks together.
+   **DONE, see D28** (3,723 real cells). `DYNSI`/`VPICEDYN`/`FORM`/`PLAST`/`RELAX` (the 1,304-line numerical
+   core) -- **DONE, see D29**, bitwise/float64-exact on all 18 real records. `IRRIG_LK`/`irrigate_extract`
+   (373 lines, external dataset dependency) deferred as its own item; next is `UNDERICE`, `CALC_APRESS`,
+   `seaice_to_atmgrid`, ocean-grid `GROUND_SI`/`FORM_SI` plumbing. New Fortran instrumentation needed (no
+   existing dump covers these) — batch all remaining Stage 1 dump hooks into one patch set and one
+   rebuild+rerun, matching how the original oracle build batched multiple subroutines' hooks together.
 2. **Stage 2 — ocean core**: read `OCNDYN.f`, `OCNQUS.f`, `OCNKPP.f`, `OCNMESO_DRV.f`/`OCNTDMIX.f`/`OCNGM.f`,
    `OSTRAITS.f` in full before estimating further (the ~19k figure above is file-level, not yet
    subroutine-level or dead-code-excluded the way Stage 1's figures are) — do not commit to a firmer schedule

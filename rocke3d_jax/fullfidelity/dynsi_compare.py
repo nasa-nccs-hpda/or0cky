@@ -80,15 +80,14 @@ def compare_one(geom_path, in_path, out_path, sinwat, coswat, dts, verbose=True)
             usi0_2d[i, j - 1] = usi0[i, j]
             vsi0_2d[i, j - 1] = vsi0[i, j]
 
-    uice1, vice1, kki = D.vpicedyn(
+    bydts = 1.0 / dts  # GISS convention: BYDTS = 1/DTS, not DTS itself
+    uice1, vice1, kki, dwatn = D.vpicedyn(
         NX1, NY1, usi0_2d, vsi0_2d, din["gairx"], din["gairy"], din["gwatx"], din["gwaty"],
-        din["heff"], din["area"], din["amass"], din["cor"], sinwat, coswat, dts, osurf_tilt=0,
+        din["heff"], din["area"], din["amass"], din["cor"], sinwat, coswat, bydts, osurf_tilt=1,
         pgfub=din["pgfub"], pgfvb=din["pgfvb"])
-
+    # DMU/DMV use DWATN as VPICEDYN's last internal FORM call left it (Euler-averaged UICE,
+    # not the final post-RELAX velocity) -- see icedyn_dynsi_ff.vpicedyn's last_dwatn comment.
     nx1, ny1 = NX1, NY1
-    dwatn = D.form(nx1, ny1, uice1, vice1, din["gairx"], din["gairy"], din["gwatx"], din["gwaty"],
-                   din["heff"], din["area"], din["amass"], din["cor"], (sinwat, coswat), 0,
-                   din["pgfub"], din["pgfvb"])["dwatn"]
     dmu = D._pad(nx1, ny1)
     dmv = D._pad(nx1, ny1)
     half = ny1 // 2
@@ -135,6 +134,7 @@ if __name__ == "__main__":
     base = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26"
     oiphi = np.deg2rad(25.0)  # ICEDYN.f PARAMETER OIPHI=25d0*radian
     sinwat, coswat = np.sin(oiphi), np.cos(oiphi)
-    dts = 900.0
+    dts = 1800.0  # DTsrc=1800s for P2SAoM40 (decks/P2SAoM40.R) -- DYNSI runs once per full DTsrc
+                  # step, NOT the 900s NIsurf-substep timestep used elsewhere in this project
     compare_one(f"{base}/ffz_geom.bin", f"{base}/ffy_33312_in.bin", f"{base}/ffy_33312_out.bin",
                 sinwat, coswat, dts)

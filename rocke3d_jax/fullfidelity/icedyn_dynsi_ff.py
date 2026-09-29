@@ -241,7 +241,7 @@ def form(nx1, ny1, uice1, vice1, gairx, gairy, gwatx, gwaty, heff, area, amass, 
 
 
 def relax(nx1, ny1, uice, vice, uicec, vicec, forcex, forcey, draga, drags, eta, zeta, amass, cor,
-          bydts):
+          bydts, _debug_stage1_only=False):
     """ICEDYN.f RELAX: the 2-step ADI viscous-plastic solve. `uice`/`vice` are dicts {1:.., 2:.., 3:..}
     holding UICE(:,:,{1,2,3})/VICE(:,:,{1,2,3}); mutated and also returned. `uicec`/`vicec` are mutated
     in place (boundary/pole fills), matching the real subroutine's side effects on its host-associated
@@ -364,6 +364,9 @@ def relax(nx1, ny1, uice, vice, uicec, vicec, forcex, forcey, draga, drags, eta,
         uice[1][1, j] = uice[1][nx1 - 1, j]
         uice[1][nx1, j] = uice[1][2, j]
 
+    if _debug_stage1_only:
+        return uice, vice
+
     for i in range(2, nxlcyc + 1):
         for j in range(2, nypole + 1):
             uice[3][i, j] = uice[1][i, j]
@@ -481,13 +484,14 @@ def relax(nx1, ny1, uice, vice, uicec, vicec, forcex, forcey, draga, drags, eta,
             e_mean = 0.25 * (eta[i, j + 1] + eta[i + 1, j + 1] + eta[i, j] + eta[i + 1, j])
             z_mean = 0.25 * (zeta[i, j + 1] + zeta[i + 1, j + 1] + zeta[i, j] + zeta[i + 1, j])
             aa1 = eta[i, j + 1] + zeta[i, j + 1] + eta[i + 1, j + 1] + zeta[i + 1, j + 1]
-            aa2 = eta[i, j] + zeta[i, j] + eta[i + 1, j] + zeta[i + 1, j]
+            aa3 = (eta[i + 1, j] * BYCSU[j] + eta[i + 1, j + 1] * BYCSU[j]) * BYCSU[j]
+            aa4 = (eta[i, j] * BYCSU[j] + eta[i, j + 1] * BYCSU[j]) * BYCSU[j]
             if j == nypole:
                 aa9 = (aa1 * dely2 - (z_mean - e_mean) * TNG[j + 1] * delyr
                        - e_mean * 2.0 * TNG[j] * delyr) * vicec[i, j + 1] * UVM[i, j] * NPOL
             else:
                 aa9 = 0.0
-            vrt2[i, j] = aa9 + fxya[i, j] - (aa1 + aa2) * BYDX2[i] * vicec[i, j] \
+            vrt2[i, j] = aa9 + fxya[i, j] - (aa3 + aa4) * BYDX2[i] * vicec[i, j] \
                 + ((eta[i + 1, j] * BYCSU[j] + eta[i + 1, j + 1] * BYCSU[j]) * vicec[i + 1, j] * BYDX2[i]
                    + (eta[i, j] * BYCSU[j] + eta[i, j + 1] * BYCSU[j]) * vicec[i - 1, j] * BYDX2[i]) \
                 * BYCSU[j]
@@ -598,6 +602,9 @@ def vpicedyn(nx1, ny1, usi0, vsi0, gairx, gairy, gwatx, gwaty, heff, area, amass
 
         f = form(nx1, ny1, uice[1], vice[1], gairx, gairy, gwatx, gwaty, heff, area, amass, cor,
                  (sinwat, coswat), osurf_tilt, pgfub, pgfvb)
+        last_dwatn = f["dwatn"]  # DMU/DMV in DYNSI use DWATN as left by VPICEDYN's last FORM call,
+                                  # i.e. from the Euler-averaged UICE (this call), not the final
+                                  # post-RELAX velocity -- matches the real module-array side effect.
 
         uice[3] = uice[1].copy()
         vice[3] = vice[1].copy()
@@ -635,4 +642,4 @@ def vpicedyn(nx1, ny1, usi0, vsi0, gairx, gairy, gwatx, gwaty, heff, area, amass
         else:
             break
 
-    return uice[1], vice[1], kki
+    return uice[1], vice[1], kki, last_dwatn

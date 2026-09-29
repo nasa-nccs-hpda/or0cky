@@ -484,7 +484,7 @@ caught by the test's own non-vacuous assertion rather than a passing-but-empty c
 irrigate_extract (373 combined lines) and scoped but deferred it: it depends on an external prescribed irrigation
 dataset, adding a "record the external forcing, port the arithmetic" pattern not yet needed elsewhere in Stage 1.
 
-## 2026-09-28 (late night): D29 -- DYNSI/VPICEDYN/FORM/PLAST/RELAX, first genuinely unfinished delta
+## 2026-09-28 (late night): D29 -- DYNSI/VPICEDYN/FORM/PLAST/RELAX, closed exact after 3 real bugs
 Traced the ice-dyn B-grid geometry setup (`GEOMICDYN`/`ICDYN_MASKS`) fully: purely analytic, no dependence on any
 prognostic field, `RADIUS` a runtime planet parameter (`USE_PLANET_RAD`) inferred exactly from the dump rather
 than assumed -- validated bitwise exact against a new `ffz_geom.bin` dump. Read `DYNSI`'s own body, `FORM`,
@@ -509,11 +509,28 @@ Ported `FORM`/`PLAST`/`RELAX`/`VPICEDYN` to plain Python (`icedyn_dynsi_ff.py`),
 convention (Fortran index I,J maps directly to python index [I,J]) specifically because `RELAX` is ~150 lines of
 extremely dense tridiagonal-coefficient algebra where off-by-one translation risk is high. `TRIDIAG_cyclic`/
 `TRIDIAG_new` transcribed directly from `TRIDIAG_MOD` (Sherman-Morrison-augmented Thomas algorithm for the
-cyclic I-direction solves; plain Thomas for the J-direction solves). Validated `VPICEDYN` end-to-end against
-`ffy_33312_{in,out}.bin`: runs to completion, converges in 2 KKI iterations, right order of magnitude (max abs
-ice velocity ~0.23 m/s in both reference and port), but **not exact** -- max abs error ~0.017 m/s, ~1% mean /
-~7% max relative error spread pervasively across ~1800/2150 real cells (not a boundary bug localized to a few
-cells; more likely a sign/grouping slip somewhere in the dense `RELAX` algebra). Documented honestly in
-`FULL_FIDELITY_DELTAS.md` as IN PROGRESS rather than claimed complete. Next step: add a debug dump of
-`ETA`/`ZETA`/`PRESS`/`DWATN` right after `FORM`'s first call to isolate whether the bug is in `FORM`/`PLAST` or
-in `RELAX`'s coefficient assembly.
+cyclic I-direction solves; plain Thomas for the J-direction solves). First validation attempt against
+`ffy_33312_{in,out}.bin` ran to completion (2 KKI iterations) but was NOT exact -- ~1% mean / ~7% max relative
+error, pervasive across ~1800/2150 real cells. Rather than accept "close enough," bisected it with three
+more rounds of debug-only Fortran dumps (`ffdump_form1`/`ffdump_relax1`/`ffdump_relax_coefs`, discarded after
+use, not part of the permanent instrumentation): (1) `FORM`'s own output (`ETA`/`ZETA`/`PRESS`/`DWATN`) was
+already exact but `FORCEX`/`FORCEY` wasn't -- traced to assuming `osurf_tilt=0` when `SEAICE.f` actually
+defaults it to 1 for this rundeck; (2) with `FORM` fixed, `RELAX`'s own `AU`/`BU`/`CU`/`URT` coefficient dump
+showed `AU`/`CU` exact but `BU`/`URT` off by orders of magnitude -- traced to passing `bydts=900` (the raw
+timestep) instead of `1/900` (GISS's actual `BYDTS` convention) into the comparison harness, not a bug in the
+ported module itself; (3) with that fixed, `UICE` was now exact but `VICE` was badly wrong -- a genuine
+transcription slip in `RELAX`'s own source: the `VICE` J-direction `VRT` term should use `(AA3+AA4)`
+(BYCSU-weighted ETA-only sums) but was written using `(AA1+AA2)` (the ETA+ZETA sums used in that block's own
+AV/BV/CV a few lines above -- easy to conflate, same names in scope for two different quantities). Fixed all
+three; final remaining mismatch was `DMU`/`DMV` consistently half their reference value, traced to this
+rundeck's `DTsrc=1800s` (not the 900s used everywhere else in this project -- `DYNSI` runs once per full
+`DTsrc`, not per `NIsurf` substep), confirmed in `decks/P2SAoM40.R:237`. Also had `vpicedyn()` return the
+`DWATN` left by its OWN last internal `FORM` call (Euler-averaged velocity, one iteration stale) rather than
+letting a caller recompute a fresh, plausible-but-wrong one from the final converged velocity.
+
+Result: bitwise/float64-exact (~1e-8 to 4e-8 max relative error, ordinary float64 noise through a real
+nonlinear iterative solve) on all 18 real records (6 steps x 3 dates). `TRIDIAG_cyclic`/`TRIDIAG_new` were
+verified independently against dense-matrix residuals early on and were never the problem -- all three bugs
+were in coefficient assembly or unit handling, which is exactly why bisecting via intermediate dumps (not
+auditing the solver) was the right approach. `tests/test_dynsi_ff.py` (24 tests) added. JAX/batched port is
+the clear next step, now that a confirmed-correct plain-Python reference exists to validate it against.

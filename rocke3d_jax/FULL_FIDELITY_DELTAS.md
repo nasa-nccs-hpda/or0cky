@@ -735,9 +735,12 @@ external prescribed irrigation-demand dataset (`irrig_water_pot`, from the `IRRI
 recorded as an input (same pattern as Ent's forcing) rather than re-derived; deferred as its own item given the
 added complexity (year-based cyclic/transient mode selection, groundwater-fallback logic).
 
-## D29 — DYNSI/VPICEDYN/FORM/PLAST/RELAX (Stage 1 core, DYNSI/ocean port) -- IN PROGRESS, not yet exact
-Fourth Stage 1 deliverable, and the first that departs from this project's usual "first try bitwise/float64
-exact" outcome -- recorded honestly rather than glossed over. New Fortran instrumentation, all newly designed
+## D29 — DYNSI/VPICEDYN/FORM/PLAST/RELAX (Stage 1 core, DYNSI/ocean port)
+Fourth Stage 1 deliverable. This is the largest, most numerically dense routine ported in the project so far
+(~1,300 lines: `DYNSI`'s own body, `VPICEDYN`, `FORM`, `PLAST`, `RELAX`) and the first delta where the initial
+port was NOT bitwise/float64 exact on the first try -- three real, distinct bugs had to be found and fixed
+before it was. Recorded here in full, including the debugging path, because each bug is a reusable lesson.
+New Fortran instrumentation, all newly designed
 (no prior per-cell dump pattern applied to a genuine 2D grid solve before): `ICEDYN_DRV_dynsi.f.patch` (adds 3
 call sites inside `DYNSI` itself: `ffdump_geom()` once at entry, `ffdump_dynsi_in`/`ffdump_dynsi_out` bracketing
 `CALL VPICEDYN`) + `ATM_DRV_dynsi.f.patch` (the 3 dump subroutines, units 970-972 -- 973+/980+ were rejected
@@ -765,29 +768,60 @@ purely analytic (no dependence on any prognostic field) and that `RADIUS` -- a *
 (`DXT = DLON*RADIUS`, `DLON` known exactly from `IMICDYN`) rather than assumed; it happens to equal Earth's
 radius for this rundeck.
 
-**`FORM`/`PLAST`/`RELAX`/`VPICEDYN` (`icedyn_dynsi_ff.py`): implemented in full, runs end-to-end, converges
-(`KKI=2` on the first real record), produces the right order of magnitude, but is NOT yet exact.** Validated
-`VPICEDYN` as one unit (its real inputs -- post atm/ocean-regrid `GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/`PGFVB`
-plus `HEFF`/`AREA`/`AMASS`/`COR`, all recorded rather than re-derived since they depend on the not-yet-ported
-ocean model -- against its real outputs `UICE`/`VICE`(:,:,1), `DMU`/`DMV`, `USI`/`VSI`) on the nov26/33312 record:
-max abs velocity ~0.23 m/s in both reference and port (same ballpark), **max abs error ~0.017 m/s, mean abs error
-~0.0003 m/s against a mean abs magnitude of ~0.03 m/s (roughly 1% mean, up to ~7% max relative error)**, spread
-across ~1800 of 2150 real (`HEFFM=1`) cells -- i.e. a small, pervasive discrepancy, not a boundary/index bug
-localized to a few cells (those are typically much easier to spot and fix). `RELAX` is ~150 lines of dense
-tridiagonal-coefficient algebra (4 solves: `TRIDIAG_cyclic`/`TRIDIAG_new` for `UICE`, then `TRIDIAG_new`/
-`TRIDIAG_cyclic` for `VICE`); the most likely cause is one or more sign/grouping slips in that transcription,
-not yet isolated because no dump exists yet for the intermediate quantities (`ETA`/`ZETA`/`PRESS`/`DWATN`/
-`FXY`/`FXY1a`) that would let `FORM`/`PLAST` be checked independently of `RELAX`.
-**Honest status: this is real, substantial, structurally-correct progress -- not a finished, validated
-deliverable.** `TRIDIAG_cyclic`/`TRIDIAG_new`/`tridiag_thomas` are transcribed directly from `TRIDIAG_MOD`
-(Sherman-Morrison-augmented Thomas algorithm for the cyclic case) and are the most mechanically verifiable
-pieces; the KKI outer-loop control flow (predictor, modified-Euler averaging using a slot-2 UICE that `RELAX`
-itself populates as a side effect, RMS-convergence check) matches the source line-for-line as read. No JAX port
-yet (plain Python first, per this project's established order); `jax.lax.while_loop` for the KKI loop and
-batched-column tridiagonal solves remain designed but not implemented pending the exactness fix.
-**Next step:** add a debug-only whole-grid dump of `ETA`/`ZETA`/`PRESS`/`DWATN` right after `FORM`'s first call
-(before `RELAX` touches anything) to isolate whether the bug is in `FORM`/`PLAST` or in `RELAX`'s tridiagonal
-coefficient assembly, before attempting the JAX/batched version.
+**`FORM`/`PLAST`/`RELAX`/`VPICEDYN` (`icedyn_dynsi_ff.py`): validated bitwise/float64-exact on all 18 real
+records** (6 steps x 3 dates; `dynsi_compare.py`, `tests/test_dynsi_ff.py`). Final max relative error across
+every field (`UICE`/`VICE`(:,:,1), `DMU`/`DMV`, `USI`/`VSI`) on every record is ~1e-8 to 4e-8 -- ordinary
+float64 accumulation noise through a real iterative nonlinear solve (`KKI=2` every record on this Stage-1
+window), not a remaining bug. Getting there required finding and fixing three separate real bugs, each
+isolated by adding a new debug-only Fortran dump (`ffdump_form1`/`ffdump_relax1`/`ffdump_relax_coefs`,
+NOT part of the permanent instrumentation set, discarded after use) and bisecting the pipeline stage by stage
+(geometry -> `FORM`/`PLAST` -> `RELAX` stage 1 (UICE, I-direction) -> full `RELAX` -> full `VPICEDYN`):
+
+1. **`osurf_tilt` assumed 0, actually defaults to 1** (`SEAICE.f`'s `INTEGER :: osurf_tilt = 1`, not
+   overridden by this rundeck) -- `FORM`'s force-tilt term was using the wrong branch (geostrophic estimate
+   instead of the explicit `AMASS*PGFUB/PGFVB` sea-surface-tilt term). Found by dumping `FORM`'s own output
+   (`ETA`/`ZETA`/`PRESS`/`DWATN`/`FORCEX`/`FORCEY`) right after its first call in `VPICEDYN` and comparing
+   independently of `RELAX`: `ETA`/`ZETA`/`PRESS`/`DWATN` were already exact, isolating the bug to `FORCEX`/
+   `FORCEY` specifically. Fixed by passing `osurf_tilt=1`; `FORM`/`PLAST` then matched to machine epsilon.
+2. **`BYDTS` passed as `DTS` (900s) instead of `1/DTS`** -- GISS naming convention (`BY<x>` = `1/<x>`) violated
+   in the comparison harness, not in the ported module itself (`icedyn_dynsi_ff.py`'s `relax()`/`vpicedyn()`
+   correctly use their `bydts` parameter as-is; the caller was constructing the wrong value). This inflated
+   every `AMASS*BYDTS` term in `RELAX` by a factor of 900^2, dominating `BU`'s diagonal at the pole-adjacent
+   row and corrupting the whole tridiagonal solve. Found by adding a whole-grid dump of `RELAX`'s own `AU`/
+   `BU`/`CU`/`URT` coefficient arrays for the first (I-direction, cyclic) solve and comparing directly:
+   `AU`/`CU` were exact, `BU`/`URT` were off by orders of magnitude specifically where `AMASS*BYDTS` terms
+   dominate. Fixed by passing `bydts=1.0/dts`.
+3. **A genuine transcription slip in `RELAX`'s own algebra**: the second-stage `VICE` J-direction `VRT` term
+   used `(AA1+AA2)` where the real Fortran uses `(AA3+AA4)` (`ICEDYN.f:788`, distinct BYCSU-weighted `ETA`-only
+   sums, not the plain `ETA+ZETA` sums `AA1`/`AA2` used in that block's own `AV`/`BV`/`CV` a few lines above --
+   easy to conflate since both symbol pairs are in scope). This left `UICE` exact but `VICE` badly wrong.
+   Found by comparing the full `RELAX` output (not just stage 1) against `ffr_<itime>.bin` after fix #2:
+   `UICE` was now exact, `VICE` was not, pointing straight at the V-equations. Fixed the `vrt2` computation to
+   compute and use its own `AA3`/`AA4`, matching the source exactly.
+
+With all three fixed, the ONLY remaining discrepancy was `DMU`/`DMV` being consistently ~half their reference
+value -- traced to `DTsrc` for this rundeck being **1800s, not 900s** (`decks/P2SAoM40.R:237`; `DYNSI` runs once
+per full `DTsrc` step, unlike the 900s `NIsurf`-substep timestep this project has used everywhere else). A
+second, more subtle correctness point also mattered here: `DMU`/`DMV` in the real code use `DWATN` as left by
+`VPICEDYN`'s *last internal* `FORM` call (computed from the Euler-averaged `UICE`, one iteration stale), not a
+fresh `DWATN` recomputed from the final converged velocity -- `vpicedyn()` now returns this `last_dwatn`
+explicitly rather than requiring (or permitting) a fresh outside recomputation, which would silently give a
+plausible-looking but wrong answer.
+
+`TRIDIAG_cyclic`/`TRIDIAG_new`/`tridiag_thomas` (transcribed from `TRIDIAG_MOD`'s Sherman-Morrison-augmented
+Thomas algorithm) were verified independently against dense linear-algebra residuals and were never the
+problem -- all three bugs were in coefficient assembly or unit handling around the solves, not the solves
+themselves, which is why isolating each one required dumping intermediate arrays rather than auditing the
+solver. `icedyn_geom_ff.py` (`GEOMICDYN`/`ICDYN_MASKS`) remains bitwise exact as reported. Tests:
+`tests/test_dynsi_ff.py` (24: geometry x3 dates, `VPICEDYN` x18 records, both tridiag solvers against dense
+solves, a `RELAX` mutation check).
+**Not yet ported:** the JAX/batched version (plain Python first, per this project's established order) --
+`jax.lax.while_loop` for the `KKI` outer loop and batched-column tridiagonal solves are designed (see
+`FULL_FIDELITY_PLAN.md`) but not yet implemented, now that there is a confirmed-correct plain-Python reference
+to validate against. Also not yet ported: the earlier atm-stress/ocean-current regrid inside `DYNSI`'s own body
+(`GAIRX`/`GAIRY`/`GWATX`/`GWATY`/`PGFUB`/`PGFVB`, `HEFF`/`AREA`/`AMASS`/`COR` derivation) -- these remain
+recorded/real inputs rather than re-derived, since they depend on ocean-model fields (`OGEOZA`/`UOSURF`/
+`VOSURF`) not yet ported.
 
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
