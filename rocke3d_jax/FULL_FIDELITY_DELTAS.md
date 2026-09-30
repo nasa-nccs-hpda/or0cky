@@ -1425,6 +1425,29 @@ from `ocnstate_derived`; `DZV`/`BYDZV`/`BYDH`/`RHOMZ`/`BYRHOZ` from `densgrad`),
 `get_1d_mesodiff` (same precedent as D29's `RADIUS`/`GRAV`, no dump needed for a pure constant
 broadcast), explicit pole-uniformity checks, non-vacuous-computation checks.
 
+## D48: GMKDIF/ISOSLOPE4/GMFEXP scoping -- QCROSS confirmed dead, GET_PSI_DIAG confirmed diagnostic
+
+Read `OCNGM.f`'s `GMKDIF`, `ISOSLOPE4`, `GMFEXP`, `computeFluxes`, `wrapAdjustFluxes`, and
+`addFluxes` in full -- the remaining piece of D46/D47's mesoscale-mixing family. Two real scope
+reductions found, neither assumed:
+
+1. **`GET_PSI_DIAG`** (called from `GMKDIF`) is **purely diagnostic** -- it only writes `OIJL`
+   (bolus-velocity diagnostics) and local scratch, never read back by anything downstream. Skip
+   entirely, same precedent as D31's `RESET_SURF_FLUXES`.
+2. **`QCROSS` is always false for this rundeck's actual call.** `ocnmeso_drv` calls
+   `gmkdif(k3d,1d0)` with `RGMI_in` hardcoded to `1d0` in the source (not a rundeck parameter),
+   and `QCROSS = .NOT.(RGMI.eq.1d0)` inside `GMKDIF` -- eliminating every `IF(QCROSS)` branch in
+   both `GMKDIF` (roughly half its coefficient-setting logic: the `DXZ`/`CDXZ`/`BXZ`/`CXZ`/
+   `EXZ`/`CEXZ`/`DYZ`/`BYZ`/`CDYZ`/`CYZ`/`CEYZ`/`EYZ` cross-term arrays) and `GMFEXP` (the
+   `FXZ`/`FYZ` off-diagonal flux terms) as dead code.
+
+`GIJL` updates throughout (`GMFEXP`/`wrapAdjustFluxes`/`addFluxes`) confirmed diagnostic-only,
+same skip. Revised live-code estimate for the actual port: `GMKDIF` (~100, post-QCROSS) +
+`ISOSLOPE4` (136, embarrassingly parallel per-cell) + `GMFEXP` (~120, post-QCROSS) +
+`computeFluxes` (~90) + `wrapAdjustFluxes` (~110, salt/QLIMIT=true path, a global-sum-based
+conservative flux limiter) + `addFluxes` (~145, enthalpy/QLIMIT=false path) ≈ 700 lines --
+smaller than D46's first estimate once dead code is excluded. No port code written this delta.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

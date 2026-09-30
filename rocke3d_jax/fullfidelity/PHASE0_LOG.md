@@ -1086,3 +1086,31 @@ and `DZV`/`BYDZV`/`BYDH`/`RHOMZ`/`BYRHOZ`, all 3 dates, after the pole-mask clea
 `tests/test_ocnmeso_ff.py` (15 tests). `GMKDIF`/`ISOSLOPE4`/`GET_PSI_DIAG`/`GMFEXP` (the actual
 Gent-McWilliams skew-flux application, ~1,143 lines in `OCNGM.f`) remain the next piece of this
 family, not yet started.
+
+## 2026-09-30: D48 -- GMKDIF/ISOSLOPE4/GMFEXP scoping, two more real dead-code findings
+Read the rest of the mesoscale-mixing family in full: `GMKDIF`, `ISOSLOPE4`, `GET_PSI_DIAG`,
+`GMFEXP`, and its three helpers (`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`). Two real findings,
+neither assumed going in:
+
+`GET_PSI_DIAG` (called from inside `GMKDIF`) turned out to be purely diagnostic -- its own header
+comment even says so ("Calculate bolus velocity diagnostics"), and its only writes are to `OIJL`
+and subroutine-local scratch arrays, never read back by anything else. Confirmed by reading its
+full USE list (`use odiag, only : oijl=>oijl_loc,ijl_mfub,ijl_mfvb`) before deciding to skip it,
+not assumed from the name alone.
+
+The bigger find: `GMKDIF` has an internal `QCROSS` flag (`QCROSS = .NOT.(RGMI.eq.1d0)`) that gates
+roughly half of its own coefficient-setting logic (the cross-term arrays coupling isoneutral and
+thickness diffusion) and a matching half of `GMFEXP`'s flux terms. Checked the actual call site in
+`ocnmeso_drv` (`call gmkdif(k3d,1d0)`) -- `RGMI_in` is hardcoded to `1d0` in the source itself, not
+a rundeck-tunable parameter, so `QCROSS` is always false for every configuration that reaches this
+call. That's a genuine, provable dead-code finding (not a guess about typical parameter values),
+cutting the remaining real scope roughly in half.
+
+No port code written -- this was a scoping delta, same precedent as D41/D46 (read fully before
+committing to a port). Revised estimate for the actual port: ~700 real live lines (`GMKDIF` ~100,
+`ISOSLOPE4` 136, `GMFEXP` ~120, `computeFluxes` ~90, `wrapAdjustFluxes` ~110, `addFluxes` ~145) --
+smaller than D46's first estimate now that `GET_PSI_DIAG` and the `QCROSS` branches are excluded.
+`ISOSLOPE4` in particular looks like a good port candidate next: every input (`RHOX`/`RHOY`/
+`RHOMZ`/`BYRHOZ`/`BYDH`/`DZV` from D47, `K3D` from D47's `get_1d_mesodiff`) is already validated,
+and the computation is embarrassingly parallel per-cell with no sequential dependency across I/J/L
+-- unlike almost everything else ported so far in Stage 2.
