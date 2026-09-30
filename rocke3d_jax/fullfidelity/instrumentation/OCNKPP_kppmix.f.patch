@@ -1,0 +1,21 @@
+--- OCNKPP.f.orig
++++ OCNKPP.f
+@@ -1252,6 +1252,8 @@
+          end do
+       end do
+ 
++      call ffdump_kmixinit_table(nni,nnj,wmt,wst,vtc,cg,difmiw,difsiw)
++
+       return
+       end subroutine kmixinit
+ 
+@@ -2102,6 +2104,9 @@
+       CALL KPPMIX(LDD,ZE,zgrid,hwide,LMIJ,Shsq,dVsq,Ustar,Bo
+      *     ,Bosol ,alphaDT,betaDS,dbloc,Ritop,Coriol,byhwide,
+      *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
++      CALL ffdump_kppmix(I,J,ITER,LMO,LMIJ,ZE,zgrid,hwide,byhwide,
++     *     Shsq,dVsq,Ustar,Bo,Bosol,dbloc,Ritop,
++     *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
+       akvc=akvs
+ #else
+       call bldepth(ZE,zgrid,byhwide,LMIJ,dVsq,Ustar,Bo,Bosol

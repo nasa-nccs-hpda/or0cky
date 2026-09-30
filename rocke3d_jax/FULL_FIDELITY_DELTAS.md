@@ -1688,6 +1688,81 @@ array -- both pure closed-form functions of fixed physical constants and the fix
 `ZE`, ported directly rather than dumped, consistent with this project's precedent for
 configuration-fixed setup data (D29's `RADIUS`/`GRAV`, D47's `MESO_DIFFUSIVITY_CONST`).
 
+## D54: KPPMIX + z121 + kmixinit + init_solar ported -- first piece of the KPP scheme, and the
+first delta in this project not validated bit-for-bit (with a fully diagnosed reason)
+
+Ported `KPPMIX` (`OCNKPP.f:225-836`, confirmed the live routine for this build by D52/D53's
+correction) and its one real dependency, `z121` (the 1-2-1 vertical smoothing filter). Also
+ported `kmixinit` (`OCNKPP.f:1178-1256`) and `SW2OCEAN`'s `init_solar` (`OCEAN_COM.f:321-349`)
+directly, not from a dump: both are pure closed-form functions of fixed physical constants and
+the fixed vertical grid `ZE`, computed once at model startup -- the same precedent as D29's
+`RADIUS`/`GRAV` and D47's `MESO_DIFFUSIVITY_CONST`.
+
+`KPPMIX` is called from `OCONV`'s per-column loop inside a fixed-point iteration on `HBL` (up to
+`ITER=4` times per column per `OCEANS` call, `OCNKPP.f:1978-2334` -- `G0ML`/`S0ML`/`UL`/`ULD` get
+re-diffused between iterations using the previous iteration's coefficients). Rather than port
+that outer iteration (a future OCONV delta's job), this delta records `KPPMIX`'s actual real
+inputs and outputs at every real call (`ffdump_kppmix`, a new per-call streaming dump -- unlike
+every other Stage-2 dump, one record per real Fortran call rather than one record per itime,
+since a single itime makes this call up to ~4x per ocean column). 76,011 real calls captured
+across the standard 3-dates-x-6-steps sweep.
+
+**This is the first delta in the entire project not validated bit-for-bit, and the reason is
+fully diagnosed, not a shrug:** `kmixinit`'s `wmt`/`wst` velocity-scale lookup tables use
+`**(1./3.)` in two branches, and OCNKPP.f writes the exponent as `1./3.` with **no `d0` suffix on
+either literal** -- meaning Fortran parses `1.` and `3.` as single-precision `REAL` and computes
+the division in single precision *before* promoting the ~7-digit result to double and using it as
+the exponent. This is different from, and less precise than, the double-precision `1.0d0/3.0d0`
+a literal reading of "one third" would suggest, and it genuinely changes the answer once raised to
+a REAL*8 base. Found and confirmed by writing a tiny standalone `ifort -fp-model strict` program
+that reproduced the real dumped `cg` constant bit-for-bit only once the port's exponent was
+changed from `1.0/3.0` (double) to `float64(float32(1.0)/float32(3.0))` (single-precision
+division, then promoted) -- `kmixinit`'s `Vtc` constant had a second, independent instance of the
+same bug class: `Vtc = concv * sqrt(0.2/concs/epsilon) / vonk**2 / Ricr` writes `0.2` with no
+`d0` suffix, so it too is parsed as single precision before promotion; fixing both made `cg` and
+`Vtc` match the real dumped values exactly (`_ONE_THIRD_SP` and the corrected literal handling in
+`kppmix_ff.py`).
+
+Even after both single-precision-literal fixes, the `wmt`/`wst` tables are **not quite**
+bit-identical to a real one-time dump of the whole table (added temporarily via a DEBUG-ONLY
+`ffdump_kmixinit_table` hook to settle this empirically rather than guess, then left in place
+behind no `FFD_START` gate since `kmixinit` only ever runs once): of 429,944 cells, 62 (`wmt`) and
+38 (`wst`) differ from the real values, every one by exactly 1 ULP (e.g. `...469729` vs
+`...469728`). Traced one such cell by hand: both a `pow`-based and a mathematically-equivalent
+`exp(y*log(x))`-based Python recomputation give the *same* 1-ULP-off answer as the mismatch,
+confirming this is not a translation choice that can be fixed -- IEEE 754 requires `+`,`-`,`*`,
+`/`,`sqrt` to be correctly rounded, but explicitly does **not** require `pow`/`exp`/`log` to be,
+so two independently-correct libm implementations (glibc's, used by numpy/Python here, vs Intel's
+libimf, used by ifort even under `-fp-model strict`) can legitimately disagree in the last bit for
+the same bit-identical inputs. This affects ~0.023% of the table's cells.
+
+That table-level 1-ULP noise then propagates through the bilinear interpolation and the HBL
+bulk-Richardson search (which touches the table many times per call) to a per-call residual: **97
+percentile error stays below 3e-10; the worst of all 76,011 real calls is ~5e-6** (in `GHAT`,
+which divides by a velocity scale and so amplifies table noise the most); **`KBL` (the integer
+boundary-layer-index output) never mismatches, once, across all 76,011 calls** -- the physically
+and structurally meaningful part of the output is completely unaffected. Validated at this
+suite's standard `atol=1e-6` tolerance (not a special-cased loosened one) in
+`tests/test_kppmix_ff.py` (25 tests, including `test_akvs_and_akvg_are_identical`, a regression
+pin for the real Fortran's `dift[ki]=difs[ki]` -- with LDD always false there's no distinct
+tracer-diffusivity path, so `AKVS`/`AKVG` are structurally identical for this build, confirmed
+against a real record not just asserted from source).
+
+`fullfidelity/kppmix_ff.py` (new): `kmixinit`, `init_solar`, `z121`, `_wscale`/`_bfsfc_search`/
+`_bfsfc_at_hbl` (KPPMIX's three repeated inline lookup patterns, factored into shared helpers
+rather than duplicated four/two times as the real Fortran does), `kppmix`. `LDD`/`alphaDT`/
+`betaDS`/`Coriol` (all real Fortran inputs, all structurally dead per D52/D53) omitted from the
+port's signature entirely rather than threaded through unused. `fullfidelity/kppmix_compare.py`
+(new): a per-call stream loader, the first of its kind in this project (every prior dump loader
+assumes one record per itime).
+
+Instrumentation: `OCNKPP_kppmix.f.patch` (one line added right after the real `CALL KPPMIX` in
+`OCONV`, passing `I`,`J`,`ITER` plus everything already in scope -- no new upstream computation
+needed), `ATM_DRV_kppmix.f.patch` (`ffdump_kppmix`, unit 1004, gated by `FFD_START`/`FFD_NSTEP`
+same as every other dump; plus the temporary DEBUG-ONLY `ffdump_kmixinit_table`, unit 1005,
+ungated, used only to diagnose the ULP question above -- kept in the patch file for
+reproducibility but not load-bearing for the delta's own validation).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

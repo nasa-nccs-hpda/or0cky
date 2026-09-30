@@ -1283,3 +1283,66 @@ the actual port immediately: `KPPMIX`+`z121`, fed by a direct (not dumped) port 
 `wmt`/`wst` lookup tables and `FZ500` array, since `kmixinit` is pure closed-form math over fixed
 physical constants and the fixed vertical grid `ZE` -- the same "record/derive fixed setup data
 directly" precedent as D29's `RADIUS`/`GRAV` and D47's `MESO_DIFFUSIVITY_CONST`.
+
+## D54: KPPMIX + z121 + kmixinit + init_solar ported -- and a genuine, diagnosed departure from
+bit-for-bit validation
+
+Ported the first real piece of the KPP scheme: `KPPMIX` itself (confirmed the live routine by
+D52/D53, not `bldepth`), its one dependency `z121`, and `kmixinit`/`init_solar` (the one-time
+setup that builds `KPPMIX`'s velocity-scale lookup tables and shortwave-fraction profile) --
+ported directly rather than dumped, since both are pure functions of fixed constants and the
+fixed vertical grid.
+
+`KPPMIX` sits inside `OCONV`'s fixed-point HBL iteration (up to 4 calls per column per `OCEANS`
+call). Rather than port that whole iterative structure in one delta, I instrumented the real
+`CALL KPPMIX` call site directly and dumped every real call's inputs and outputs as its own
+record -- a new dump shape for this project (one record per real Fortran call, not one per
+itime), since a single itime now produces thousands of records instead of one. This keeps the
+same "port one routine, record its real neighbors" discipline this whole project has used, just
+applied to a routine called a variable number of times per step instead of once.
+
+First validation pass came back close but not exact -- errors around 1e-7 to 1e-8, small enough
+to suggest precision rather than a logic bug, but real. Chased it down methodically rather than
+accepting it: wrote a tiny standalone `ifort -fp-model strict` program to reproduce `kmixinit`'s
+`cg` constant bit-for-bit, and it only matched once I used a *single-precision* `1./3.` exponent
+promoted to double, not the "obviously correct" double-precision `1.0d0/3.0d0` translation I'd
+started with. The real source writes `(concs*vonk*epsilon)**(1./3.)` -- neither `1.` nor `3.` has
+a `d0` suffix, so Fortran parses them as single-precision `REAL`, divides in single precision
+(~7 significant digits), and only then promotes that already-rounded result to double before
+using it as the exponent. This is a genuinely different number from `1.0d0/3.0d0`, and it matters
+once raised to a real*8 base. Found the identical bug pattern a second time in the same
+subroutine's `Vtc` constant (`sqrt(0.2/concs/epsilon)`, `0.2` with no `d0` suffix) once I knew to
+look for it. Fixing both made `cg` and `Vtc` match the real dumped constants exactly.
+
+Even with both fixes, the `wmt`/`wst` lookup tables (892x482 entries each) aren't *quite*
+bit-identical to a real one-time dump of the whole table, which I added a temporary DEBUG-ONLY
+hook to capture rather than guess at: 62 and 38 cells respectively (out of 429,944) differ from
+the real values, every single one by exactly 1 ULP. Traced one by hand -- recomputing it via
+`pow` and, separately, via the mathematically equivalent `exp(y*log(x))` gives the *same* 1-ULP-
+off answer both ways, which settles it: this isn't a translation choice I can fix, because IEEE
+754 requires `+`,`-`,`*`,`/`,`sqrt` to round correctly but explicitly does not require `pow`/
+`exp`/`log` to -- two independently correct implementations (glibc's, under numpy/Python here,
+and Intel's libimf, under ifort even with `-fp-model strict`) are allowed to disagree in the last
+bit for bit-identical inputs, and apparently do, for about 0.02% of this specific table's cells.
+
+That's a small but real crack in this project's "always bitwise-exact" record, and I'd rather
+document it precisely than paper over it. Quantified the actual consequence across all 76,011
+real `KPPMIX` calls in the standard 3-dates-x-6-steps sweep: the table-level 1-ULP noise
+propagates through the bilinear interpolation and the HBL bulk-Richardson search to a max
+absolute residual of about 5e-6 (in `GHAT`, which divides by a small velocity scale and so
+amplifies the noise the most), with a *median* residual around 2e-12 and 99th-percentile around
+2.5e-10 -- and `KBL`, the integer boundary-layer-index output that actually drives downstream
+branching, never mismatched once. Validated in `tests/test_kppmix_ff.py` at this suite's
+ordinary `atol=1e-6` tolerance (not a special loosened one -- the existing convention already
+comfortably accommodates a residual this small), including a regression pin
+(`test_akvs_and_akvg_are_identical`) for the fact that `AKVS`/`AKVG` come out structurally
+identical for this build (no double-diffusion means no distinguishing tracer diffusivity from
+heat diffusivity), confirmed against a real record rather than just asserted from reading the
+source.
+
+`fullfidelity/kppmix_ff.py`/`kppmix_compare.py` (new, 25 tests). `LDD`/`alphaDT`/`betaDS`/
+`Coriol` (all real Fortran inputs to `KPPMIX`, all confirmed structurally dead by D52/D53) left
+out of the port's own signature entirely, rather than threaded through unused. Remaining in this
+file: `OCONV`'s own ~1,526-line per-column driver (including the fixed-point iteration this delta
+deliberately didn't port), `KVINIT`, `OVDIFF`/`OVDIFFS`, `REDUCE_FIG`, and `STCONV` (still
+blocked on unscoped `OSTRAITS.f`).

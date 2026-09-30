@@ -1,0 +1,103 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -4048,3 +4048,100 @@
+       write(fu) tym1
+       write(fu) tzm1
+       end subroutine ffdump_gmfexp
++
++      subroutine ffdump_kppmix(i,j,iter,lmo,lmij,ze,zgrid,hwide,
++     &     byhwide,shsq,dvsq,ustar,bo,bosol,dbloc,ritop,
++     &     akvm,akvs,akvg,ghat,hbl,kbl)
++!@sum full-fidelity-port instrumentation: KPPMIX's real inputs and
++!@+   outputs, Stage 2, D54 (OCNKPP.f:225-836, the K-Profile-
++!@+   Parameterization boundary-layer diffusivity scheme -- confirmed
++!@+   the live branch at both its call sites, since OCN_GISS_TURB is
++!@+   not defined for this build; D53 corrected D52's mis-scoping of
++!@+   the sibling `bldepth` as live -- it is dead). Called from
++!@+   OCONV's per-column, per-iteration loop (up to ITER=4 times per
++!@+   column per OCEANS call, an inner fixed-point iteration on HBL);
++!@+   dumped once per real call so every iteration is its own
++!@+   validation record. LDD is always .false. for this build so
++!@+   alphaDT/betaDS/Coriol never affect KPPMIX's output and are not
++!@+   dumped. ZE is a fixed global vertical grid (same every record);
++!@+   zgrid/hwide/byhwide are per-column, ZSCALE-rescaled versions of
++!@+   it and DO vary per call.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,iter,lmo,lmij,kbl
++      real*8 :: ze(0:lmo),zgrid(0:lmo+1),hwide(0:lmo+1)
++      real*8 :: byhwide(0:lmo+1)
++      real*8 :: shsq(lmo),dvsq(lmo),dbloc(lmo),ritop(lmo),ghat(lmo)
++      real*8 :: ustar,bo,bosol,hbl
++      real*8 :: akvm(0:lmo+1),akvs(0:lmo+1),akvg(0:lmo+1)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1004
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_kppmix_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) dble(i)
++      write(fu) dble(j)
++      write(fu) dble(iter)
++      write(fu) dble(lmij)
++      write(fu) ze
++      write(fu) zgrid
++      write(fu) hwide
++      write(fu) byhwide
++      write(fu) shsq
++      write(fu) dvsq
++      write(fu) ustar
++      write(fu) bo
++      write(fu) bosol
++      write(fu) dbloc
++      write(fu) ritop
++      write(fu) akvm
++      write(fu) akvs
++      write(fu) akvg
++      write(fu) ghat
++      write(fu) hbl
++      write(fu) dble(kbl)
++      end subroutine ffdump_kppmix
++
++      subroutine ffdump_kmixinit_table(nni,nnj,wmt,wst,vtc,cg,
++     &     difmiw,difsiw)
++!@sum full-fidelity-port DEBUG-ONLY instrumentation, D54: one-time dump
++!@+   of kmixinit's wmt/wst lookup tables + scalar constants, to check
++!@+   whether the Python port's independently-computed tables are
++!@+   bit-identical to the real ones (diagnosing a small ~1e-7 relative
++!@+   discrepancy found in kppmix_ff.py's validation). Not gated by
++!@+   FFD_START/FFD_NSTEP -- kmixinit runs once at model startup,
++!@+   unconditionally, before the step loop even begins.
++      implicit none
++      integer :: nni,nnj
++      real*8 :: wmt(0:nni+1,0:nnj+1),wst(0:nni+1,0:nnj+1)
++      real*8 :: vtc,cg,difmiw,difsiw
++      integer :: fu
++      fu=1005
++      open(fu,file='ffz_kmixinit_table.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(nni)
++      write(fu) dble(nnj)
++      write(fu) vtc
++      write(fu) cg
++      write(fu) difmiw
++      write(fu) difsiw
++      write(fu) wmt
++      write(fu) wst
++      close(fu)
++      end subroutine ffdump_kmixinit_table
