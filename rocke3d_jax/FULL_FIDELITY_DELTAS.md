@@ -1634,6 +1634,60 @@ subroutine boundaries and dead/live findings above. Next delta should start on t
 most naturally `bldepth` first (self-contained, feeds `KPPMIX`), or continue scoping
 `OSTRAITS.f`/`OSTRAITS_COM.f` (entirely unread) to unblock `STCONV`.
 
+## D53: OCNKPP.f correction -- bldepth is dead, not live; KPPMIX inlines its own boundary-layer-depth logic
+
+No port code. While reading `KPPMIX`'s body in full to prepare for the actual port, found that
+D52's claim "`bldepth` is a live sibling of `KPPMIX`, called separately by `OCONV`/`STCONV`" was
+**wrong** -- a real correction, caught before any port code was written against it.
+
+Both of `bldepth`'s real call sites (`OCONV` at `OCNKPP.f:~2104`, `STCONV` at `~3254`) sit inside
+an `#ifdef OCN_GISS_TURB` ... `#else` ... `#endif` block:
+```
+#ifndef OCN_GISS_TURB
+      CALL KPPMIX(...)
+#else
+      call bldepth(...)
+#endif
+```
+`OCN_GISS_TURB` is confirmed not `#define`d for this build (same finding as D41/D46), so the live
+branch at **both** call sites is `KPPMIX` directly -- `bldepth` (225 lines) is entirely dead. D52
+mis-scoped this because its call-graph grep (a plain `grep -n "call bldepth"`) found the two real
+call sites and reasonably assumed a routine called unconditionally from two places was live,
+without checking the surrounding `#ifdef` context the way D48's `QCROSS` finding or this same
+delta's `use_qus`/`TRACERS_OCEAN` findings did. Re-reading `KPPMIX`'s body explains why: `KPPMIX`
+contains a full commented-out `c       call bldepth (...)` at its own line 390, with the entire
+boundary-layer-depth algorithm (the bulk-Richardson-number search loop, the `wmt`/`wst`
+lookup-table velocity-scale interpolation, the `swfrac` shortwave-fraction inlining) copied
+inline into `KPPMIX` itself immediately after -- `bldepth` as a separate callable subroutine was
+superseded by this inlining and is now dead weight in the source. The same pattern repeats for
+`blmix` (never a separate live subroutine at all in this file -- its logic was always inline
+within `KPPMIX`, `OCNKPP.f:580-830`) and confirms `wscale`/`swfrac`'s D52 dead-finding from the
+other direction: their logic lives inline in `KPPMIX`/`bldepth` rather than being called out to.
+
+Read all 612 lines of `KPPMIX` in full to confirm this and to prepare for the next delta's actual
+port. One more small input-level finding: `KPPMIX`'s `Coriol` argument (Coriolis parameter) is
+never actually used in the live path -- it only appears inside a fully commented-out
+`hekman`/`hmonob` block explicitly marked "NOT USED" in the source (`OCNKPP.f:550-561`) -- a dead
+input, not affecting any output. `alphaDT`/`betaDS` are likewise live *arguments* but only
+consumed inside `if (LDD) call ddmix(...)`, and `LDD` is the file's `.false.` compile-time
+constant (D52's finding) -- so their actual values passed in from `OCONV`/`STCONV` don't affect
+`KPPMIX`'s output either, though they still need to be threaded through as (unused) parameters
+for a faithful port signature.
+
+Corrected `FULL_FIDELITY_PLAN.md`'s `OCNKPP.f` row: `bldepth` moved from "live" to "dead" (D52's
+scope estimate already excluded `STCONV`'s 378 lines but had *included* `bldepth`'s 225 as live
+main-grid scope -- revised main-grid estimate is now **~2,235 lines**, not ~2,460). The real
+live core reduces to essentially just `KPPMIX`(612, self-contained, inlines its own boundary-
+layer-depth and mixing-coefficient logic) + `z121`(23, the only subroutine `KPPMIX` actually
+calls) + `OCONV`(1,526) + `KVINIT`(46) + `OVDIFF`(60) + `OVDIFFS`(47) + `REDUCE_FIG`(14), minus
+the already-found embedded-dead `use_qus`/`TRACERS_OCEAN` branches inside `OCONV`.
+
+Next delta starts the actual port: `KPPMIX`+`z121`, the clean self-contained numerical core, fed
+by `kmixinit`'s one-time (model-init, not per-step) `wmt`/`wst` lookup tables and `FZ500`
+array -- both pure closed-form functions of fixed physical constants and the fixed vertical grid
+`ZE`, ported directly rather than dumped, consistent with this project's precedent for
+configuration-fixed setup data (D29's `RADIUS`/`GRAV`, D47's `MESO_DIFFUSIVITY_CONST`).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

@@ -1235,10 +1235,51 @@ confirmed live (called from `OCNDYN2.f:487`, both its gating conditions always t
 serial/`NOCEAN=1` build) but depends entirely on `OSTRAITS.f`'s `STRAITS` module data, which has
 not been scoped at all -- left out of this delta's live-scope count as a separate follow-on.
 
-Net result: a revised main-grid live-scope estimate of ~2,460 lines (`OCONV`+`KPPMIX`+`bldepth`+
-`KVINIT`+`z121`+`OVDIFF`+`OVDIFFS`+`REDUCE_FIG`, minus the embedded `use_qus`/`TRACERS_OCEAN`
-dead branches found inside `OCONV`) -- about 3.5x the size of the entire Gent-McWilliams family
-just closed in D46-D51. This is confirmed as the single largest remaining physics item in Stage
-2's ocean core. No port code this delta; `FULL_FIDELITY_PLAN.md`'s `OCNKPP.f` row rewritten with
-the corrected boundaries and findings above. Next natural step is `bldepth` (self-contained,
-feeds `KPPMIX`) or scoping `OSTRAITS.f`/`OSTRAITS_COM.f` to unblock `STCONV`.
+Net result: a (revised-again in D53, see below) main-grid live-scope estimate -- about 3x the
+size of the entire Gent-McWilliams family just closed in D46-D51. This is confirmed as the
+single largest remaining physics item in Stage 2's ocean core. No port code this delta;
+`FULL_FIDELITY_PLAN.md`'s `OCNKPP.f` row rewritten with the corrected boundaries and findings
+above.
+
+## D53: correction -- bldepth is dead, not live; KPPMIX inlines its own boundary-layer logic
+
+Started reading `KPPMIX`'s full body to prepare for the actual port (the natural next step after
+D52), and immediately hit something that contradicted D52's own finding: D52 had called
+`bldepth` a live sibling of `KPPMIX`, called separately by `OCONV` and `STCONV`. Re-checking both
+call sites found them sitting inside `#ifndef OCN_GISS_TURB -> CALL KPPMIX(...) #else ->
+call bldepth(...) #endif` -- and `OCN_GISS_TURB` is confirmed undefined for this build (the same
+finding D41/D46 already established for this exact file). So `KPPMIX` is the live branch at
+*both* call sites; `bldepth` never actually runs. D52's grep (`call bldepth`) found the two real
+call sites and reasonably read "called from two places, unconditionally" as "live" without
+checking the surrounding `#ifdef` -- the same kind of miss this project has caught before (D48's
+`QCROSS`, and this same delta's own `use_qus`/`TRACERS_OCEAN` findings) checked the guard and
+this one, on a faster first pass, didn't.
+
+Reading `KPPMIX`'s own body explained why immediately: right where the commented-out
+`c call bldepth (...)` sits (`OCNKPP.f:390`), the *entire* boundary-layer-depth algorithm is
+inlined directly afterward -- the bulk-Richardson-number search loop with its `goto`, the
+`wmt`/`wst` lookup-table velocity-scale interpolation, the `swfrac` shortwave-fraction formula
+inlined a second time. Read the rest of `KPPMIX` straight through after that and found the same
+pattern for `blmix` -- never a separately-called live subroutine in this file at all, its whole
+boundary-layer-mixing-coefficient computation (`OCNKPP.f:580-830`) is inline in `KPPMIX` too.
+This is consistent with (and explains) D52's other finding that `wscale`/`swfrac` have no live
+caller anywhere -- their logic was hand-copied into `KPPMIX`/`bldepth` rather than called out to,
+and since `bldepth` itself turns out to be dead, that inlined logic only actually executes once,
+inside `KPPMIX`.
+
+One more small finding from the full read: `KPPMIX`'s `Coriol` (Coriolis parameter) argument is
+threaded through the signature but never used in the live path -- its only reference is inside a
+block the source itself has commented out with an explicit "NOT USED" label
+(`OCNKPP.f:550-561`, the `hekman`/`hmonob` depth-limit check). `alphaDT`/`betaDS` are live
+arguments too, but only read inside `if (LDD) call ddmix(...)`, and `LDD` is the compile-time
+`.false.` constant D52 already found -- so like `Coriol`, they need to be threaded through a
+faithful port's signature but don't affect its output.
+
+Corrected `FULL_FIDELITY_PLAN.md`'s `OCNKPP.f` row: revised main-grid live-scope estimate is now
+~2,235 lines (`OCONV`+`KPPMIX`+`z121`+`KVINIT`+`OVDIFF`+`OVDIFFS`+`REDUCE_FIG`, `bldepth`'s 225
+lines removed), still roughly 3x the Gent-McWilliams family's size. No port code this delta
+either -- but the KPPMIX read that surfaced this correction also means the next delta can start
+the actual port immediately: `KPPMIX`+`z121`, fed by a direct (not dumped) port of `kmixinit`'s
+`wmt`/`wst` lookup tables and `FZ500` array, since `kmixinit` is pure closed-form math over fixed
+physical constants and the fixed vertical grid `ZE` -- the same "record/derive fixed setup data
+directly" precedent as D29's `RADIUS`/`GRAV` and D47's `MESO_DIFFUSIVITY_CONST`.
