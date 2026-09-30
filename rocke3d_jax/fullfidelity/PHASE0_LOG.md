@@ -965,3 +965,59 @@ final values, all 3 dates -- confirming the hand-traced accumulation scheme (inc
 `xeven` pattern and the `NOCEAN=1` simplification) was exactly right. `tests/test_odhorz_smuv.py`
 (13 tests). JAX deliberately deferred, same as `ODHORZ` itself. Full regression pending a final
 rerun before commit.
+
+## 2026-09-30: D45 -- OADVT2/OADVTX2/OADVTY2/OADVTZ2 (tracer advection), three real bugs, all found
+by isolating real mismatches rather than by inspection
+Picked up the tracer-advection family scoped since D41: `OADVT2`'s dispatcher
+(`OCNDYN2.f:1853-1914`) plus `OADVTX2`/`OADVTY2`/`OADVTZ2` (1916-2423). Confirmed `TRACERS_OCEAN`
+is not defined for this rundeck, so `OADVT2` fires exactly twice per `OCEANS` call (`G0M`
+QLIMIT=.FALSE., `S0M` QLIMIT=.TRUE.), each re-deriving `MA` identically from the same real
+`SMU`/`SMV`/`SMW` (D43/D44). Added `ffdump_oadvt2_before`/`_after` (real tracer-moment + SMW
+state bracketing both calls).
+
+First full port attempt produced errors up to 1e14 in magnitude. Root cause: `OADVTX2`'s `mudt`
+array is a SINGLE array declared once for the whole subroutine call (not reset per row/layer) --
+indices 1, 2, IM get unconditionally refreshed from `MU` every pass regardless of activity, while
+every other index is only refreshed within that pass's own U-active segments, otherwise
+deliberately retaining whatever an earlier, unrelated (L,J) pass left there. Reading
+`OCNDYN.f:1494`'s `get_i1i2` (the segment-builder) revealed two more subtleties missed on the
+first read: segments are explicitly linear, not circular ("Wraparound is disabled" -- longitude
+periodicity at the dateline is handled by OADVTX2's own explicit I=1/I=IM special-casing, not by
+the segment structure), and a single-cell M-segment not starting at I=1 is skipped entirely
+(`i1yzm>1 .and. i1yzm==i2yzm`, line 2066). Rewrote `OADVTX2` as a precise segment-based
+transliteration (a Python `_get_i1i2` matching the real algorithm line-for-line) -- fixed most of
+the error but left a widespread (~16,600 cells) small-but-real (~1e-5 relative) mismatch.
+
+Isolated the SECOND bug by checking global/per-layer mass conservation (near-perfect, ruling out
+a gross flux error) then bisecting which of X1/Y/Z/X2 introduced the divergence via a
+debug-only instrumentation addition (`ffdump_oadvt2_stage`, dumping MA/RM/RX/RY/RZ after each
+of OADVT2's 4 sub-stages, S0M call only) -- found the error was ALREADY present before ANY
+advection ran, in the seed `MA=MMI` itself. An earlier attempt had re-derived `MMI` as
+`MO0*DXYPO(J)` using `ODHORZ0`'s own already-validated `mo0` input; this doesn't match the real
+`MMI`, because `MMI` is a persistent `OCEAN_DYN` module array that `ODHORZ0` only partially
+overwrites (not a dense recomputation covering every cell). Fixed by dumping `MMI` directly
+(`ffdump_mmi`) instead of re-deriving it -- this alone took all 8 tracer-moment fields
+(G0M/GXMO/GYMO/GZMO/S0M/SXMO/SYMO/SZMO) to bitwise-exact, leaving only `MA` itself with a small
+residual mismatch.
+
+Used the same stage-debug instrumentation to isolate the THIRD bug to exactly `OADVTZ2`, at
+exactly the pole row (J=JM), growing with layer depth -- the classic signature of
+persistent-per-cell state diverging over a sequential layer scan. Recognized this as the same
+`nbyzm` North-Pole restriction found in D40 (J=JM restricted to I=1 only): `OADVTZ2`'s
+`cmup`/`fmup`/... arrays are carried across layers per-(I,J), so processing every I at the pole
+pointwise (via `LMM(i,JM)`) let each I accumulate its OWN history, while the real Fortran leaves
+I=2..IM's state frozen at 0 forever. Applied the same `m_active`-style override used since D40 --
+fixed the pole mismatch completely.
+
+A fourth, smaller fix surfaced along the way: `OADVTY2`'s pole-averaging
+(`mo(:,j,l)=sum(mo(:,j,l))/im`) used `np.sum()`, whose pairwise/blocked reduction rounds
+differently from ifort's `-fp-model strict` sequential `SUM` intrinsic for the same 72 terms --
+replaced with a dedicated `_fortran_sum` left-to-right accumulator.
+
+Removed the debug-only `ffdump_oadvt2_stage` instrumentation before finalizing the delta's
+patches (it served its bisection purpose but was never meant to be permanent), did a final clean
+rebuild + 3-date rerun to regenerate dumps without it, and re-validated: still bitwise-exact.
+`fullfidelity/oadvt2_ff.py`/`oadvt2_compare.py`: all 9 checked fields, all 3 dates, 0.000e+00
+max-abs-diff. `tests/test_oadvt2_ff.py` (22 tests). JAX deferred (same discipline as D42's
+`ODHORZ` -- this routine's dynamic segment structure and pole-masking subtlety make it a poor
+first batching candidate). Full regression pending a final rerun before commit.

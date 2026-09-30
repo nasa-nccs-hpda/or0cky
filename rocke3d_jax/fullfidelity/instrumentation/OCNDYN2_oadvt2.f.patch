@@ -1,0 +1,25 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -366,6 +366,11 @@
+ c
+       dtdum = DTOLF
+       Call CONSERV_OCE (G0INIT)
++
++      CALL ffdump_oadvt2_before(IM,JM,LMO,DTDUM,SMW,
++     &     G0M,GXMO,GYMO,GZMO, S0M,SXMO,SYMO,SZMO)
++      CALL ffdump_mmi(IM,JM,LMO,MMI)
++
+       if(use_qus==1) then
+         CALL OADVT3 (MO1,G0M,
+      &     GXMO,GYMO,GZMO, GXXMO,GYYMO,GZZMO, GXYMO,GYZMO,GZXMO,
+@@ -379,6 +384,10 @@
+         CALL OADVT2 (MO1,S0M,SXMO,SYMO,SZMO,DTDUM,.TRUE.
+      *        ,OIJL(1,J_0H,1,IJL_SFLX))
+       endif
++
++      CALL ffdump_oadvt2_after(IM,JM,LMO,MO1,
++     &     G0M,GXMO,GYMO,GZMO, S0M,SXMO,SYMO,SZMO)
++
+       Call CONSERV_OCE (G0FINAL)
+ 
+ c

@@ -1,0 +1,140 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3586,3 +3586,137 @@
+       write(fu) smu
+       write(fu) smv
+       end subroutine ffdump_smfinal
++
++      subroutine ffdump_oadvt2_before(im,jm,lmo,dtdum,smw,
++     &     g0m,gxmo,gymo,gzmo,s0m,sxmo,symo,szmo)
++!@sum full-fidelity-port instrumentation: OADVT2's real inputs, Stage
++!@+   2, D45 (tracer advection of potential enthalpy G0M and salt
++!@+   S0M -- OADVTX2/OADVTY2/OADVTZ2, called via OADVT2's Strang-
++!@+   splitting dispatcher). SMW is OFLUXV's (D43) vertical mass
++!@+   flux, not previously dumped directly. MA (=MMI, the mass field
++!@+   OADVT2 actually advects) is NOT dumped here -- it equals
++!@+   MO0*DXYPO(J) using ODHORZ0's already-validated (D40) mo0 input,
++!@+   frozen from before any dynamics sub-stepping this OCEANS call.
++!@+   One record per OCEANS call (NOCEAN=1), same cadence as
++!@+   ffdump_ofluxv/ffdump_smfinal.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: dtdum
++      real*8 :: smw(im,jm,lmo)
++      real*8 :: g0m(im,jm,lmo),gxmo(im,jm,lmo),gymo(im,jm,lmo)
++      real*8 :: gzmo(im,jm,lmo)
++      real*8 :: s0m(im,jm,lmo),sxmo(im,jm,lmo),symo(im,jm,lmo)
++      real*8 :: szmo(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=995
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_oadvt2_before_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) dtdum
++      write(fu) smw
++      write(fu) g0m
++      write(fu) gxmo
++      write(fu) gymo
++      write(fu) gzmo
++      write(fu) s0m
++      write(fu) sxmo
++      write(fu) symo
++      write(fu) szmo
++      end subroutine ffdump_oadvt2_before
++
++      subroutine ffdump_oadvt2_after(im,jm,lmo,mo1,
++     &     g0m,gxmo,gymo,gzmo,s0m,sxmo,symo,szmo)
++!@sum full-fidelity-port instrumentation: OADVT2's real outputs,
++!@+   Stage 2, D45. MO1 is the final advected mass (the dummy-arg MA,
++!@+   overwritten from MMI at the top of each OADVT2 call and
++!@+   re-derived identically for both the G0M and S0M calls since
++!@+   they share the same starting mass and flux fields).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: mo1(im,jm,lmo)
++      real*8 :: g0m(im,jm,lmo),gxmo(im,jm,lmo),gymo(im,jm,lmo)
++      real*8 :: gzmo(im,jm,lmo)
++      real*8 :: s0m(im,jm,lmo),sxmo(im,jm,lmo),symo(im,jm,lmo)
++      real*8 :: szmo(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=996
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_oadvt2_after_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) mo1
++      write(fu) g0m
++      write(fu) gxmo
++      write(fu) gymo
++      write(fu) gzmo
++      write(fu) s0m
++      write(fu) sxmo
++      write(fu) symo
++      write(fu) szmo
++      end subroutine ffdump_oadvt2_after
++
++      subroutine ffdump_mmi(im,jm,lmo,mmi)
++!@sum full-fidelity-port instrumentation: OCEAN_DYN's MMI directly (D45 debug/ground-truth --
++!@+   found by mismatch debugging that MO0*DXYPO(J), re-derived from ODHORZ0's own already-
++!@+   validated mo0 input, does NOT match the real MMI OADVT2 actually reads -- dumping it
++!@+   directly instead of re-deriving it).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: mmi(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=998
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_mmi_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) mmi
++      end subroutine ffdump_mmi
