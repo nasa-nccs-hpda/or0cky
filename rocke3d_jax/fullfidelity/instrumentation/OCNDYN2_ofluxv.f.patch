@@ -1,0 +1,36 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -726,6 +726,10 @@
+       Real*8 :: mwfac,mfinal
+       Integer*4 I,J,L,LM, J1,JN,J1P,J1H,JNP,JNQ,JNH, N
+       Logical QNP
++      real*8, dimension(im,grid%j_strt_halo:grid%j_stop_halo,lmo) ::
++     &     DBGMO0,DBGUO0,DBGVO0
++      real*8, dimension(im,grid%j_strt_halo:grid%j_stop_halo) ::
++     &     DBGOPBOT0,DBGOPRESS0
+ C****
+ C**** Extract domain decomposition band parameters
+ C**** ASSUME THAT J1 NEVER EQUALS 2 AND JN NEVER EQUALS JM-1
+@@ -739,6 +743,11 @@
+       JNH = Min(JN+1,JM)
+       QNP = JN==JM          !    F      F      T
+ C****
++      DBGMO0=MO
++      DBGUO0=UO
++      DBGVO0=VO
++      DBGOPBOT0=OPBOT
++      DBGOPRESS0=OPRESS
+ 
+       do l=1,lmo
+         do j=j1p,jn
+@@ -859,6 +868,10 @@
+       enddo
+       call oadvuz(vo,mtmp,mwtmp,dtolf,j1p,jnp,nbyzv,i1yzv,i2yzv)
+ 
++      CALL ffdump_ofluxv(IM,JM,LMO,DTOLF,
++     &     DBGOPBOT0,DBGOPRESS0,DBGMO0,DBGUO0,DBGVO0,
++     &     MO,UO,VO)
++
+       Return
+       End Subroutine OFLUXV
+ 

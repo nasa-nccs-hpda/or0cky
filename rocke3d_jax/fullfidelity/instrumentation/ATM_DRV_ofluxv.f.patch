@@ -1,0 +1,55 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3460,3 +3460,52 @@
+       write(fu) hocean
+       close(fu)
+       end subroutine ffdump_odhorz_hocean
++
++      subroutine ffdump_ofluxv(im,jm,lmo,dtolf,
++     &     opbot0,opress0,mo0,uo0,vo0,
++     &     mo1,uo1,vo1)
++!@sum full-fidelity-port instrumentation: OFLUXV full-grid before/
++!@+   after record (Stage 2, D43: long-timestep vertical mass
++!@+   redistribution + simplest-upstream vertical advection of U/V,
++!@+   via OADVUZ). One record per call (once per NOCEAN iteration,
++!@+   called from OCEANS right after the leapfrog ODHORZ loop).
++!@+   OPRESS is a recorded real input (atmosphere/ice load pressure on
++!@+   the ocean surface, not yet ported upstream).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: dtolf
++      real*8 :: opbot0(im,jm),opress0(im,jm)
++      real*8 :: mo0(im,jm,lmo),uo0(im,jm,lmo),vo0(im,jm,lmo)
++      real*8 :: mo1(im,jm,lmo),uo1(im,jm,lmo),vo1(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=992
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_ofluxv_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) dtolf
++      write(fu) opbot0
++      write(fu) opress0
++      write(fu) mo0
++      write(fu) uo0
++      write(fu) vo0
++      write(fu) mo1
++      write(fu) uo1
++      write(fu) vo1
++      end subroutine ffdump_ofluxv

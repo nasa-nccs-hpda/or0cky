@@ -1234,6 +1234,33 @@ calls-per-window check, a dedicated `OPBOT`-accumulation regression pin, mask no
 bathymetry sanity check. JAX vectorization deliberately deferred as its own follow-up (this
 project's GHY-lesson discipline: prove F0 correctness first on large multi-physics routines).
 
+## D43: OFLUXV + OADVUZ -- long-timestep vertical mass redistribution
+
+Picked `OFLUXV` (~90 lines) + `OADVUZ` (~35 lines): the vertical mass-redistribution step called
+once per NOCEAN iteration right after the leapfrog `ODHORZ` loop. **Corrected an earlier scoping
+assumption**: `OFLUXV` does not call `OPFIL2` at all -- the polar-filter setup module just happens
+to sit next to it in the source file. No external dependencies: `DZO`/`ZE` (L13 layering) reused
+from D34's `DZO_L13`; `OPRESS` recorded as a real input.
+
+Traced the `nbyzm(j,2)`/`nbyzm(j,l+1)` layer-shifted masking before writing any code: single-layer
+columns (`LMM==1`) are never touched by this routine at all. Real data has zero single-layer
+columns across all 3 dates (checked explicitly) -- cross-checked against a synthetic two-column
+case instead, same pattern as D28's rain branch.
+
+**Two real bugs caught, both before/during the first validation runs.** (1) A `DXYPO`/`DTOLF`
+bookkeeping error: `SMW`'s accumulation carries `DXYPO(J)/DTOLF`, later divided out again when
+averaging onto U/V-points -- the `DXYPO(J)` term cancels but a residual `/DTOLF` remains; the
+first draft dropped both factors, traced through the algebra by hand and fixed before running
+anything. (2) The JAX port's dense vectorization produced NaN at genuinely-inactive columns (0/0
+division) -- fixed by threading an explicit active-cell mask through `OADVUZ`'s `lax.scan` carry,
+freezing R/CMUP/FMUP at inactive cells exactly as the Fortran's per-cell skip does.
+
+`fullfidelity/ofluxv_ff.py`/`ofluxv_jax.py`: bitwise/float64-exact against real Fortran on all 3
+dates, both ports, after the fixes above. `tests/test_ofluxv_jax.py` (18 tests): real-record
+validation x2 ports x3 dates, jit-vs-eager, `ZE`/`DZO` derivation check, explicit no-real-single-
+layer-columns confirmation plus synthetic cross-check, a dedicated NaN-regression pin, non-
+vacuous mass-redistribution check.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

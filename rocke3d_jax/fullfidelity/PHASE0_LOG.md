@@ -884,3 +884,40 @@ its own follow-up, per this project's established discipline (GHY's lesson: prov
 first; a routine this large and multi-physics deserves dedicated care when batching it, not a
 rushed pass appended to an already-long delta). Full regression pending a final rerun before
 commit.
+
+## 2026-09-30: D43 -- OFLUXV + OADVUZ ported and validated
+Picked `OFLUXV` (`OCNDYN2.f:711-800`, ~90 lines) + `OADVUZ` (2471-2521, ~35 lines) as D43: the
+"long-timestep vertical redistribution of mass" step, called once per NOCEAN iteration right
+after the leapfrog `ODHORZ` loop closes. Reading it fully corrected an earlier scoping
+assumption: `OFLUXV` does **not** call `OPFIL2` at all (the earlier "OFLUXV, calls OPFIL2" note
+was wrong -- `OPFIL2`'s filter-coefficient setup module just happens to sit immediately after
+`OFLUXV` in the source file, unrelated). No external dependencies at all: `DZO`/`ZE` (L13 fixed
+layering) already analytically available from D34's `DZO_L13`; `OPRESS` recorded as a real input.
+
+Traced the exact `nbyzm(j,2)`/`nbyzm(j,l+1)` layer-shifted masking carefully before writing any
+port code: layer 1's rescale and the bottom-layer update are BOTH gated on "column reaches layer
+2" -- meaning single-layer columns (`LMM==1`) are never touched by this routine at all, a genuine
+edge case verified by reading the source, not assumed. Real data across all 3 test dates has zero
+single-layer columns (checked explicitly), so this branch is cross-checked against a synthetic
+two-column case instead -- the same honest-scoping pattern as D28's rain branch.
+
+**A real `DXYPO`/`DTOLF` bookkeeping bug caught before the first validation run**: `SMW`'s
+accumulation carries a `DXYPO(J)/DTOLF` factor in the Fortran, later divided out again (`bydxypo`)
+when averaging onto U/V-points -- at U-points the `DXYPO(J)` cancels completely since both
+neighbor terms share the same J, but a residual `/DTOLF` remains; at V-points each term's own
+`DXYPO(J)`/`DXYPO(J+1)` cancels individually, again leaving `/DTOLF` in both terms. The first
+draft dropped both factors as if they cancelled completely -- traced through the algebra by hand
+before running anything, caught the missing `/DTOLF`, fixed.
+
+`fullfidelity/ofluxv_ff.py`: bitwise/float64-exact against real Fortran on all 3 dates, first
+full run after the fix. `fullfidelity/ofluxv_jax.py`: vectorized over (I,J) via `jax.lax.scan`
+sequential in L for `OADVUZ`'s Courant-style recurrence -- **a second real bug caught here**: a
+first, fully-dense version produced NaN at genuinely-inactive (I,J) columns (0/0 division, since
+naive vectorization computes every cell unconditionally where the Fortran's nbyz-gated loop skips
+them entirely, leaving state frozen) -- fixed by threading an explicit active-cell mask through
+the scan's carry (R/CMUP/FMUP all frozen, not recomputed, at inactive cells), matching the
+Fortran's per-cell skip semantics exactly. `tests/test_ofluxv_jax.py` (18 tests): real-record
+validation x2 ports x3 dates, jit-vs-eager, a `ZE`/`DZO` derivation check, an explicit "no real
+single-layer columns" confirmation plus the synthetic cross-check, a dedicated NaN-regression
+pin for the OADVUZ masking bug, and a non-vacuous mass-redistribution check. Full regression
+pending a final rerun before commit.
