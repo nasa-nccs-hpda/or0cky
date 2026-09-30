@@ -1,0 +1,83 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3509,3 +3509,80 @@
+       write(fu) uo1
+       write(fu) vo1
+       end subroutine ffdump_ofluxv
++
++      subroutine ffdump_odhorz_smuv(im,jm,lmo,dt,xeven,
++     &     smu0,smv0,smu1,smv1)
++!@sum full-fidelity-port instrumentation: ODHORZ's SMU/SMV
++!@+   (integrated horizontal mass flux) accumulation, Stage 2, D44.
++!@+   Each ODHORZ call contributes MU/MV*XEVEN to the module-level
++!@+   running sum (XEVEN=1 on "even" leapfrog sub-steps, 0 otherwise)
++!@+   -- one record per ODHORZ call, same cadence as ffdump_odhorz.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: dt,xeven
++      real*8 :: smu0(im,jm,lmo),smv0(im,jm,lmo)
++      real*8 :: smu1(im,jm,lmo),smv1(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=993
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_odhorz_smuv_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) dt
++      write(fu) xeven
++      write(fu) smu0
++      write(fu) smv0
++      write(fu) smu1
++      write(fu) smv1
++      end subroutine ffdump_odhorz_smuv
++
++      subroutine ffdump_smfinal(im,jm,lmo,smu,smv)
++!@sum full-fidelity-port instrumentation: the fully-integrated SMU/SMV
++!@+   mass fluxes right before OFLUXV is called (Stage 2, D44) -- the
++!@+   real ground-truth input to OFLUXV/OADVT2's tracer advection.
++!@+   One record per OCEANS call (NOCEAN=1 for this rundeck, so this
++!@+   matches OFLUXV's own one-record-per-itime cadence).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: smu(im,jm,lmo),smv(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=994
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_smfinal_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) smu
++      write(fu) smv
++      end subroutine ffdump_smfinal

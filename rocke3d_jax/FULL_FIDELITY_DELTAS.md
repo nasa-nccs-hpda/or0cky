@@ -1261,6 +1261,41 @@ validation x2 ports x3 dates, jit-vs-eager, `ZE`/`DZO` derivation check, explici
 layer-columns confirmation plus synthetic cross-check, a dedicated NaN-regression pin, non-
 vacuous mass-redistribution check.
 
+## D44: ODHORZ's SMU/SMV accumulation -- completing ODHORZ for D45's tracer advection
+
+While scoping D45 (`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVT2`, tracer advection), found a real gap in
+D42's `ODHORZ` port: the real Fortran's `OADVT2` dispatcher reads `SMU`/`SMV`/`SMW`
+(`Use OCEAN_DYN, only : mb=>mmi,smu,smv,smw`) as its actual mass-flux inputs. `SMW` was already
+ported in D43 (`OFLUXV`). `SMU`/`SMV` (`OCEAN_DYN`'s "integrated horizontal mass fluxes") turned
+out to be accumulated **inside `ODHORZ` itself** (`OCNDYN2.f:1351,1443`) -- genuine real per-step
+physics, not an external-file dependency, and D42's port never captured it since nothing D42
+validated needed it.
+
+Traced the accumulation by hand before writing any code: `SMU`/`SMV` are zeroed once per
+`NOCEAN` sub-step (`NOCEAN=1` for this rundeck, confirmed in `OCEAN_COM.f`, so this reduces to
+"once per `OCEANS` call" in practice) and accumulated as `smu[i,j,l] += mu[i,j]*xeven` /
+`smv[i,j,l] += mv[i,j]*xeven`, where `xeven=1` only on the "even" leapfrog sub-step calls
+(`qeven=.true.`) and 0 otherwise (2 of `ODHORZ`'s 5 calls per window contribute; 3 don't). The
+`mu`/`mv` arrays reused for this accumulation are the exact same ones D42's port already computes
+(and already validated, indirectly, via `MO`/`OPBOT`'s bitwise-exact match) for the mass-
+continuity update -- so this delta only needed to *record* that accumulation, not re-derive the
+underlying flux fields.
+
+Extended `odhorz()` with optional `qeven`/`smu0`/`smv0` arguments (backward-compatible: omitting
+them preserves D42's original 6-tuple return). New instrumentation: `ffdump_odhorz_smuv` (unit
+993, per-call `SMU`/`SMV` before/after + `xeven`, same 5-calls-per-itime cadence as
+`ffdump_odhorz`) and `ffdump_smfinal` (unit 994, the fully-integrated `SMU`/`SMV` right before
+`OFLUXV` is called -- the real ground-truth input D45 will consume).
+
+`fullfidelity/odhorz_smuv_compare.py`: two checks per date, both **bitwise-exact, first try, zero
+mismatches** -- (1) each of the 5 calls' own `smu0->smu1`/`smv0->smv1` delta, replayed through the
+extended `odhorz()`; (2) the full end-to-end chain (starting from `SMU=SMV=0`, using the port's
+own output as each next call's input) against `ffz_smfinal`'s real recorded final values.
+`tests/test_odhorz_smuv.py` (13 tests): per-call and chained-final validation across all 3 dates,
+an explicit pin on the "2 of 5 calls contribute" `xeven` pattern, non-vacuous-accumulation check,
+and a backward-compatibility check that the original D42 call signature still returns a 6-tuple.
+JAX vectorization deliberately deferred, same as `ODHORZ` itself (D42's open item).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

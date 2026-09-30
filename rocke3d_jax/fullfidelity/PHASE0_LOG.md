@@ -921,3 +921,47 @@ validation x2 ports x3 dates, jit-vs-eager, a `ZE`/`DZO` derivation check, an ex
 single-layer columns" confirmation plus the synthetic cross-check, a dedicated NaN-regression
 pin for the OADVUZ masking bug, and a non-vacuous mass-redistribution check. Full regression
 pending a final rerun before commit.
+
+## 2026-09-30: D44 -- ODHORZ's SMU/SMV accumulation (completing ODHORZ for D45)
+Started scoping D45 (the `OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVT2` tracer-advection family, next per
+D41's own scoping notes) by re-reading `OADVT2`'s dispatcher (`OCNDYN2.f:1853-1914`) and its
+callers in `OCEANS` (lines 355-369, `CALL OADVT2(MO1,G0M,...,DTDUM,.FALSE.,...)` /
+`CALL OADVT2(MO1,S0M,...,DTDUM,.TRUE.,...)`). It reads `SMU`/`SMV`/`SMW` from `OCEAN_DYN` as real
+mass-flux inputs (`USE OCEAN_DYN, only : mb=>mmi,smu,smv,smw`). `SMW` is D43's already-ported
+`OFLUXV` output. `SMU`/`SMV` turned out not to be set anywhere I'd already ported -- grepped the
+whole tree for `mmi\s*=`/`smu\s*=`/`smv\s*=` assignments outside the dead `#ifdef TRACERS_OCEAN`
+block and found exactly one live site: inside `ODHORZ` itself
+(`OCNDYN2.f:1351` `SMU(I,J,L) = SMU(I,J,L) + MU(I,J)*xeven`, `:1443` the `SMV` equivalent). D42's
+port never captured this since MO/OPBOT's validation never exercised it.
+
+Traced the whole accumulation scheme by hand from the `OCEANS` driver before writing any code,
+since it initially looked far more complex than it turned out to be: `Do NO=1,NOCEAN` --
+`NOCEAN=1` for this rundeck (`OCEAN_COM.f:112`, not overridden in the rundeck), confirmed by
+balance-tracing the Do/enddo nesting all the way from `Do NO=1,NOCEAN` (line 249) through
+`Call OFLUXV` (line 350) and finding they're still at the same nesting depth -- i.e. `OFLUXV` and
+`OADVT2` fire *inside* the NOCEAN loop, once per NOCEAN sub-step, which for `NOCEAN=1` is simply
+once per `OCEANS` call. `SMU`/`SMV` are zeroed once at the top of that loop
+(`OCNDYN2.f:259-260`), then each of the 5 `ODHORZ` calls per window contributes
+`mu[i,j]*xeven`/`mv[i,j]*xeven`, where `xeven=1` only for the 2 "even" leapfrog-substep calls
+(`qeven=.true.`, inside the `do n=1,neven` loop) and 0 for the other 3 (the 2 initial odd-state-
+init calls before the loop, plus the 1 odd leapfrog-corrector call) -- confirmed by dumping
+`xeven` directly rather than assuming the call sequence.
+
+Crucially, the `mu`/`mv` arrays used for this accumulation are the *exact same* arrays D42's port
+already computes for the mass-continuity (`MO`/`OPBOT`) update, already implicitly validated by
+D42's own bitwise-exact match -- so this delta only needed to record the accumulation, not
+re-derive the flux fields themselves.
+
+New instrumentation (additive, doesn't touch D42/D43's already-validated dump formats):
+`ffdump_odhorz_smuv` (unit 993, per-call SMU/SMV before/after + xeven, same 5-records-per-itime
+cadence as `ffdump_odhorz`) and `ffdump_smfinal` (unit 994, the fully-integrated SMU/SMV right
+before `OFLUXV` is called -- the real ground-truth D45 will consume). Extended `odhorz()` with
+optional `qeven`/`smu0`/`smv0` args (backward-compatible: the original D42 call signature still
+returns a 6-tuple untouched).
+
+`fullfidelity/odhorz_smuv_compare.py`: **bitwise-exact, first try, zero mismatches** on both the
+per-call replay and the full 5-call chained accumulation against `ffz_smfinal`'s real recorded
+final values, all 3 dates -- confirming the hand-traced accumulation scheme (including the
+`xeven` pattern and the `NOCEAN=1` simplification) was exactly right. `tests/test_odhorz_smuv.py`
+(13 tests). JAX deliberately deferred, same as `ODHORZ` itself. Full regression pending a final
+rerun before commit.

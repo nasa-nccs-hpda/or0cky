@@ -1,0 +1,40 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -354,6 +354,8 @@
+ c is this still needed?
+       if(j_1 == JM) UO(IVNP,JM,:) = VONP(:) ! not needed if Mod(IM,4)=0
+ 
++      CALL ffdump_smfinal(IM,JM,LMO,SMU,SMV)
++
+ c
+ c long-timestep vertical redistribution of mass (and momentum)
+ c
+@@ -1232,7 +1234,8 @@
+       Logical QNP
+       Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
+      &     DBGUSMOOTH,DBGPGFX,
+-     &     DBGMO0,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0
++     &     DBGMO0,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0,
++     &     DBGSMU0,DBGSMV0
+       Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO) ::
+      &     DBGOPBOT0
+       integer, save :: DBGHOCEANINIT=0
+@@ -1264,6 +1267,8 @@
+       DBGUOD0=UOD
+       DBGVOD0=VOD
+       DBGOPBOT0=OPBOT
++      DBGSMU0=SMU
++      DBGSMV0=SMV
+       IF (DBGHOCEANINIT.EQ.0) THEN
+         DBGHOCEANINIT=1
+         CALL ffdump_odhorz_hocean(IM,JM,mZSOLID)
+@@ -1572,6 +1577,9 @@
+      &     VBAR,dZGdP,DBGUSMOOTH,DBGPGFX,
+      &     MO,UO,VO,UOD,VOD,OPBOT)
+ 
++      CALL ffdump_odhorz_smuv(IM,JM,LMO,DT,XEVEN,
++     &     DBGSMU0,DBGSMV0,SMU,SMV)
++
+       Return
+       End Subroutine ODHORZ
+ 

@@ -1,4 +1,6 @@
-"""Full-fidelity port of OCNDYN2.f's ODHORZ -- Stage 2 of the DYNSI/ocean port, D42.
+"""Full-fidelity port of OCNDYN2.f's ODHORZ -- Stage 2 of the DYNSI/ocean port, D42 (D44 added
+optional SMU/SMV accumulation, OCEAN_DYN's integrated horizontal mass fluxes consumed by
+OFLUXV/OADVT2's tracer advection -- see `odhorz()`'s docstring and `odhorz_smuv_compare.py`).
 
 ODHORZ is the actual horizontal momentum + mass-continuity solve that ODHORZ0 (D40) prepares
 pressure/equation-of-state inputs for. Called several times per DTsrc step (twice for the initial
@@ -79,12 +81,27 @@ def geomo_dyn_arrays():
 def odhorz(lmm, lmu, lmv, hocean, dt,
            moh, uoh, voh, uodh, vodh, opboth,
            mo0, uo0, vo0, uod0, vod0, opbot0,
-           vbar, dzgdp, usmooth, pgfx):
+           vbar, dzgdp, usmooth, pgfx,
+           qeven=None, smu0=None, smv0=None):
     """Direct port of ODHORZ (OCNDYN2.f:1185-1560ish). All 2D fields shape (IM+1,JM+1); all 3D
     fields shape (IM+1,JM+1,LMO+1); 1-indexed. `usmooth`,`pgfx` are OPFIL2's recorded real
     per-layer outputs (shape (IM+1,JM+1,LMO+1), used directly). Returns
     (mo, uo, vo, uod, vod, opbot), fresh copies.
+
+    D44 addition: `qeven`/`smu0`/`smv0` are optional -- when given, also accumulates and returns
+    SMU/SMV (OCEAN_DYN's integrated horizontal mass fluxes, `Use OCEAN_DYN, Only: SMU,SMV` in the
+    real Fortran), reusing the same `mu`/`mv` arrays already computed (and already validated via
+    D42's MO/OPBOT match) for the mass-continuity update: `smu[i,j,l] = smu0[i,j,l] +
+    mu[i,j]*xeven`, `xeven = 1.0 if qeven else 0.0` (OCNDYN2.f:1351,1443 -- SMU accumulates in the
+    east-west-pressure-gradient block, SMV in the "update VO,UOD" block, both reusing the single
+    MU/MV computation also read later by the mass-continuity update). Returns
+    (mo, uo, vo, uod, vod, opbot, smu, smv) when qeven is not None, else the original 6-tuple.
     """
+    track_sm = qeven is not None
+    if track_sm:
+        xeven = 1.0 if qeven else 0.0
+        smu = smu0.copy()
+        smv = smv0.copy()
     sinvo, sinpo, dxpo, dypo, dxvo, dyvo, dxyvo, dxypo = geomo_dyn_arrays()
     cosic, sinic, cosu, sinu = geomo_pole_arrays()
 
@@ -209,6 +226,8 @@ def odhorz(lmm, lmu, lmv, hocean, dt,
                 im1 = IM if i == 1 else i - 1
                 mmid = moh[i, j, l] + moh[i, j + 1, l]
                 mv[i, j] = mvfac * voh[i, j, l] * mmid
+                if track_sm:
+                    smv[i, j, l] = smv0[i, j, l] + mv[i, j] * xeven
                 uq = 0.25 * (ua[i, j] + ua[i, j + 1]) * (vort[im1, j] + vort[i, j])
                 vo[i, j, l] = vo0[i, j, l] + dt * (
                     pgfy[i, j] + (ke[i, j] - ke[i, j + 1]) * bydy - uodh[i, j, l] * corofj - uq)
@@ -225,6 +244,8 @@ def odhorz(lmm, lmu, lmv, hocean, dt,
                 if u_active(i, j, l):
                     mmid = moh[i, j, l] + moh[1 if i == IM else i + 1, j, l]
                     mu[i, j] = 0.5 * dypo[j] * us[i, j] * mmid
+                    if track_sm:
+                        smu[i, j, l] = smu0[i, j, l] + mu[i, j] * xeven
         for j in range(2, JM):
             convfac = dt / dxypo[j]
             for i in range(1, IM + 1):
@@ -241,4 +262,6 @@ def odhorz(lmm, lmu, lmv, hocean, dt,
             for i in range(2, IM + 1):
                 mo[i, j, l] = mo[1, j, l]
 
+    if track_sm:
+        return mo, uo, vo, uod, vod, opbot, smu, smv
     return mo, uo, vo, uod, vod, opbot
