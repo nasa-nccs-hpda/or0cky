@@ -1159,3 +1159,35 @@ assumed.
 `fullfidelity/gmredi_ff.py` (extended)/`gmkdif_compare.py`. `tests/test_gmkdif_ff.py` (12 tests).
 Only `GMFEXP`+its three flux helpers (`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`, ~465 lines
 -- the actual flux application to G0M/S0M) remain to close out the Gent-McWilliams family.
+
+## 2026-09-30: D51 -- GMFEXP+helpers ported, bitwise-exact first try, Gent-McWilliams family closed
+Ported the last piece: `GMFEXP` plus `computeFluxes`/`wrapAdjustFluxes`/`addFluxes`. Re-derived
+all four routines by hand from the full source read during D48's scoping (re-verified the exact
+formulas, loop bounds, and pole-handling structure before writing any code, rather than working
+from memory of the earlier read).
+
+One real ambiguity surfaced while doing this: `GMFEXP` reads a module-level `MO` array, but D45's
+`OADVT2` only explicitly updates `MO1` (a separate dummy argument bound to `MA`). Searched the
+whole `OCEANS` driver body between the `OADVT2` calls and `ocnstate_derived`/`GMFEXP` for an
+explicit `MO = MO1` sync and found none -- inconclusive from source alone whether `MO` reflects
+the post-advection mass or an earlier snapshot. Rather than spend more time chasing this through
+the leapfrog even/odd state alternation (which has tripped this project up before, e.g. D42's
+restart double-buffering issue), just recorded `MO` directly at the point `GMFEXP` reads it --
+the same "when in doubt, record it" discipline used for other ambiguous upstream quantities all
+session. The bitwise-exact result confirms this was the right call.
+
+Confirmed two things from the close re-read that mattered for the port's correctness, not
+assumed: `GMFEXP`'s own main loop excludes the pole rows entirely (unlike `ISOSLOPE4`/`GMKDIF`'s
+pole-inclusive J range established in D49/D50) -- so `TXM`/`TYM` at the poles should pass through
+completely unchanged, which became a dedicated regression test. And the real Fortran's own
+`TZM`-update code inside `computeFluxes` is commented out in full (several lines of dead code
+still sitting in the source) -- `TZM` is an `INTENT(INOUT)` argument that's never actually
+written to, confirmed by checking the real dump's `TZM` before/after are bit-identical before
+writing the port, then pinned as its own regression test too.
+
+First validation run came back bitwise-exact on all 4 fields (`TRM`/`TXM`/`TYM`/`TZM`), both
+calls (`G0M`/`S0M`), all 3 dates -- no debugging needed, the largest delta of this family closed
+cleanly on the first try. `fullfidelity/gmredi_ff.py` (extended)/`gmfexp_compare.py`.
+`tests/test_gmfexp_ff.py` (15 tests). This closes the Gent-McWilliams mesoscale-mixing family
+opened in D46: `OCNMESO_DRV.f`+`OCNGM.f`'s entire real per-step live path is now ported and
+validated.

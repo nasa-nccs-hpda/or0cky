@@ -1,0 +1,66 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3988,3 +3988,63 @@
+       write(fu) ezy
+       write(fu) cezy
+       end subroutine ffdump_gmkdif
++
++      subroutine ffdump_gmfexp(im,jm,lmo,qlimit,
++     &     mo0,trm0,txm0,tym0,tzm0,
++     &     trm1,txm1,tym1,tzm1)
++!@sum full-fidelity-port instrumentation: GMFEXP's real inputs and
++!@+   outputs, Stage 2, D51 (the actual Gent-McWilliams skew-flux
++!@+   application to G0M/S0M, OCNGM.f:330-499 + its three helpers
++!@+   computeFluxes/wrapAdjustFluxes/addFluxes). MO recorded directly
++!@+   as a real input (the mass field GMFEXP actually reads at this
++!@+   point in OCEANS -- not re-derived from D45's OADVT2/MO1 output,
++!@+   since tracing whether MO gets synced from MO1 between OADVT2 and
++!@+   here was inconclusive from source alone; recording it directly
++!@+   sidesteps that ambiguity, the same "when in doubt, record it"
++!@+   discipline used throughout this project). GIJL (diagnostic-only)
++!@+   not dumped. Called twice per OCEANS call (QLIMIT=.FALSE. for
++!@+   G0M, QLIMIT=.TRUE. for S0M) -- 2 records accumulate per itime.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      logical :: qlimit
++      real*8 :: mo0(im,jm,lmo)
++      real*8 :: trm0(im,jm,lmo),txm0(im,jm,lmo)
++      real*8 :: tym0(im,jm,lmo),tzm0(im,jm,lmo)
++      real*8 :: trm1(im,jm,lmo),txm1(im,jm,lmo)
++      real*8 :: tym1(im,jm,lmo),tzm1(im,jm,lmo)
++      real*8 :: qlimit_d
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1003
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_gmfexp_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      qlimit_d = 0.
++      if (qlimit) qlimit_d = 1.
++      write(fu) dble(itime)
++      write(fu) qlimit_d
++      write(fu) mo0
++      write(fu) trm0
++      write(fu) txm0
++      write(fu) tym0
++      write(fu) tzm0
++      write(fu) trm1
++      write(fu) txm1
++      write(fu) tym1
++      write(fu) tzm1
++      end subroutine ffdump_gmfexp

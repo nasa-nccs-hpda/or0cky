@@ -1505,6 +1505,42 @@ mixed-layer-exclusion non-vacuousness check. `GMFEXP`+its three flux helpers
 (`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`, ~465 lines) -- the actual flux application to
 G0M/S0M -- remain the last piece of this family.
 
+## D51: GMFEXP + computeFluxes + wrapAdjustFluxes + addFluxes -- Gent-McWilliams family closed
+
+Ported the last piece of the mesoscale-mixing family: `GMFEXP` (`OCNGM.f:330-499`,
+`QCROSS`-excluded per D48) and its three helpers `computeFluxes`/`wrapAdjustFluxes`/`addFluxes`
+(496-995) -- the actual Gent-McWilliams skew-flux application to `G0M` (`QLIMIT=.FALSE.`) and
+`S0M` (`QLIMIT=.TRUE.`), called twice per `OCEANS` invocation. **Bitwise-exact on all 4 checked
+fields (`TRM`/`TXM`/`TYM`/`TZM`), both calls, all 3 dates, first try -- no bugs found**, the
+largest delta this family and the first fully-correct-on-first-try delta of this size this
+session.
+
+Sidestepped a real ambiguity found while tracing the source: `MO` (the mass field `GMFEXP` reads)
+could not be conclusively traced back to D45's `OADVT2`/`MO1` output from source alone (no
+explicit `MO = MO1` sync was found between the two). Rather than guess, recorded `MO` directly as
+a real input at the point `GMFEXP` actually reads it -- the established "when in doubt, record
+it" discipline, and the bitwise-exact result confirms this was the right call regardless of how
+`MO`/`MO1` actually relate upstream.
+
+Two things confirmed from a close source read, not assumed: (1) `GMFEXP`'s own main loop never
+touches the pole rows (its J range is 2..JM-1, unlike `ISOSLOPE4`/`GMKDIF`'s pole-inclusive
+range) -- pole-row `TXM`/`TYM` pass through completely unchanged, pinned by a dedicated test.
+(2) The real Fortran's own `TZM`-update code is commented out in full inside `computeFluxes` --
+`TZM` is never actually updated by `GMFEXP` despite being an `INTENT(INOUT)` argument; the port
+deliberately never touches it either, also pinned by a dedicated regression test.
+
+`fullfidelity/gmredi_ff.py` (extended with `gmfexp` + three internal helpers matching
+`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`)/`gmfexp_compare.py`. `tests/test_gmfexp_ff.py`
+(15 tests): both-calls real-record validation, a `QLIMIT` structural check, the `TZM`-untouched
+and pole-`TXM`/`TYM`-untouched regression pins, non-vacuous-flux checks. `GIJL` diagnostic
+accumulations not ported (same precedent as every OIJL/GIJL update throughout Stage 2).
+
+**This closes the Gent-McWilliams mesoscale-mixing family opened in D46** (scoping) through D47
+(prerequisites), D48 (scoping), D49 (`ISOSLOPE4`), D50 (`GMKDIF`'s remaining coefficients), and
+now D51 (`GMFEXP`+helpers) -- `OCNMESO_DRV.f`+`OCNGM.f`'s entire real per-step live path (the
+"skew-GM" branch) is now ported and validated; `OCNTDMIX.f` (2,030 lines) and `GET_PSI_DIAG`
+confirmed dead/diagnostic, do not port.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

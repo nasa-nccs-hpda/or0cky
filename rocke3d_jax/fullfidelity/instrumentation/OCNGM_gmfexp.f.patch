@@ -1,0 +1,35 @@
+--- OCNGM.f.orig
++++ OCNGM.f
+@@ -349,6 +349,8 @@
+       INTEGER I,J,L,IM1,IP1
+ 
+       INTEGER :: J_0, J_1, J_0S, J_1S, J_0STG, J_1STG, J_0H, J_1H
++      REAL*8, DIMENSION(IM,grid%j_strt_halo:grid%j_stop_halo,LMO) ::
++     &     DBGTRM0,DBGTXM0,DBGTYM0,DBGTZM0,DBGMO0
+ 
+ c**** Extract domain decomposition info
+       call getDomainBounds(grid, J_STRT = J_0, J_STOP = J_1,
+@@ -356,6 +358,12 @@
+      &               J_STRT_STGR=J_0STG, J_STOP_STGR=J_1STG,
+      &               J_STRT_HALO = J_0H,   J_STOP_HALO = J_1H)
+ 
++      DBGTRM0=TRM
++      DBGTXM0=TXM
++      DBGTYM0=TYM
++      DBGTZM0=TZM
++      DBGMO0=MO
++
+       DT4 = 0.25*DTS
+ C**** Explicit calculation of "fluxes" (R(T))
+ C**** Calculate tracer concentration
+@@ -495,6 +503,10 @@
+         call addFluxes (TRM, flux_x, flux_y, flux_z, GIJL)
+       END IF
+ 
++      CALL ffdump_gmfexp(IM,JM,LMO,QLIMIT,
++     &     DBGMO0,DBGTRM0,DBGTXM0,DBGTYM0,DBGTZM0,
++     &     TRM,TXM,TYM,TZM)
++
+       RETURN
+       END SUBROUTINE GMFEXP
+ C****
