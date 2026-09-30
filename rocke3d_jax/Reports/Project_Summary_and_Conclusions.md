@@ -1,4 +1,4 @@
-# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D42, 2026-09-29)
+# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D43, 2026-09-30)
 
 This is the front page for the full-fidelity port (branch `full-fidelity-port`). It states the
 goal, the method, the results with their numbers, what is still open, and where each piece of
@@ -6,7 +6,7 @@ code lives. It links to the detailed ledger for the evidence rather than repeati
 `README_START_HERE.md` is the index of that ledger.
 
 **Status of code:** every delta described here is committed and pushed to `full-fidelity-port`
-on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `54e207d` (D42).
+on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `4770a06` (D43).
 Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of every
 delta.
 
@@ -27,19 +27,21 @@ delta.
   the dumped routine to plain Python and to batched JAX, and check both against the real numbers
   — bitwise or float64-rounding exact, with a pytest suite (including mutation and non-vacuous-
   branch checks) added per delta.
-- **Progress.** 42 deltas complete (D1-D42). Ice
-  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D42 so far) is underway;
+- **Progress.** 43 deltas complete (D1-D43). Ice
+  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D43 so far) is underway;
   a major scope correction (D36) found that roughly half of the previously-estimated ocean
   dynamical-core code was dead/superseded, redirecting the remaining work to the correct file.
 - **Result so far.** Every ported routine matches the real Fortran to float64 precision on every
-  real test-date record checked — no exceptions, no approximated substitutes, on **522 passing
-  tests** as of D42 with **zero failures** at any point this session. D42 (`ODHORZ`) closed
-  the first "new architecture"-scale delta -- comparable in scope to D29's ADI solve.
-- **Not established yet:** the ocean dynamical core beyond D33-D42 (mass-flux/pressure-gradient
-  solve, tracer advection, vertical mixing, mesoscale mixing, straits — all separately scoped,
-  ~11,300+ lines still unread); a chained whole-model Track B step; GPU speed numbers for any of
-  the Stage 1/Stage 2 pieces (not yet JAX-batched beyond the per-routine level; no GPU used this
-  session).
+  real test-date record checked — no exceptions, no approximated substitutes, on **594 passing
+  tests** as of D43 with **zero failures** at any point this session. D42 (`ODHORZ`) closed
+  the first "new architecture"-scale delta -- comparable in scope to D29's ADI solve. D43
+  (`OFLUXV`+`OADVUZ`) followed it, correcting D41's scoping note that `OFLUXV` depends on
+  `OPFIL2` (it does not).
+- **Not established yet:** the ocean dynamical core beyond D33-D43 (tracer advection, vertical
+  mixing, mesoscale mixing, straits, the `OPFIL2` polar filter itself — all separately scoped,
+  ~11,300+ lines still unread or deferred); a chained whole-model Track B step; GPU speed numbers
+  for any of the Stage 1/Stage 2 pieces (not yet JAX-batched beyond the per-routine level; no GPU
+  used this session).
 
 ## 2. What was ported
 
@@ -47,8 +49,8 @@ delta.
 |---|---|---|
 | Scope | DYNSI and its full numerical core (~1,460 lines) | The live ocean dynamical core, `OCNDYN.f`'s real physics + `OCNDYN2.f` (~19,000 lines before D36's dead-code correction) |
 | Status | **Closed** (D26-D32) | **Underway** (D33-D39; D36 corrected the remaining scope) |
-| Real per-step physics ported | `PRECIP_SI`/`PRECIP_LK`/`PRECIP_LI`, `DYNSI`/`VPICEDYN`/`FORM`/`PLAST`/`RELAX`, `CALC_APRESS`, `seaice_to_atmgrid`, `UNDERICE` | `PRECIP_OC`, `OSOURC`, `GROUND_OC`'s freezing sweep, `OSTRES2`, `OCOAST`, `OBDRAG2`; polar UOD/VOD relax block in progress |
-| Deferred | `IRRIG_LK` (external dataset dependency) | `GLMELT` (cadence mismatch with test windows), `OFLUXV`/`OPFIL2`/`ODHORZ` (external file + FFT, "new architecture" scale) |
+| Real per-step physics ported | `PRECIP_SI`/`PRECIP_LK`/`PRECIP_LI`, `DYNSI`/`VPICEDYN`/`FORM`/`PLAST`/`RELAX`, `CALC_APRESS`, `seaice_to_atmgrid`, `UNDERICE` | `PRECIP_OC`, `OSOURC`, `GROUND_OC`'s freezing sweep, `OSTRES2`, `OCOAST`, `OBDRAG2`, polar UOD/VOD relax + `polevel`, `ODHORZ0`, `ODHORZ`, `OFLUXV`+`OADVUZ` |
+| Deferred | `IRRIG_LK` (external dataset dependency) | `GLMELT` (cadence mismatch with test windows), `OPFIL2` itself (external file + FFT), `OADVTX2`/`OADVTY2`/`OADVTZ2` (tracer advection, "new architecture" scale), `OCNKPP.f`/`OCNMESO_DRV.f` family |
 | Validation | Bitwise/float64-exact against real Fortran, all real records, both plain-Python and JAX ports | Same standard, same result so far |
 
 ## 3. What was found: real bugs, and one major scope correction
@@ -117,6 +119,17 @@ dependency by recording `OPFIL2`'s outputs directly. Two real bugs (a missing `H
 tolerance exact on all 15 real call records after fixes. JAX vectorization deliberately deferred
 as its own follow-up.
 
+**I. `OFLUXV`+`OADVUZ` closed, `OPFIL2` scoping corrected (2026-09-30, D43).** Ported the
+long-timestep vertical mass-redistribution routine (`OFLUXV`, rescales layer-1/bottom-layer mass
+to restore the L13 fractional-thickness profile) and its embedded simplest-upstream vertical
+advection of U/V (`OADVUZ`). Corrected D41's scoping note: `OFLUXV` does not call `OPFIL2` at all
+(re-read start-to-end; the `opfil2_coeffs` module merely sits adjacent in the source). Two real
+bugs: a `DXYPO(J)/DTOLF` bookkeeping error in the mass-flux accumulation (only partial
+cancellation at U/V-points, not full), and a JAX-only NaN in `OADVUZ` from dense/unmasked
+vectorization dividing 0/0 at genuinely-inactive columns (fixed with an explicit active-cell mask
+threaded through the `lax.scan` carry). Both plain-Python and JAX ports float64-tolerance exact,
+all 3 dates.
+
 ## 5. Results
 
 **Test suite, full project regression** (run after every delta, zero exceptions):
@@ -130,7 +143,8 @@ as its own follow-up.
 | D38 | 522 | 0 |
 | D39 | 543 | 0 |
 | D40 | 560 | 0 |
-| D42 | **576** | **0** |
+| D42 | 576 | 0 |
+| D43 | **594** | **0** |
 
 **Validation standard, every delta:** bitwise-exact or float64-rounding-exact (typically 1e-9 to
 1e-17 absolute difference, consistent with floating-point operation-order noise, not a real
@@ -142,9 +156,11 @@ to reach it, and this is documented plainly in the delta's own entry — never s
 ## 6. Open items
 
 See `README_START_HERE.md`'s "Open items" section for the full, current list (`ODHORZ`'s JAX port,
-`GLMELT`, `OFLUXV`/`OPFIL2`/`ODHORZ`, the `OADVT2` tracer-advection family, `OCNQUS.f`/
-`OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f` — ~11,300 lines entirely unread,
-`IRRIG_LK`, the batched outer DYNSI loop, and the absence of a chained whole-model Track B step).
+`GLMELT`, `OPFIL2` itself, the `OADVTX2`/`OADVTY2`/`OADVTZ2` tracer-advection family,
+`OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f` — ~9,450 lines still surveyed but
+not fully read (`OCNQUS.f` and `OCNGISS_TURB.f`/`OCNGISS_SM.f` are resolved dead code, do not
+port), `IRRIG_LK`, the batched outer DYNSI loop, and the absence of a chained whole-model Track B
+step).
 
 ## 7. What changed in code, and where it lives
 
@@ -162,13 +178,15 @@ standing constraint, unconditional.
 
 ## 8. For discussion / decisions still open
 
-1. **Whether to pursue `OFLUXV`/`OPFIL2`/`ODHORZ`** (the next "new architecture"-scale item,
-   comparable in cost to D29's ADI solve) now, or continue with smaller `OCNDYN2.f` deltas first.
+1. **Whether to pursue `OADVTX2`/`OADVTY2`/`OADVTZ2`** (the next "new architecture"-scale item,
+   comparable in cost to D29's ADI solve — `OFLUXV`/`ODHORZ` are now done) now, or continue
+   reading into `OCNKPP.f`'s `KPPMIX`+`OCONV` (likely the single largest remaining item) first.
 2. **Whether `GLMELT` is worth a dedicated day-boundary-crossing test window**, given it's a small
    (72-line) routine whose validation would need new test-date tooling.
-3. **Whether/when to scope `OCNQUS.f`/`OCNKPP.f`/`OCNMESO_DRV.f` family** — these are unread and
-   could individually be as large as everything done in Stage 2 so far combined; no time estimate
-   exists yet, deliberately, per this project's discipline against estimating unread code.
+3. **Whether/when to fully read `OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f`
+   family** — these are surveyed but not fully read and could individually be as large as
+   everything done in Stage 2 so far combined; no time estimate exists yet, deliberately, per this
+   project's discipline against estimating unread code.
 
 ## 9. Where the evidence is
 

@@ -1,3 +1,18 @@
+**D43 FINISHED (2026-09-30 ~06:35): `OFLUXV` + `OADVUZ` ported and validated** (long-timestep
+vertical mass redistribution that rescales layer-1/bottom-layer mass to restore the L13
+fractional-thickness profile, plus the embedded simplest-upstream vertical advection of U/V).
+**Corrects D41's scoping**: `OFLUXV` does NOT call `OPFIL2` — re-reading the routine start-to-end
+found no such call; the `opfil2_coeffs` module just sits adjacent in the source file. `OPFIL2`
+itself remains unported (open item below). **Two real bugs found and fixed**: a `DXYPO(J)/DTOLF`
+bookkeeping error (the Fortran's mass-flux accumulation carries a factor that only partially
+cancels when averaged onto U/V-points — first draft dropped it entirely), and a JAX-only `OADVUZ`
+NaN bug (dense unmasked vectorization divided 0/0 at genuinely-inactive columns that the Fortran's
+gated loop simply skips — fixed with an explicit active-cell mask threaded through the
+`lax.scan` carry). Confirmed via honest-scoping tests that this rundeck's real bathymetry has no
+single-layer (`LMM==1`) columns on any of the 3 test dates — cross-checked against a synthetic
+construction instead. Both plain-Python and JAX ports float64-tolerance exact on all 3 dates. 18
+new tests. Full regression: **594 passed, 0 failed.**
+
 **D42 FINISHED (2026-09-29 ~22:15): `ODHORZ` ported and validated — first "new architecture"-
 scale delta closed.** The actual horizontal momentum + mass-continuity solve `ODHORZ0` (D40)
 preps pressure/EOS inputs for — comparable in scope to D29's ADI solve, the largest delta since
@@ -82,7 +97,7 @@ next for the one-page version.
 
 ## Current state
 
-**42 deltas complete (D1-D42).** The branch has been under continuous, explicitly
+**43 deltas complete (D1-D43).** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -95,7 +110,7 @@ where explicitly documented), write a pytest suite with mutation and non-vacuous
 rerun the **entire** project regression suite, update the three tracking documents, commit and
 push. Nothing is marked done without a real Fortran number to check it against.
 
-**Test count: 576 passed, 0 failed** (as of D42's commit `54e207d`). Every regression run this
+**Test count: 594 passed, 0 failed** (as of D43's commit `4770a06`). Every regression run this
 session has been zero-failure — no delta has ever broken an earlier one.
 
 **Nothing is running or queued** outside the current turn's own background rebuild/rerun/test
@@ -161,16 +176,18 @@ work started 2026-09-28):**
    once per calendar day (`daily_OCEAN`'s `end_of_day` gate), and the current 6-step/3-hour test
    windows are not confirmed to cross a day boundary. Needs either a day-boundary-crossing test
    window or a decision to skip it.
-3. **`OFLUXV`+`OPFIL2`** (mass-flux computation + the polar Fourier filter itself) is a "new
-   architecture" item on the scale of D29's ADI solve — needs an external `AVR` reduction-matrix
-   binary file plus an FFT (`OFFT`/`OFFTI`). Deliberately deferred; `ODHORZ`/`ODHORZ0` (D40, D42)
-   worked around needing `OPFIL2`'s internals by recording its outputs directly, but `OFLUXV`
-   itself (which also calls `OPFIL2`) is not yet ported.
-4. **`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVUZ`** (tracer advection family, `OCNDYN2.f`) — `OADVTX2`
-   read in full (D41): a genuine 2nd-order-moment flux-limited scheme with dynamic Courant-number
-   substepping, comparable in intricacy to D29's ADI solve. Deliberately deferred rather than
-   rushed (a real test window may never exercise `NCOURANT>1`, and under-validating that branch
-   risks a hidden bug). `OADVTY2`/`OADVTZ2` not yet read but expected similarly structured.
+3. **`OPFIL2`** (the polar Fourier filter itself) — **resolved that `OFLUXV` does NOT depend on it**
+   (D43 correction: re-reading `OFLUXV` start-to-end found no call to `OPFIL2`; the
+   `opfil2_coeffs` module just sits adjacent in the source). `OPFIL2` itself is still unported and
+   still needs an external `AVR` reduction-matrix binary file plus an FFT (`OFFT`/`OFFTI`) whenever
+   something that does call it is tackled. `OFLUXV` (mass-flux + `OADVUZ` vertical advection of
+   U/V) is **done** (D43).
+4. **`OADVTX2`/`OADVTY2`/`OADVTZ2`** (tracer advection family, `OCNDYN2.f`; `OADVUZ` itself is
+   **done**, ported in D43) — `OADVTX2` read in full (D41): a genuine 2nd-order-moment
+   flux-limited scheme with dynamic Courant-number substepping, comparable in intricacy to D29's
+   ADI solve. Deliberately deferred rather than rushed (a real test window may never exercise
+   `NCOURANT>1`, and under-validating that branch risks a hidden bug). `OADVTY2`/`OADVTZ2` not yet
+   read but expected similarly structured.
 5. **`OCNKPP.f`, `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`, `OSTRAITS.f`+`OSTRAITS_COM.f`** —
    `OCNQUS.f` (1,846 lines) is **resolved**: confirmed entirely dead code for this rundeck
    (`USE_QUS=0`, not overridden), do not port. The rest (~9,450 lines combined) are surveyed but
