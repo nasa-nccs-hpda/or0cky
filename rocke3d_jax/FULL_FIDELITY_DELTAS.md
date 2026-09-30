@@ -1475,6 +1475,36 @@ for the pole-row loop-bound bug, non-vacuous slope-limiting checks. `GMKDIF`'s r
 coefficient-setting logic (post-`QCROSS`) and `GMFEXP`+its three flux helpers (~560 lines) remain
 the next pieces of this family.
 
+## D50: GMKDIF's remaining coefficients -- bitwise-exact first try
+
+Ported `GMKDIF`'s remaining (post-`QCROSS`, D48) coefficient-setting logic
+(`OCNGM.f:194-319`): `BXX`/`BYY`/`BZZ` and the `AZX`/`BZX`/`CZX`/`AEZX`/`EZX`/`CEZX`/`AZY`/`BZY`/
+`CZY`/`AEZY`/`EZY`/`CEZY` Z-direction flux coefficients, gated by `L>KPL(I,J)` (GM excluded
+within the mixed layer). Real inputs are exactly D49's already-validated `ISOSLOPE4` outputs plus
+`KPL` (the mixed-layer-depth index, `OCEAN_COM.f`, set by `OCNKPP.f`'s `OCONV` -- not yet ported,
+recorded directly, the established "record what's not yet ported" pattern). No new physics
+instrumentation needed beyond `KPL` itself and `GMKDIF`'s own 15 output arrays.
+
+Applied D49's finding directly rather than rediscovering it: the main loop's J range matches
+`ISOSLOPE4`'s (J=2..JM, including the North Pole row). The real source's separate
+"J=J_1STG+1" extension block (handling a domain-decomposition halo boundary) was identified as a
+pure MPI-parallel artifact that never fires for this rundeck's serial execution (confirmed by
+reasoning: J_STOP_STGR already equals JM in serial, making the block's own `if(J.lt.JM)` guard
+always false) -- not ported, consistent with this project's precedent for skipping inactive
+domain-decomposition-only code paths (verified correct by the bitwise-exact result, not just
+assumed).
+
+Also noted the real Fortran's intentional write-target offsets (`BXX` written at `(IM1,J,L)`, the
+WEST neighbor of the loop's own `I`; `BYY` at `(I,J-1,L)`) and preserved them exactly rather than
+"fixing" what looks like an off-by-one at first glance.
+
+`fullfidelity/gmredi_ff.py` (extended)/`gmkdif_compare.py`: bitwise-exact on all 15 output
+arrays, all 3 dates, first try -- no bugs found. `tests/test_gmkdif_ff.py` (12 tests): real-record
+validation, a `KPL`-plausibility sanity check, a write-offset regression pin, and a
+mixed-layer-exclusion non-vacuousness check. `GMFEXP`+its three flux helpers
+(`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`, ~465 lines) -- the actual flux application to
+G0M/S0M -- remain the last piece of this family.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

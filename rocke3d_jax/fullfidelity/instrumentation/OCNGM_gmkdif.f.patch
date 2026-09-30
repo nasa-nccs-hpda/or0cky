@@ -1,0 +1,14 @@
+--- OCNGM.f.orig
++++ OCNGM.f
+@@ -318,6 +318,11 @@
+       END DO
+       endif
+ 
++      CALL ffdump_gmkdif(IM,JM,LMO,KPL,
++     &     BXX,BYY,BZZ,
++     &     AZX,BZX,CZX,AEZX,EZX,CEZX,
++     &     AZY,BZY,CZY,AEZY,EZY,CEZY)
++
+ C**** End of Main Loop of GMKDIF
+       RETURN
+       END SUBROUTINE GMKDIF

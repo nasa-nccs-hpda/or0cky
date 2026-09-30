@@ -120,3 +120,59 @@ def isoslope4(lmm, rhox, rhoy, rhomz, byrhoz, bydh, dzv, k3d):
                 out["s2y3"][i, j, l] = aiy3st * siy3 * siy3 * bydyp[j] * dyvo[j - 1]
 
     return out
+
+
+def gmkdif(lmm, kpl, aix0, aix1, aix2, aix3, aiy0, aiy1, aiy2, aiy3,
+           asx0, asx1, asx2, asx3, asy0, asy1, asy2, asy3,
+           s2x0, s2x1, s2x2, s2x3, s2y0, s2y1, s2y2, s2y3):
+    """GMKDIF's remaining (post-QCROSS, D48) coefficient-setting logic (OCNGM.f:194-319, this
+    delta's D50 numbering). Real inputs are D49's already-validated ISOSLOPE4 outputs plus `kpl`
+    (mixed-layer-depth index, `OCEAN_COM.f`, set by `OCNKPP.f`'s `OCONV` -- not yet ported,
+    recorded directly). Main loop's J range matches D49's finding (J=2..JM, including the North
+    Pole row) -- the separate "J=J_1STG+1" block in the real source is a pure domain-decomposition
+    (MPI halo) artifact that never fires for this rundeck's serial/single-process execution
+    (J_STOP_STGR already equals JM here), so it's not ported, matching this project's established
+    precedent for skipping inactive parallel-domain-decomposition-only code paths.
+
+    Note the real Fortran's write-target offsets: `BXX` is written at `(IM1,J,L)` (the WEST
+    neighbor of the loop's own `I`), and `BYY` at `(I,J-1,L)` -- both intentional, not typos.
+    Returns a dict with bxx,byy,bzz,azx,bzx,czx,aezx,ezx,cezx,azy,bzy,czy,aezy,ezy,cezy (each
+    (IM+1,JM+1,LMO+1))."""
+    shape = (IM + 1, JM + 1, LMO + 1)
+    out = {}
+    for name in ["bxx", "byy", "bzz", "azx", "bzx", "czx", "aezx", "ezx", "cezx",
+                 "azy", "bzy", "czy", "aezy", "ezy", "cezy"]:
+        out[name] = np.zeros(shape)
+
+    for l in range(1, LMO + 1):
+        for j in range(2, JM + 1):
+            im1 = IM
+            for i in range(1, IM + 1):
+                if lmm[i, j] >= l:
+                    out["bxx"][im1, j, l] = (aix2[i, j, l] + aix0[im1, j, l] +
+                                              aix3[i, j, l] + aix1[im1, j, l])
+                    out["byy"][i, j - 1, l] = (aiy2[i, j, l] + aiy0[i, j - 1, l] +
+                                                aiy3[i, j, l] + aiy1[i, j - 1, l])
+
+                    if l > kpl[i, j]:
+                        if l > 1:
+                            out["bzz"][i, j, l - 1] = (
+                                s2x1[i, j, l] + s2x3[i, j, l] + s2x0[i, j, l - 1] + s2x2[i, j, l - 1] +
+                                s2y1[i, j, l] + s2y3[i, j, l] + s2y0[i, j, l - 1] + s2y2[i, j, l - 1])
+                        out["azx"][i, j, l] = asx2[i, j, l]
+                        out["bzx"][i, j, l] = asx0[i, j, l] - asx2[i, j, l]
+                        out["czx"][i, j, l] = -asx0[i, j, l]
+                        out["aezx"][i, j, l] = asx3[i, j, l]
+                        out["ezx"][i, j, l] = asx1[i, j, l] - asx3[i, j, l]
+                        out["cezx"][i, j, l] = -asx1[i, j, l]
+                        out["azy"][i, j, l] = asy2[i, j, l]
+                        out["bzy"][i, j, l] = asy0[i, j, l] - asy2[i, j, l]
+                        out["czy"][i, j, l] = -asy0[i, j, l]
+                        out["aezy"][i, j, l] = asy3[i, j, l]
+                        out["ezy"][i, j, l] = asy1[i, j, l] - asy3[i, j, l]
+                        out["cezy"][i, j, l] = -asy1[i, j, l]
+                    elif l > 1:
+                        out["bzz"][i, j, l - 1] = 0.0
+                im1 = i
+
+    return out

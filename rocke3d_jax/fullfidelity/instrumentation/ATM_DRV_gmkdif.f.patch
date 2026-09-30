@@ -1,0 +1,70 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3924,3 +3924,67 @@
+       write(fu) s2y2
+       write(fu) s2y3
+       end subroutine ffdump_isoslope4
++
++      subroutine ffdump_gmkdif(im,jm,lmo,kpl,
++     &     bxx,byy,bzz,
++     &     azx,bzx,czx,aezx,ezx,cezx,
++     &     azy,bzy,czy,aezy,ezy,cezy)
++!@sum full-fidelity-port instrumentation: GMKDIF's remaining (post-
++!@+   QCROSS, D48) coefficient outputs, Stage 2, D50. Real inputs are
++!@+   D49's already-validated ISOSLOPE4 outputs (AIX0-3/AIY0-3/
++!@+   ASX0-3/ASY0-3/S2X0-3/S2Y0-3) plus KPL (mixed-layer-depth index,
++!@+   OCEAN_COM.f, set by OCNKPP.f's OCONV -- not yet ported, recorded
++!@+   directly as a real input, the established "record what's not
++!@+   yet ported" pattern) -- no new input instrumentation needed for
++!@+   AIX/AIY/ASX/ASY/S2X/S2Y themselves. KPL is INTEGER; dumped as
++!@+   DBLE(KPL). All (IM,JM,LMO)-ordered (the standard convention).
++!@+   Once per OCEANS call.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      integer :: kpl(im,jm)
++      real*8 :: bxx(im,jm,lmo),byy(im,jm,lmo),bzz(im,jm,lmo)
++      real*8 :: azx(im,jm,lmo),bzx(im,jm,lmo),czx(im,jm,lmo)
++      real*8 :: aezx(im,jm,lmo),ezx(im,jm,lmo),cezx(im,jm,lmo)
++      real*8 :: azy(im,jm,lmo),bzy(im,jm,lmo),czy(im,jm,lmo)
++      real*8 :: aezy(im,jm,lmo),ezy(im,jm,lmo),cezy(im,jm,lmo)
++      real*8 :: kpl_d(im,jm)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1002
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_gmkdif_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      kpl_d = dble(kpl)
++      write(fu) dble(itime)
++      write(fu) kpl_d
++      write(fu) bxx
++      write(fu) byy
++      write(fu) bzz
++      write(fu) azx
++      write(fu) bzx
++      write(fu) czx
++      write(fu) aezx
++      write(fu) ezx
++      write(fu) cezx
++      write(fu) azy
++      write(fu) bzy
++      write(fu) czy
++      write(fu) aezy
++      write(fu) ezy
++      write(fu) cezy
++      end subroutine ffdump_gmkdif

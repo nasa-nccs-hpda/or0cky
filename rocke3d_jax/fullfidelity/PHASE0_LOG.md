@@ -1139,3 +1139,23 @@ dates, immediately after. `fullfidelity/gmredi_ff.py`/`gmredi_compare.py` (new m
 Gent-McWilliams family). `tests/test_gmredi_ff.py` (9 tests), including a dedicated regression pin
 for the pole-row bug specifically (checking AIX0 at J=JM is both nonzero in real data and matched
 by the port). `GMKDIF`'s remaining (post-QCROSS) coefficient logic and `GMFEXP`+helpers are next.
+
+## 2026-09-30: D50 -- GMKDIF's remaining coefficients, bitwise-exact first try
+Ported the rest of `GMKDIF` (post-`QCROSS`, D48): `BXX`/`BYY`/`BZZ` and the twelve Z-direction
+flux coefficients (`AZX` family), gated by `L>KPL(I,J)`. Found one new real dependency while
+reading it closely: `KPL` (mixed-layer-depth index) is set by `OCNKPP.f`'s `OCONV`, which isn't
+ported yet -- recorded it directly as a real input, same discipline as every other not-yet-ported
+dependency this project has handled (OPRESS, VUP/VDN, etc.).
+
+Applied D49's J-range finding (main loop includes J=JM) directly this time instead of assuming
+the old pole-exclusion convention again -- paid off immediately, first validation run came back
+bitwise-exact on all 15 fields, all 3 dates, no debugging needed. Reasoned through (rather than
+guessed) why the real source's separate "J=J_1STG+1" extension block never fires for this
+rundeck's serial execution: it exists to handle a domain-decomposition halo boundary in a
+multi-process run, and in serial J_STOP_STGR already equals JM, making the block's own guard
+always false. The bitwise-exact result confirmed this reasoning was right rather than just
+assumed.
+
+`fullfidelity/gmredi_ff.py` (extended)/`gmkdif_compare.py`. `tests/test_gmkdif_ff.py` (12 tests).
+Only `GMFEXP`+its three flux helpers (`computeFluxes`/`wrapAdjustFluxes`/`addFluxes`, ~465 lines
+-- the actual flux application to G0M/S0M) remain to close out the Gent-McWilliams family.
