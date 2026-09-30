@@ -1,3 +1,31 @@
+**D45 FINISHED (2026-09-30 ~13:40): `OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2` ported and validated —
+`OCNDYN2.f`'s entire real per-step dynamical core is now ported.** The long-timestep advection of
+potential enthalpy (`G0M`) and salt (`S0M`), via `OADVT2`'s Strang-splitting dispatcher (X
+half-step, Y, Z, X half-step again). The largest, most intricate delta this session (~570 lines).
+**Three real bugs found, each via its own debugging cycle**: (1) `OADVTX2`'s `mudt` array is a
+single persistent array with genuinely stale-by-design semantics (indices 1,2,IM unconditionally
+refreshed every pass, everything else only within that pass's own active segments); its segments
+turned out to be linear, not circular ("wraparound is disabled" in the real segment-builder), with
+a single-cell-segment skip missed on first read — fixing this (a precise segment-based rewrite)
+took errors from ~1e14 down to a widespread but small (~1e-5 relative) residual. (2) `MMI` (the
+mass `OADVT2` actually advects) had been re-derived as `MO0*DXYPO(J)`, which doesn't match the
+real `MMI` — a persistent module array `ODHORZ0` only partially overwrites — fixed by dumping it
+directly instead. (3) `OADVTZ2` needed the same "`nbyzm` restricts the North Pole row to I=1 only"
+mask established in D40 — found by adding temporary debug instrumentation to bisect the mismatch
+to exactly this routine, exactly the pole row, then removed before finalizing. A fourth, smaller
+fix: `np.sum()`'s pairwise reduction rounds differently from ifort's sequential `SUM` for a
+72-term pole-average. Bitwise-exact on all 9 checked fields, all 3 dates, after all four fixes.
+22 new tests. JAX deferred (dynamic segment structure + pole masking make this a poor first
+batching candidate).
+
+**D44 FINISHED (2026-09-30 ~09:40): `ODHORZ`'s `SMU`/`SMV` accumulation completed, closing a real
+gap found while scoping D45.** `OADVT2` reads `SMU`/`SMV`/`SMW` as its mass-flux inputs; `SMW` was
+already ported (D43), but `SMU`/`SMV` turned out to be accumulated inside `ODHORZ` itself — real
+per-step physics D42 never captured since nothing D42 validated needed it. Traced the accumulation
+scheme by hand (confirmed `NOCEAN=1` for this rundeck, so it reduces to "once per `OCEANS` call")
+before writing any code. Bitwise-exact, first try, both the per-call replay and the full 5-call
+chained accumulation against a new ground-truth dump. 13 new tests.
+
 **D43 FINISHED (2026-09-30 ~06:35): `OFLUXV` + `OADVUZ` ported and validated** (long-timestep
 vertical mass redistribution that rescales layer-1/bottom-layer mass to restore the L13
 fractional-thickness profile, plus the embedded simplest-upstream vertical advection of U/V).
@@ -97,7 +125,7 @@ next for the one-page version.
 
 ## Current state
 
-**43 deltas complete (D1-D43).** The branch has been under continuous, explicitly
+**45 deltas complete (D1-D45).** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -171,23 +199,20 @@ work started 2026-09-28):**
 
 1. **`ODHORZ`'s JAX vectorization** is deliberately deferred as its own follow-up (D42's
    plain-Python port is validated; batching this large multi-physics routine deserves dedicated
-   care, the GHY-lesson discipline).
+   care, the GHY-lesson discipline). **`OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`'s JAX vectorization**
+   is deferred the same way (D45's plain-Python port is validated; the dynamic segment structure
+   and pole-masking subtlety make it a poor first batching candidate).
 2. **`GLMELT`** (glacial meltwater, `OCNDYN.f`, 72 lines) is scoped but deferred: it fires only
    once per calendar day (`daily_OCEAN`'s `end_of_day` gate), and the current 6-step/3-hour test
    windows are not confirmed to cross a day boundary. Needs either a day-boundary-crossing test
    window or a decision to skip it.
-3. **`OPFIL2`** (the polar Fourier filter itself) — **resolved that `OFLUXV` does NOT depend on it**
-   (D43 correction: re-reading `OFLUXV` start-to-end found no call to `OPFIL2`; the
-   `opfil2_coeffs` module just sits adjacent in the source). `OPFIL2` itself is still unported and
-   still needs an external `AVR` reduction-matrix binary file plus an FFT (`OFFT`/`OFFTI`) whenever
-   something that does call it is tackled. `OFLUXV` (mass-flux + `OADVUZ` vertical advection of
-   U/V) is **done** (D43).
-4. **`OADVTX2`/`OADVTY2`/`OADVTZ2`** (tracer advection family, `OCNDYN2.f`; `OADVUZ` itself is
-   **done**, ported in D43) — `OADVTX2` read in full (D41): a genuine 2nd-order-moment
-   flux-limited scheme with dynamic Courant-number substepping, comparable in intricacy to D29's
-   ADI solve. Deliberately deferred rather than rushed (a real test window may never exercise
-   `NCOURANT>1`, and under-validating that branch risks a hidden bug). `OADVTY2`/`OADVTZ2` not yet
-   read but expected similarly structured.
+3. **`OPFIL2`** (the polar Fourier filter itself) is still unported and still needs an external
+   `AVR` reduction-matrix binary file plus an FFT (`OFFT`/`OFFTI`) whenever something that does
+   call it is tackled — resolved that neither `OFLUXV` (D43) nor `OADVT2`/its family (D45)
+   actually depend on it, so nothing currently blocks on this; it's simply not yet needed.
+4. **`OCNDYN2.f`'s entire real per-step dynamical core is now ported** (D45 closed the last
+   piece, the `OADVT2` tracer-advection family) — nothing remains open in this file beyond
+   `OPFIL2` itself (item 3) and JAX vectorization (item 1).
 5. **`OCNKPP.f`, `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`, `OSTRAITS.f`+`OSTRAITS_COM.f`** —
    `OCNQUS.f` (1,846 lines) is **resolved**: confirmed entirely dead code for this rundeck
    (`USE_QUS=0`, not overridden), do not port. The rest (~9,450 lines combined) are surveyed but
