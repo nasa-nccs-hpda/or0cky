@@ -1,4 +1,4 @@
-# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D40, 2026-09-29)
+# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D42, 2026-09-29)
 
 This is the front page for the full-fidelity port (branch `full-fidelity-port`). It states the
 goal, the method, the results with their numbers, what is still open, and where each piece of
@@ -6,8 +6,7 @@ code lives. It links to the detailed ledger for the evidence rather than repeati
 `README_START_HERE.md` is the index of that ledger.
 
 **Status of code:** every delta described here is committed and pushed to `full-fidelity-port`
-on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `e381533` (D39);
-D40 is validated and pending its commit.
+on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `54e207d` (D42).
 Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of every
 delta.
 
@@ -28,14 +27,15 @@ delta.
   the dumped routine to plain Python and to batched JAX, and check both against the real numbers
   — bitwise or float64-rounding exact, with a pytest suite (including mutation and non-vacuous-
   branch checks) added per delta.
-- **Progress.** 40 deltas complete (D1-D40; D40 validated, commit pending). Ice
-  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D40 so far) is underway;
+- **Progress.** 42 deltas complete (D1-D42). Ice
+  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D42 so far) is underway;
   a major scope correction (D36) found that roughly half of the previously-estimated ocean
   dynamical-core code was dead/superseded, redirecting the remaining work to the correct file.
 - **Result so far.** Every ported routine matches the real Fortran to float64 precision on every
   real test-date record checked — no exceptions, no approximated substitutes, on **522 passing
-  tests** as of D39 (D40 adds 17 more) with **zero failures** at any point this session.
-- **Not established yet:** the ocean dynamical core beyond D33-D40 (mass-flux/pressure-gradient
+  tests** as of D42 with **zero failures** at any point this session. D42 (`ODHORZ`) closed
+  the first "new architecture"-scale delta -- comparable in scope to D29's ADI solve.
+- **Not established yet:** the ocean dynamical core beyond D33-D42 (mass-flux/pressure-gradient
   solve, tracer advection, vertical mixing, mesoscale mixing, straits — all separately scoped,
   ~11,300+ lines still unread); a chained whole-model Track B step; GPU speed numbers for any of
   the Stage 1/Stage 2 pieces (not yet JAX-batched beyond the per-routine level; no GPU used this
@@ -105,6 +105,18 @@ longitude, independent of the ordinary depth mask there), pinned down with a ded
 regression test. Both delivered bitwise/float64-tolerance exact against real Fortran, all 3
 dates.
 
+**H. Scoping sweep and the first "new architecture" delta closed (2026-09-29, D41-D42).** D41:
+read `ODHORZ` and `OADVTX2` in full and confirmed both are genuine "new architecture"-scale
+(comparable to D29's ADI solve); confirmed `OCNQUS.f` (1,846 lines) is entirely dead code for this
+rundeck (`USE_QUS=0`); surveyed `OCNKPP.f` (live core `KPPMIX`+`OCONV`, ~2,800 lines, likely the
+single largest remaining item) and `OCNMESO_DRV.f` family (confirmed `OCNGISS_TURB.f`/
+`OCNGISS_SM.f`, 1,252 lines, entirely dead). D42: committed to and closed `ODHORZ` itself -- the
+actual horizontal momentum + mass-continuity solve, decoupled from the `OPFIL2`/`AVR`-file
+dependency by recording `OPFIL2`'s outputs directly. Two real bugs (a missing `HOCEAN` recording;
+`OPBOT`'s cross-layer accumulation reset incorrectly) caught before any validation run; float64-
+tolerance exact on all 15 real call records after fixes. JAX vectorization deliberately deferred
+as its own follow-up.
+
 ## 5. Results
 
 **Test suite, full project regression** (run after every delta, zero exceptions):
@@ -116,8 +128,9 @@ dates.
 | D36 | 488 | 0 |
 | D37 | 505 | 0 |
 | D38 | 522 | 0 |
-| D39 | **543** | **0** |
-| D40 | 560 (pending commit) | 0 |
+| D39 | 543 | 0 |
+| D40 | 560 | 0 |
+| D42 | **576** | **0** |
 
 **Validation standard, every delta:** bitwise-exact or float64-rounding-exact (typically 1e-9 to
 1e-17 absolute difference, consistent with floating-point operation-order noise, not a real
@@ -128,7 +141,7 @@ to reach it, and this is documented plainly in the delta's own entry — never s
 
 ## 6. Open items
 
-See `README_START_HERE.md`'s "Open items" section for the full, current list (D40's commit,
+See `README_START_HERE.md`'s "Open items" section for the full, current list (`ODHORZ`'s JAX port,
 `GLMELT`, `OFLUXV`/`OPFIL2`/`ODHORZ`, the `OADVT2` tracer-advection family, `OCNQUS.f`/
 `OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f` — ~11,300 lines entirely unread,
 `IRRIG_LK`, the batched outer DYNSI loop, and the absence of a chained whole-model Track B step).
