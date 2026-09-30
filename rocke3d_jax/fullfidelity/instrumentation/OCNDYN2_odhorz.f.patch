@@ -1,0 +1,62 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -1217,6 +1217,12 @@
+       Integer*4 I,J,L, J1,JN,J1P,JNP,J1H,JNH, j1a, jminpfu,jmaxpfu, N
+       integer :: smallmo_loc,smallmo
+       Logical QNP
++      Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO,LMO) ::
++     &     DBGUSMOOTH,DBGPGFX,
++     &     DBGMO0,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0
++      Real*8,Dimension(IM,GRID%J_STRT_HALO:GRID%J_STOP_HALO) ::
++     &     DBGOPBOT0
++      integer, save :: DBGHOCEANINIT=0
+ 
+ C****
+ C**** Extract domain decomposition band parameters
+@@ -1239,6 +1245,17 @@
+         xeven = 0.
+       endif
+ 
++      DBGMO0=MO
++      DBGUO0=UO
++      DBGVO0=VO
++      DBGUOD0=UOD
++      DBGVOD0=VOD
++      DBGOPBOT0=OPBOT
++      IF (DBGHOCEANINIT.EQ.0) THEN
++        DBGHOCEANINIT=1
++        CALL ffdump_odhorz_hocean(IM,JM,mZSOLID)
++      ENDIF
++
+       ZG(:,[GRID%J_STRT_HALO,GRID%J_STOP_HALO])=UNDEF_VAL
+       P(:,[GRID%J_STRT_HALO,GRID%J_STOP_HALO])=UNDEF_VAL
+       PDN(:,[GRID%J_STRT_HALO,GRID%J_STOP_HALO])=UNDEF_VAL
+@@ -1289,6 +1306,7 @@
+       if(qnp) then
+         usmooth(:,jm) = uoh(:,jm,l)
+       endif
++      DBGUSMOOTH(:,:,L) = USMOOTH
+ 
+ c
+ c calculate pressure, geopotential, and kinetic energy
+@@ -1379,6 +1397,7 @@
+       if(any(nbyzu(j1p:JMAXpfu,l).gt.0)) then
+         Call OPFIL2(pgfx,l,J1P,JMAXpfu)
+       endif
++      DBGPGFX(:,:,L) = PGFX
+ 
+       do j=j1p-1,jnp
+         bydy = 1d0/dyvo(j)
+@@ -1534,6 +1553,12 @@
+       call halo_update(grid,uo)
+       call halo_update(grid,vo)
+ 
++      CALL ffdump_odhorz(IM,JM,LMO,DT,
++     &     MOH,UOH,VOH,UODH,VODH,OPBOTH,
++     &     DBGMO0,DBGUO0,DBGVO0,DBGUOD0,DBGVOD0,DBGOPBOT0,
++     &     VBAR,dZGdP,DBGUSMOOTH,DBGPGFX,
++     &     MO,UO,VO,UOD,VOD,OPBOT)
++
+       Return
+       End Subroutine ODHORZ
+ 

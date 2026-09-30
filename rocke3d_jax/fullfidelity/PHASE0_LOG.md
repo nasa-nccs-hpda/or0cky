@@ -839,3 +839,48 @@ mirroring the plain-Python `m_active` helper. `tests/test_odhorz0_jax.py` (17 te
 validation x2 ports x3 dates, compile-time-constants check, jit-vs-eager, a dedicated North-Pole-
 one-cell-only regression test, a pole-copy-fields-uniform check, and mask non-vacuousness. Full
 regression pending a final rerun before commit.
+
+## 2026-09-29: D42 -- ODHORZ ported and validated (plain-Python); first "new architecture"-scale delta closed
+Committed to porting `ODHORZ` (`OCNDYN2.f:1185-1560ish`, the horizontal momentum + mass-continuity
+solve `ODHORZ0`, D40, prepares pressure/EOS inputs for) after confirming via full reading that
+`OPFIL2`'s two per-layer outputs (`USMOOTH`, `PGFX`) could be recorded directly, decoupling this
+delta from the `OPFIL2`/`AVR`-file "new architecture" dependency -- the same pattern as D40's
+`VOLGSP`. This is genuinely large and multi-physics (pressure/geopotential/thickness
+accumulation, kinetic energy, pressure-gradient force, vorticity, Coriolis, mass continuity,
+called several times per DTsrc step in a leapfrog/Euler-predictor pattern with a separate
+"H"/history state and current INOUT state) -- comparable in scope to D29's ADI solve, the
+largest single delta since then.
+
+**A design gap caught mid-writing, before any validation run**: the first draft needed `OGEOZ`'s
+per-call initialization (`-HOCEAN*GRAV`), and `HOCEAN` (bathymetry) had not been recorded --
+caught while writing the port itself (not by a failing test), fixed with one more
+instrumentation+rebuild+rerun cycle (a small, targeted addition: one static geometry dump,
+`ffz_odhorz_hocean.bin`) before writing any further port code.
+
+**A second real bug caught before the first validation run, by re-reading the Fortran once
+more**: `OPBOT` (a 2D array, no layer index) accumulates mass-convergence contributions across
+ALL 13 layers within a single `ODHORZ` call (`opbot(i,j) = opbot(i,j) + convij*grav`, using the
+running value) -- the first draft incorrectly reset it from `OPBOT0` every layer, which would
+have silently kept only the last layer's contribution. Fixed before running the comparison.
+
+`OMEGA` (planetary rotation rate) is a genuine runtime parameter
+(`omega = 2*pi/rotationPeriod`, not a hardcoded constant) -- used at Earth's standard sidereal
+value and validated empirically against real Fortran output, the same approach as D29's
+`RADIUS`/`GRAV` (both independently confirmed Earth-standard for this rundeck via exact matches).
+
+Re-verified every `OGEOM.f` geometry formula (`SINVO`/`SINPO`/`DXPO`/`DYPO`/`DXVO`/`DYVO`) line by
+line against the source before use, rather than trusting the earlier D36-era derivations by
+analogy -- caught no errors this time, but the discipline paid for itself given how much rode on
+getting the Coriolis terms (`corofj = 2*omega*sinpo(j)` / `sinvo(j)`) right.
+
+`fullfidelity/odhorz_ff.py`: matches real Fortran to float64-tolerance (max ~7e-8 absolute,
+consistent with floating-point operation-order noise across the full multi-term momentum
+equation) on **all 15 real call records** (5 `ODHORZ` invocations per date x 3 dates) after the
+two fixes above -- first full validation run, no further bugs found. `tests/test_odhorz_ff.py`
+(16 tests): real-record validation across all records and dates, a multiple-calls-per-window
+sanity check, a dedicated regression pin for the `OPBOT` cross-layer-accumulation bug, mask
+non-vacuousness, and a bathymetry sanity check. **JAX vectorization deliberately deferred** as
+its own follow-up, per this project's established discipline (GHY's lesson: prove F0 correctness
+first; a routine this large and multi-physics deserves dedicated care when batching it, not a
+rushed pass appended to an already-long delta). Full regression pending a final rerun before
+commit.

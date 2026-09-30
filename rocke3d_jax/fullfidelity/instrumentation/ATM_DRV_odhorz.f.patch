@@ -1,0 +1,98 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3368,3 +3368,95 @@
+       write(fu) vo1
+       close(fu)
+       end subroutine ffdump_odhorz0
++
++      subroutine ffdump_odhorz(im,jm,lmo,dt,
++     &     moh,uoh,voh,uodh,vodh,opboth,
++     &     mo0,uo0,vo0,uod0,vod0,opbot0,
++     &     vbar,dzgdp,usmooth,pgfx,
++     &     mo1,uo1,vo1,uod1,vod1,opbot1)
++!@sum full-fidelity-port instrumentation: ODHORZ full-grid before/
++!@+   after record (Stage 2, D42: the horizontal momentum +
++!@+   continuity solve ODHORZ0 preps for -- pressure-gradient force,
++!@+   Coriolis, vorticity advection, mass continuity). Called several
++!@+   times per DTsrc step (once per leapfrog sub-step per NOCEAN
++!@+   iteration) -- multiple records accumulate per itime file.
++!@+   USMOOTH/PGFX are OPFIL2's (polar-Fourier-filter) recorded real
++!@+   outputs -- recorded directly rather than implementing the
++!@+   filter, same "record what's not yet ported" pattern as D40's
++!@+   VOLGSP.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: dt
++      real*8 :: moh(im,jm,lmo),uoh(im,jm,lmo),voh(im,jm,lmo)
++      real*8 :: uodh(im,jm,lmo),vodh(im,jm,lmo),opboth(im,jm)
++      real*8 :: mo0(im,jm,lmo),uo0(im,jm,lmo),vo0(im,jm,lmo)
++      real*8 :: uod0(im,jm,lmo),vod0(im,jm,lmo),opbot0(im,jm)
++      real*8 :: vbar(im,jm,lmo),dzgdp(im,jm,lmo)
++      real*8 :: usmooth(im,jm,lmo),pgfx(im,jm,lmo)
++      real*8 :: mo1(im,jm,lmo),uo1(im,jm,lmo),vo1(im,jm,lmo)
++      real*8 :: uod1(im,jm,lmo),vod1(im,jm,lmo),opbot1(im,jm)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=990
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_odhorz_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) dt
++      write(fu) moh
++      write(fu) uoh
++      write(fu) voh
++      write(fu) uodh
++      write(fu) vodh
++      write(fu) opboth
++      write(fu) mo0
++      write(fu) uo0
++      write(fu) vo0
++      write(fu) uod0
++      write(fu) vod0
++      write(fu) opbot0
++      write(fu) vbar
++      write(fu) dzgdp
++      write(fu) usmooth
++      write(fu) pgfx
++      write(fu) mo1
++      write(fu) uo1
++      write(fu) vo1
++      write(fu) uod1
++      write(fu) vod1
++      write(fu) opbot1
++      end subroutine ffdump_odhorz
++
++      subroutine ffdump_odhorz_hocean(im,jm,hocean)
++!@sum full-fidelity-port instrumentation: ODHORZ's static bathymetry
++!@+   depth (mZSOLID=HOCEAN, needed for OGEOZ's per-call init), Stage
++!@+   2, D42. Written once at first call, unconditional.
++      implicit none
++      integer :: im,jm
++      real*8 :: hocean(im,jm)
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=991
++      open(fu,file='ffz_odhorz_hocean.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(im),dble(jm)
++      write(fu) hocean
++      close(fu)
++      end subroutine ffdump_odhorz_hocean

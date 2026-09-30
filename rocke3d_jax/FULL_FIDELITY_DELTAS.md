@@ -1206,6 +1206,34 @@ integration via `jnp.cumsum` and the North Pole restriction via an explicit mask
 jit-vs-eager, a dedicated North-Pole-one-cell-only regression test, pole-copy-fields-uniform
 check, mask non-vacuousness.
 
+## D42: ODHORZ -- the horizontal momentum + mass-continuity solve, first "new architecture" delta closed
+
+Committed to `ODHORZ` (`OCNDYN2.f:1185-1560ish`) after confirming `OPFIL2`'s two per-layer outputs
+(`USMOOTH`, `PGFX`) could be recorded directly (same pattern as D40's `VOLGSP`), decoupling this
+delta from the `OPFIL2`/`AVR`-file dependency. Genuinely large and multi-physics: pressure/
+geopotential/thickness accumulation, kinetic energy, pressure-gradient force, vorticity, Coriolis,
+mass continuity -- called several times per DTsrc step (leapfrog/Euler-predictor pattern).
+Comparable in scope to D29's ADI solve, the largest delta since then.
+
+**Two real bugs caught before any validation run.** (1) Mid-writing: `OGEOZ`'s per-call init
+needs `HOCEAN` (bathymetry), not yet recorded -- fixed with a small targeted instrumentation
+addition (`ffz_odhorz_hocean.bin`) before writing further port code. (2) Re-reading the source
+once more: `OPBOT` (2D, no layer index) accumulates mass-convergence contributions across all 13
+layers within one call -- the first draft incorrectly reset it from `OPBOT0` every layer, which
+would have silently discarded all but the last layer's contribution. Fixed before the first
+comparison run.
+
+`OMEGA` (planetary rotation rate, a genuine runtime parameter) used at Earth's standard sidereal
+value and validated empirically -- same approach as D29's `RADIUS`/`GRAV`. Every `OGEOM.f`
+geometry formula re-verified line-by-line against source before use.
+
+`fullfidelity/odhorz_ff.py`: matches real Fortran to float64-tolerance on all 15 real call
+records (5 invocations/date x 3 dates), first full validation run after the two fixes above.
+`tests/test_odhorz_ff.py` (16 tests): real-record validation across all records/dates, multiple-
+calls-per-window check, a dedicated `OPBOT`-accumulation regression pin, mask non-vacuousness,
+bathymetry sanity check. JAX vectorization deliberately deferred as its own follow-up (this
+project's GHY-lesson discipline: prove F0 correctness first on large multi-physics routines).
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
