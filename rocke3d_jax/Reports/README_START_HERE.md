@@ -1,3 +1,36 @@
+**D49 FINISHED (2026-09-30 ~15:00): `ISOSLOPE4` ported — first piece of the Gent-McWilliams
+mesoscale-mixing scheme itself.** The isopycnal-slope-derived diffusion coefficients (24 output
+arrays), embarrassingly parallel per-cell — unlike almost everything else in Stage 2. Real inputs
+are exactly D47's `densgrad` outputs plus D47's constant `K3D`, so no new input instrumentation
+was needed. **One real bug**: the main loop, unlike almost every other Stage-2 routine, genuinely
+includes the North Pole row (J=JM) — a first draft assumed the usual pole-exclusion convention and
+silently left it zero, which happened to match on 16 of 24 output fields (where `RHOX`/`RHOY`
+were also zero there) while exposing itself on the other 8 via suspiciously round differences.
+Fixed by extending the loop; bitwise-exact on all 24 fields, all 3 dates. 9 new tests.
+
+**D48 (2026-09-30 ~14:30): scoping-only — read `GMKDIF`/`ISOSLOPE4`/`GET_PSI_DIAG`/`GMFEXP`
++ helpers in full, found two more real scope reductions.** `GET_PSI_DIAG` confirmed purely
+diagnostic (skip). More importantly: `QCROSS` (gating roughly half of `GMKDIF`'s and `GMFEXP`'s
+coefficient/flux logic) is **always false** for this rundeck — `ocnmeso_drv` calls
+`gmkdif(k3d,1d0)` with `RGMI_in` hardcoded to `1d0` in the source itself, not a tunable parameter.
+Revised remaining estimate down to ~700 lines.
+
+**D47 (2026-09-30 ~14:00): `ocnstate_derived` + `densgrad` + `get_1d_mesodiff` ported —
+bitwise-exact, first try, no bugs.** Cell-centered thermodynamic state and density gradients that
+feed Gent-McWilliams. Corrected a D46 assumption along the way: `ocnstate_derived` is called
+twice in the source, but the first call is gated by `#ifdef TRACERS_OceanBiology`, not defined for
+this rundeck — confirmed via the real dump (1 record, not 2) before writing any port code.
+Reused D40's already-validated `ODHORZ0` `DH3D` output directly rather than re-instrumenting it.
+One cosmetic cleanup (not a correctness bug): the same North-Pole `m_active` mask used since D40,
+applied here to silence a harmless-but-noisy transient divide-by-zero. 15 new tests.
+
+**D46 (2026-09-30 ~13:45): scoping-only — corrected a backwards D41 assumption about the
+mesoscale-mixing family.** `CONSTANT_MESO_DIFFUSIVITY` does **not** select a simplified path; it
+only fixes the diffusivity coefficient fed into the full Redi/Gent-McWilliams skew-flux scheme,
+which still runs in full. Found `OCNTDMIX.f` (2,030 lines, the largest file in this family) is
+**entirely dead code** for this build (`use_tdmix=0`). Revised live-code estimate: ~1,455 lines
+remaining (later cut further by D48's findings).
+
 **D45 FINISHED (2026-09-30 ~13:40): `OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2` ported and validated —
 `OCNDYN2.f`'s entire real per-step dynamical core is now ported.** The long-timestep advection of
 potential enthalpy (`G0M`) and salt (`S0M`), via `OADVT2`'s Strang-splitting dispatcher (X
@@ -125,7 +158,7 @@ next for the one-page version.
 
 ## Current state
 
-**45 deltas complete (D1-D45).** The branch has been under continuous, explicitly
+**49 deltas complete (D1-D49).** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -138,7 +171,7 @@ where explicitly documented), write a pytest suite with mutation and non-vacuous
 rerun the **entire** project regression suite, update the three tracking documents, commit and
 push. Nothing is marked done without a real Fortran number to check it against.
 
-**Test count: 594 passed, 0 failed** (as of D43's commit `4770a06`). Every regression run this
+**Test count: 653 passed, 0 failed** (as of D49's commit `3076501`). Every regression run this
 session has been zero-failure — no delta has ever broken an earlier one.
 
 **Nothing is running or queued** outside the current turn's own background rebuild/rerun/test
@@ -213,14 +246,16 @@ work started 2026-09-28):**
 4. **`OCNDYN2.f`'s entire real per-step dynamical core is now ported** (D45 closed the last
    piece, the `OADVT2` tracer-advection family) — nothing remains open in this file beyond
    `OPFIL2` itself (item 3) and JAX vectorization (item 1).
-5. **`OCNKPP.f`, `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`, `OSTRAITS.f`+`OSTRAITS_COM.f`** —
-   `OCNQUS.f` (1,846 lines) is **resolved**: confirmed entirely dead code for this rundeck
-   (`USE_QUS=0`, not overridden), do not port. The rest (~9,450 lines combined) are surveyed but
-   not fully read: `OCNKPP.f`'s live core (`KPPMIX`+`OCONV`, ~2,800 lines) is likely the single
-   largest remaining item; `OCNMESO_DRV.f` confirmed to use a simpler `CONSTANT_MESO_DIFFUSIVITY`
-   path (not full Gent-McWilliams) but not fully quantified; `OCNTDMIX.f`/`OCNGM.f`/`OSTRAITS.f`
-   not yet read at all. `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead
-   (same `#ifdef` pattern as D38's `OBDRAG2` finding) — do not port.
+5. **Mesoscale mixing (`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`) is well underway** —
+   `ocnstate_derived`/`densgrad`/`get_1d_mesodiff` (D47) and `ISOSLOPE4` (D49) are **done**,
+   bitwise-exact. `OCNTDMIX.f` (2,030 lines) confirmed **entirely dead** for this build
+   (`use_tdmix=0`, D46). `QCROSS` confirmed **always false** for this rundeck's actual call,
+   eliminating roughly half of `GMKDIF`'s and `GMFEXP`'s remaining coefficient/flux logic (D48).
+   **Still to port: `GMKDIF`'s remaining coefficient-setting (~100 lines) + `GMFEXP` + its three
+   flux helpers `computeFluxes`/`wrapAdjustFluxes`/`addFluxes` (~465 lines) ≈ 565 lines** — the
+   actual flux application to G0M/S0M. `GET_PSI_DIAG` confirmed purely diagnostic (D48), skip.
+   **`OCNKPP.f`, `OSTRAITS.f`+`OSTRAITS_COM.f` not yet read.** `OCNQUS.f` (1,846 lines) and
+   `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead — do not port.
 6. **`IRRIG_LK`** (Stage 1, external prescribed-irrigation dataset dependency) deferred since D28,
    not yet needed by anything downstream.
 7. **The JAX/batched `jax.lax.while_loop` version of `DYNSI`'s own outer `KKI` loop** (`VPICEDYN`)
