@@ -1020,4 +1020,36 @@ rebuild + 3-date rerun to regenerate dumps without it, and re-validated: still b
 `fullfidelity/oadvt2_ff.py`/`oadvt2_compare.py`: all 9 checked fields, all 3 dates, 0.000e+00
 max-abs-diff. `tests/test_oadvt2_ff.py` (22 tests). JAX deferred (same discipline as D42's
 `ODHORZ` -- this routine's dynamic segment structure and pole-masking subtlety make it a poor
-first batching candidate). Full regression pending a final rerun before commit.
+first batching candidate). Full regression: 629 passed, 0 failed. Committed.
+
+## 2026-09-30: D46 -- mesoscale-mixing scoping, correcting D41's backwards assumption
+With `OCNDYN2.f`'s real per-step core fully closed (D45), moved to the next item:
+`OCNMESO_DRV.f`/`OCNTDMIX.f`/`OCNGM.f` (mesoscale/Gent-McWilliams mixing). D41 had only glanced
+at this family and concluded `CONSTANT_MESO_DIFFUSIVITY` meant a simplified, non-GM path was
+live. Reading `ocnmeso_drv` (`OCNMESO_DRV.f:131-432`) properly this time showed the OPPOSITE:
+`CONSTANT_MESO_DIFFUSIVITY` implies `#define USE_1D_MESODIFF` (a chain inside `OCNMESO_DRV.f`'s
+own header, easy to miss without reading start-to-end), which only fixes the diffusivity
+*coefficient* fed into the full Redi/GM skew-flux scheme -- it does not replace that scheme with
+something simpler. Traced `use_tdmix` (module default 0, confirmed not overridden by grepping the
+rundeck's parameter list for `ocean_use_tdmix`) to find `ocnmeso_drv` actually takes its
+`else ! skew-GM` branch: `GMKDIF` (`OCNGM.f:125-323`) then `GMFEXP` (`OCNGM.f:325-494`), both
+real, substantial routines I hadn't previously read at all.
+
+Followed the dependency chain one level further: `ocnmeso_drv`'s `densgrad` helper needs
+`G3D`/`S3D`/`P3D`/`V3D` module state that turned out to be set by a routine I'd never scoped,
+`ocnstate_derived` (`OCNDYN2.f:1568-1706`) -- found by grepping for where these arrays get
+assigned, since `densgrad`'s own `USE` statement just consumes them without hinting at the
+source. Confirmed it's called twice per `OCEANS` invocation (lines 166 and 557, the second right
+before `ocnmeso_drv` itself at line 577).
+
+**Good news found along the way**: `OCNTDMIX.f` (2,030 lines, the single largest file in this
+family) is entirely dead code for this build -- `use_tdmix=0` means the whole `if(use_tdmix==1)`
+block in `ocnmeso_drv` (including every `OCNTDMIX.f` call) never executes. That's over 2,000
+lines removed from the real scope in one grep-and-confirm.
+
+No port code written -- this was a scoping delta, matching D41's precedent (read fully, size
+accurately, don't rush a port before understanding the real call graph). Revised estimate for
+the actual port: ~1,455 real live lines across `ocnstate_derived`+`densgrad`+`get_1d_mesodiff`
+(OCNMESO_DRV.f/OCNDYN2.f side) + `GMKDIF`+`ISOSLOPE4`+`GET_PSI_DIAG`+`GMFEXP`+its three flux
+helpers (OCNGM.f side) -- comparable in scale to D45. `FULL_FIDELITY_PLAN.md`'s row for this
+family rewritten with the corrected scope and the OCNTDMIX.f dead-code finding.

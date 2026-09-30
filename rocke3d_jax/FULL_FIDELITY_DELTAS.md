@@ -1353,6 +1353,37 @@ non-vacuous-advection check. JAX vectorization deliberately deferred (same "new 
 discipline as D42's `ODHORZ`) -- this routine's dynamic segment structure and pole-masking
 subtlety make it a poor first candidate for batching.
 
+## D46: mesoscale-mixing scoping -- correcting D41, sizing the next delta
+
+With `OCNDYN2.f`'s entire real per-step dynamical core closed (D45), scoped the next item:
+`OCNMESO_DRV.f`/`OCNTDMIX.f`/`OCNGM.f` (mesoscale/Gent-McWilliams mixing), previously surveyed
+only at a glance in D41. That earlier scoping was **backwards**: it assumed `CONSTANT_MESO_
+DIFFUSIVITY` selects a simplified path instead of the full Redi/GM slope calculation. Reading
+`ocnmeso_drv` (`OCNMESO_DRV.f:131-432`) start-to-end shows the opposite -- `CONSTANT_MESO_
+DIFFUSIVITY` only fixes the mesoscale-diffusivity *coefficient* (`meso_diffusivity_const=800`
+m²/s, via the trivial `get_1d_mesodiff`); the full Redi/GM **skew-flux** machinery still runs.
+
+Confirmed `use_tdmix=0` (module default, not overridden in the rundeck's parameter list) takes
+`ocnmeso_drv`'s `else ! skew-GM` branch: `OCNGM.f`'s `GMKDIF` (density-gradient-derived isoneutral
+slopes, itself calling `ISOSLOPE4` and `GET_PSI_DIAG`) then `GMFEXP` (applies the skew flux to
+`G0M`/`S0M`, calling `computeFluxes`/`wrapAdjustFluxes`/`addFluxes`). `ocnmeso_drv`'s own
+`densgrad` helper computes horizontal/vertical density gradients via `VOLGSP` (same seawater-EOS
+table as D35/D40) and depends on a previously-unscoped routine found while tracing this,
+`ocnstate_derived` (`OCNDYN2.f:1568-1706`, called twice per `OCEANS`, cell-centered thermodynamic
+state `G3D`/`T3D`/`S3D`/`P3D`/`R3D`/`V3D`).
+
+**`OCNTDMIX.f` (2,030 lines) confirmed entirely dead** for this build: `use_tdmix=0` means the
+whole `if(use_tdmix==1)` block in `ocnmeso_drv` -- including every `OCNTDMIX.f` call -- never
+executes. Do not port it. `simple_mesodiff`/`SIMPLE_MESODIFF` and the `ORIG_MESODIFF` path for
+K3D remain confirmed dead (superseded by `USE_1D_MESODIFF`, implied by `CONSTANT_MESO_
+DIFFUSIVITY`), consistent with D41.
+
+Revised live-code estimate for the next delta: `ocnstate_derived` (138) + `densgrad` (144) +
+`get_1d_mesodiff` (30) + `GMKDIF` (199) + `ISOSLOPE4` (136) + `GET_PSI_DIAG` (138) + `GMFEXP`
+(170) + `computeFluxes`/`wrapAdjustFluxes`/`addFluxes` (~500) ≈ 1,455 lines -- comparable in
+scale to D45, not yet ported. No port code written this delta; `FULL_FIDELITY_PLAN.md`'s
+`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f` row rewritten with the corrected scope.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
