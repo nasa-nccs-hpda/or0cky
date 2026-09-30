@@ -1,0 +1,15 @@
+--- OCNGM.f.orig
++++ OCNGM.f
+@@ -1126,6 +1126,12 @@
+       END DO
+       END DO
+       END DO
++
++      CALL ffdump_isoslope4(IM,JM,LMO,
++     &     AIX0,AIX1,AIX2,AIX3,AIY0,AIY1,AIY2,AIY3,
++     &     ASX0,ASX1,ASX2,ASX3,ASY0,ASY1,ASY2,ASY3,
++     &     S2X0,S2X1,S2X2,S2X3,S2Y0,S2Y1,S2Y2,S2Y3)
++
+       RETURN
+       END SUBROUTINE ISOSLOPE4
+ C****

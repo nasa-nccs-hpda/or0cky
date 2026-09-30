@@ -1114,3 +1114,28 @@ smaller than D46's first estimate now that `GET_PSI_DIAG` and the `QCROSS` branc
 `RHOMZ`/`BYRHOZ`/`BYDH`/`DZV` from D47, `K3D` from D47's `get_1d_mesodiff`) is already validated,
 and the computation is embarrassingly parallel per-cell with no sequential dependency across I/J/L
 -- unlike almost everything else ported so far in Stage 2.
+
+## 2026-09-30: D49 -- ISOSLOPE4 ported, a pole-row loop-bound bug caught by round-number diffs
+Ported `ISOSLOPE4` as planned -- its real inputs are exactly D47's already-validated `densgrad`
+outputs plus `get_1d_mesodiff`'s constant-800 `K3D`, so the only new instrumentation needed was a
+dump of `ISOSLOPE4`'s own 24 output arrays (reusing `ffz_densgrad` as ground-truth input, no new
+input dump).
+
+First validation run: 16 of 24 fields (`ASX0-3`/`ASY0-3`/`S2X0-3`/`S2Y0-3`) bitwise-exact, but the
+other 8 (`AIX0-3`/`AIY0-3`) failed with suspiciously round max-diffs (~1000, ~667 -- not noisy,
+data-dependent numbers). Investigated the single worst cell directly: manually recomputing the
+formula by hand at that exact (I,J,L) gave the CORRECT (real) answer, while the actual port
+function returned 0. That meant the cell was never being touched by the loop at all. The cell was
+at J=JM (the North Pole row) -- and every other routine ported so far in Stage 2 restricts its
+main loop to J=2..JM-1, excluding the pole (handled separately via an explicit copy step). Assumed
+the same convention here without checking, which was wrong: `ISOSLOPE4`'s real loop genuinely
+includes J=JM. The reason 16 of 24 fields still matched despite the bug: at the specific cells
+checked, `RHOX`/`RHOY` (from D47) happened to be zero at the pole, so the `AS`/`S2` products
+(`AIxST*SIx`) come out zero either way -- masking the bug in those fields while the `AI` arrays
+themselves (which don't multiply by `RHOX`/`RHOY`) exposed it directly.
+
+Fixed by extending the loop's upper bound from JM-1 to JM; bitwise-exact on all 24 fields, all 3
+dates, immediately after. `fullfidelity/gmredi_ff.py`/`gmredi_compare.py` (new module for the
+Gent-McWilliams family). `tests/test_gmredi_ff.py` (9 tests), including a dedicated regression pin
+for the pole-row bug specifically (checking AIX0 at J=JM is both nonzero in real data and matched
+by the port). `GMKDIF`'s remaining (post-QCROSS) coefficient logic and `GMFEXP`+helpers are next.

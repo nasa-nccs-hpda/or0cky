@@ -1448,6 +1448,33 @@ same skip. Revised live-code estimate for the actual port: `GMKDIF` (~100, post-
 conservative flux limiter) + `addFluxes` (~145, enthalpy/QLIMIT=false path) ≈ 700 lines --
 smaller than D46's first estimate once dead code is excluded. No port code written this delta.
 
+## D49: ISOSLOPE4 -- the first Gent-McWilliams port, caught a real pole-row loop-bound bug
+
+Ported `ISOSLOPE4` (`OCNGM.f:997-1130`, `QCROSS` branches excluded per D48): the isopycnal-slope-
+derived diffusion coefficients (`AIX0-3`/`AIY0-3`/`ASX0-3`/`ASY0-3`/`S2X0-3`/`S2Y0-3`, 24 output
+arrays), embarrassingly parallel per-cell with no sequential dependency -- unlike almost
+everything else ported in Stage 2. Real inputs are exactly D47's `densgrad` outputs
+(`RHOX`/`RHOY`/`RHOMZ`/`BYRHOZ`/`BYDH`/`DZV`) plus `K3D` (D47's `get_1d_mesodiff`, a
+constant-800 broadcast) -- no new input instrumentation needed; `ffdump_isoslope4` records only
+`ISOSLOPE4`'s own 24 outputs, reusing D47's existing `ffz_densgrad` dump as ground-truth input.
+
+**One real bug, caught on the first validation run.** 8 of the 24 output arrays (`AIX0-3`/
+`AIY0-3`) failed with suspiciously round differences (~1000, ~667) while the other 16
+(`ASX0-3`/`ASY0-3`/`S2X0-3`/`S2Y0-3`) matched exactly. Traced to a wrong assumption about the
+main loop's J range: unlike almost every other routine ported in Stage 2 (which restrict to
+J=2..JM-1, excluding the North Pole row), `ISOSLOPE4`'s real loop genuinely includes J=JM. The
+first draft assumed the usual pole-exclusion convention, silently leaving the pole row at its
+zero-initialized value -- this matched by coincidence at cells where `RHOX`/`RHOY` also happened
+to be zero there (zeroing the `AS`/`S2` products regardless), while missing the real nonzero
+`AI` values that don't depend on `RHOX`/`RHOY` being nonzero. Fixed by extending the loop to
+J=2..JM; bitwise-exact on all 24 fields, all 3 dates, after the fix.
+
+`fullfidelity/gmredi_ff.py`/`gmredi_compare.py` (new module for the Gent-McWilliams family, first
+piece). `tests/test_gmredi_ff.py` (9 tests): real-record validation, a dedicated regression pin
+for the pole-row loop-bound bug, non-vacuous slope-limiting checks. `GMKDIF`'s remaining
+coefficient-setting logic (post-`QCROSS`) and `GMFEXP`+its three flux helpers (~560 lines) remain
+the next pieces of this family.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

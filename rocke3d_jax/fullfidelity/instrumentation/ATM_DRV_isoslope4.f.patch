@@ -1,0 +1,81 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3849,3 +3849,78 @@
+       write(fu) rhox
+       write(fu) rhoy
+       end subroutine ffdump_densgrad
++
++      subroutine ffdump_isoslope4(im,jm,lmo,
++     &     aix0,aix1,aix2,aix3,aiy0,aiy1,aiy2,aiy3,
++     &     asx0,asx1,asx2,asx3,asy0,asy1,asy2,asy3,
++     &     s2x0,s2x1,s2x2,s2x3,s2y0,s2y1,s2y2,s2y3)
++!@sum full-fidelity-port instrumentation: ISOSLOPE4's real outputs,
++!@+   Stage 2, D49 (isopycnal-slope-derived GM/Redi diffusion
++!@+   coefficients, OCNGM.f:997-1130). Real inputs are exactly D47's
++!@+   densgrad outputs (RHOX/RHOY/RHOMZ/BYRHOZ/BYDH/DZV, already
++!@+   dumped via ffdump_densgrad, same itime) plus K3D (=800, a
++!@+   constant broadcast, D47's get_1d_mesodiff) -- no new input
++!@+   instrumentation needed. All (IM,JM,LMO)-ordered (the standard
++!@+   convention, unlike RHOX/RHOY/G3D/etc's LMO-first ordering).
++!@+   Once per OCEANS call.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: aix0(im,jm,lmo),aix1(im,jm,lmo)
++      real*8 :: aix2(im,jm,lmo),aix3(im,jm,lmo)
++      real*8 :: aiy0(im,jm,lmo),aiy1(im,jm,lmo)
++      real*8 :: aiy2(im,jm,lmo),aiy3(im,jm,lmo)
++      real*8 :: asx0(im,jm,lmo),asx1(im,jm,lmo)
++      real*8 :: asx2(im,jm,lmo),asx3(im,jm,lmo)
++      real*8 :: asy0(im,jm,lmo),asy1(im,jm,lmo)
++      real*8 :: asy2(im,jm,lmo),asy3(im,jm,lmo)
++      real*8 :: s2x0(im,jm,lmo),s2x1(im,jm,lmo)
++      real*8 :: s2x2(im,jm,lmo),s2x3(im,jm,lmo)
++      real*8 :: s2y0(im,jm,lmo),s2y1(im,jm,lmo)
++      real*8 :: s2y2(im,jm,lmo),s2y3(im,jm,lmo)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1001
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_isoslope4_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) aix0
++      write(fu) aix1
++      write(fu) aix2
++      write(fu) aix3
++      write(fu) aiy0
++      write(fu) aiy1
++      write(fu) aiy2
++      write(fu) aiy3
++      write(fu) asx0
++      write(fu) asx1
++      write(fu) asx2
++      write(fu) asx3
++      write(fu) asy0
++      write(fu) asy1
++      write(fu) asy2
++      write(fu) asy3
++      write(fu) s2x0
++      write(fu) s2x1
++      write(fu) s2x2
++      write(fu) s2x3
++      write(fu) s2y0
++      write(fu) s2y1
++      write(fu) s2y2
++      write(fu) s2y3
++      end subroutine ffdump_isoslope4
