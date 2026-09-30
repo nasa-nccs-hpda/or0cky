@@ -1,13 +1,22 @@
-**PORT RUNNING (2026-09-29, ~16:00): D39, polar UOD/VOD relaxation block, instrumented and
-dumped on all 3 real dates; Python port not yet written.** Real Fortran records for
-`ffz_polerelax_{geom,<itime>}.bin` (`OCNDYN2.f`'s `OCEANS`, the "relax UOD,VOD toward 4-pt avgs
-of UO,VO" block plus its `polevel()` pole-velocity reconstruction) are in `ff_data/{nov26,dec01,
-jan01}/`, validated against no-regression on every earlier delta's dumps. Next action on resume:
-write `polerelax_ff.py`/`polerelax_jax.py`, validate, write tests, update the ledger, commit.
+**PORT RUNNING (2026-09-29, ~19:50): D40, `ODHORZ0` (pressure/equation-of-state prep), ported
+and validated; full regression running, commit pending.** Caught a real North Pole masking bug
+via the dump comparison itself (`nbyzm` hard-restricts J=JM to I=1 only, independent of `LMM`'s
+value at other longitudes there — a naive `LMM(I,J)>=L` mask, correct everywhere else including
+D36-D39, silently gave wrong values at `(I>1,JM)`); fixed and pinned with a dedicated regression
+test. Confirmed `USE_OPGFQ=0` for this rundeck (only the "Linear Upstream Scheme" branch is live).
+17 new tests, all passing. Next action on resume: confirm the full-suite regression passed, commit
+D40, then continue with `ODHORZ` (the larger per-step horizontal dynamics core `ODHORZ0` preps
+for — not yet read) or another `OCNDYN2.f` item.
+
+**D39 FINISHED (2026-09-29 ~19:15): polar UOD/VOD relaxation block + `polevel()` ported and
+validated.** Float64-op-order exact against real Fortran, both ports, all 3 dates, first try,
+including `polevel()`'s pole-velocity reconstruction and both of UOD's distinct formulas
+(doubled term at the pole-adjacent row vs. non-doubled in the interior). 21 new tests.
 
 **D38 FINISHED (2026-09-29 ~15:07): `OBDRAG2` (implicit bottom-layer current drag) ported and
 validated.** Float64-op-order exact against real Fortran, both plain-Python and JAX ports, all 3
-dates, first try. Full regression: **522 passed, 0 failed.** `FULL_FIDELITY_DELTAS.md`'s D38 entry.
+dates, first try. Full regression: **543 passed, 0 failed** (as of D39). `FULL_FIDELITY_DELTAS.md`'s
+D38/D39/D40 entries.
 
 **D37 FINISHED (2026-09-29 ~11:50): `OCOAST` ported; permanent fix for a restart-file trap that
 had cost real time across D27/D36/D37.** GISS ModelE's restart reader picks whichever of
@@ -54,7 +63,7 @@ next for the one-page version.
 
 ## Current state
 
-**38 deltas complete (D1-D38), D39 mid-flight.** The branch has been under continuous, explicitly
+**39 deltas complete (D1-D39), D40 validated and pending commit.** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -67,9 +76,9 @@ where explicitly documented), write a pytest suite with mutation and non-vacuous
 rerun the **entire** project regression suite, update the three tracking documents, commit and
 push. Nothing is marked done without a real Fortran number to check it against.
 
-**Test count: 522 passed, 0 failed** (as of D38's commit `8057eed`; D39 will add more once its
-port is written). Every regression run this session has been zero-failure — no delta has ever
-broken an earlier one.
+**Test count: 543 passed, 0 failed** (as of D39's commit `e381533`; D40 adds 17 more once its
+regression run confirms and it's committed). Every regression run this session has been
+zero-failure — no delta has ever broken an earlier one.
 
 **Nothing is running or queued** outside the current turn's own background rebuild/rerun/test
 cycles; the session is autonomous and self-paced, not waiting on the user for anything.
@@ -127,16 +136,17 @@ work started 2026-09-28):**
 
 ## Open items
 
-1. **D39 (polar UOD/VOD relaxation block) is instrumented and dumped but not yet ported** — the
-   Python/JAX port, validation, and tests are the immediate next step on resume.
+1. **D40 (`ODHORZ0`) is ported and validated but not yet committed** — confirm the full-suite
+   regression run passed, then commit and push.
 2. **`GLMELT`** (glacial meltwater, `OCNDYN.f`, 72 lines) is scoped but deferred: it fires only
    once per calendar day (`daily_OCEAN`'s `end_of_day` gate), and the current 6-step/3-hour test
    windows are not confirmed to cross a day boundary. Needs either a day-boundary-crossing test
    window or a decision to skip it.
-3. **`OFLUXV`+`OPFIL2`+`ODHORZ`/`ODHORZ0`** (`OCNDYN2.f`'s mass-flux/horizontal-dynamics core) is a
-   "new architecture" item on the scale of D29's ADI solve — it needs polar Fourier filtering
-   against an external `AVR` reduction-matrix binary file plus an FFT (`OFFT`/`OFFTI`). Deliberately
-   deferred past the smaller D36-D39 deltas; not yet started.
+3. **`OFLUXV`+`OPFIL2`+`ODHORZ`** (`OCNDYN2.f`'s mass-flux/horizontal-dynamics core proper, as
+   distinct from `ODHORZ0`'s prep work, done in D40) is a "new architecture" item on the scale of
+   D29's ADI solve — it needs polar Fourier filtering against an external `AVR` reduction-matrix
+   binary file plus an FFT (`OFFT`/`OFFTI`). Deliberately deferred past the smaller D36-D40 deltas;
+   `ODHORZ` itself (the larger per-step routine `ODHORZ0` preps for) not yet read.
 4. **`OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVUZ`** (tracer advection family, `OCNDYN2.f`) — not
    yet read in detail.
 5. **`OCNQUS.f`, `OCNKPP.f`, `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`, `OSTRAITS.f`+

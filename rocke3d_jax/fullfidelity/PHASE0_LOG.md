@@ -798,3 +798,44 @@ tight `test_ff_matches_real_fortran` check was never at risk, only the looser sa
 endpoint checks, jit-vs-eager, a pole-row-reconstructed-nonvacuously check, a per-row mutation
 check (UO/VO must be byte-identical off the pole row), mask non-vacuousness, and the corrected
 physical-sanity bound. Full regression pending a final rerun before commit.
+
+## 2026-09-29: D40 -- ODHORZ0 ported and validated; a North Pole mask design gap caught by the dump
+Picked `ODHORZ0` (`OCNDYN2.f:1718-1862`, 144 lines) as D40: prepares the pressure profile
+(`P`/`OPBOT`) and seawater-equation-of-state quantities (`GUP`/`GDN`/`SUP`/`SDN`, `dZGdP`, `VBAR`,
+`DH3D`) that the (not yet ported) horizontal pressure-gradient solve will need. Confirmed
+`USE_OPGFQ=0` for this rundeck (checked `OCEAN_COM.f`'s default, not overridden in
+`decks/P2SAoM40.R`) -- the "Linear Upstream Scheme" branch is the only live one; the "Quadratic
+Upstream Scheme" alternative is dead code here, halving the real scope. `VOLGSP` (the seawater
+equation-of-state trilinear interpolation over a 43x41x40-entry table, `OCNFUNTAB.f`'s `OCFUNC`
+module, read from `OFTAB` at init -- the same file D35's `SHCGS` depends on) is recorded directly
+at its two per-cell call outputs (`VUP`, `VDN`), the established pattern, rather than replicating
+the table. Reused `polevel()` (ported in D39) unchanged -- called once more per layer here.
+
+**Caught a real bug via the design-gap-before-declaring-done reflex, but this time via the dump
+comparison itself rather than a rereading of the source.** First validation attempt showed
+`OPBOT`/`GUP`/`GDN`/`SUP`/`SDN` failing by large margins (~1.4e7 for `OPBOT`) while
+`dZGdP`/`VBAR`/`DH3D`/`MO`/`UO`/`VO` matched exactly -- isolating the bug to the routine's own
+pressure/EOS arithmetic, not the recorded-`VUP`/`VDN` or `polevel` pieces. Tracing the single
+worst-mismatched cell found it was `(I=2, J=JM)`: the real dump has `OPBOT=0` there even though
+`LMM(2,JM)` is a valid nonzero depth. Rereading `OCNDYN.f`'s `nbyzm` construction (already read in
+D39, but not re-checked closely enough for this specific case) showed the North Pole row is
+**hard-restricted to I=1 only** (`i1yzm(1,jm,l)=i2yzm(1,jm,l)=1`, set unconditionally, independent
+of `LMM`'s value at other longitudes there) -- a real, silent exception the naive
+`LMM(I,J)>=L` mask (correct everywhere else, including for D36-D39's `LMU`/`LMV`) does not
+capture. Fixed with an explicit `m_active(i,j,l)` helper overriding the mask at `J=JM`, then
+re-validated. A dedicated regression test (`test_north_pole_only_cell_one_is_active`) pins this
+down so it can't silently regress in a later delta that reuses the pattern. Also caught, while
+fixing the above: the original draft had dropped the `MMI=MO*DXYPO` divisor from
+`GUP`/`GDN`/`SUP`/`SDN` entirely -- fixed by deriving `DXYPO(J)` analytically (reusing D36's
+`ostres2_ff.geomo_arrays()`, `DXYPO=DXYS+DXYN`) before the first validation run, so this one never
+reached the dump-comparison stage as a live failure.
+
+`fullfidelity/odhorz0_ff.py`/`odhorz0_jax.py`: bitwise/float64-tolerance exact against real
+Fortran on all 3 dates, both ports, after the two fixes above (the JAX port's `opbot`/`gup`/`gdn`
+show ~1e-8/1e-11 absolute noise from `cumsum`-vs-sequential-sum floating-point reordering,
+~1e-15 relative -- expected and harmless). JAX port vectorizes the top-down pressure integration
+via `jnp.cumsum` and the North Pole one-cell-only restriction via an explicit mask override
+mirroring the plain-Python `m_active` helper. `tests/test_odhorz0_jax.py` (17 tests): real-record
+validation x2 ports x3 dates, compile-time-constants check, jit-vs-eager, a dedicated North-Pole-
+one-cell-only regression test, a pole-copy-fields-uniform check, and mask non-vacuousness. Full
+regression pending a final rerun before commit.

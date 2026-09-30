@@ -1178,6 +1178,34 @@ non-vacuousness, a per-row UO/VO mutation check, mask non-vacuousness, and a phy
 step-size bound (corrected once, from relative to absolute, after the relative version failed
 near VOD~0 -- caught by the test itself, the tight real-Fortran check was never at risk).
 
+## D40: ODHORZ0 -- pressure/equation-of-state prep, and a North Pole mask design gap
+
+Picked `ODHORZ0` (`OCNDYN2.f:1718-1862`, 144 lines): prepares the pressure profile (`P`/`OPBOT`)
+and seawater-equation-of-state quantities (`GUP`/`GDN`/`SUP`/`SDN`, `dZGdP`, `VBAR`, `DH3D`) for
+the not-yet-ported horizontal pressure-gradient solve. Confirmed `USE_OPGFQ=0` for this rundeck --
+the "Linear Upstream Scheme" branch is the only live one, halving the real scope (the "Quadratic
+Upstream Scheme" alternative is dead code here). `VOLGSP` (seawater-EOS trilinear interpolation
+over a 43x41x40-entry table, read from `OFTAB` at init -- same file as D35's `SHCGS`) is recorded
+directly at its two per-cell outputs (`VUP`, `VDN`), the established pattern. Reused `polevel()`
+(D39) unchanged.
+
+**Caught a real North Pole masking bug via the dump comparison itself.** First validation attempt
+failed `OPBOT`/`GUP`/`GDN`/`SUP`/`SDN` by large margins while `dZGdP`/`VBAR`/`DH3D`/`MO`/`UO`/`VO`
+matched exactly. Tracing the worst mismatch to `(I=2, J=JM)` (real dump: `OPBOT=0` despite a
+nonzero `LMM(2,JM)`) led back to `OCNDYN.f`'s `nbyzm` construction: the North Pole row is
+hard-restricted to `I=1` only, independent of `LMM`'s value at other longitudes there -- a silent
+exception the naive `LMM(I,J)>=L` mask (correct everywhere else, including D36-D39's `LMU`/`LMV`)
+misses. Fixed with an explicit mask-override helper and pinned down with a dedicated regression
+test. Also caught before the first validation run: a dropped `MMI=MO*DXYPO` divisor, fixed by
+deriving `DXYPO(J)` analytically (reusing D36's geometry).
+
+`fullfidelity/odhorz0_ff.py`/`odhorz0_jax.py`: bitwise/float64-tolerance exact against real
+Fortran on all 3 dates, both ports, after the fixes above. JAX port vectorizes the pressure
+integration via `jnp.cumsum` and the North Pole restriction via an explicit mask override.
+`tests/test_odhorz0_jax.py` (17 tests): real-record validation x2 ports x3 dates, constants check,
+jit-vs-eager, a dedicated North-Pole-one-cell-only regression test, pole-copy-fields-uniform
+check, mask non-vacuousness.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
