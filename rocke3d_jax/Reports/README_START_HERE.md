@@ -1,3 +1,22 @@
+**D51 FINISHED (2026-09-30 ~17:10): `GMFEXP`+helpers ported — the Gent-McWilliams mesoscale-
+mixing family (D46-D51) is now fully closed.** The actual skew-flux application to `G0M`/`S0M`
+(`GMFEXP` + `computeFluxes` + `wrapAdjustFluxes`/`addFluxes`), the largest delta of this family.
+**Bitwise-exact on all 4 checked fields, both calls (G0M/S0M), all 3 dates, first try — no bugs
+found.** One real ambiguity sidestepped rather than guessed: `MO` (the mass field `GMFEXP` reads)
+couldn't be conclusively traced back to D45's `OADVT2` output from source alone, so it was
+recorded directly as a real input instead. Confirmed from a close read (not assumed): `GMFEXP`'s
+own loop never touches the pole rows, and the real Fortran's `TZM`-update code is commented out
+in full (`TZM` is never actually written despite being `INTENT(INOUT)`) — both became dedicated
+regression tests. 15 new tests. `OCNMESO_DRV.f`+`OCNGM.f`'s entire real per-step live path (the
+"skew-GM" branch) is now fully ported and validated; `OCNTDMIX.f` (2,030 lines) and
+`GET_PSI_DIAG` confirmed dead/diagnostic.
+
+**D50 (2026-09-30 ~16:15): `GMKDIF`'s remaining coefficients ported — bitwise-exact first try,
+no bugs.** Applied D49's pole-inclusive J-range finding directly rather than rediscovering it,
+and reasoned through (then confirmed) why the real source's domain-decomposition-only "halo"
+extension block never fires in this rundeck's serial execution. Found and recorded a new
+not-yet-ported dependency, `KPL` (mixed-layer-depth index, set by `OCNKPP.f`). 12 new tests.
+
 **D49 FINISHED (2026-09-30 ~15:00): `ISOSLOPE4` ported — first piece of the Gent-McWilliams
 mesoscale-mixing scheme itself.** The isopycnal-slope-derived diffusion coefficients (24 output
 arrays), embarrassingly parallel per-cell — unlike almost everything else in Stage 2. Real inputs
@@ -158,7 +177,7 @@ next for the one-page version.
 
 ## Current state
 
-**49 deltas complete (D1-D49).** The branch has been under continuous, explicitly
+**51 deltas complete (D1-D51).** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -171,7 +190,7 @@ where explicitly documented), write a pytest suite with mutation and non-vacuous
 rerun the **entire** project regression suite, update the three tracking documents, commit and
 push. Nothing is marked done without a real Fortran number to check it against.
 
-**Test count: 653 passed, 0 failed** (as of D49's commit `3076501`). Every regression run this
+**Test count: 680 passed, 0 failed** (as of D51's commit `f648263`). Every regression run this
 session has been zero-failure — no delta has ever broken an earlier one.
 
 **Nothing is running or queued** outside the current turn's own background rebuild/rerun/test
@@ -246,16 +265,17 @@ work started 2026-09-28):**
 4. **`OCNDYN2.f`'s entire real per-step dynamical core is now ported** (D45 closed the last
    piece, the `OADVT2` tracer-advection family) — nothing remains open in this file beyond
    `OPFIL2` itself (item 3) and JAX vectorization (item 1).
-5. **Mesoscale mixing (`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`) is well underway** —
-   `ocnstate_derived`/`densgrad`/`get_1d_mesodiff` (D47) and `ISOSLOPE4` (D49) are **done**,
-   bitwise-exact. `OCNTDMIX.f` (2,030 lines) confirmed **entirely dead** for this build
-   (`use_tdmix=0`, D46). `QCROSS` confirmed **always false** for this rundeck's actual call,
-   eliminating roughly half of `GMKDIF`'s and `GMFEXP`'s remaining coefficient/flux logic (D48).
-   **Still to port: `GMKDIF`'s remaining coefficient-setting (~100 lines) + `GMFEXP` + its three
-   flux helpers `computeFluxes`/`wrapAdjustFluxes`/`addFluxes` (~465 lines) ≈ 565 lines** — the
-   actual flux application to G0M/S0M. `GET_PSI_DIAG` confirmed purely diagnostic (D48), skip.
-   **`OCNKPP.f`, `OSTRAITS.f`+`OSTRAITS_COM.f` not yet read.** `OCNQUS.f` (1,846 lines) and
-   `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead — do not port.
+5. **Mesoscale mixing (`OCNMESO_DRV.f`+`OCNGM.f`) is CLOSED (D46-D51)** —
+   `ocnstate_derived`/`densgrad`/`get_1d_mesodiff` (D47), `ISOSLOPE4` (D49), `GMKDIF`'s remaining
+   coefficients (D50), and `GMFEXP`+`computeFluxes`+`wrapAdjustFluxes`+`addFluxes` (D51) are all
+   **done**, bitwise-exact, every field, every date. `OCNTDMIX.f` (2,030 lines) confirmed
+   **entirely dead** for this build (`use_tdmix=0`, D46); `GET_PSI_DIAG` confirmed purely
+   diagnostic (D48); `QCROSS` confirmed always false, eliminating roughly half of `GMKDIF`'s and
+   `GMFEXP`'s cross-term logic as dead code (D48). **`OCNKPP.f`, `OSTRAITS.f`+`OSTRAITS_COM.f`
+   not yet read** — these are now the largest unread items in Stage 2. `OCNQUS.f` (1,846 lines)
+   and `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead — do not port.
+   JAX vectorization for this whole family deliberately deferred, same discipline as `ODHORZ`/
+   `OADVT2` (item 1).
 6. **`IRRIG_LK`** (Stage 1, external prescribed-irrigation dataset dependency) deferred since D28,
    not yet needed by anything downstream.
 7. **The JAX/batched `jax.lax.while_loop` version of `DYNSI`'s own outer `KKI` loop** (`VPICEDYN`)

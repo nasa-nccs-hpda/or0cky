@@ -1,4 +1,4 @@
-# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D49, 2026-09-30)
+# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D51, 2026-09-30)
 
 This is the front page for the full-fidelity port (branch `full-fidelity-port`). It states the
 goal, the method, the results with their numbers, what is still open, and where each piece of
@@ -6,8 +6,8 @@ code lives. It links to the detailed ledger for the evidence rather than repeati
 `README_START_HERE.md` is the index of that ledger.
 
 **Status of code:** every delta described here is committed and pushed to `full-fidelity-port`
-on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `3076501`
-(D49). Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of
+on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `f648263`
+(D51). Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of
 every delta.
 
 ## 1. Summary
@@ -27,27 +27,28 @@ every delta.
   the dumped routine to plain Python and to batched JAX, and check both against the real numbers
   — bitwise or float64-rounding exact, with a pytest suite (including mutation and non-vacuous-
   branch checks) added per delta.
-- **Progress.** 49 deltas complete (D1-D49). Ice
-  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D49) has reached a major
-  milestone: `OCNDYN2.f`'s entire real per-step dynamical core (mass/momentum solve, mass-flux
+- **Progress.** 51 deltas complete (D1-D51). Ice
+  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D51) has reached two major
+  milestones: `OCNDYN2.f`'s entire real per-step dynamical core (mass/momentum solve, mass-flux
   redistribution, and tracer advection) is fully ported and validated, and the mesoscale-mixing
-  (Gent-McWilliams) family is now underway with its prerequisites and first real physics piece
-  done. A major scope correction (D36) earlier found that roughly half of the previously-estimated
-  ocean dynamical-core code was dead/superseded, redirecting the remaining work to the correct
-  file.
+  (Gent-McWilliams) family is now **also fully closed** -- `OCNMESO_DRV.f`+`OCNGM.f`'s entire real
+  per-step live path is ported and validated. A major scope correction (D36) earlier found that
+  roughly half of the previously-estimated ocean dynamical-core code was dead/superseded,
+  redirecting the remaining work to the correct file.
 - **Result so far.** Every ported routine matches the real Fortran to float64 precision on every
-  real test-date record checked — no exceptions, no approximated substitutes, on **653 passing
-  tests** as of D49 with zero failures at any point this session. D42 (`ODHORZ`) closed the first
+  real test-date record checked — no exceptions, no approximated substitutes, on **680 passing
+  tests** as of D51 with zero failures at any point this session. D42 (`ODHORZ`) closed the first
   "new architecture"-scale delta. D45 (`OADVT2` family) closed out `OCNDYN2.f`'s entire dynamical
-  core, the largest single delta this session. D46/D48 (scoping) corrected two backwards
+  core, the largest single delta before D51. D46/D48 (scoping) corrected two backwards
   assumptions about the mesoscale-mixing family and found `OCNTDMIX.f` (2,030 lines) and
   `GET_PSI_DIAG` entirely dead/diagnostic, plus a `QCROSS`-always-false finding cutting the
   remaining Gent-McWilliams scope roughly in half. D47 (`ocnstate_derived`/`densgrad`/
-  `get_1d_mesodiff`) and D49 (`ISOSLOPE4`) validated bitwise-exact, each catching one real bug
-  (both North-Pole masking subtleties, the same recurring class of bug since D40).
-- **Not established yet:** the remaining Gent-McWilliams flux application (`GMKDIF`'s remaining
-  coefficients + `GMFEXP`+helpers, ~565 lines, D49's own next step), `OCNKPP.f` (vertical mixing,
-  likely the single largest remaining item), `OSTRAITS.f`+`OSTRAITS_COM.f` (unread); a chained
+  `get_1d_mesodiff`), D49 (`ISOSLOPE4`), and D50 (`GMKDIF`'s remaining coefficients) validated
+  bitwise-exact; D49 caught one real North-Pole-masking bug, the same recurring class since D40.
+  D51 (`GMFEXP`+helpers) -- the largest delta of this family -- validated bitwise-exact on the
+  first try with no bugs found.
+- **Not established yet:** `OCNKPP.f` (vertical mixing, likely the single largest remaining item
+  now that Gent-McWilliams is closed), `OSTRAITS.f`+`OSTRAITS_COM.f` (unread); a chained
   whole-model Track B step; GPU speed numbers for any of the Stage 1/Stage 2 pieces (not yet
   JAX-batched beyond the per-routine level; no GPU used this session).
 
@@ -151,17 +152,25 @@ delta this session (~570 lines). Three real bugs, each requiring its own debuggi
 bitwise-exact on all 9 checked fields, all 3 dates, after all fixes. This closes out
 `OCNDYN2.f`'s entire real per-step dynamical core.
 
-**K. Mesoscale-mixing (Gent-McWilliams) family opened (2026-09-30, D46-D49).** D46: scoping
-corrected a backwards D41 assumption -- `CONSTANT_MESO_DIFFUSIVITY` only fixes the diffusivity
-coefficient, not a simplified scheme; the full Redi/GM skew-flux machinery still runs. Found
-`OCNTDMIX.f` (2,030 lines) entirely dead. D47: ported `ocnstate_derived`/`densgrad`/
+**K. Mesoscale-mixing (Gent-McWilliams) family opened and closed (2026-09-30, D46-D51).** D46:
+scoping corrected a backwards D41 assumption -- `CONSTANT_MESO_DIFFUSIVITY` only fixes the
+diffusivity coefficient, not a simplified scheme; the full Redi/GM skew-flux machinery still
+runs. Found `OCNTDMIX.f` (2,030 lines) entirely dead. D47: ported `ocnstate_derived`/`densgrad`/
 `get_1d_mesodiff` (the cell-centered thermodynamic state and density gradients GM needs) --
 bitwise-exact, no real bugs, one cosmetic North-Pole-mask cleanup. D48: scoping found
 `GET_PSI_DIAG` purely diagnostic and `QCROSS` always false for this rundeck's call, roughly
 halving the remaining scope. D49: ported `ISOSLOPE4` (the isopycnal-slope-derived diffusion
 coefficients) -- caught a real bug where the main loop's North-Pole-row inclusion differed from
 every other Stage-2 routine's convention, exposed by suspiciously round differences in 8 of 24
-output fields; fixed, bitwise-exact on all 24 fields, all 3 dates.
+output fields; fixed, bitwise-exact on all 24 fields, all 3 dates. D50: ported `GMKDIF`'s
+remaining (post-`QCROSS`) coefficient logic -- applied D49's pole-inclusive J-range finding
+directly, bitwise-exact on all 15 fields, first try, no bugs; found and recorded a new
+not-yet-ported dependency (`KPL`, set by `OCNKPP.f`). D51: ported `GMFEXP`+its three flux
+helpers -- the actual skew-flux application to `G0M`/`S0M`, the largest delta of this family --
+bitwise-exact on all 4 fields, both calls, all 3 dates, first try, no bugs; sidestepped an
+ambiguity about whether `MO` syncs from D45's `OADVT2` output by recording it directly rather
+than guessing. This closes the entire family: `OCNMESO_DRV.f`+`OCNGM.f`'s real per-step live
+path is fully ported and validated.
 
 ## 5. Results
 
@@ -181,7 +190,9 @@ output fields; fixed, bitwise-exact on all 24 fields, all 3 dates.
 | D44 | 607 | 0 |
 | D45 | 629 | 0 |
 | D47 | 644 | 0 |
-| D49 | **653** | **0** |
+| D49 | 653 | 0 |
+| D50 | 665 | 0 |
+| D51 | **680** | **0** |
 
 **Validation standard, every delta:** bitwise-exact or float64-rounding-exact (typically 1e-9 to
 1e-17 absolute difference, consistent with floating-point operation-order noise, not a real
@@ -193,12 +204,12 @@ to reach it, and this is documented plainly in the delta's own entry — never s
 ## 6. Open items
 
 See `README_START_HERE.md`'s "Open items" section for the full, current list (JAX vectorization
-for `ODHORZ` and the `OADVT2` family, `GLMELT`, `OPFIL2` itself, the remaining Gent-McWilliams
-flux application (`GMKDIF`'s remaining coefficients + `GMFEXP`+helpers, ~565 lines), `OCNKPP.f`
-and `OSTRAITS.f`+`OSTRAITS_COM.f` (not yet read), `IRRIG_LK`, the batched outer DYNSI loop, and
-the absence of a chained whole-model Track B step). `OCNDYN2.f`'s tracer-advection family closed
-in D45; `OCNTDMIX.f` (2,030 lines) and `OCNQUS.f`/`OCNGISS_TURB.f`/`OCNGISS_SM.f` are resolved
-dead code, do not port.
+for `ODHORZ`, the `OADVT2` family, and the whole Gent-McWilliams family; `GLMELT`; `OPFIL2`
+itself; `OCNKPP.f` and `OSTRAITS.f`+`OSTRAITS_COM.f`, now the largest unread items in Stage 2;
+`IRRIG_LK`; the batched outer DYNSI loop; and the absence of a chained whole-model Track B step).
+`OCNDYN2.f`'s tracer-advection family closed in D45; the entire Gent-McWilliams mesoscale-mixing
+family closed in D51; `OCNTDMIX.f` (2,030 lines) and `OCNQUS.f`/`OCNGISS_TURB.f`/`OCNGISS_SM.f`
+are resolved dead code, do not port.
 
 ## 7. What changed in code, and where it lives
 
@@ -216,11 +227,9 @@ standing constraint, unconditional.
 
 ## 8. For discussion / decisions still open
 
-1. **Whether to finish the Gent-McWilliams flux application** (`GMKDIF`'s remaining coefficients
-   + `GMFEXP`+helpers, ~565 lines, now well-scoped after D48) before starting `OCNKPP.f`'s
-   `KPPMIX`+`OCONV` (likely the single largest remaining item, vertical mixing) -- the mesoscale
-   family is partway done and its remaining scope is now well understood, an argument for
-   finishing it first.
+1. **Whether to start `OCNKPP.f`'s `KPPMIX`+`OCONV`** (likely the single largest remaining item,
+   vertical mixing, now that the Gent-McWilliams family is fully closed) or
+   `OSTRAITS.f`+`OSTRAITS_COM.f` first -- both are currently unread and unscoped.
 2. **Whether `GLMELT` is worth a dedicated day-boundary-crossing test window**, given it's a small
    (72-line) routine whose validation would need new test-date tooling.
 3. **Whether/when to fully read `OCNKPP.f`/`OSTRAITS.f`+`OSTRAITS_COM.f`** — still unread and
