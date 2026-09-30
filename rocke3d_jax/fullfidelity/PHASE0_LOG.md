@@ -1191,3 +1191,54 @@ cleanly on the first try. `fullfidelity/gmredi_ff.py` (extended)/`gmfexp_compare
 `tests/test_gmfexp_ff.py` (15 tests). This closes the Gent-McWilliams mesoscale-mixing family
 opened in D46: `OCNMESO_DRV.f`+`OCNGM.f`'s entire real per-step live path is now ported and
 validated.
+
+## D52: OCNKPP.f scoped end to end -- KPP vertical mixing sized as the next big item
+
+With Gent-McWilliams closed, `OCNKPP.f` (3,714 lines, the K-Profile-Parameterization vertical
+mixing scheme) is now the largest unscoped file in Stage 2's ocean core. D41 had scoped it only
+at a glance back on 2026-09-29, lumping several nested subroutines into one rough `KPPMIX`
+range. This delta read the whole file line by line and corrected that.
+
+The corrected subroutine list turned up more dead code than expected. Four subroutines are
+entirely dead: `get_kvtdiss` (145 lines, gated by `use_tdiss` which defaults to 0 and is never
+set in the rundeck -- checked the rundeck directly, same discipline as D48's `QCROSS` finding),
+`get_gradients0` (119 lines, its only call sites sit inside the already-known-dead
+`OCN_GISS_SM` block, and a model-tree-wide grep found no other caller anywhere), and `wscale`
+(64 lines) and `swfrac` (34 lines), whose every call site in this file is commented out with an
+explicit "! inlined" note -- their logic was hand-inlined into `KPPMIX`/`bldepth` rather than
+called. A cross-file grep for a live `wscale` turned up a same-named subroutine in `mxkprf.f`,
+which turned out to be the *atmosphere's* PBL mixing scheme -- an unrelated false-friend name
+collision, not a caller of this file's `wscale`. `ddmix` (52 lines) is also dead, gated by a
+compile-time `LOGICAL, PARAMETER :: LDD = .false.` rather than a runtime flag.
+
+One real process error this delta, caught and corrected within the same pass: an early grep for
+`OVDIFFS` call sites (`CALL OVDIFFS|call ovdiffs`) came back with hits only inside `STCONV`,
+suggesting `OCONV` (the main-grid driver) used some other mechanism entirely for tracer vertical
+diffusion. Re-grepping case-insensitively found the actual answer: the real source writes these
+calls as `Call OVDIFFS` (capital C, otherwise lowercase) -- a case variant the first grep's
+literal alternation didn't cover. `OCONV` does call `OVDIFFS` extensively (for `G0ML`/`S0ML` and
+the linear moments `GXML`/`GYML`/`SXML`/`SYML`); the tracer-moment-diffusion calls right after
+those (`GXXML`/`GYYML`/etc.) turned out to be dead anyway, gated by `use_qus` defaulting to 0
+and never set in the rundeck -- a new dead-flag finding of its own, and one that generalizes:
+`use_qus` gates similar blocks in `OCNDYN.f`/`OCNDYN2.f`/`OCNMESO_DRV.f`/`OCN_TRACER.f` too,
+flagged for whenever those are next touched.
+
+Traced the live call graph precisely rather than assuming from subroutine position in the file:
+`bldepth` is a *sibling* of `KPPMIX`, not nested inside it -- both `OCONV` and `STCONV` call it
+separately, before their own `KPPMIX`/`KPPMIX`-equivalent call, confirming boundary-layer depth
+is computed as a precursor step. `kmixinit` is called exactly once at model startup
+(`init_OCEAN`), not per-timestep, so it gets the same treatment as other init-only routines
+already in this project (D29's `RADIUS`/`GRAV`, D50's `KPL` default) -- its output can be
+recorded as a fixed known input once identified, rather than ported as per-step physics.
+`alloc_kpp_com` is allocation-only boilerplate, also not real physics to port. `STCONV` is
+confirmed live (called from `OCNDYN2.f:487`, both its gating conditions always true in this
+serial/`NOCEAN=1` build) but depends entirely on `OSTRAITS.f`'s `STRAITS` module data, which has
+not been scoped at all -- left out of this delta's live-scope count as a separate follow-on.
+
+Net result: a revised main-grid live-scope estimate of ~2,460 lines (`OCONV`+`KPPMIX`+`bldepth`+
+`KVINIT`+`z121`+`OVDIFF`+`OVDIFFS`+`REDUCE_FIG`, minus the embedded `use_qus`/`TRACERS_OCEAN`
+dead branches found inside `OCONV`) -- about 3.5x the size of the entire Gent-McWilliams family
+just closed in D46-D51. This is confirmed as the single largest remaining physics item in Stage
+2's ocean core. No port code this delta; `FULL_FIDELITY_PLAN.md`'s `OCNKPP.f` row rewritten with
+the corrected boundaries and findings above. Next natural step is `bldepth` (self-contained,
+feeds `KPPMIX`) or scoping `OSTRAITS.f`/`OSTRAITS_COM.f` to unblock `STCONV`.

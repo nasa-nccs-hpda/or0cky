@@ -1541,6 +1541,99 @@ now D51 (`GMFEXP`+helpers) -- `OCNMESO_DRV.f`+`OCNGM.f`'s entire real per-step l
 "skew-GM" branch) is now ported and validated; `OCNTDMIX.f` (2,030 lines) and `GET_PSI_DIAG`
 confirmed dead/diagnostic, do not port.
 
+## D52: OCNKPP.f scoping -- KPP vertical-mixing scheme sized and subroutine boundaries corrected
+
+No port code this delta. Read all of `OCNKPP.f` (3,714 lines) end to end and corrected D41's
+original (coarse) subroutine boundaries: `KPPMIX` is actually 225-836 (612 lines), not 225-1315
+as D41 had it -- D41's range accidentally lumped in six separate subroutines nested after it
+(`bldepth`, `wscale`, `ddmix`, `kmixinit`, `swfrac`, `z121`) plus `KVINIT`. Full corrected
+subroutine list with line counts: `KPPMIX`(612), `bldepth`(225), `wscale`(64), `ddmix`(52),
+`kmixinit`(80), `swfrac`(34), `z121`(23), `KVINIT`(46), `OCONV`(1,526), `get_kvtdiss`(145),
+`STCONV`(378), `OVDIFF`(60), `OVDIFFS`(47), `REDUCE_FIG`(14), `alloc_kpp_com`(65),
+`get_gradients0`(119).
+
+**Confirmed entirely dead (four whole subroutines, 362 lines), each checked directly rather than
+assumed:**
+- `get_kvtdiss` (145 lines) -- its one call site is gated by `if(use_tdiss==1)`; `use_tdiss`
+  defaults to 0 (`OCNKPP.f:23`) and `ocean_use_tdiss` does not appear anywhere in
+  `decks/P2SAoM40.R` (grepped directly), so it's never overridden.
+- `get_gradients0` (119 lines) -- its only 3 call sites in this file sit inside the `#ifdef
+  OCN_GISS_SM` dead block (`OCN_GISS_SM` confirmed not `#define`d, same as D41's finding for this
+  file); grepped the whole model tree and found no other caller anywhere.
+- `wscale` (64 lines) and `swfrac` (34 lines) -- every call site to either, anywhere in
+  `OCNKPP.f`, is commented out with an explicit `! inlined` note; their logic was hand-inlined
+  directly into `KPPMIX`/`bldepth` instead of being called. (The live `wscale` calls found by a
+  cross-file grep are a same-named but unrelated subroutine in `mxkprf.f`, the atmosphere's PBL
+  mixing scheme -- a false-friend name collision, not a live caller of this file's `wscale`.)
+- `ddmix` (52 lines) -- its one call site is `if (LDD) call ddmix(...)`, and
+  `LOGICAL, PARAMETER :: LDD = .false.` (`OCNKPP.f`, active branch since `OCN_GISS_TURB` is not
+  `#define`d) -- a compile-time constant, not a runtime check, so this call can never fire.
+
+**Confirmed dead in part (embedded branches within otherwise-live subroutines):**
+- Every `if(use_qus==1)` branch in `OCONV` (the `GXXML`/`GYYML`/`GXYML`/`SXXML`/`SYYML`/`SXYML`
+  quadratic-moment diffusion block, ~30 lines) -- `INTEGER :: USE_QUS=0` is the declared default
+  (`OCEAN_COM.f:52`) and `ocean_use_qus` does not appear in `decks/P2SAoM40.R`.
+  `GXML`/`GYML`/`SXML`/`SYML` (the *linear* moments, ungated) remain live.
+  Note: `use_qus` gates similar blocks throughout `OCNDYN.f`/`OCNDYN2.f`/`OCNMESO_DRV.f`/
+  `OCN_TRACER.f` too -- this finding generalizes beyond just this file, flagged for whichever
+  future delta touches those.
+- Every `#ifdef TRACERS_OCEAN` block in `OCONV` (the `TRML`/`TXML`/`TYML`/`TXXML`/`TYYML`/`TXYML`
+  tracer-diffusion and `FLT3D` blocks, ~50 lines combined) -- `TRACERS_OCEAN` confirmed not
+  `#define`d for this rundeck since D45.
+- The `#ifdef OCN_GISS_SM` `DTP4G3D`/`DTP4S3D` lookups inside `OCONV`'s moment-diffusion loop
+  (~10 lines) -- same dead guard as `get_gradients0` above.
+
+**Confirmed live, call graph traced precisely (not assumed from name/position):**
+- `OCONV` (1,526 lines) -- the main-grid driver, called unconditionally from `OCNDYN2.f:153`
+  ("Apply ocean vertical mixing"), once per `OCEANS` call. Calls `KPPMIX` once per column,
+  `OVDIFF` for momentum (`UL`/`ULD`), and `OVDIFFS` extensively for `G0ML`/`S0ML` plus the linear
+  moments `GXML`/`GYML`/`SXML`/`SYML` -- found via a case-sensitive grep miss in this delta's
+  first pass (the real calls are written `Call OVDIFFS`, mixed-case, which an earlier
+  `CALL OVDIFFS|call ovdiffs` grep silently skipped -- corrected by re-grepping case-insensitive).
+- `KPPMIX` (612 lines) -- the boundary-layer diffusivity-profile computation itself, called once
+  from `OCONV`. Internally calls only `z121` (unconditionally) and `ddmix` (dead, see above) --
+  `bldepth`/`wscale`/`swfrac` are NOT called from within `KPPMIX` despite being positioned
+  immediately after it in the file; their logic is inlined directly into `KPPMIX`'s own body.
+- `bldepth` (225 lines) -- boundary-layer-depth computation, called separately from `OCONV`
+  (`OCNKPP.f:2107`, before `KPPMIX`) and from `STCONV` (`OCNKPP.f:3257`) -- a sibling of
+  `KPPMIX`, not nested inside it, confirming `HBL` is computed as a precursor step and fed into
+  `KPPMIX` as an input.
+- `z121` (23 lines) -- a small smoothing filter, called unconditionally from within `KPPMIX`.
+- `KVINIT` (46 lines) -- "save surface variables before any fluxes are added," called every step
+  from `OCNDYN.f`'s `PRECIP_OC` (gated by `ogrid%have_domain`, always true in serial), not yet
+  read in detail.
+- `kmixinit` (80 lines) -- called exactly once, at model startup from `init_OCEAN`
+  (`OCNDYN.f:796`), not per-timestep. Same treatment as this project's other init-only routines
+  (D29's `RADIUS`/`GRAV`, D50's `KPL` default): its output can be recorded/treated as a fixed
+  known input rather than ported as per-step physics, once its output arrays are identified.
+- `OVDIFF`(60)/`OVDIFFS`(47) -- generic tri-diagonal vertical-diffusion solvers, called
+  extensively by both `OCONV` and `STCONV`.
+- `REDUCE_FIG`(14) -- small moment-reduction helper, called 4x from `OCONV`
+  (`GXMO`/`GYMO`/`SXMO`/`SYMO`).
+- `alloc_kpp_com`(65) -- allocation-only boilerplate (called once from `init_OCEAN`), not real
+  physics; same non-ported-infrastructure treatment as other `alloc_*` routines throughout this
+  project.
+- `STCONV`(378) -- the straits-specific analog of `OCONV`, confirmed live (`OCNDYN2.f:487`, gated
+  by `IF(AM_I_ROOT())` and `IF(NO.EQ.NOCEAN)`, both always true in serial/`NOCEAN=1`) but reads
+  `OSTRAITS.f`'s `STRAITS` module data (`must,mmst,g0mst,gzmst,...`) which has not been scoped at
+  all yet -- a separate, currently-unscoped dependency, not included in this delta's live-scope
+  count.
+
+**Revised live-scope estimate** (main grid only, excluding `STCONV`'s 378 lines pending
+`OSTRAITS.f` scoping): `OCONV`(1,526) + `KPPMIX`(612) + `bldepth`(225) + `KVINIT`(46) +
+`z121`(23) + `OVDIFF`(60) + `OVDIFFS`(47) + `REDUCE_FIG`(14) = 2,553 lines, minus ~90 lines of
+embedded dead branches found above (`use_qus`/`TRACERS_OCEAN`/`OCN_GISS_SM` inside `OCONV`) ≈
+**~2,460 lines of genuine main-grid physics**, plus `kmixinit`'s 80-line one-time init (treated
+as a fixed input once its output is identified, not per-step-ported) and `alloc_kpp_com`'s 65
+lines of non-ported allocation boilerplate. This makes the KPP vertical-mixing scheme roughly
+3.5x the size of the entire Gent-McWilliams family that D46-D51 just closed (~700 lines) --
+confirmed as the single largest remaining physics item in Stage 2's ocean core.
+
+No `FULL_FIDELITY_PLAN.md` row previously had this precision; updated with the corrected
+subroutine boundaries and dead/live findings above. Next delta should start on the actual port,
+most naturally `bldepth` first (self-contained, feeds `KPPMIX`), or continue scoping
+`OSTRAITS.f`/`OSTRAITS_COM.f` (entirely unread) to unblock `STCONV`.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
