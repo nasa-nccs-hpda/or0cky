@@ -1,0 +1,52 @@
+--- OCNMESO_DRV.f.orig
++++ OCNMESO_DRV.f
+@@ -464,6 +464,9 @@
+ !@var dVBARdZ specific volume vertical difference (ref to lower point pressure)
+       Real*8 :: vup,vdn,vupu,vdnu,bym,dvbardz
+ 
++      real*8, dimension(im,grid%j_strt_halo:grid%j_stop_halo,lmo) ::
++     &     DBGVUP,DBGVDN,DBGVUPU,DBGVDNU,
++     &     DBGMO0,DBGG0M0,DBGGZM0,DBGS0M0,DBGSZM0
+ 
+ c**** Extract domain decomposition info
+       CALL GETDOMAINBOUNDS(grid, J_STRT = J_0, J_STOP = J_1,
+@@ -476,6 +479,9 @@
+       BYDH = -0.0;
+       DZV = -0.0; BYDZV = -0.0;
+ 
++      DBGVUP=0.; DBGVDN=0.; DBGVUPU=0.; DBGVDNU=0.
++      DBGMO0=MO; DBGG0M0=G0M; DBGGZM0=GZM; DBGS0M0=S0M; DBGSZM0=SZM
++
+       do j=j_0,j_1
+       do n=1,nbyzm(j,1)
+       do i=i1yzm(n,j,1),i2yzm(n,j,1)
+@@ -492,11 +498,15 @@
+           PM(L) = P3D(L,I,J)
+           VUP = VOLGSP (GUP(L),SUP(L),PM(L))
+           VDN = VOLGSP (GDN(L),SDN(L),PM(L))
++          DBGVUP(I,J,L) = VUP
++          DBGVDN(I,J,L) = VDN
+ 
+ C**** Vertical gradient calculated using lower box mid-point pr
+-          IF (L.gt.1) then 
++          IF (L.gt.1) then
+             VUPU = VOLGSP (GUP(L-1),SUP(L-1),PM(L))
+             VDNU = VOLGSP (GDN(L-1),SDN(L-1),PM(L))
++            DBGVUPU(I,J,L) = VUPU
++            DBGVDNU(I,J,L) = VDNU
+             dVBARdZ = .5* (VUP + VDN - VUPU - VDNU)
+             DZVLM1     = 0.5* (DH(I,J,L) + DH(I,J,L-1))
+             DZV(I,J,L-1) = DZVLM1
+@@ -574,6 +584,12 @@
+       enddo
+       enddo
+ 
++      CALL ffdump_densgrad(IM,JM,LMO,
++     &     DBGMO0,DBGG0M0,DBGGZM0,DBGS0M0,DBGSZM0,
++     &     G3D,S3D,P3D,VBAR,
++     &     DBGVUP,DBGVDN,DBGVUPU,DBGVDNU,
++     &     DZV,BYDZV,BYDH,RHOMZ,BYRHOZ,RHOX,RHOY)
++
+       end subroutine densgrad
+ 
+       subroutine simple_mesodiff(ainv)

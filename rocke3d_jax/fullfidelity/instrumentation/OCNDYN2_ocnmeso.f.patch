@@ -1,0 +1,50 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -1656,6 +1656,12 @@
+       Real*8 :: gup,gdn,sup,sdn,pm,pup,pdn,vup,vdn,bym, g00,s00,p00,v00
+ 
+       real*8, dimension(0:lmo) :: pe
++      real*8, dimension(lmo,im,grid%j_strt_halo:grid%j_stop_halo) ::
++     &     DBGVUP,DBGVDN
++      real*8, dimension(im,grid%j_strt_halo:grid%j_stop_halo,lmo) ::
++     &     DBGMO0,DBGG0M0,DBGGZM0,DBGS0M0,DBGSZM0
++      real*8, dimension(im,grid%j_strt_halo:grid%j_stop_halo) ::
++     &     DBGOPRESS0
+ 
+ c**** Extract domain decomposition info
+ 
+@@ -1663,6 +1669,13 @@
+      &               have_north_pole = have_north_pole,
+      &               have_south_pole = have_south_pole)
+ 
++      DBGMO0=MO
++      DBGG0M0=G0M
++      DBGGZM0=GZM
++      DBGS0M0=S0M
++      DBGSZM0=SZM
++      DBGOPRESS0=OPRESS
++
+       if (use_opgfq /= 1) then
+ !**** Use Linear Upstream Scheme with repect to mass
+       do j=j_0,j_1
+@@ -1687,6 +1700,8 @@
+           sdn = max(0d0,sdn)
+           vup = volgsp(gup,sup,pm)
+           vdn = volgsp(gdn,sdn,pm)
++          DBGVUP(l,i,j) = vup
++          DBGVDN(l,i,j) = vdn
+           vbar(l,i,j) = (vup + vdn)*.5
+ C**** In-situ density = 1/specific volume
+           rho(l,i,j)  = 1d0/vbar(l,i,j)
+@@ -1768,6 +1783,11 @@
+       call halo_update_column(grid,s3d)
+       call halo_update_column(grid,p3d)
+ 
++      CALL ffdump_ocnstate_derived(IM,JM,LMO,
++     &     DBGMO0,DBGG0M0,DBGGZM0,DBGS0M0,DBGSZM0,DBGOPRESS0,
++     &     DBGVUP,DBGVDN,
++     &     G3D,S3D,P3D,T3D,RHO,VBAR)
++
+       end subroutine ocnstate_derived
+ 
+       Subroutine ODHORZ0

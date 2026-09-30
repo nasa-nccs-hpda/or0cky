@@ -1,0 +1,135 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -3720,3 +3720,132 @@
+       write(fu) dble(itime)
+       write(fu) mmi
+       end subroutine ffdump_mmi
++
++      subroutine ffdump_ocnstate_derived(im,jm,lmo,
++     &     mo0,g0m0,gzm0,s0m0,szm0,opress0,
++     &     vup,vdn, g3d,s3d,p3d,t3d,rho,vbar)
++!@sum full-fidelity-port instrumentation: ocnstate_derived's real inputs
++!@+   and outputs, Stage 2, D47 (cell-centered intensive thermodynamic
++!@+   state: G3D/S3D/P3D algebraic from MO/G0M/GZM/S0M/SZM/OPRESS;
++!@+   T3D/RHO/VBAR need VOLGSP/TEMGSP, the same seawater-EOS lookup
++!@+   table as D35/D40 -- VUP/VDN (VOLGSP's outputs) recorded directly,
++!@+   same "record what's not yet ported" pattern). G3D/S3D/P3D/T3D/
++!@+   RHO/VBAR/VUP/VDN are (LMO,IM,JM)-ordered (layer-first), matching
++!@+   their real Fortran declaration -- NOT the (IM,JM,LMO) convention
++!@+   used elsewhere in this project. Called twice per OCEANS call, so
++!@+   multiple records accumulate per itime file.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: mo0(im,jm,lmo),g0m0(im,jm,lmo),gzm0(im,jm,lmo)
++      real*8 :: s0m0(im,jm,lmo),szm0(im,jm,lmo),opress0(im,jm)
++      real*8 :: vup(lmo,im,jm),vdn(lmo,im,jm)
++      real*8 :: g3d(lmo,im,jm),s3d(lmo,im,jm),p3d(lmo,im,jm)
++      real*8 :: t3d(lmo,im,jm),rho(lmo,im,jm),vbar(lmo,im,jm)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=999
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_ocnstate_derived_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) mo0
++      write(fu) g0m0
++      write(fu) gzm0
++      write(fu) s0m0
++      write(fu) szm0
++      write(fu) opress0
++      write(fu) vup
++      write(fu) vdn
++      write(fu) g3d
++      write(fu) s3d
++      write(fu) p3d
++      write(fu) t3d
++      write(fu) rho
++      write(fu) vbar
++      end subroutine ffdump_ocnstate_derived
++
++      subroutine ffdump_densgrad(im,jm,lmo,
++     &     mo0,g0m0,gzm0,s0m0,szm0,
++     &     g3d,s3d,p3d,vbar,
++     &     vup,vdn,vupu,vdnu,
++     &     dzv,bydzv,bydh,rhomz,byrhoz,rhox,rhoy)
++!@sum full-fidelity-port instrumentation: densgrad's real inputs and
++!@+   outputs, Stage 2, D47 (horizontal/vertical density gradients for
++!@+   the Gent-McWilliams mesoscale-mixing scheme, OCNMESO_DRV.f:434-
++!@+   577). VUP/VDN/VUPU/VDNU (VOLGSP's outputs for the vertical
++!@+   gradient) recorded directly, same pattern as D35/D40/D47's
++!@+   ocnstate_derived. RHOX/RHOY (needing additional VOLGSP
++!@+   evaluations at inter-cell pressures) recorded as final outputs
++!@+   rather than further decomposed -- nothing in this delta or its
++!@+   consumers needs the individual terms. G3D/S3D/P3D/VBAR/RHOX/RHOY
++!@+   are (LMO,IM,JM)-ordered; everything else (IM,JM,LMO)-ordered.
++!@+   Once per OCEANS call.
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lmo
++      real*8 :: mo0(im,jm,lmo),g0m0(im,jm,lmo),gzm0(im,jm,lmo)
++      real*8 :: s0m0(im,jm,lmo),szm0(im,jm,lmo)
++      real*8 :: g3d(lmo,im,jm),s3d(lmo,im,jm),p3d(lmo,im,jm)
++      real*8 :: vbar(lmo,im,jm)
++      real*8 :: vup(im,jm,lmo),vdn(im,jm,lmo)
++      real*8 :: vupu(im,jm,lmo),vdnu(im,jm,lmo)
++      real*8 :: dzv(im,jm,lmo),bydzv(im,jm,lmo),bydh(im,jm,lmo)
++      real*8 :: rhomz(im,jm,lmo),byrhoz(im,jm,lmo)
++      real*8 :: rhox(lmo,im,jm),rhoy(lmo,im,jm)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1000
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_densgrad_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) mo0
++      write(fu) g0m0
++      write(fu) gzm0
++      write(fu) s0m0
++      write(fu) szm0
++      write(fu) g3d
++      write(fu) s3d
++      write(fu) p3d
++      write(fu) vbar
++      write(fu) vup
++      write(fu) vdn
++      write(fu) vupu
++      write(fu) vdnu
++      write(fu) dzv
++      write(fu) bydzv
++      write(fu) bydh
++      write(fu) rhomz
++      write(fu) byrhoz
++      write(fu) rhox
++      write(fu) rhoy
++      end subroutine ffdump_densgrad

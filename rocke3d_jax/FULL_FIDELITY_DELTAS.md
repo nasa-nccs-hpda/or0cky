@@ -1384,6 +1384,47 @@ Revised live-code estimate for the next delta: `ocnstate_derived` (138) + `densg
 scale to D45, not yet ported. No port code written this delta; `FULL_FIDELITY_PLAN.md`'s
 `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f` row rewritten with the corrected scope.
 
+## D47: ocnstate_derived + densgrad + get_1d_mesodiff -- the Gent-McWilliams prerequisites
+
+First real port from D46's scoped mesoscale-mixing family: `ocnstate_derived` (`OCNDYN2.f`,
+cell-centered intensive thermodynamic state), `densgrad`'s vertical-gradient portion
+(`OCNMESO_DRV.f`, feeds `GMKDIF`/`GMFEXP`, not yet ported), and `get_1d_mesodiff` (the
+constant-diffusivity-coefficient path). All three ported and **bitwise-exact on every checked
+field, all 3 dates, first try** -- no bugs found.
+
+**Corrected a mid-investigation assumption**: `ocnstate_derived` is called twice in the source
+(`OCNDYN2.f:166` and a later unconditional call), but the first is gated by
+`#ifdef TRACERS_OceanBiology`, not defined for this rundeck -- confirmed by the real dump
+(1 record per itime, not 2) before writing any port code, not assumed.
+
+`VOLGSP` (seawater-EOS lookup table, same `OFTAB` dependency as D35/D40) outputs recorded
+directly (`VUP`/`VDN` for `ocnstate_derived`, plus `VUPU`/`VDNU` for `densgrad`'s vertical
+gradient) -- the established "record what's not yet ported" pattern. `TEMGSP` (in-situ
+temperature, `T3D`) similarly recorded but not consumed by anything in this delta's scope.
+`RHOX`/`RHOY` (the horizontal density gradients, needing two more `VOLGSP` evaluations each at
+inter-cell pressures) recorded as final outputs rather than further decomposed -- nothing
+downstream in this delta needs the individual terms.
+
+`densgrad` reads `OCEAN_DYN`'s module-level `DH` array, which is `ODHORZ0`'s already-validated
+(D40) `DH3D` output, persisting unchanged from `ODHORZ0`'s single call earlier in the same
+`OCEANS` invocation (`NOCEAN=1`, D44) -- reused directly via `ffz_odhorz0`'s existing dump rather
+than re-instrumented.
+
+**One cleanup, not a correctness bug**: `ocnstate_derived`'s first draft looped every I
+pointwise via `LMM(i,j)`, including I>1 at the North Pole (J=JM) -- `nbyzm` restricts real
+computation there to I=1 only (D40's established finding), so `VUP`/`VDN` are never written by
+the real Fortran for I>1,J=JM; the pointwise loop computed a transient, harmless-but-noisy 1/0
+there (caught by a `RuntimeWarning`, not a wrong final value -- the subsequent pole-copy step
+already overwrote it correctly). Fixed with the same `m_active` mask used since D40, both for
+cleanliness and to mirror the real control flow exactly rather than relying on a downstream
+overwrite to paper over it.
+
+`fullfidelity/ocnmeso_ff.py`/`ocnmeso_compare.py`: bitwise-exact (`G3D`/`S3D`/`P3D`/`VBAR`/`RHO`
+from `ocnstate_derived`; `DZV`/`BYDZV`/`BYDH`/`RHOMZ`/`BYRHOZ` from `densgrad`), all 3 dates.
+`tests/test_ocnmeso_ff.py` (15 tests): real-record validation, a rundeck-constant check for
+`get_1d_mesodiff` (same precedent as D29's `RADIUS`/`GRAV`, no dump needed for a pure constant
+broadcast), explicit pole-uniformity checks, non-vacuous-computation checks.
+
 ## Pending rows
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).

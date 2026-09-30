@@ -1053,3 +1053,36 @@ the actual port: ~1,455 real live lines across `ocnstate_derived`+`densgrad`+`ge
 (OCNMESO_DRV.f/OCNDYN2.f side) + `GMKDIF`+`ISOSLOPE4`+`GET_PSI_DIAG`+`GMFEXP`+its three flux
 helpers (OCNGM.f side) -- comparable in scale to D45. `FULL_FIDELITY_PLAN.md`'s row for this
 family rewritten with the corrected scope and the OCNTDMIX.f dead-code finding.
+
+## 2026-09-30: D47 -- ocnstate_derived + densgrad + get_1d_mesodiff, bitwise-exact first try
+Ported the first piece of D46's scoped mesoscale-mixing family: `ocnstate_derived`, `densgrad`'s
+vertical-gradient portion, and `get_1d_mesodiff`. Before writing any port code, re-checked
+D46's note that `ocnstate_derived` is called twice in the source -- ran the instrumented build
+and the real dump came back with exactly 1 record per itime, not 2, prompting a closer look:
+the first call site (`OCNDYN2.f:166`) is gated by `#ifdef TRACERS_OceanBiology`, not defined for
+this rundeck. Caught by checking the actual dump rather than trusting the earlier source read,
+consistent with this project's standing discipline of verifying against real output.
+
+Reused D40's already-validated `ODHORZ0` output (`DH3D`, `OCEAN_DYN`'s module-level `DH` array)
+as `densgrad`'s real input rather than re-instrumenting it -- confirmed `ODHORZ0` runs once per
+`OCEANS` call (`NOCEAN=1`, D44) and `densgrad` reads the same, unchanged `DH` later in the same
+call. Recorded `VOLGSP`'s outputs (`VUP`/`VDN`/`VUPU`/`VDNU`) directly per the established
+"record what's not yet ported" pattern (same `OFTAB` dependency as D35/D40); `TEMGSP`'s `T3D`
+similarly recorded though nothing in this delta's scope consumes it; `RHOX`/`RHOY` (needing two
+more `VOLGSP` evaluations each) recorded as final outputs rather than further decomposed.
+
+First validation run: bitwise-exact on every field, all 3 dates, but with a `RuntimeWarning`
+(divide by zero) from `ocnstate_derived`'s `rho` computation. Traced it to the North Pole again:
+the first draft looped every I pointwise via `LMM(i,j)`, but `nbyzm` restricts real computation
+at J=JM to I=1 only (D40's finding, reused throughout D42-D47 now) -- for I>1 at the pole, the
+real Fortran's `VUP`/`VDN` are simply never written (stay 0), and the SAME dump reflects that,
+so the pointwise loop computed a transient 1/0 that the subsequent pole-copy step then silently
+overwrote with the correct value. Not a correctness bug (results were already right), but fixed
+with the same `m_active` mask used since D40 anyway -- cleaner, and matches the real control flow
+instead of relying on a downstream overwrite to paper over a divide-by-zero.
+
+`fullfidelity/ocnmeso_ff.py`/`ocnmeso_compare.py`: bitwise-exact on `G3D`/`S3D`/`P3D`/`VBAR`/`RHO`
+and `DZV`/`BYDZV`/`BYDH`/`RHOMZ`/`BYRHOZ`, all 3 dates, after the pole-mask cleanup.
+`tests/test_ocnmeso_ff.py` (15 tests). `GMKDIF`/`ISOSLOPE4`/`GET_PSI_DIAG`/`GMFEXP` (the actual
+Gent-McWilliams skew-flux application, ~1,143 lines in `OCNGM.f`) remain the next piece of this
+family, not yet started.
