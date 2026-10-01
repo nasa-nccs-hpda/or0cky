@@ -1,3 +1,37 @@
+**D54 (2026-09-30 ~18:00): `KPPMIX`+`z121`+`kmixinit`+`init_solar` ported — first piece of the KPP
+vertical-mixing scheme, and the first delta in this project not validated bit-for-bit (with a
+fully diagnosed reason).** `KPPMIX` sits inside `OCONV`'s fixed-point HBL iteration (up to 4 calls
+per column per step); rather than port that outer loop, instrumented the real `CALL KPPMIX` site
+directly and dumped every real call as its own record — a new per-call dump shape for this
+project, 76,011 records captured across the standard sweep. Found and fixed two real
+single-precision-literal bugs (`OCNKPP.f`'s `**(1./3.)` and `sqrt(0.2/...)` write their literals
+without a `d0` suffix, so Fortran computes them in single precision before promoting to double —
+confirmed via a standalone `ifort` test program reproducing the real dumped constants bit-for-bit
+only once fixed). Even after that fix, ~0.02% of the lookup table's cells differ from a real
+one-time table dump by exactly 1 ULP — confirmed (via both `pow` and `exp`/`log` recomputation) to
+be an inherent IEEE 754 gap: `pow`/`exp`/`log` are not required to be correctly rounded, unlike
+`+`,`-`,`*`,`/`,`sqrt`. Quantified the consequence precisely: max residual ~5e-6 across all 76,011
+real calls, `KBL` (the integer output) never mismatches once. Validated at this suite's ordinary
+`atol=1e-6`. 25 new tests.
+
+**D53 (2026-09-30 ~17:45): correction — `bldepth` is dead, not live; `KPPMIX` inlines its own
+boundary-layer-depth logic.** Caught while reading `KPPMIX`'s full body to prep for D54: both of
+`bldepth`'s call sites are gated `#ifndef OCN_GISS_TURB -> KPPMIX / #else -> bldepth`, and
+`OCN_GISS_TURB` is confirmed undefined, so `KPPMIX` is the live branch both times — D52 had missed
+the surrounding `#ifdef` and called `bldepth` live. `KPPMIX`'s own body explains why: it has the
+entire boundary-layer-depth and boundary-layer-mixing-coefficient algorithms inlined directly.
+Revised main-grid live-scope estimate: ~2,235 lines (`bldepth`'s 225 lines removed).
+
+**D52 (2026-09-30 ~17:20): scoping — `OCNKPP.f`'s KPP vertical-mixing scheme sized end to end.**
+With Gent-McWilliams closed, read all 3,714 lines of the file the largest remaining item in Stage
+2. Corrected D41's coarse subroutine boundaries and found four entirely-dead subroutines
+(`get_kvtdiss`, `get_gradients0`, `wscale`, `swfrac` — 362 lines) plus a compile-time-dead `ddmix`
+(`LDD=.false.`). Traced the real call graph: `OCONV` (main-grid driver, confirmed live),
+`KPPMIX` (the actual diffusivity computation), `STCONV` (straits analog, live but blocked on
+unscoped `OSTRAITS.f`). Revised live-scope estimate ~2,460 lines (later corrected to ~2,235 by
+D53) — ~3.5x the entire Gent-McWilliams family, confirmed the single largest remaining physics
+item in Stage 2.
+
 **D51 FINISHED (2026-09-30 ~17:10): `GMFEXP`+helpers ported — the Gent-McWilliams mesoscale-
 mixing family (D46-D51) is now fully closed.** The actual skew-flux application to `G0M`/`S0M`
 (`GMFEXP` + `computeFluxes` + `wrapAdjustFluxes`/`addFluxes`), the largest delta of this family.
@@ -177,7 +211,7 @@ next for the one-page version.
 
 ## Current state
 
-**51 deltas complete (D1-D51).** The branch has been under continuous, explicitly
+**54 deltas complete (D1-D54).** The branch has been under continuous, explicitly
 user-directed autonomous work ("keep going all night, never stop until there is no work left in
 the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
 method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
@@ -188,9 +222,11 @@ executable, rerun all 3 real test dates (1950-11-26, 1950-12-01, and a `1951-01-
 real dumps (bitwise or float64-rounding exact — never a synthetic/approximate substitute except
 where explicitly documented), write a pytest suite with mutation and non-vacuous-branch checks,
 rerun the **entire** project regression suite, update the three tracking documents, commit and
-push. Nothing is marked done without a real Fortran number to check it against.
+push. Nothing is marked done without a real Fortran number to check it against. **D54 is the one
+documented exception to "bitwise exact"**: a diagnosed, quantified IEEE 754 `pow`/`exp`/`log`
+libm-implementation gap, not an unexplained discrepancy — see D54's entry below.
 
-**Test count: 680 passed, 0 failed** (as of D51's commit `f648263`). Every regression run this
+**Test count: 705 passed, 0 failed** (as of D54's commit `3b3a052`). Every regression run this
 session has been zero-failure — no delta has ever broken an earlier one.
 
 **Nothing is running or queued** outside the current turn's own background rebuild/rerun/test
@@ -271,11 +307,18 @@ work started 2026-09-28):**
    **done**, bitwise-exact, every field, every date. `OCNTDMIX.f` (2,030 lines) confirmed
    **entirely dead** for this build (`use_tdmix=0`, D46); `GET_PSI_DIAG` confirmed purely
    diagnostic (D48); `QCROSS` confirmed always false, eliminating roughly half of `GMKDIF`'s and
-   `GMFEXP`'s cross-term logic as dead code (D48). **`OCNKPP.f`, `OSTRAITS.f`+`OSTRAITS_COM.f`
-   not yet read** — these are now the largest unread items in Stage 2. `OCNQUS.f` (1,846 lines)
+   `GMFEXP`'s cross-term logic as dead code (D48). `OCNQUS.f` (1,846 lines)
    and `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead — do not port.
    JAX vectorization for this whole family deliberately deferred, same discipline as `ODHORZ`/
    `OADVT2` (item 1).
+5b. **`OCNKPP.f` (KPP vertical mixing) — scoped in full (D52, corrected D53), `KPPMIX`+`z121`+
+   `kmixinit`+`init_solar` ported (D54).** Four subroutines confirmed entirely dead
+   (`get_kvtdiss`/`get_gradients0`/`wscale`/`swfrac`) plus `ddmix` (compile-time `LDD=.false.`)
+   and `bldepth` (D53: dead, `KPPMIX` inlines its own boundary-layer-depth logic instead).
+   Remaining in this file: `OCONV`'s own ~1,526-line per-column driver (including the
+   fixed-point HBL iteration D54 deliberately didn't port), `KVINIT`(46), `OVDIFF`(60)/
+   `OVDIFFS`(47), `REDUCE_FIG`(14) — roughly 1,700 lines — plus `STCONV`(378, still blocked on
+   unscoped `OSTRAITS.f`+`OSTRAITS_COM.f`, the largest still-entirely-unread item in Stage 2).
 6. **`IRRIG_LK`** (Stage 1, external prescribed-irrigation dataset dependency) deferred since D28,
    not yet needed by anything downstream.
 7. **The JAX/batched `jax.lax.while_loop` version of `DYNSI`'s own outer `KKI` loop** (`VPICEDYN`)

@@ -1,0 +1,1991 @@
+
+● Still running. I'll stop polling and wait for the completion notification.
+
+❯ /compact
+  ⎿  Compacted
+  ⎿  Referenced file FULL_FIDELITY_DELTAS.md
+  ⎿  Read fullfidelity/tests/test_ofluxv_jax.py (151 lines)
+  ⎿  Read fullfidelity/ofluxv_jax.py (154 lines)
+  ⎿  Read fullfidelity/ofluxv_jax_compare.py (65 lines)
+  ⎿  Read fullfidelity/ofluxv_compare.py (74 lines)
+
+● Task "cd /panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agenti
+  c-ai/projects/imvi/rocke3d_jax/fullfidelity PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  JAX_PLATFORMS=cpu python3 -m pytest tests/ -q 2>&1 … [+10 chars]" still
+  running in background
+  ⎿  Skills restored (schedule)
+
+● Background command "cd /panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-
+ai/ilab-agentic-ai/projects/imvi/rocke3d_jax/fullfidelity
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 JAX_PLATFORMS=cpu python3 -m pytest tests/ -q
+2>&1 | tail -20" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● 594 passed, 0 failed — matches the expected count exactly (576 prior + 18
+  new). Committing D43 now.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● D43 committed and pushed (4770a06). Now checking whether the Reports/ docs
+  need refreshing per the standing 2-hour rule before starting the next delta.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Over 8 hours since the last Reports/ refresh — updating now to cover D43
+  before starting the next delta.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now updating with the D43 status block and revising the open items list.
+
+● Update(Reports/README_START_HERE.md)
+  ⎿  Added 15 lines
+       1 +**D43 FINISHED (2026-09-30 ~06:35): `OFLUXV` + `OADVUZ` ported 
+         +and validated** (long-timestep                                 
+       2 +vertical mass redistribution that rescales layer-1/bottom-layer
+         + mass to restore the L13                                       
+       3 +fractional-thickness profile, plus the embedded simplest-upstre
+         +am vertical advection of U/V).                                 
+       4 +**Corrects D41's scoping**: `OFLUXV` does NOT call `OPFIL2` — r
+         +e-reading the routine start-to-end                             
+       5 +found no such call; the `opfil2_coeffs` module just sits adjace
+         +nt in the source file. `OPFIL2`                                
+       6 +itself remains unported (open item below). **Two real bugs foun
+         +d and fixed**: a `DXYPO(J)/DTOLF`                              
+       7 +bookkeeping error (the Fortran's mass-flux accumulation carries
+         + a factor that only partially                                  
+       8 +cancels when averaged onto U/V-points — first draft dropped it 
+         +entirely), and a JAX-only `OADVUZ`                             
+       9 +NaN bug (dense unmasked vectorization divided 0/0 at genuinely-
+         +inactive columns that the Fortran's                            
+      10 +gated loop simply skips — fixed with an explicit active-cell ma
+         +sk threaded through the                                        
+      11 +`lax.scan` carry). Confirmed via honest-scoping tests that this
+         + rundeck's real bathymetry has no                              
+      12 +single-layer (`LMM==1`) columns on any of the 3 test dates — cr
+         +oss-checked against a synthetic                                
+      13 +construction instead. Both plain-Python and JAX ports float64-t
+         +olerance exact on all 3 dates. 18                              
+      14 +new tests. Full regression: **594 passed, 0 failed.**          
+      15 +                                                               
+      16  **D42 FINISHED (2026-09-29 ~22:15): `ODHORZ` ported and validat
+          ed — first "new architecture"-
+      17  scale delta closed.** The actual horizontal momentum + mass-con
+          tinuity solve `ODHORZ0` (D40)
+      18  preps pressure/EOS inputs for — comparable in scope to D29's AD
+          I solve, the largest delta since
+
+● Update(Reports/README_START_HERE.md)
+  ⎿  Added 1 line, removed 1 line
+       97  
+       98  ## Current state
+       99  
+      100 -**42 deltas complete (D1-D42).** The branch has been under con
+          -tinuous, explicitly                                           
+      100 +**43 deltas complete (D1-D43).** The branch has been under con
+          +tinuous, explicitly                                           
+      101  user-directed autonomous work ("keep going all night, never st
+           op until there is no work left in
+      102  the port") since 2026-09-28 evening. Every delta follows the s
+           ame **dump-hook-and-validate**
+      103  method: read the real Fortran source fully, instrument it with
+            a new dump-hook subroutine and
+
+● Update(Reports/README_START_HERE.md)
+  ⎿  Added 1 line, removed 1 line
+      110  rerun the **entire** project regression suite, update the thre
+           e tracking documents, commit and
+      111  push. Nothing is marked done without a real Fortran number to 
+           check it against.
+      112  
+      113 -**Test count: 576 passed, 0 failed** (as of D42's commit `54e2
+          -07d`). Every regression run this                              
+      113 +**Test count: 594 passed, 0 failed** (as of D43's commit `4770
+          +a06`). Every regression run this                              
+      114  session has been zero-failure — no delta has ever broken an ea
+           rlier one.
+      115  
+      116  **Nothing is running or queued** outside the current turn's ow
+           n background rebuild/rerun/test
+
+● Now update the open items list to reflect D43's completion of OFLUXV and the
+  OPFIL2 scoping correction.
+
+● Update(Reports/README_START_HERE.md)
+  ⎿  Added 12 lines, removed 10 lines
+      176     once per calendar day (`daily_OCEAN`'s `end_of_day` gate), 
+           and the current 6-step/3-hour test
+      177     windows are not confirmed to cross a day boundary. Needs ei
+           ther a day-boundary-crossing test
+      178     window or a decision to skip it.
+      179 -3. **`OFLUXV`+`OPFIL2`** (mass-flux computation + the polar Fo
+          -urier filter itself) is a "new                                
+      180 -   architecture" item on the scale of D29's ADI solve — needs 
+          -an external `AVR` reduction-matrix                            
+      181 -   binary file plus an FFT (`OFFT`/`OFFTI`). Deliberately defe
+          -rred; `ODHORZ`/`ODHORZ0` (D40, D42)                           
+      182 -   worked around needing `OPFIL2`'s internals by recording its
+          - outputs directly, but `OFLUXV`                               
+      183 -   itself (which also calls `OPFIL2`) is not yet ported.      
+      184 -4. **`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVUZ`** (tracer advectio
+          -n family, `OCNDYN2.f`) — `OADVTX2`                            
+      185 -   read in full (D41): a genuine 2nd-order-moment flux-limited
+          - scheme with dynamic Courant-number                           
+      186 -   substepping, comparable in intricacy to D29's ADI solve. De
+          -liberately deferred rather than                               
+      187 -   rushed (a real test window may never exercise `NCOURANT>1`,
+          - and under-validating that branch                             
+      188 -   risks a hidden bug). `OADVTY2`/`OADVTZ2` not yet read but e
+          -xpected similarly structured.                                 
+      179 +3. **`OPFIL2`** (the polar Fourier filter itself) — **resolved
+          + that `OFLUXV` does NOT depend on it**                        
+      180 +   (D43 correction: re-reading `OFLUXV` start-to-end found no 
+          +call to `OPFIL2`; the                                         
+      181 +   `opfil2_coeffs` module just sits adjacent in the source). `
+          +OPFIL2` itself is still unported and                          
+      182 +   still needs an external `AVR` reduction-matrix binary file 
+          +plus an FFT (`OFFT`/`OFFTI`) whenever                         
+      183 +   something that does call it is tackled. `OFLUXV` (mass-flux
+          + + `OADVUZ` vertical advection of                             
+      184 +   U/V) is **done** (D43).                                    
+      185 +4. **`OADVTX2`/`OADVTY2`/`OADVTZ2`** (tracer advection family,
+          + `OCNDYN2.f`; `OADVUZ` itself is                              
+      186 +   **done**, ported in D43) — `OADVTX2` read in full (D41): a 
+          +genuine 2nd-order-moment                                      
+      187 +   flux-limited scheme with dynamic Courant-number substepping
+          +, comparable in intricacy to D29's                            
+      188 +   ADI solve. Deliberately deferred rather than rushed (a real
+          + test window may never exercise                               
+      189 +   `NCOURANT>1`, and under-validating that branch risks a hidd
+          +en bug). `OADVTY2`/`OADVTZ2` not yet                          
+      190 +   read but expected similarly structured.                    
+      191  5. **`OCNKPP.f`, `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`, `OSTR
+           AITS.f`+`OSTRAITS_COM.f`** —
+      192     `OCNQUS.f` (1,846 lines) is **resolved**: confirmed entirel
+           y dead code for this rundeck
+      193     (`USE_QUS=0`, not overridden), do not port. The rest (~9,45
+           0 lines combined) are surveyed but
+
+● Now updating the two other Reports files with matching D43 status.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 1 line, removed 1 line
+      1 -# ROCKE-3D → JAX full-fidelity port: what was done and what was 
+        -concluded (to D42, 2026-09-29)                                  
+      1 +# ROCKE-3D → JAX full-fidelity port: what was done and what was 
+        +concluded (to D43, 2026-09-30)                                  
+      2  
+      3  This is the front page for the full-fidelity port (branch `full-
+         fidelity-port`). It states the
+      4  goal, the method, the results with their numbers, what is still 
+         open, and where each piece of
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 1 line, removed 1 line
+       6  `README_START_HERE.md` is the index of that ledger.
+       7  
+       8  **Status of code:** every delta described here is committed and
+           pushed to `full-fidelity-port`
+       9 -on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), mo
+         -st recently commit `54e207d` (D42).                            
+       9 +on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), mo
+         +st recently commit `4770a06` (D43).                            
+      10  Nothing is staged-but-uncommitted; the standing workflow commit
+          s and pushes at the end of every
+      11  delta.
+      12  
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 12 lines, removed 10 lines
+      27    the dumped routine to plain Python and to batched JAX, and ch
+          eck both against the real numbers
+      28    — bitwise or float64-rounding exact, with a pytest suite (inc
+          luding mutation and non-vacuous-
+      29    branch checks) added per delta.
+      30 -- **Progress.** 42 deltas complete (D1-D42). Ice               
+      31 -  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stag
+         -e 2, D33-D42 so far) is underway;                              
+      30 +- **Progress.** 43 deltas complete (D1-D43). Ice               
+      31 +  dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stag
+         +e 2, D33-D43 so far) is underway;                              
+      32    a major scope correction (D36) found that roughly half of the
+           previously-estimated ocean
+      33    dynamical-core code was dead/superseded, redirecting the rema
+          ining work to the correct file.
+      34  - **Result so far.** Every ported routine matches the real Fort
+          ran to float64 precision on every
+      35 -  real test-date record checked — no exceptions, no approximate
+         -d substitutes, on **522 passing                                
+      36 -  tests** as of D42 with **zero failures** at any point this se
+         -ssion. D42 (`ODHORZ`) closed                                   
+      37 -  the first "new architecture"-scale delta -- comparable in sco
+         -pe to D29's ADI solve.                                         
+      38 -- **Not established yet:** the ocean dynamical core beyond D33-
+         -D42 (mass-flux/pressure-gradient                               
+      39 -  solve, tracer advection, vertical mixing, mesoscale mixing, s
+         -traits — all separately scoped,                                
+      40 -  ~11,300+ lines still unread); a chained whole-model Track B s
+         -tep; GPU speed numbers for any of                              
+      41 -  the Stage 1/Stage 2 pieces (not yet JAX-batched beyond the pe
+         -r-routine level; no GPU used this                              
+      42 -  session).                                                    
+      35 +  real test-date record checked — no exceptions, no approximate
+         +d substitutes, on **594 passing                                
+      36 +  tests** as of D43 with **zero failures** at any point this se
+         +ssion. D42 (`ODHORZ`) closed                                   
+      37 +  the first "new architecture"-scale delta -- comparable in sco
+         +pe to D29's ADI solve. D43                                     
+      38 +  (`OFLUXV`+`OADVUZ`) followed it, correcting D41's scoping not
+         +e that `OFLUXV` depends on                                     
+      39 +  `OPFIL2` (it does not).                                      
+      40 +- **Not established yet:** the ocean dynamical core beyond D33-
+         +D43 (tracer advection, vertical                                
+      41 +  mixing, mesoscale mixing, straits, the `OPFIL2` polar filter 
+         +itself — all separately scoped,                                
+      42 +  ~11,300+ lines still unread or deferred); a chained whole-mod
+         +el Track B step; GPU speed numbers                             
+      43 +  for any of the Stage 1/Stage 2 pieces (not yet JAX-batched be
+         +yond the per-routine level; no GPU                             
+      44 +  used this session).                                          
+      45  
+      46  ## 2. What was ported
+      47  
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 2 lines, removed 2 lines
+      49  |---|---|---|
+      50  | Scope | DYNSI and its full numerical core (~1,460 lines) | Th
+          e live ocean dynamical core, `OCNDYN.f`'s real physics + `OCNDY
+          N2.f` (~19,000 lines before D36's dead-code correction) |
+      51  | Status | **Closed** (D26-D32) | **Underway** (D33-D39; D36 co
+          rrected the remaining scope) |
+      52 -| Real per-step physics ported | `PRECIP_SI`/`PRECIP_LK`/`PRECI
+         -P_LI`, `DYNSI`/`VPICEDYN`/`FORM`/`PLAST`/`RELAX`, `CALC_APRESS`
+         -, `seaice_to_atmgrid`, `UNDERICE` | `PRECIP_OC`, `OSOURC`, `GRO
+         -UND_OC`'s freezing sweep, `OSTRES2`, `OCOAST`, `OBDRAG2`; polar
+         - UOD/VOD relax block in progress |                             
+      53 -| Deferred | `IRRIG_LK` (external dataset dependency) | `GLMELT
+         -` (cadence mismatch with test windows), `OFLUXV`/`OPFIL2`/`ODHO
+         -RZ` (external file + FFT, "new architecture" scale) |          
+      52 +| Real per-step physics ported | `PRECIP_SI`/`PRECIP_LK`/`PRECI
+         +P_LI`, `DYNSI`/`VPICEDYN`/`FORM`/`PLAST`/`RELAX`, `CALC_APRESS`
+         +, `seaice_to_atmgrid`, `UNDERICE` | `PRECIP_OC`, `OSOURC`, `GRO
+         +UND_OC`'s freezing sweep, `OSTRES2`, `OCOAST`, `OBDRAG2`, polar
+         + UOD/VOD relax + `polevel`, `ODHORZ0`, `ODHORZ`, `OFLUXV`+`OADV
+         +UZ` |                                                          
+      53 +| Deferred | `IRRIG_LK` (external dataset dependency) | `GLMELT
+         +` (cadence mismatch with test windows), `OPFIL2` itself (extern
+         +al file + FFT), `OADVTX2`/`OADVTY2`/`OADVTZ2` (tracer advection
+         +, "new architecture" scale), `OCNKPP.f`/`OCNMESO_DRV.f` family 
+         +|                                                              
+      54  | Validation | Bitwise/float64-exact against real Fortran, all 
+          real records, both plain-Python and JAX ports | Same standard, 
+          same result so far |
+      55  
+      56  ## 3. What was found: real bugs, and one major scope correction
+● Now adding section H's continuation for D43, updating the results table, and
+  the open items/discussion sections.
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 11 lines
+      119  tolerance exact on all 15 real call records after fixes. JAX v
+           ectorization deliberately deferred
+      120  as its own follow-up.
+      121  
+      122 +**I. `OFLUXV`+`OADVUZ` closed, `OPFIL2` scoping corrected (202
+          +6-09-30, D43).** Ported the                                   
+      123 +long-timestep vertical mass-redistribution routine (`OFLUXV`, 
+          +rescales layer-1/bottom-layer mass                            
+      124 +to restore the L13 fractional-thickness profile) and its embed
+          +ded simplest-upstream vertical                                
+      125 +advection of U/V (`OADVUZ`). Corrected D41's scoping note: `OF
+          +LUXV` does not call `OPFIL2` at all                           
+      126 +(re-read start-to-end; the `opfil2_coeffs` module merely sits 
+          +adjacent in the source). Two real                             
+      127 +bugs: a `DXYPO(J)/DTOLF` bookkeeping error in the mass-flux ac
+          +cumulation (only partial                                      
+      128 +cancellation at U/V-points, not full), and a JAX-only NaN in `
+          +OADVUZ` from dense/unmasked                                   
+      129 +vectorization dividing 0/0 at genuinely-inactive columns (fixe
+          +d with an explicit active-cell mask                           
+      130 +threaded through the `lax.scan` carry). Both plain-Python and 
+          +JAX ports float64-tolerance exact,                            
+      131 +all 3 dates.                                                  
+      132 +                                                              
+      133  ## 5. Results
+      134  
+      135  **Test suite, full project regression** (run after every delta
+           , zero exceptions):
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 2 lines, removed 1 line
+      143  | D38 | 522 | 0 |
+      144  | D39 | 543 | 0 |
+      145  | D40 | 560 | 0 |
+      146 -| D42 | **576** | **0** |                                     
+      146 +| D42 | 576 | 0 |                                             
+      147 +| D43 | **594** | **0** |                                     
+      148  
+      149  **Validation standard, every delta:** bitwise-exact or float64
+           -rounding-exact (typically 1e-9 to
+      150  1e-17 absolute difference, consistent with floating-point oper
+           ation-order noise, not a real
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 5 lines, removed 3 lines
+      156  ## 6. Open items
+      157  
+      158  See `README_START_HERE.md`'s "Open items" section for the full
+           , current list (`ODHORZ`'s JAX port,
+      159 -`GLMELT`, `OFLUXV`/`OPFIL2`/`ODHORZ`, the `OADVT2` tracer-adve
+          -ction family, `OCNQUS.f`/                                     
+      160 -`OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f`
+          - — ~11,300 lines entirely unread,                             
+      161 -`IRRIG_LK`, the batched outer DYNSI loop, and the absence of a
+          - chained whole-model Track B step).                           
+      159 +`GLMELT`, `OPFIL2` itself, the `OADVTX2`/`OADVTY2`/`OADVTZ2` t
+          +racer-advection family,                                       
+      160 +`OCNKPP.f`/`OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f`/`OSTRAITS.f`
+          + — ~9,450 lines still surveyed but                            
+      161 +not fully read (`OCNQUS.f` and `OCNGISS_TURB.f`/`OCNGISS_SM.f`
+          + are resolved dead code, do not                               
+      162 +port), `IRRIG_LK`, the batched outer DYNSI loop, and the absen
+          +ce of a chained whole-model Track B                           
+      163 +step).                                                        
+      164  
+      165  ## 7. What changed in code, and where it lives
+      166  
+
+● Now updating the "for discussion" section item 1 (OFLUXV is done, no longer
+  next-up).
+
+● Update(Reports/Project_Summary_and_Conclusions.md)
+  ⎿  Added 7 lines, removed 5 lines
+      178  
+      179  ## 8. For discussion / decisions still open
+      180  
+      181 -1. **Whether to pursue `OFLUXV`/`OPFIL2`/`ODHORZ`** (the next 
+          -"new architecture"-scale item,                                
+      182 -   comparable in cost to D29's ADI solve) now, or continue wit
+          -h smaller `OCNDYN2.f` deltas first.                           
+      181 +1. **Whether to pursue `OADVTX2`/`OADVTY2`/`OADVTZ2`** (the ne
+          +xt "new architecture"-scale item,                             
+      182 +   comparable in cost to D29's ADI solve — `OFLUXV`/`ODHORZ` a
+          +re now done) now, or continue                                 
+      183 +   reading into `OCNKPP.f`'s `KPPMIX`+`OCONV` (likely the sing
+          +le largest remaining item) first.                             
+      184  2. **Whether `GLMELT` is worth a dedicated day-boundary-crossi
+           ng test window**, given it's a small
+      185     (72-line) routine whose validation would need new test-date
+            tooling.
+      185 -3. **Whether/when to scope `OCNQUS.f`/`OCNKPP.f`/`OCNMESO_DRV.
+          -f` family** — these are unread and                            
+      186 -   could individually be as large as everything done in Stage 
+          -2 so far combined; no time estimate                           
+      187 -   exists yet, deliberately, per this project's discipline aga
+          -inst estimating unread code.                                  
+      186 +3. **Whether/when to fully read `OCNKPP.f`/`OCNMESO_DRV.f`+`OC
+          +NTDMIX.f`+`OCNGM.f`/`OSTRAITS.f`                              
+      187 +   family** — these are surveyed but not fully read and could 
+          +individually be as large as                                   
+      188 +   everything done in Stage 2 so far combined; no time estimat
+          +e exists yet, deliberately, per this                          
+      189 +   project's discipline against estimating unread code.       
+      190  
+      191  ## 9. Where the evidence is
+      192  
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Proceeding to D44: OADVTX2/OADVTY2/OADVTZ2 (tracer advection), the next "new
+  architecture"-scale item already scoped in D41. Re-reading the source in full
+  to begin the port.
+
+  Searched for 16 patterns, read 4 files, ran 12 shell commands (ctrl+o to expand)
+
+● Good, the scratch tree already has D42/D43 instrumentation applied. Now let me
+  save baselines and add the new D44 instrumentation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now I'll add the SMU/SMV before-snapshot and the new dump arrays.
+
+  Made 2 scratchpad edits +16 -13 (ctrl+o to expand)
+
+● Now add the new dump call right after the existing ffdump_odhorz call.
+
+  Made 1 scratchpad edit +11 -8, ran 1 shell command (ctrl+o to expand)
+
+● Now add the final-SMU/SMV dump right before Call OFLUXV in the OCEANS driver.
+
+  Made 2 scratchpad edits +87 -8, read 1 file, ran 4 shell commands (ctrl+o to expand)
+
+● Good. Now rebuild the instrumented tree.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now let's rebuild in the scratch tree.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Build succeeded. Now copying the fresh binary into the run directories and
+  running all 3 test dates (restoring pristine restarts first).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now running all 3 test dates in the background.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● All 3 dates completed successfully. Now copying the new dumps into ff_data/
+  and writing the Python port extension + validation.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(fullfidelity/odhorz_ff.py)
+  ⎿  Added 16 lines, removed 1 line
+       79  def odhorz(lmm, lmu, lmv, hocean, dt,
+       80             moh, uoh, voh, uodh, vodh, opboth,
+       81             mo0, uo0, vo0, uod0, vod0, opbot0,
+       82 -           vbar, dzgdp, usmooth, pgfx):                       
+       82 +           vbar, dzgdp, usmooth, pgfx,                        
+       83 +           qeven=None, smu0=None, smv0=None):                 
+       84      """Direct port of ODHORZ (OCNDYN2.f:1185-1560ish). All 2D 
+           fields shape (IM+1,JM+1); all 3D
+       85      fields shape (IM+1,JM+1,LMO+1); 1-indexed. `usmooth`,`pgfx
+           ` are OPFIL2's recorded real
+       86      per-layer outputs (shape (IM+1,JM+1,LMO+1), used directly)
+           . Returns
+       87      (mo, uo, vo, uod, vod, opbot), fresh copies.
+       88 +                                                              
+       89 +    D44 addition: `qeven`/`smu0`/`smv0` are optional -- when g
+          +iven, also accumulates and returns                            
+       90 +    SMU/SMV (OCEAN_DYN's integrated horizontal mass fluxes, `U
+          +se OCEAN_DYN, Only: SMU,SMV` in the                           
+       91 +    real Fortran), reusing the same `mu`/`mv` arrays already c
+          +omputed (and already validated via                            
+       92 +    D42's MO/OPBOT match) for the mass-continuity update: `smu
+          +[i,j,l] = smu0[i,j,l] +                                       
+       93 +    mu[i,j]*xeven`, `xeven = 1.0 if qeven else 0.0` (OCNDYN2.f
+          +:1351,1443 -- SMU accumulates in the                          
+       94 +    east-west-pressure-gradient block, SMV in the "update VO,U
+          +OD" block, both reusing the single                            
+       95 +    MU/MV computation also read later by the mass-continuity u
+          +pdate). Returns                                               
+       96 +    (mo, uo, vo, uod, vod, opbot, smu, smv) when qeven is not 
+          +None, else the original 6-tuple.                              
+       97      """
+       98 +    track_sm = qeven is not None                              
+       99 +    if track_sm:                                              
+      100 +        xeven = 1.0 if qeven else 0.0                         
+      101 +        smu = smu0.copy()                                     
+      102 +        smv = smv0.copy()                                     
+      103      sinvo, sinpo, dxpo, dypo, dxvo, dyvo, dxyvo, dxypo = geomo
+           _dyn_arrays()
+      104      cosic, sinic, cosu, sinu = geomo_pole_arrays()
+      105  
+
+● Update(fullfidelity/odhorz_ff.py)
+  ⎿  Added 2 lines
+      224                  im1 = IM if i == 1 else i - 1
+      225                  mmid = moh[i, j, l] + moh[i, j + 1, l]
+      226                  mv[i, j] = mvfac * voh[i, j, l] * mmid
+      227 +                if track_sm:                                  
+      228 +                    smv[i, j, l] = smv0[i, j, l] + mv[i, j] * 
+          +xeven                                                         
+      229                  uq = 0.25 * (ua[i, j] + ua[i, j + 1]) * (vort[
+           im1, j] + vort[i, j])
+      230                  vo[i, j, l] = vo0[i, j, l] + dt * (
+      231                      pgfy[i, j] + (ke[i, j] - ke[i, j + 1]) * b
+           ydy - uodh[i, j, l] * corofj - uq)
+
+● Update(fullfidelity/odhorz_ff.py)
+  ⎿  Added 2 lines
+      242                  if u_active(i, j, l):
+      243                      mmid = moh[i, j, l] + moh[1 if i == IM els
+           e i + 1, j, l]
+      244                      mu[i, j] = 0.5 * dypo[j] * us[i, j] * mmid
+      245 +                    if track_sm:                              
+      246 +                        smu[i, j, l] = smu0[i, j, l] + mu[i, j
+          +] * xeven                                                     
+      247          for j in range(2, JM):
+      248              convfac = dt / dxypo[j]
+      249              for i in range(1, IM + 1):
+
+● Now update the return statement:
+
+● Update(fullfidelity/odhorz_ff.py)
+  ⎿  Added 2 lines
+      260              for i in range(2, IM + 1):
+      261                  mo[i, j, l] = mo[1, j, l]
+      262  
+      263 +    if track_sm:                                              
+      264 +        return mo, uo, vo, uod, vod, opbot, smu, smv          
+      265      return mo, uo, vo, uod, vod, opbot
+  Read 1 file (ctrl+o to expand)
+
+● Write(fullfidelity/odhorz_smuv_compare.py)
+  ⎿  Wrote 106 lines to fullfidelity/odhorz_smuv_compare.py
+       1 """Validate odhorz_ff.py's D44 SMU/SMV accumulation (OCEAN_DYN's
+       2 fluxes) against real Fortran dumps. Two checks per date:
+         smv1 delta, replayed through
+       4    odhorz()'s qeven/smu0/smv0 arguments and compared to the real
+       5 2. End-to-end: chaining all 5 calls together starting from SMU=S
+       6    at the top of the "Do NO=1,NOCEAN" loop, NOCEAN=1 for this ru
+       7    accumulated output as each next call's input, checked against
+          ffz_smfinal_<itime>.bin -- the
+         s called.
+      10 impor
+     … +122 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(fullfidelity/tests/test_odhorz_smuv.py)
+  ⎿  Wrote 107 lines to fullfidelity/tests/test_odhorz_smuv.py
+       1 """Tests for odhorz_ff.py's D44 SMU/SMV accumulation (OCNDYN2.f'
+         s OCEAN_DYN integrated
+         tion) against real Fortran
+       3 dumps -- Stage 2 of the DYNSI/ocean port, D44. JAX vectorization
+          deliberately deferred, same as
+       5 import glob
+       6
+       7 import numpy as np
+       9
+      10 from odhorz_ff import odhorz, IM, JM, LMO
+     … +129 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(fullfidelity/odhorz_ff.py)
+  ⎿  Added 3 lines, removed 1 line
+      1 -"""Full-fidelity port of OCNDYN2.f's ODHORZ -- Stage 2 of the DY
+        -NSI/ocean port, D42.                                            
+      1 +"""Full-fidelity port of OCNDYN2.f's ODHORZ -- Stage 2 of the DY
+        +NSI/ocean port, D42 (D44 added                                  
+      2 +optional SMU/SMV accumulation, OCEAN_DYN's integrated horizontal
+        + mass fluxes consumed by                                        
+      3 +OFLUXV/OADVT2's tracer advection -- see `odhorz()`'s docstring a
+        +nd `odhorz_smuv_compare.py`).                                   
+      4  
+      5  ODHORZ is the actual horizontal momentum + mass-continuity solve
+          that ODHORZ0 (D40) prepares
+      6  pressure/equation-of-state inputs for. Called several times per 
+         DTsrc step (twice for the initial
+
+● Now let's persist the new instrumentation patch files and save them to the
+  repo.
+
+  Read 3 files, ran 1 shell command (ctrl+o to expand)
+
+● Now appending the D44 entry before "Pending rows".
+
+● Update(FULL_FIDELITY_DELTAS.md)
+  ⎿  Added 35 lines
+      1261  layer-columns confirmation plus synthetic cross-check, a dedi
+            cated NaN-regression pin, non-
+      1262  vacuous mass-redistribution check.
+      1263  
+      1264 +## D44: ODHORZ's SMU/SMV accumulation -- completing ODHORZ fo
+           +r D45's tracer advection                                     
+      1265 +                                                             
+      1266 +While scoping D45 (`OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVT2`, tr
+           +acer advection), found a real gap in                         
+      1267 +D42's `ODHORZ` port: the real Fortran's `OADVT2` dispatcher r
+           +eads `SMU`/`SMV`/`SMW`                                       
+      1268 +(`Use OCEAN_DYN, only : mb=>mmi,smu,smv,smw`) as its actual m
+           +ass-flux inputs. `SMW` was already                           
+      1269 +ported in D43 (`OFLUXV`). `SMU`/`SMV` (`OCEAN_DYN`'s "integra
+           +ted horizontal mass fluxes") turned                          
+      1270 +out to be accumulated **inside `ODHORZ` itself** (`OCNDYN2.f:
+           +1351,1443`) -- genuine real per-step                         
+      1271 +physics, not an external-file dependency, and D42's port neve
+           +r captured it since nothing D42                              
+      1272 +validated needed it.                                         
+      1273 +                                                             
+      1274 +Traced the accumulation by hand before writing any code: `SMU
+           +`/`SMV` are zeroed once per                                  
+      1275 +`NOCEAN` sub-step (`NOCEAN=1` for this rundeck, confirmed in 
+           +`OCEAN_COM.f`, so this reduces to                            
+      1276 +"once per `OCEANS` call" in practice) and accumulated as `smu
+           +[i,j,l] += mu[i,j]*xeven` /                                  
+      1277 +`smv[i,j,l] += mv[i,j]*xeven`, where `xeven=1` only on the "e
+           +ven" leapfrog sub-step calls                                 
+      1278 +(`qeven=.true.`) and 0 otherwise (2 of `ODHORZ`'s 5 calls per
+           + window contribute; 3 don't). The                            
+      1279 +`mu`/`mv` arrays reused for this accumulation are the exact s
+           +ame ones D42's port already computes                         
+      1280 +(and already validated, indirectly, via `MO`/`OPBOT`'s bitwis
+           +e-exact match) for the mass-                                 
+      1281 +continuity update -- so this delta only needed to *record* th
+           +at accumulation, not re-derive the                           
+      1282 +underlying flux fields.                                      
+      1283 +                                                             
+      1284 +Extended `odhorz()` with optional `qeven`/`smu0`/`smv0` argum
+           +ents (backward-compatible: omitting                          
+      1285 +them preserves D42's original 6-tuple return). New instrument
+           +ation: `ffdump_odhorz_smuv` (unit                            
+      1286 +993, per-call `SMU`/`SMV` before/after + `xeven`, same 5-call
+           +s-per-itime cadence as                                       
+      1287 +`ffdump_odhorz`) and `ffdump_smfinal` (unit 994, the fully-in
+           +tegrated `SMU`/`SMV` right before                            
+      1288 +`OFLUXV` is called -- the real ground-truth input D45 will co
+           +nsume).                                                      
+      1289 +                                                             
+      1290 +`fullfidelity/odhorz_smuv_compare.py`: two checks per date, b
+           +oth **bitwise-exact, first try, zero                         
+      1291 +mismatches** -- (1) each of the 5 calls' own `smu0->smu1`/`sm
+           +v0->smv1` delta, replayed through the                        
+      1292 +extended `odhorz()`; (2) the full end-to-end chain (starting 
+           +from `SMU=SMV=0`, using the port's                           
+      1293 +own output as each next call's input) against `ffz_smfinal`'s
+           + real recorded final values.                                 
+      1294 +`tests/test_odhorz_smuv.py` (13 tests): per-call and chained-
+           +final validation across all 3 dates,                         
+      1295 +an explicit pin on the "2 of 5 calls contribute" `xeven` patt
+           +ern, non-vacuous-accumulation check,                         
+      1296 +and a backward-compatibility check that the original D42 call
+           + signature still returns a 6-tuple.                          
+      1297 +JAX vectorization deliberately deferred, same as `ODHORZ` its
+           +elf (D42's open item).                                       
+      1298 +                                                             
+      1299  ## Pending rows
+      1300  - GPU speed numbers for the JAX-vectorized pieces (no GPU ava
+            ilable on the node used for D14/D15/D16's
+      1301    CPU-only measurements).
+
+● Now let's update PHASE0_LOG.md with the narrative, and check
+  FULL_FIDELITY_PLAN.md's relevant row.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(fullfidelity/PHASE0_LOG.md)
+  ⎿  Added 44 lines
+      921  single-layer columns" confirmation plus the synthetic cross-ch
+           eck, a dedicated NaN-regression
+      922  pin for the OADVUZ masking bug, and a non-vacuous mass-redistr
+           ibution check. Full regression
+      923  pending a final rerun before commit.
+      924 +                                                              
+      925 +## 2026-09-30: D44 -- ODHORZ's SMU/SMV accumulation (completin
+          +g ODHORZ for D45)                                             
+      926 +Started scoping D45 (the `OADVTX2`/`OADVTY2`/`OADVTZ2`/`OADVT2
+          +` tracer-advection family, next per                           
+      927 +D41's own scoping notes) by re-reading `OADVT2`'s dispatcher (
+          +`OCNDYN2.f:1853-1914`) and its                                
+      928 +callers in `OCEANS` (lines 355-369, `CALL OADVT2(MO1,G0M,...,D
+          +TDUM,.FALSE.,...)` /                                          
+      929 +`CALL OADVT2(MO1,S0M,...,DTDUM,.TRUE.,...)`). It reads `SMU`/`
+          +SMV`/`SMW` from `OCEAN_DYN` as real                           
+      930 +mass-flux inputs (`USE OCEAN_DYN, only : mb=>mmi,smu,smv,smw`)
+          +. `SMW` is D43's already-ported                               
+      931 +`OFLUXV` output. `SMU`/`SMV` turned out not to be set anywhere
+          + I'd already ported -- grepped the                            
+      932 +whole tree for `mmi\s*=`/`smu\s*=`/`smv\s*=` assignments outsi
+          +de the dead `#ifdef TRACERS_OCEAN`                            
+      933 +block and found exactly one live site: inside `ODHORZ` itself 
+      934 +(`OCNDYN2.f:1351` `SMU(I,J,L) = SMU(I,J,L) + MU(I,J)*xeven`, `
+          +:1443` the `SMV` equivalent). D42's                           
+      935 +port never captured this since MO/OPBOT's validation never exe
+          +rcised it.                                                    
+      936 +                                                              
+      937 +Traced the whole accumulation scheme by hand from the `OCEANS`
+          + driver before writing any code,                              
+      938 +since it initially looked far more complex than it turned out 
+          +to be: `Do NO=1,NOCEAN` --                                    
+      939 +`NOCEAN=1` for this rundeck (`OCEAN_COM.f:112`, not overridden
+          + in the rundeck), confirmed by                                
+      940 +balance-tracing the Do/enddo nesting all the way from `Do NO=1
+          +,NOCEAN` (line 249) through                                   
+      941 +`Call OFLUXV` (line 350) and finding they're still at the same
+          + nesting depth -- i.e. `OFLUXV` and                           
+      942 +`OADVT2` fire *inside* the NOCEAN loop, once per NOCEAN sub-st
+          +ep, which for `NOCEAN=1` is simply                            
+      943 +once per `OCEANS` call. `SMU`/`SMV` are zeroed once at the top
+          + of that loop                                                 
+      944 +(`OCNDYN2.f:259-260`), then each of the 5 `ODHORZ` calls per w
+          +indow contributes                                             
+      945 +`mu[i,j]*xeven`/`mv[i,j]*xeven`, where `xeven=1` only for the 
+          +2 "even" leapfrog-substep calls                               
+      946 +(`qeven=.true.`, inside the `do n=1,neven` loop) and 0 for the
+          + other 3 (the 2 initial odd-state-                            
+      947 +init calls before the loop, plus the 1 odd leapfrog-corrector 
+          +call) -- confirmed by dumping                                 
+      948 +`xeven` directly rather than assuming the call sequence.      
+      949 +                                                              
+      950 +Crucially, the `mu`/`mv` arrays used for this accumulation are
+          + the *exact same* arrays D42's port                           
+      951 +already computes for the mass-continuity (`MO`/`OPBOT`) update
+          +, already implicitly validated by                             
+      952 +D42's own bitwise-exact match -- so this delta only needed to 
+          +record the accumulation, not                                  
+      953 +re-derive the flux fields themselves.                         
+      954 +                                                              
+      955 +New instrumentation (additive, doesn't touch D42/D43's already
+          +-validated dump formats):                                     
+      956 +`ffdump_odhorz_smuv` (unit 993, per-call SMU/SMV before/after 
+          ++ xeven, same 5-records-per-itime                             
+      957 +cadence as `ffdump_odhorz`) and `ffdump_smfinal` (unit 994, th
+          +e fully-integrated SMU/SMV right                              
+      958 +before `OFLUXV` is called -- the real ground-truth D45 will co
+          +nsume). Extended `odhorz()` with                              
+      959 +optional `qeven`/`smu0`/`smv0` args (backward-compatible: the 
+          +original D42 call signature still                             
+      960 +returns a 6-tuple untouched).                                 
+      961 +                                                              
+      962 +`fullfidelity/odhorz_smuv_compare.py`: **bitwise-exact, first 
+          +try, zero mismatches** on both the                            
+      963 +per-call replay and the full 5-call chained accumulation again
+          +st `ffz_smfinal`'s real recorded                              
+      964 +final values, all 3 dates -- confirming the hand-traced accumu
+          +lation scheme (including the                                  
+      965 +`xeven` pattern and the `NOCEAN=1` simplification) was exactly
+          + right. `tests/test_odhorz_smuv.py`                           
+      966 +(13 tests). JAX deliberately deferred, same as `ODHORZ` itself
+          +. Full regression pending a final                             
+      967 +rerun before commit.                                          
+
+● Now let's check FULL_FIDELITY_PLAN.md's relevant row to update it
+  consistently.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Let me update that row for D44's completion and the SMU/SMV finding.
+
+● Update(FULL_FIDELITY_PLAN.md)
+  ⎿  Added 1 line, removed 1 line
+      634  | **Ice-dynamics subtotal** | | **~1,460** | tractable, compar
+           able to work already done |
+      635  | `OCEANS` (driver) | `OCNDYN2.f:33-699` | 666 | the **live** 
+           driver (see correction below); calls into `OCNDYN2.f`'s own ro
+           utines plus `GROUND_OC`/`PRECIP_OC`/`OSOURC`/`OCOAST` in `OCND
+           YN.f` |
+      636  | `OCNDYN.f` | | 6,062 total; **legacy dynamical core confirme
+           d dead, D36** | **Corrected 2026-09-29 (D36)**: `OCNDYN.f`'s o
+           wn leapfrog-dynamics driver (`OCEANS_old`, `OCNDYN.f:18-289`) 
+           is entirely commented out, and grepping every call site of its
+            `OVtoM`/`OMtoV`/`OFLUX`/`OPFIL`/`OADVM`/`OADVV`/`OPGF`/`OPGF0
+           `/`OBDRAG`/`OSTRES` project-wide found **none are called from 
+           anywhere live** — all superseded by `OCNDYN2.f`'s rewrite (`OF
+           LUXV`, `ODHORZ`/`ODHORZ0` [D40], `OPFIL2`, `OSTRES2`, `OBDRAG2
+           `, the `OADVT2` family). Do not port these from `OCNDYN.f`. Wh
+           at's still live and real in `OCNDYN.f`: `PRECIP_OC` (84 lines,
+            **DONE, see D33**), `OSOURC` (123 lines, **DONE, see D34**), 
+           `GROUND_OC`'s below-freezing sweep (**DONE, see D35**), `OCOAS
+           T` (57 lines, shared unchanged with `OCNDYN2.f`, **DONE, see D
+           37**, bitwise exact first try), plus `CONSERV_O*`/`CHECKO*` di
+           agnostics (likely skippable) and one-time init/restart-I/O (`i
+           nit_OCEAN`, `daily_OCEAN`, etc., not per-step work). `GLMELT` 
+           (72 lines) scoped and **deferred** (D36): fires only once per 
+           calendar day via `daily_OCEAN`'s `end_of_day` gate, not confir
+           med to occur within the existing 6-step/3-hour test windows. `
+           OSOURC`'s `FSR`/`FSRZ`/`LSRPD` dependency is fully analytic (D
+           34); `GROUND_OC`'s `SHCGS` is the one genuine external-file de
+           pendency (`OFTAB`, recorded at its use point, D35). Confirmed 
+           via `ORES_5x4.F90`: ocean grid IMO=72,JMO=46, **same resolutio
+           n as the atmosphere** — `AG2OG_precip`/`OG2AG_*` (atm<->ocean 
+           regrid) can be treated as a recorded-input boundary. |
+      637 -| `OCNDYN2.f` | | 2,670 total | **The real live Stage-2 dynami
+          -cal core (D36 correction)**. `SUBROUTINE OCEANS` (33-699, tabl
+          -e row above) is the actual driver. `OSTRES2` (2478-2577) is **
+          -DONE, see D36**. `OBDRAG2` (2592-2682, 91 lines) is **DONE, se
+          -e D38** — confirmed `OCN_GISS_TURB` not `#define`d, tidal-enha
+          -ncement branch dead. The polar UOD/VOD relax block + `polevel(
+          -)` (179-228, 1530-1564, ~90 lines) is **DONE, see D39**. `ODHO
+          -RZ0` (1718-1862, 144 lines, pressure/EOS prep) is **DONE, see 
+          -D40** — confirmed `USE_OPGFQ=0`; `VOLGSP` recorded at its outp
+          -uts; caught a North Pole masking design gap (`nbyzm` restricts
+          - J=JM to I=1 only) via the dump comparison. `ODHORZ` (1185-171
+          -7, 532 lines, the actual horizontal-momentum + mass-continuity
+          - solve `ODHORZ0` preps for) is **DONE (plain-Python only), see
+          - D42** — `OPFIL2`'s two per-layer outputs recorded directly, d
+          -ecoupling from the `OPFIL2`/`AVR`-file dependency; two real bu
+          -gs caught before any validation run (missing `HOCEAN` recordin
+          -g; `OPBOT`'s cross-layer accumulation reset incorrectly); floa
+          -t64-tolerance exact on all 15 real call records; `OMEGA` valid
+          -ated empirically at Earth-standard; JAX vectorization delibera
+          -tely deferred as its own follow-up (GHY-lesson discipline). `O
+          -FLUXV`+`OADVUZ` (711-800, 2471-2521, ~125 lines, long-timestep
+          - vertical mass redistribution) is **DONE, see D43** — confirme
+          -d, contrary to an earlier scoping note, that `OFLUXV` does NOT
+          - call `OPFIL2` at all (the polar-filter setup module just sits
+          - next to it in the source); two real bugs caught (a `DXYPO`/`D
+          -TOLF` bookkeeping error; a JAX dense-vectorization NaN at inac
+          -tive columns, fixed via an explicit active-cell mask through `
+          -OADVUZ`'s `lax.scan` carry); bitwise/float64-exact, both ports
+          -, all 3 dates. Still to port: `OADVT2`/`OADVTX2`/`OADVTY2`/`OA
+          -DVTZ2` (tracer advection family — `OADVT2` confirmed a thin St
+          -rang-splitting dispatcher; `OADVTX2` read in full: a genuine 2
+          -nd-order-moment flux-limited scheme with dynamic Courant-numbe
+          -r substepping, c … [+325 chars]                               
+      637 +| `OCNDYN2.f` | | 2,670 total | **The real live Stage-2 dynami
+          +cal core (D36 correction)**. `SUBROUTINE OCEANS` (33-699, tabl
+          +e row above) is the actual driver. `OSTRES2` (2478-2577) is **
+          +DONE, see D36**. `OBDRAG2` (2592-2682, 91 lines) is **DONE, se
+          +e D38** — confirmed `OCN_GISS_TURB` not `#define`d, tidal-enha
+          +ncement branch dead. The polar UOD/VOD relax block + `polevel(
+          +)` (179-228, 1530-1564, ~90 lines) is **DONE, see D39**. `ODHO
+          +RZ0` (1718-1862, 144 lines, pressure/EOS prep) is **DONE, see 
+          +D40** — confirmed `USE_OPGFQ=0`; `VOLGSP` recorded at its outp
+          +uts; caught a North Pole masking design gap (`nbyzm` restricts
+          + J=JM to I=1 only) via the dump comparison. `ODHORZ` (1185-171
+          +7, 532 lines, the actual horizontal-momentum + mass-continuity
+          + solve `ODHORZ0` preps for) is **DONE (plain-Python only), see
+          + D42, extended D44** — `OPFIL2`'s two per-layer outputs record
+          +ed directly, decoupling from the `OPFIL2`/`AVR`-file dependenc
+          +y; two real bugs caught before any validation run (missing `HO
+          +CEAN` recording; `OPBOT`'s cross-layer accumulation reset inco
+          +rrectly); float64-tolerance exact on all 15 real call records;
+          + `OMEGA` validated empirically at Earth-standard; JAX vectoriz
+          +ation deliberately deferred as its own follow-up (GHY-lesson d
+          +iscipline). **D44 extension**: `ODHORZ` also accumulates `SMU`
+          +/`SMV` (`OCEAN_DYN`'s integrated horizontal mass fluxes, `:135
+          +1,1443`) — a real gap found while scoping the tracer-advection
+          + family below (D42 never captured it since nothing D42 validat
+          +ed needed it); `NOCEAN=1` for this rundeck confirmed via `OCEA
+          +N_COM.f`, so the accumulation reduces to "once per `OCEANS` ca
+          +ll", 2 of 5 `ODHORZ` calls per window contributing (`qeven=.tr
+          +ue.`); bitwise-exact, first try, both the per-call replay and 
+          +the full chained accumulation against a new ground-truth `ffz_
+          +smfinal` dump. `OFLUXV`+`OADVUZ` (711-800, 2471-2521, ~125 lin
+          +es, long-timestep vertical mass redistribution) is **DONE, see
+          + D43** — confirmed, contrary to an earlier scoping note, that 
+          +`OFLUXV` does NO … [+1501 chars]                              
+      638  | `OCNQUS.f` (advection) | | 1,846 total; **confirmed entirely
+            dead code for this rundeck, 2026-09-29** | **Resolved the ear
+           lier "may overlap, needs disambiguating" flag.** `OCNQUS.f` ho
+           lds `OADVT3`/`OADVTX3`/`OADVTY3`/`OADVTZ3`/`OADVTX4`/`OADVTY4`
+           /`OADVTZ4` — the "Quadratic Upstream Scheme" (QUS, full 2nd-or
+           der moments including cross terms XY/YZ/ZX), selected only whe
+           n `USE_QUS==1` (`OCNDYN2.f:365`: `if(use_qus==1) CALL OADVT3(.
+           ..) else CALL OADVT2(...)`). `USE_QUS` defaults to 0 (`OCEAN_C
+           OM.f`) and is **not overridden in `decks/P2SAoM40.R`** — so `O
+           CNDYN2.f`'s own simpler `OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`
+            family (linear moments only, already scoped above) is the liv
+           e one for this rundeck; all of `OCNQUS.f` can be skipped. Do n
+           ot port anything from this file. |
+      639  | `OCNKPP.f` (vertical mixing) | | 3,714 total | **Scoped 2026
+           -09-29 (D41 exploration), not yet ported.** Real subroutines: 
+           `KPPMIX` (225-1315, the actual K-Profile-Parameterization boun
+           dary-layer mixing scheme — Large/McWilliams/Doney-style, genui
+           nely intricate), `OCONV` (1361-3032, the main per-step driver 
+           that calls `KPPMIX` per column — confirmed live, called from `
+           OCEANS`), `STCONV` (3032-3410, straits convection), `OVDIFF`/`
+           OVDIFFS` (3410-3517, vertical diffusion solvers). `OCN_GISS_TU
+           RB`/`OCN_GISS_SM`-guarded branches within this file are dead (
+           confirmed not `#define`d, same finding as D38's `OBDRAG2`). Th
+           e live core (`KPPMIX`+`OCONV`, ~2,800 lines) is a "new archite
+           cture"-scale item, likely the single largest remaining piece —
+            **not started**. |
+      640  | `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f` (mesoscale/GM-Redi mi
+           xing) | | 1,217+2,030+1,270 = 4,517 total | **Partially scoped
+            2026-09-29 (D41 exploration).** `OCNMESO_DRV.f`'s real driver
+            is `ocnmeso_drv` (131-432, ~300 lines; `densgrad` at 434-577 
+           is a helper). Confirmed `CONSTANT_MESO_DIFFUSIVITY` **is** `#d
+           efine`d for this build — `ocnmeso_drv` takes a simpler constan
+           t-diffusivity path rather than the full flow-dependent Gent-Mc
+           Williams slope/diffusivity calculation; `simple_mesodiff` (579
+           -722, gated by the separate `SIMPLE_MESODIFF` flag) is confirm
+           ed dead (not defined). How much of `ocnmeso_drv`'s own 300 lin
+           es the live `CONSTANT_MESO_DIFFUSIVITY` branch actually touche
+           s is **not yet traced in detail** — likely a real scope reduct
+           ion versus the full GM-Redi scheme, but not yet quantified. `O
+           CNTDMIX.f`/`OCNGM.f` **not yet read** at all. `OCNGISS_TURB.f`
+           /`OCNGISS_SM.f` (904+348=1,252) confirmed dead (their `#ifdef`
+            guards not defined for this build, same as `OCNKPP.f`'s findi
+           ng) — do not port these two files. |
+
+● Update(FULL_FIDELITY_PLAN.md)
+  ⎿  Added 1 line, removed 1 line
+      634  | **Ice-dynamics subtotal** | | **~1,460** | tractable, compar
+           able to work already done |
+      635  | `OCEANS` (driver) | `OCNDYN2.f:33-699` | 666 | the **live** 
+           driver (see correction below); calls into `OCNDYN2.f`'s own ro
+           utines plus `GROUND_OC`/`PRECIP_OC`/`OSOURC`/`OCOAST` in `OCND
+           YN.f` |
+      636  | `OCNDYN.f` | | 6,062 total; **legacy dynamical core confirme
+           d dead, D36** | **Corrected 2026-09-29 (D36)**: `OCNDYN.f`'s o
+           wn leapfrog-dynamics driver (`OCEANS_old`, `OCNDYN.f:18-289`) 
+           is entirely commented out, and grepping every call site of its
+            `OVtoM`/`OMtoV`/`OFLUX`/`OPFIL`/`OADVM`/`OADVV`/`OPGF`/`OPGF0
+           `/`OBDRAG`/`OSTRES` project-wide found **none are called from 
+           anywhere live** — all superseded by `OCNDYN2.f`'s rewrite (`OF
+           LUXV`, `ODHORZ`/`ODHORZ0` [D40], `OPFIL2`, `OSTRES2`, `OBDRAG2
+           `, the `OADVT2` family). Do not port these from `OCNDYN.f`. Wh
+           at's still live and real in `OCNDYN.f`: `PRECIP_OC` (84 lines,
+            **DONE, see D33**), `OSOURC` (123 lines, **DONE, see D34**), 
+           `GROUND_OC`'s below-freezing sweep (**DONE, see D35**), `OCOAS
+           T` (57 lines, shared unchanged with `OCNDYN2.f`, **DONE, see D
+           37**, bitwise exact first try), plus `CONSERV_O*`/`CHECKO*` di
+           agnostics (likely skippable) and one-time init/restart-I/O (`i
+           nit_OCEAN`, `daily_OCEAN`, etc., not per-step work). `GLMELT` 
+           (72 lines) scoped and **deferred** (D36): fires only once per 
+           calendar day via `daily_OCEAN`'s `end_of_day` gate, not confir
+           med to occur within the existing 6-step/3-hour test windows. `
+           OSOURC`'s `FSR`/`FSRZ`/`LSRPD` dependency is fully analytic (D
+           34); `GROUND_OC`'s `SHCGS` is the one genuine external-file de
+           pendency (`OFTAB`, recorded at its use point, D35). Confirmed 
+           via `ORES_5x4.F90`: ocean grid IMO=72,JMO=46, **same resolutio
+           n as the atmosphere** — `AG2OG_precip`/`OG2AG_*` (atm<->ocean 
+           regrid) can be treated as a recorded-input boundary. |
+      637 -| `OCNDYN2.f` | | 2,670 total | **The real live Stage-2 dynami
+          -cal core (D36 correction)**. `SUBROUTINE OCEANS` (33-699, tabl
+          -e row above) is the actual driver. `OSTRES2` (2478-2577) is **
+          -DONE, see D36**. `OBDRAG2` (2592-2682, 91 lines) is **DONE, se
+          -e D38** — confirmed `OCN_GISS_TURB` not `#define`d, tidal-enha
+          -ncement branch dead. The polar UOD/VOD relax block + `polevel(
+          -)` (179-228, 1530-1564, ~90 lines) is **DONE, see D39**. `ODHO
+          -RZ0` (1718-1862, 144 lines, pressure/EOS prep) is **DONE, see 
+          -D40** — confirmed `USE_OPGFQ=0`; `VOLGSP` recorded at its outp
+          -uts; caught a North Pole masking design gap (`nbyzm` restricts
+          - J=JM to I=1 only) via the dump comparison. `ODHORZ` (1185-171
+          -7, 532 lines, the actual horizontal-momentum + mass-continuity
+          - solve `ODHORZ0` preps for) is **DONE (plain-Python only), see
+          - D42, extended D44** — `OPFIL2`'s two per-layer outputs record
+          -ed directly, decoupling from the `OPFIL2`/`AVR`-file dependenc
+          -y; two real bugs caught before any validation run (missing `HO
+          -CEAN` recording; `OPBOT`'s cross-layer accumulation reset inco
+          -rrectly); float64-tolerance exact on all 15 real call records;
+          - `OMEGA` validated empirically at Earth-standard; JAX vectoriz
+          -ation deliberately deferred as its own follow-up (GHY-lesson d
+          -iscipline). **D44 extension**: `ODHORZ` also accumulates `SMU`
+          -/`SMV` (`OCEAN_DYN`'s integrated horizontal mass fluxes, `:135
+          -1,1443`) — a real gap found while scoping the tracer-advection
+          - family below (D42 never captured it since nothing D42 validat
+          -ed needed it); `NOCEAN=1` for this rundeck confirmed via `OCEA
+          -N_COM.f`, so the accumulation reduces to "once per `OCEANS` ca
+          -ll", 2 of 5 `ODHORZ` calls per window contributing (`qeven=.tr
+          -ue.`); bitwise-exact, first try, both the per-call replay and 
+          -the full chained accumulation against a new ground-truth `ffz_
+          -smfinal` dump. `OFLUXV`+`OADVUZ` (711-800, 2471-2521, ~125 lin
+          -es, long-timestep vertical mass redistribution) is **DONE, see
+          - D43** — confirmed, contrary to an earlier scoping note, that 
+          -`OFLUXV` does NO … [+1501 chars]                              
+      637 +| `OCNDYN2.f` | | 2,670 total | **The real live Stage-2 dynami
+          +cal core (D36 correction)**. `SUBROUTINE OCEANS` (33-699, tabl
+          +e row above) is the actual driver. `OSTRES2` (2478-2577) is **
+          +DONE, see D36**. `OBDRAG2` (2592-2682, 91 lines) is **DONE, se
+          +e D38** — confirmed `OCN_GISS_TURB` not `#define`d, tidal-enha
+          +ncement branch dead. The polar UOD/VOD relax block + `polevel(
+          +)` (179-228, 1530-1564, ~90 lines) is **DONE, see D39**. `ODHO
+          +RZ0` (1718-1862, 144 lines, pressure/EOS prep) is **DONE, see 
+          +D40** — confirmed `USE_OPGFQ=0`; `VOLGSP` recorded at its outp
+          +uts; caught a North Pole masking design gap (`nbyzm` restricts
+          + J=JM to I=1 only) via the dump comparison. `ODHORZ` (1185-171
+          +7, 532 lines, the actual horizontal-momentum + mass-continuity
+          + solve `ODHORZ0` preps for) is **DONE (plain-Python only), see
+          + D42, extended D44** — `OPFIL2`'s two per-layer outputs record
+          +ed directly, decoupling from the `OPFIL2`/`AVR`-file dependenc
+          +y; two real bugs caught before any validation run (missing `HO
+          +CEAN` recording; `OPBOT`'s cross-layer accumulation reset inco
+          +rrectly); float64-tolerance exact on all 15 real call records;
+          + `OMEGA` validated empirically at Earth-standard; JAX vectoriz
+          +ation deliberately deferred as its own follow-up (GHY-lesson d
+          +iscipline). **D44 extension**: `ODHORZ` also accumulates `SMU`
+          +/`SMV` (`OCEAN_DYN`'s integrated horizontal mass fluxes, `:135
+          +1,1443`) — a real gap found while scoping the tracer-advection
+          + family below (D42 never captured it since nothing D42 validat
+          +ed needed it); `NOCEAN=1` for this rundeck confirmed via `OCEA
+          +N_COM.f`, so the accumulation reduces to "once per `OCEANS` ca
+          +ll", 2 of 5 `ODHORZ` calls per window contributing (`qeven=.tr
+          +ue.`); bitwise-exact, first try, both the per-call replay and 
+          +the full chained accumulation against a new ground-truth `ffz_
+          +smfinal` dump. `OFLUXV`+`OADVUZ` (711-800, 2471-2521, ~125 lin
+          +es, long-timestep vertical mass redistribution) is **DONE, see
+          + D43** — confirmed, contrary to an earlier scoping note, that 
+          +`OFLUXV` does NO … [+1561 chars]                              
+      638  | `OCNQUS.f` (advection) | | 1,846 total; **confirmed entirely
+            dead code for this rundeck, 2026-09-29** | **Resolved the ear
+           lier "may overlap, needs disambiguating" flag.** `OCNQUS.f` ho
+           lds `OADVT3`/`OADVTX3`/`OADVTY3`/`OADVTZ3`/`OADVTX4`/`OADVTY4`
+           /`OADVTZ4` — the "Quadratic Upstream Scheme" (QUS, full 2nd-or
+           der moments including cross terms XY/YZ/ZX), selected only whe
+           n `USE_QUS==1` (`OCNDYN2.f:365`: `if(use_qus==1) CALL OADVT3(.
+           ..) else CALL OADVT2(...)`). `USE_QUS` defaults to 0 (`OCEAN_C
+           OM.f`) and is **not overridden in `decks/P2SAoM40.R`** — so `O
+           CNDYN2.f`'s own simpler `OADVT2`/`OADVTX2`/`OADVTY2`/`OADVTZ2`
+            family (linear moments only, already scoped above) is the liv
+           e one for this rundeck; all of `OCNQUS.f` can be skipped. Do n
+           ot port anything from this file. |
+      639  | `OCNKPP.f` (vertical mixing) | | 3,714 total | **Scoped 2026
+           -09-29 (D41 exploration), not yet ported.** Real subroutines: 
+           `KPPMIX` (225-1315, the actual K-Profile-Parameterization boun
+           dary-layer mixing scheme — Large/McWilliams/Doney-style, genui
+           nely intricate), `OCONV` (1361-3032, the main per-step driver 
+           that calls `KPPMIX` per column — confirmed live, called from `
+           OCEANS`), `STCONV` (3032-3410, straits convection), `OVDIFF`/`
+           OVDIFFS` (3410-3517, vertical diffusion solvers). `OCN_GISS_TU
+           RB`/`OCN_GISS_SM`-guarded branches within this file are dead (
+           confirmed not `#define`d, same finding as D38's `OBDRAG2`). Th
+           e live core (`KPPMIX`+`OCONV`, ~2,800 lines) is a "new archite
+           cture"-scale item, likely the single largest remaining piece —
+            **not started**. |
+      640  | `OCNMESO_DRV.f`+`OCNTDMIX.f`+`OCNGM.f` (mesoscale/GM-Redi mi
+           xing) | | 1,217+2,030+1,270 = 4,517 total | **Partially scoped
+            2026-09-29 (D41 exploration).** `OCNMESO_DRV.f`'s real driver
+            is `ocnmeso_drv` (131-432, ~300 lines; `densgrad` at 434-577 
+           is a helper). Confirmed `CONSTANT_MESO_DIFFUSIVITY` **is** `#d
+           efine`d for this build — `ocnmeso_drv` takes a simpler constan
+           t-diffusivity path rather than the full flow-dependent Gent-Mc
+           Williams slope/diffusivity calculation; `simple_mesodiff` (579
+           -722, gated by the separate `SIMPLE_MESODIFF` flag) is confirm
+           ed dead (not defined). How much of `ocnmeso_drv`'s own 300 lin
+           es the live `CONSTANT_MESO_DIFFUSIVITY` branch actually touche
+           s is **not yet traced in detail** — likely a real scope reduct
+           ion versus the full GM-Redi scheme, but not yet quantified. `O
+           CNTDMIX.f`/`OCNGM.f` **not yet read** at all. `OCNGISS_TURB.f`
+           /`OCNGISS_SM.f` (904+348=1,252) confirmed dead (their `#ifdef`
+            guards not defined for this build, same as `OCNKPP.f`'s findi
+           ng) — do not port these two files. |
+
+● Now let's run the full regression suite before committing D44.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Let me check on the background regression suite while D44's investigation work
+  continues.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Regression suite still running. I'll wait for it to complete before committing
+  D44 rather than starting new Fortran instrumentation work on top of an
+  unvalidated state.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Still running (~30s elapsed, typically takes ~20 min). I'll wait for the
+  completion notification before committing D44 and starting D45.
+
+● D44's full regression suite is running in the background. I'll pick this up
+  when it completes.
+
+● Background command "Run full project regression suite for D44" completed (exit
+code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● 607 passed, 0 failed (594 prior + 13 new), matching expectations exactly.
+  Committing D44 now.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● All needed variables are already in scope. Now let's add the D45
+  instrumentation.
+  Made 3 scratchpad edits +120 -11, read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Now let's rebuild and rerun all 3 dates.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Build succeeded. Now running all 3 dates.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● This is the core tracer-advection routine family. I'll write it as a careful,
+  literal port matching the established plain-loop style.
+
+● Write(fullfidelity/oadvt2_ff.py)
+  ⎿  Wrote 133 lines to fullfidelity/oadvt2_ff.py
+      1 """Full-fidelity port of OCNDYN2.f's OADVT2 dispatcher + OADVTX2/
+      2 the DYNSI/ocean port, D45. The long-timestep advection of potenti
+        al enthalpy (G0M) and salt
+        , .TRUE. for S0M), each call
+        ields (D43/D44).
+      5
+         USE_QUS=0 for this rundeck,
+      7 confirmed dead D41, so OADVT3's full quadratic-moments scheme is
+      8 thin Strang-splitting dispatcher: X(half dt), Y(dt), Z(dt), X(hal
+      9 row uniformly.
+     … +168 lines (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 1 line, removed 1 line
+      92                  else:
+      93                      am = fm = fx = fy = fz = 0.0
+      94                  amim1, fmim1, fxim1, fyim1, fzim1 = am, fm, fx,
+           fy, fz
+      95 -                am_im, fm_im = am, fm                          
+      95 +                am_im, fm_im, fx_im, fy_im, fz_im = am, fm, fx,
+         + fy, fz                                                        
+      96  
+      97                  for i in range(1, IM):  # basins loop, i=1..IM-
+          1, gated by M-active
+      98                      if lmm[i, j] < l:
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 10 lines, removed 7 lines
+      121                      mm[i, j, l] = mmnew
+      122                      amim1, fmim1, fxim1, fyim1, fzim1 = am, fm
+           , fx, fy, fz
+      123  
+      124 -                # dateline update                             
+      124 +                # dateline update, using the stored original d
+          +ateline flux (am_im/fm_im/...)                                
+      125 +                # against amim1/fmim1/... left over from the i
+          +nterior loop's last iteration                                 
+      126                  i = IM
+      127                  if lmm[i, j] >= l:
+      127 -                    am, fm, fx, fy, fz = am_im, fm_im, fx_im i
+          -f False else fx, fy, fz                                       
+      128 -                    # recompute using stored dateline flux (am
+          -_im/fm_im), fx/fy/fz already the                              
+      129 -                    # dateline's own values from the seed step
+          - (unchanged since no interior                                 
+      130 -                    # iteration overwrote them -- matches the 
+          -Fortran's am_im/fm_im/fx_im/... )                             
+      131 -                    pass                                      
+      132 -                mmnew = None  # placeholder removed below     
+      128 +                    am, fm, fx, fy, fz = am_im, fm_im, fx_im, 
+          +fy_im, fz_im                                                  
+      129 +                    mmnew = mm[i, j, l] + (amim1 - am)        
+      130 +                    rm[i, j, l] = rm[i, j, l] + (fmim1 - fm)  
+      131 +                    rx[i, j, l] = (rx[i, j, l] * mm[i, j, l] +
+          + (fxim1 - fx) +                                               
+      132 +                                   3.0 * ((amim1 + am) * rm[i,
+          + j, l] - mm[i, j, l] * (fmim1 + fm))) / mmnew                 
+      133 +                    ry[i, j, l] = ry[i, j, l] + (fyim1 - fy)  
+      134 +                    rz[i, j, l] = rz[i, j, l] + (fzim1 - fz)  
+      135 +                    mm[i, j, l] = mmnew                       
+      136      return rm, rx, ry, rz, mm
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 80 lines
+      134                      rz[i, j, l] = rz[i, j, l] + (fzim1 - fz)
+      135                      mm[i, j, l] = mmnew
+      136      return rm, rx, ry, rz, mm
+      137 +                                                              
+      138 +                                                              
+      139 +def oadvty2(rm, rx, ry, rz, mo, mv, dt, qlimit, lmm, lmv):    
+      140 +    """OCNDYN2.f:2130-2302. `mv` bound to SMV -- SMV(i,JM,l)==
+          +0 identically (D44's accumulation                             
+      141 +    loop never touches j=JM), so the update loop below needs n
+          +o j=JM special-casing: it naturally                           
+      142 +    degenerates to a zero-flux update there, matching the Fort
+          +ran exactly. Returns fresh                                    
+      143 +    (rm,rx,ry,rz,mo)."""                                      
+      144 +    rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.co
+          +py(); mo = mo.copy()                                          
+      145 +    rylimit = 1.0 if qlimit else 0.0                          
+      146 +    for l in range(1, LMO + 1):                               
+      147 +        # pole fill (copy row JM across longitude before this 
+          +layer's Y sweep)                                              
+      148 +        for i in range(2, IM + 1):                            
+      149 +            mo[i, JM, l] = mo[1, JM, l]                       
+      150 +            rm[i, JM, l] = rm[1, JM, l]                       
+      151 +            rz[i, JM, l] = rz[1, JM, l]                       
+      152 +        for i in range(1, IM + 1):                            
+      153 +            rx[i, JM, l] = 0.0                                
+      154 +            ry[i, JM, l] = 0.0                                
+      155 +                                                              
+      156 +        bmjm1 = np.zeros(IM + 1); fmjm1 = np.zeros(IM + 1)    
+      157 +        fxjm1 = np.zeros(IM + 1); fyjm1 = np.zeros(IM + 1); fz
+          +jm1 = np.zeros(IM + 1)                                        
+      158 +                                                              
+      159 +        j = 1                                                 
+      160 +        for i in range(1, IM + 1):                            
+      161 +            if lmv[i, j] < l:                                 
+      162 +                continue                                      
+      163 +            bm = mv[i, j, l] * dt                             
+      164 +            if bm >= 0.0:                                     
+      165 +                b = bm / mo[i, j, l]                          
+      166 +                ry[i, j, l] -= rylimit * _sign(min(0.0, rm[i, 
+          +j, l] - abs(ry[i, j, l])), ry[i, j, l])                       
+      167 +                fm = b * (rm[i, j, l] + (1 - b) * ry[i, j, l])
+      168 +                fy = bm * (b * b * ry[i, j, l] - 3 * fm)      
+      169 +                fx = b * rx[i, j, l]                          
+      170 +                fz = b * rz[i, j, l]                          
+      171 +            else:                                             
+      172 +                b = bm / mo[i, j + 1, l]                      
+      173 +                ry[i, j + 1, l] -= rylimit * _sign(min(0.0, rm
+          +[i, j + 1, l] - abs(ry[i, j + 1, l])), ry[i, j + 1, l])       
+      174 +                fm = b * (rm[i, j + 1, l] - (1 + b) * ry[i, j 
+          ++ 1, l])                                                      
+      175 +                fy = bm * (b * b * ry[i, j + 1, l] - 3 * fm)  
+      176 +                fx = b * rx[i, j + 1, l]                      
+      177 +                fz = b * rz[i, j + 1, l]                      
+      178 +            bmjm1[i], fmjm1[i], fxjm1[i], fyjm1[i], fzjm1[i] =
+          + bm, fm, fx, fy, fz                                           
+      179 +                                                              
+      180 +        for j in range(2, JM + 1):  # j = 2 .. JM (inclusive) 
+      181 +            for i in range(1, IM + 1):                        
+      182 +                if lmm[i, j] < l:                             
+      183 +                    continue                                  
+      184 +                bm = mv[i, j, l] * dt                         
+      185 +                if bm >= 0.0:                                 
+      186 +                    b = bm / mo[i, j, l]                      
+      187 +                    ry[i, j, l] -= rylimit * _sign(min(0.0, rm
+          +[i, j, l] - abs(ry[i, j, l])), ry[i, j, l])                   
+      188 +                    fm = b * (rm[i, j, l] + (1 - b) * ry[i, j,
+          + l])                                                          
+      189 +                    fy = bm * (b * b * ry[i, j, l] - 3 * fm)  
+      190 +                    fx = b * rx[i, j, l]                      
+      191 +                    fz = b * rz[i, j, l]                      
+      192 +                else:                                         
+      193 +                    b = bm / mo[i, j + 1, l]                  
+      194 +                    ry[i, j + 1, l] -= rylimit * _sign(min(0.0
+          +, rm[i, j + 1, l] - abs(ry[i, j + 1, l])), ry[i, j + 1, l])   
+      195 +                    fm = b * (rm[i, j + 1, l] - (1 + b) * ry[i
+          +, j + 1, l])                                                  
+      196 +                    fy = bm * (b * b * ry[i, j + 1, l] - 3 * f
+          +m)                                                            
+      197 +                    fx = b * rx[i, j + 1, l]                  
+      198 +                    fz = b * rz[i, j + 1, l]                  
+      199 +                mnew = mo[i, j, l] + (bmjm1[i] - bm)          
+      200 +                rm[i, j, l] = rm[i, j, l] + (fmjm1[i] - fm)   
+      201 +                ry[i, j, l] = (ry[i, j, l] * mo[i, j, l] + (fy
+          +jm1[i] - fy) +                                                
+      202 +                               3.0 * ((bmjm1[i] + bm) * rm[i, 
+          +j, l] - mo[i, j, l] * (fmjm1[i] + fm))) / mnew                
+      203 +                rx[i, j, l] = rx[i, j, l] + (fxjm1[i] - fx)   
+      204 +                rz[i, j, l] = rz[i, j, l] + (fzjm1[i] - fz)   
+      205 +                mo[i, j, l] = mnew                            
+      206 +                bmjm1[i], fmjm1[i], fxjm1[i], fyjm1[i], fzjm1[
+          +i] = bm, fm, fx, fy, fz                                       
+      207 +                                                              
+      208 +        # average the pole                                    
+      209 +        if lmm[1, JM] >= l:                                   
+      210 +            j = JM                                            
+      211 +            mo[1:IM + 1, j, l] = np.sum(mo[1:IM + 1, j, l]) / 
+          +IM                                                            
+      212 +            rm[1:IM + 1, j, l] = np.sum(rm[1:IM + 1, j, l]) / 
+          +IM                                                            
+      213 +            rz[1:IM + 1, j, l] = np.sum(rz[1:IM + 1, j, l]) / 
+          +IM                                                            
+      214 +            rx[1:IM + 1, j, l] = 0.0                          
+      215 +            ry[1:IM + 1, j, l] = 0.0                          
+      216 +    return rm, rx, ry, rz, mo                                 
+
+● Let me re-verify SMW's exact bottom-layer behavior in the real OFLUXV source
+  before finishing OADVTZ2's port.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 86 lines
+      214              rx[1:IM + 1, j, l] = 0.0
+      215              ry[1:IM + 1, j, l] = 0.0
+      216      return rm, rx, ry, rz, mo
+      217 +                                                              
+      218 +                                                              
+      219 +def oadvtz2(rm, rx, ry, rz, mo, mw, dt, qlimit, lmm):         
+      220 +    """OCNDYN2.f:2304-2423. `mw` bound to SMW -- SMW(i,j,LMM(i
+          +,j))==0 identically (proven from                              
+      221 +    source: OFLUXV's SMW accumulation loop, OCNDYN2.f:766-780,
+          + only ever assigns l=1..lm-1 per                              
+      222 +    column via direct '=' assignment, and SMW is zero at alloc
+          +ation, `OCEAN_COM.f:505`, never                               
+      223 +    touched anywhere else -- so the column's own bottom-layer 
+          +entry is permanently, structurally                            
+      224 +    zero, not just usually so). This makes the l==LMO / cm<0 o
+          +ut-of-bounds case (which would read                           
+      225 +    RM(...,L+1) at L+1=LMO+1) unreachable: whenever l==LMO for
+          + an active cell, l==lmm(i,j)==LMO,                            
+      226 +    so cm=dt*mw[...,LMO]=0 exactly, taking the cm>=0 branch, n
+          +ever the cm<0 one. `LUS_VERT_ADV`                             
+      227 +    is confirmed not defined for this rundeck (the preprocesso
+          +r block), so the R_edge-weighted                              
+      228 +    `fm_ctr` path is always the live one (never just `fm_ctr=f
+          +m`). Returns fresh                                            
+      229 +    (rm,rx,ry,rz,mo)."""                                      
+      230 +    rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.co
+          +py(); mo = mo.copy()                                          
+      231 +    rzlim = 1.0 if qlimit else 0.0                            
+      232 +    no_rzlim = 1.0 - rzlim                                    
+      233 +    edgmax = 1.5                                              
+      234 +                                                              
+      235 +    cmup = np.zeros((IM + 1, JM + 1)); fmup = np.zeros((IM + 1
+          +, JM + 1))                                                    
+      236 +    fxup = np.zeros((IM + 1, JM + 1)); fyup = np.zeros((IM + 1
+          +, JM + 1))                                                    
+      237 +    fzup = np.zeros((IM + 1, JM + 1)); fmup_ctr = np.zeros((IM
+          + + 1, JM + 1))                                                
+      238 +                                                              
+      239 +    for l in range(1, LMO + 1):                               
+      240 +        for j in range(1, JM + 1):                            
+      241 +            for i in range(1, IM + 1):                        
+      242 +                if lmm[i, j] < l:                             
+      243 +                    continue                                  
+      244 +                cm = dt * mw[i, j, l]                         
+      245 +                ldn = min(l + 1, lmm[i, j])                   
+      246 +                wtdn = mo[i, j, l] / (mo[i, j, l] + mo[i, j, l
+          +dn])                                                          
+      247 +                rdn = rm[i, j, ldn] / mo[i, j, ldn]           
+      248 +                rup = rm[i, j, l] / mo[i, j, l]               
+      249 +                r_edge = wtdn * rdn + (1.0 - wtdn) * rup      
+      250 +                if cm >= 0.0:                                 
+      251 +                    c = cm / mo[i, j, l]                      
+      252 +                    rz[i, j, l] -= rzlim * _sign(min(0.0, rm[i
+          +, j, l] - abs(rz[i, j, l])), rz[i, j, l])                     
+      253 +                    fm = c * (rm[i, j, l] + (1.0 - c) * rz[i, 
+          +j, l])                                                        
+      254 +                    fx = c * rx[i, j, l]                      
+      255 +                    fy = c * ry[i, j, l]                      
+      256 +                    fz = cm * (c * c * rz[i, j, l] - 3.0 * fm)
+      257 +                    r_edge = r_edge * no_rzlim + rzlim * min(r
+          +_edge, edgmax * rup)                                          
+      258 +                    fm_ctr = cm * (c * rup + (1.0 - c) * r_edg
+          +e)                                                            
+      259 +                else:                                         
+      260 +                    c = cm / mo[i, j, l + 1]                  
+      261 +                    rz[i, j, l + 1] -= rzlim * _sign(min(0.0, 
+          +rm[i, j, l + 1] - abs(rz[i, j, l + 1])), rz[i, j, l + 1])     
+      262 +                    fm = c * (rm[i, j, l + 1] - (1.0 + c) * rz
+          +[i, j, l + 1])                                                
+      263 +                    fx = c * rx[i, j, l + 1]                  
+      264 +                    fy = c * ry[i, j, l + 1]                  
+      265 +                    fz = cm * (c * c * rz[i, j, l + 1] - 3.0 *
+          + fm)                                                          
+      266 +                    r_edge = r_edge * no_rzlim + rzlim * min(r
+          +_edge, edgmax * rdn)                                          
+      267 +                    fm_ctr = cm * (-c * rdn + (1.0 + c) * r_ed
+          +ge)                                                           
+      268 +                                                              
+      269 +                rm_lus = rm[i, j, l] + (fmup[i, j] - fm)      
+      270 +                rm[i, j, l] = rm[i, j, l] + (fmup_ctr[i, j] - 
+          +fm_ctr)                                                       
+      271 +                mnew = mo[i, j, l] + cmup[i, j] - cm          
+      272 +                rz[i, j, l] = (rz[i, j, l] * mo[i, j, l] + (fz
+          +up[i, j] - fz) + 3.0 *                                        
+      273 +                               ((cmup[i, j] + cm) * rm_lus - m
+          +o[i, j, l] * (fmup[i, j] + fm))) / mnew                       
+      274 +                mo[i, j, l] = mnew                            
+      275 +                cmup[i, j] = cm                               
+      276 +                fmup[i, j] = fm                               
+      277 +                fmup_ctr[i, j] = fm_ctr                       
+      278 +                fzup[i, j] = fz                               
+      279 +                rx[i, j, l] = rx[i, j, l] + (fxup[i, j] - fx) 
+      280 +                fxup[i, j] = fx                               
+      281 +                ry[i, j, l] = ry[i, j, l] + (fyup[i, j] - fy) 
+      282 +                fyup[i, j] = fy                               
+      283 +    return rm, rx, ry, rz, mo                                 
+      284 +                                                              
+      285 +                                                              
+      286 +def oadvt2(mmi, rm, rx, ry, rz, dt, qlimit, smu, smv, smw, lmu
+          +, lmv, lmm):                                                  
+      287 +    """OCNDYN2.f:1853-1914, the Strang-splitting dispatcher: X
+          +(half dt), Y(dt), Z(dt), X(half dt)                           
+      288 +    again, then fills the pole row's RM/RZ uniformly across lo
+          +ngitude. `mmi` seeds MA (overwrites                           
+      289 +    whatever mass state the caller carried in, matching `MA = 
+          +MB` in the real Fortran). Returns                             
+      290 +    fresh (ma, rm, rx, ry, rz)."""                            
+      291 +    ma = mmi.copy()                                           
+      292 +    rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.co
+          +py()                                                          
+      293 +    rm, rx, ry, rz, ma = oadvtx2(rm, rx, ry, rz, ma, smu, 0.5 
+          +* dt, qlimit, lmu, lmm)                                       
+      294 +    rm, rx, ry, rz, ma = oadvty2(rm, rx, ry, rz, ma, smv, dt, 
+          +qlimit, lmm, lmv)                                             
+      295 +    rm, rx, ry, rz, ma = oadvtz2(rm, rx, ry, rz, ma, smw, dt, 
+          +qlimit, lmm)                                                  
+      296 +    rm, rx, ry, rz, ma = oadvtx2(rm, rx, ry, rz, ma, smu, 0.5 
+          +* dt, qlimit, lmu, lmm)                                       
+      297 +                                                              
+      298 +    for l in range(1, LMO + 1):                               
+      299 +        for i in range(1, IM + 1):                            
+      300 +            rm[i, JM, l] = rm[1, JM, l]                       
+      301 +            rz[i, JM, l] = rz[1, JM, l]                       
+      302 +    return ma, rm, rx, ry, rz                                 
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Write(fullfidelity/oadvt2_compare.py)
+  ⎿  Wrote 112 lines to fullfidelity/oadvt2_compare.py
+       1 """Validate oadvt2_ff.py's OADVT2/OADVTX2/OADVTY2/OADVTZ2 port a
+         gainst real Fortran dumps (D45)."""
+       2 import sys
+       4 from oadvt2_ff import oadvt2, IM, JM, LMO
+       5 from odhorz_compare import load_lmm, load_lmv, load_lmu, FF_DEFA
+         ULT
+       6 from odhorz_ff import geomo_dyn_arrays
+       8
+       9
+      10 def load_mmi(date, itime):
+     … +122 lines (ctrl+o to expand)
+
+  Read 1 file, ran 4 shell commands (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 10 lines, removed 1 line
+      41      `mu` is the (already dt-independent) mass flux MU(I,J,L). R
+          eturns fresh (rm,rx,ry,rz,mm)."""
+      42      rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.cop
+          y(); mm = mm.copy()
+      43      rxlimit = 1.0 if qlimit else 0.0
+      44 +    # `mudt` is a SINGLE array reused across every (l,j) pass i
+         +n the real Fortran (declared once                              
+      45 +    # for the whole subroutine, `real*8, dimension(im) :: mudt`
+         +, never reset) -- entries outside                              
+      46 +    # the current pass's active-U segments deliberately retain 
+         +whatever was last written there by                             
+      47 +    # an earlier (l,j) pass. This is exercised by real data: a 
+         +cell can be M-active (read by the                              
+      48 +    # basins-update loop below, gated on `nbyzm`) while U-inact
+         +ive at the SAME (i,j,l) (gated on                              
+      49 +    # `nbyzu`, e.g. a coastal cell whose eastward neighbor is l
+         +and), in which case the Fortran                                
+      50 +    # reads mudt(i) as whatever a DIFFERENT (l,j) pass last lef
+         +t there -- not zero. Replicating                               
+      51 +    # this exactly (rather than "fixing" it to zero) was requir
+         +ed to match two real cells' MA/MO1                             
+      52 +    # to float64 precision (found via mismatch debugging, not a
+         +ssumed).                                                       
+      53 +    mudt = np.zeros(IM + 1)                                    
+      54      for l in range(1, LMO + 1):
+      55          for j in range(2, JM):  # J1P=2 .. JNP=JM-1
+      56              active_u = lmu[1:IM + 1, j] >= l
+      57              if not np.any(active_u):
+      58                  continue
+      49 -            mudt = np.zeros(IM + 1)                            
+      59              for i in range(1, IM + 1):
+      60                  if lmu[i, j] >= l:
+      61                      mudt[i] = mu[i, j, l] * dt
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 3 lines, removed 1 line
+      75              if courmax > 1.0:
+      76                  ncourant = 1 + int(courmax)
+      77                  zcourant = 1.0 / ncourant
+      78 -                mudt[1:IM + 1] *= zcourant                     
+      78 +                for i in range(1, IM + 1):                     
+      79 +                    if lmu[i, j] >= l:                         
+      80 +                        mudt[i] *= zcourant                    
+      81              else:
+      82                  ncourant = 1
+      83  
+
+● Now let's rerun the validation.
+
+  Searched for 1 pattern, read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● I found the actual bug: mudt(1), mudt(2), and mudt(IM) are unconditionally
+  refreshed every pass in the real Fortran regardless of activity, and segments
+  are strictly linear (no wraparound) with an explicit single-cell-segment skip.
+  Let me rewrite oadvtx2 as a precise line-by-line transliteration.
+
+  Read 1 file (ctrl+o to expand)
+
+● Now let me rewrite the entire oadvtx2 function precisely, replacing lines
+  39-147.
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 102 lines, removed 50 lines
+       36      return math.copysign(a, b) if b != 0.0 else abs(a)
+       37  
+       38  
+       39 +def _get_i1i2(active):                                        
+       40 +    """OCNDYN.f:1494 `get_i1i2`, transliterated: `active` is a
+          + 1-indexed bool array (size IM+1,                             
+       41 +    index 0 unused). Finds maximal runs of True, LINEARLY (wra
+          +paround explicitly disabled in the                            
+       42 +    real Fortran -- longitude periodicity at the dateline is h
+          +andled by OADVTX2's own explicit                              
+       43 +    i=1/i=IM special-casing below, not by the segment structur
+          +e). Returns a list of (i1,i2)."""                             
+       44 +    segs = []                                                 
+       45 +    i = 1                                                     
+       46 +    while i <= IM:                                            
+       47 +        if not active[i]:                                     
+       48 +            i += 1                                            
+       49 +            continue                                          
+       50 +        i1 = i                                                
+       51 +        while i <= IM and active[i]:                          
+       52 +            i += 1                                            
+       53 +        segs.append((i1, i - 1))                              
+       54 +    return segs                                               
+       55 +                                                              
+       56 +                                                              
+       57  def oadvtx2(rm, rx, ry, rz, mm, mu, dt, qlimit, lmu, lmm):
+       58      """OCNDYN2.f:1916-2128. All fields 1-indexed (IM+1,JM+1,LM
+           O+1); operates across all layers.
+       41 -    `mu` is the (already dt-independent) mass flux MU(I,J,L). 
+          -Returns fresh (rm,rx,ry,rz,mm)."""                            
+       59 +    `mu` is the (already dt-independent) mass flux MU(I,J,L). 
+          +Returns fresh (rm,rx,ry,rz,mm).                               
+       60 +                                                              
+       61 +    `mudt` is a SINGLE array reused across every (l,j) pass in
+          + the real Fortran (`real*8,                                   
+       62 +    dimension(im) :: mudt`, declared once for the whole subrou
+          +tine call, never reset): indices 1,                           
+       63 +    2 and IM are unconditionally refreshed from `mu` at the to
+          +p of every pass with any U-active                             
+       64 +    cell (regardless of whether 1/2/IM are themselves active),
+          + while every other index is only                              
+       65 +    refreshed within this pass's own U-active segments (built 
+          +via `_get_i1i2` on `lmu`, LINEAR,                             
+       66 +    not circular) -- everywhere else it deliberately retains w
+          +hatever an EARLIER, unrelated (l,j)                           
+       67 +    pass last left there. Both quirks are exercised by real da
+          +ta and were found by debugging a                              
+       68 +    real mismatch, not assumed: (1) a cell can be M-active whi
+          +le U-inactive at the same (i,j,l)                             
+       69 +    (e.g. a coastal cell whose eastward neighbor is land), so 
+          +the basins-update loop below reads a                          
+       70 +    stale `mudt(i)`; (2) the single-cell-segment skip (`i1yzm>
+          +1 .and. i1yzm==i2yzm`) leaves an                              
+       71 +    isolated M-active cell with inactive neighbors on both sid
+          +es entirely untouched by this pass.                           
+       72 +    """                                                       
+       73      rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.co
+           py(); mm = mm.copy()
+       74      rxlimit = 1.0 if qlimit else 0.0
+       44 -    # `mudt` is a SINGLE array reused across every (l,j) pass 
+          -in the real Fortran (declared once                            
+       45 -    # for the whole subroutine, `real*8, dimension(im) :: mudt
+          -`, never reset) -- entries outside                            
+       46 -    # the current pass's active-U segments deliberately retain
+          - whatever was last written there by                           
+       47 -    # an earlier (l,j) pass. This is exercised by real data: a
+          - cell can be M-active (read by the                            
+       48 -    # basins-update loop below, gated on `nbyzm`) while U-inac
+          -tive at the SAME (i,j,l) (gated on                            
+       49 -    # `nbyzu`, e.g. a coastal cell whose eastward neighbor is 
+          -land), in which case the Fortran                              
+       50 -    # reads mudt(i) as whatever a DIFFERENT (l,j) pass last le
+          -ft there -- not zero. Replicating                             
+       51 -    # this exactly (rather than "fixing" it to zero) was requi
+          -red to match two real cells' MA/MO1                           
+       52 -    # to float64 precision (found via mismatch debugging, not 
+          -assumed).                                                     
+       75      mudt = np.zeros(IM + 1)
+       76      for l in range(1, LMO + 1):
+       77          for j in range(2, JM):  # J1P=2 .. JNP=JM-1
+       56 -            active_u = lmu[1:IM + 1, j] >= l                  
+       78 +            active_u = np.zeros(IM + 1, dtype=bool)           
+       79 +            for i in range(1, IM + 1):                        
+       80 +                active_u[i] = lmu[i, j] >= l                  
+       81              if not np.any(active_u):
+       82                  continue
+       59 -            for i in range(1, IM + 1):                        
+       60 -                if lmu[i, j] >= l:                            
+       61 -                    mudt[i] = mu[i, j, l] * dt                
+       83  
+       84              courmax = 0.0
+       64 -            for i in range(1, IM + 1):                        
+       65 -                if lmu[i, j] < l:                             
+       66 -                    continue                                  
+       67 -                im1 = IM if i == 1 else i - 1                 
+       68 -                ip1 = 1 if i == IM else i + 1                 
+       85 +            mudt[1] = mu[1, j, l] * dt                        
+       86 +            mudt[2] = mu[2, j, l] * dt                        
+       87 +            mudt[IM] = mu[IM, j, l] * dt                      
+       88 +                                                              
+       89 +            i = 1                                             
+       90 +            if lmu[i, j] >= l:                                
+       91                  if mudt[i] >= 0.0:
+       70 -                    mcheck = mm[i, j, l] + min(0.0, mudt[im1] 
+          -- mudt[i])                                                    
+       92 +                    mcheck = mm[i, j, l] + min(0.0, mudt[IM] -
+          + mudt[i])                                                     
+       93                  else:
+       72 -                    mcheck = -mm[ip1, j, l] - min(0.0, mudt[i]
+          - - mudt[ip1])                                                 
+       94 +                    mcheck = -mm[i + 1, j, l] - min(0.0, mudt[
+          +i] - mudt[i + 1])                                             
+       95                  courmax = max(courmax, mudt[i] / mcheck)
+       96  
+       97 +            u_segs = _get_i1i2(active_u)                      
+       98 +            for (i1, i2) in u_segs:                           
+       99 +                i = i1                                        
+      100 +                if i > 1:                                     
+      101 +                    mudt[i - 1] = 0.0                         
+      102 +                mudt[i] = mu[i, j, l] * dt                    
+      103 +                for i in range(max(2, i1), min(i2, IM - 1) + 1
+          +):                                                            
+      104 +                    mudt[i + 1] = mu[i + 1, j, l] * dt        
+      105 +                    if mudt[i] >= 0.0:                        
+      106 +                        mcheck = mm[i, j, l] + min(0.0, mudt[i
+          + - 1] - mudt[i])                                              
+      107 +                    else:                                     
+      108 +                        mcheck = -mm[i + 1, j, l] - min(0.0, m
+          +udt[i] - mudt[i + 1])                                         
+      109 +                    courmax = max(courmax, mudt[i] / mcheck)  
+      110 +                                                              
+      111 +            i = IM                                            
+      112 +            if lmu[i, j] >= l:                                
+      113 +                if mudt[i] >= 0.0:                            
+      114 +                    mcheck = mm[i, j, l] + min(0.0, mudt[i - 1
+          +] - mudt[i])                                                  
+      115 +                else:                                         
+      116 +                    mcheck = -mm[1, j, l] - min(0.0, mudt[i] -
+          + mudt[1])                                                     
+      117 +                courmax = max(courmax, mudt[i] / mcheck)      
+      118 +                                                              
+      119              if courmax > 1.0:
+      120                  ncourant = 1 + int(courmax)
+      121                  zcourant = 1.0 / ncourant
+       78 -                for i in range(1, IM + 1):                    
+       79 -                    if lmu[i, j] >= l:                        
+      122 +                for (i1, i2) in u_segs:                       
+      123 +                    for i in range(i1, i2 + 1):               
+      124                          mudt[i] *= zcourant
+      125              else:
+      126                  ncourant = 1
+      127  
+      128 +            active_m = np.zeros(IM + 1, dtype=bool)           
+      129 +            for i in range(1, IM + 1):                        
+      130 +                active_m[i] = lmm[i, j] >= l                  
+      131 +            m_segs = _get_i1i2(active_m)                      
+      132 +                                                              
+      133              for _nc in range(ncourant):
+       85 -                # dateline flux (I=IM), computed first -- seed
+          -s the sequential ring sweep                                   
+      134 +                # dateline flux (I=IM), computed first -- seed
+          +s the sequential sweep                                        
+      135                  i = IM
+      136                  if lmu[i, j] >= l:
+      137                      am = mudt[i]
+     ...
+      154                  amim1, fmim1, fxim1, fyim1, fzim1 = am, fm, fx
+           , fy, fz
+      155                  am_im, fm_im, fx_im, fy_im, fz_im = am, fm, fx
+           , fy, fz
+      156  
+      108 -                for i in range(1, IM):  # basins loop, i=1..IM
+          --1, gated by M-active                                         
+      109 -                    if lmm[i, j] < l:                         
+      157 +                # basins loop: M-active segments, capped below
+          + IM (dateline handled separately),                            
+      158 +                # single-cell segments with i1>1 skipped entir
+          +ely (OCNDYN2.f:2066)                                          
+      159 +                for (i1, i2) in m_segs:                       
+      160 +                    if i1 > 1 and i1 == i2:                   
+      161                          continue
+      111 -                    am = mudt[i]                              
+      112 -                    if am >= 0.0:                             
+      113 -                        a = am / mm[i, j, l]                  
+      114 -                        rx[i, j, l] -= rxlimit * _sign(min(0.0
+          -, rm[i, j, l] - abs(rx[i, j, l])), rx[i, j, l])               
+      115 -                        fm = a * (rm[i, j, l] + (1 - a) * rx[i
+          -, j, l])                                                      
+      116 -                        fx = am * (a * a * rx[i, j, l] - 3 * f
+          -m)                                                            
+      117 -                        fy = a * ry[i, j, l]                  
+      118 -                        fz = a * rz[i, j, l]                  
+      119 -                    else:                                     
+      120 -                        a = am / mm[i + 1, j, l]              
+      121 -                        rx[i + 1, j, l] -= rxlimit * _sign(min
+          -(0.0, rm[i + 1, j, l] - abs(rx[i + 1, j, l])), rx[i + 1, j, l]
+          -)                                                             
+      122 -                        fm = a * (rm[i + 1, j, l] - (1 + a) * 
+          -rx[i + 1, j, l])                                              
+      123 -                        fx = am * (a * a * rx[i + 1, j, l] - 3
+          - * fm)                                                        
+      124 -                        fy = a * ry[i + 1, j, l]              
+      125 -                        fz = a * rz[i + 1, j, l]              
+      126 -                    mmnew = mm[i, j, l] + (amim1 - am)        
+      127 -                    rm[i, j, l] = rm[i, j, l] + (fmim1 - fm)  
+      128 -                    rx[i, j, l] = (rx[i, j, l] * mm[i, j, l] +
+          - (fxim1 - fx) +                                               
+      129 -                                   3.0 * ((amim1 + am) * rm[i,
+          - j, l] - mm[i, j, l] * (fmim1 + fm))) / mmnew                 
+      130 -                    ry[i, j, l] = ry[i, j, l] + (fyim1 - fy)  
+      131 -                    rz[i, j, l] = rz[i, j, l] + (fzim1 - fz)  
+      132 -                    mm[i, j, l] = mmnew                       
+      133 -                    amim1, fmim1, fxim1, fyim1, fzim1 = am, fm
+          -, fx, fy, fz                                                  
+      162 +                    for i in range(i1, min(i2, IM - 1) + 1):  
+      163 +                        am = mudt[i]                          
+      164 +                        if am >= 0.0:                         
+      165 +                            a = am / mm[i, j, l]              
+      166 +                            rx[i, j, l] -= rxlimit * _sign(min
+          +(0.0, rm[i, j, l] - abs(rx[i, j, l])), rx[i, j, l])           
+      167 +                            fm = a * (rm[i, j, l] + (1 - a) * 
+          +rx[i, j, l])                                                  
+      168 +                            fx = am * (a * a * rx[i, j, l] - 3
+          + * fm)                                                        
+      169 +                            fy = a * ry[i, j, l]              
+      170 +                            fz = a * rz[i, j, l]              
+      171 +                        else:                                 
+      172 +                            a = am / mm[i + 1, j, l]          
+      173 +                            rx[i + 1, j, l] -= rxlimit * _sign
+          +(min(0.0, rm[i + 1, j, l] - abs(rx[i + 1, j, l])), rx[i + 1, j
+          +, l])                                                         
+      174 +                            fm = a * (rm[i + 1, j, l] - (1 + a
+          +) * rx[i + 1, j, l])                                          
+      175 +                            fx = am * (a * a * rx[i + 1, j, l]
+          + - 3 * fm)                                                    
+      176 +                            fy = a * ry[i + 1, j, l]          
+      177 +                            fz = a * rz[i + 1, j, l]          
+      178 +                        mmnew = mm[i, j, l] + (amim1 - am)    
+      179 +                        rm[i, j, l] = rm[i, j, l] + (fmim1 - f
+          +m)                                                            
+      180 +                        rx[i, j, l] = (rx[i, j, l] * mm[i, j, 
+          +l] + (fxim1 - fx) +                                           
+      181 +                                       3.0 * ((amim1 + am) * r
+          +m[i, j, l] - mm[i, j, l] * (fmim1 + fm))) / mmnew             
+      182 +                        ry[i, j, l] = ry[i, j, l] + (fyim1 - f
+          +y)                                                            
+      183 +                        rz[i, j, l] = rz[i, j, l] + (fzim1 - f
+          +z)                                                            
+      184 +                        mm[i, j, l] = mmnew                   
+      185 +                        amim1, fmim1, fxim1, fyim1, fzim1 = am
+          +, fm, fx, fy, fz                                              
+      186  
+      187                  # dateline update, using the stored original d
+           ateline flux (am_im/fm_im/...)
+      136 -                # against amim1/fmim1/... left over from the i
+          -nterior loop's last iteration                                 
+      188 +                # against amim1/fmim1/... left over from the b
+          +asins loop's last iteration                                   
+      189                  i = IM
+      190                  if lmm[i, j] >= l:
+      191                      am, fm, fx, fy, fz = am_im, fm_im, fx_im, 
+           fy_im, fz_im
+
+  Ran 10 shell commands (ctrl+o to expand)
+
+● Given the small residual errors, I need to isolate exactly which advection
+  stage introduces them via new intermediate instrumentation, rather than
+  continue guessing.
+
+  Made 1 scratchpad edit +13 -8, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Now let's add the ffdump_oadvt2_stage subroutine in ATM_DRV.f.
+
+  Made 1 scratchpad edit +41 -2, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Now let's rebuild and rerun just nov26 (single date is enough for this debug
+  pass).
+
+  Ran 3 shell commands (ctrl+o to expand)
+● Now let's compare my port's intermediate stages against these real
+  ground-truth snapshots.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● MA itself is wrong before any advection even starts — my derived MMI doesn't
+  match the real Fortran's. Let me dump MMI directly instead of re-deriving it.
+
+  Made 2 scratchpad edits +37 -3, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Now let's rebuild and rerun all 3 dates (this will be the final debug + real
+  instrumentation build).
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Running in background. I'll continue once it completes rather than waiting
+  idle.
+
+● Found the root cause of D45's mismatch: my derived MMI = MO0*DXYPO(J) doesn't
+  match the real Fortran's MMI (a persistent module array that ODHORZ0
+  apparently only partially overwrites). Added a direct ffdump_mmi
+  instrumentation hook instead of re-deriving it, rebuilt, and the 3-date rerun
+  is in progress in the background.
+
+● Background command "Run all 3 dates with MMI dump instrumentation" completed
+(exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● All 3 dates succeeded. Let's copy the new MMI dumps and update the compare
+  script to use them directly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_compare.py)
+  ⎿  Added 8 lines, removed 8 lines
+       8  
+       9  
+      10  def load_mmi(date, itime):
+      11 -    """MMI = MO0*DXYPO(J), using ODHORZ0's already-validated (D
+         -40) mo0 input -- the mass field                                
+      12 -    frozen from before any dynamics sub-stepping this OCEANS ca
+         -ll, exactly what OADVT2's                                      
+      13 -    `MA = MB` (MB=>mmi) reads."""                              
+      11 +    """OCEAN_DYN's MMI, dumped directly (D45). An earlier attem
+         +pt re-derived it as                                            
+      12 +    MO0*DXYPO(J) using ODHORZ0's mo0 input -- this does NOT mat
+         +ch the real MMI (found via                                     
+      13 +    mismatch debugging: MMI is a persistent module array that O
+         +DHORZ0 only partially                                          
+      14 +    overwrites, not a dense recomputation from mo0), so it is n
+         +ow recorded directly instead."""                               
+      15      ff = f"{FF_DEFAULT}/{date}"
+      15 -    rec = load_odhorz0_record(f"{ff}/ffz_odhorz0_{itime}.bin") 
+      16 -    mo0 = rec["mo0"]                                           
+      17 -    _, _, _, _, _, _, _, dxypo = geomo_dyn_arrays()            
+      16 +    raw = np.fromfile(f"{ff}/ffz_mmi_{itime}.bin", dtype='>f8')
+      17 +    n3 = IM * JM * LMO                                         
+      18 +    assert raw.size == 1 + n3, (raw.size, 1 + n3)              
+      19      mmi = np.zeros((IM + 1, JM + 1, LMO + 1))
+      19 -    for j in range(1, JM + 1):                                 
+      20 -        mmi[:, j, :] = mo0[:, j, :] * dxypo[j]                 
+      20 +    mmi[1:, 1:, 1:] = raw[1:1 + n3].reshape(LMO, JM, IM).transp
+         +ose(2, 1, 0)                                                   
+      21      return mmi
+      22  
+      23  
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_compare.py)
+  ⎿  Removed 2 lines
+       3  import numpy as np
+       4  from oadvt2_ff import oadvt2, IM, JM, LMO
+       5  from odhorz_compare import load_lmm, load_lmv, load_lmu, FF_DEF
+          AULT
+       6 -from odhorz_ff import geomo_dyn_arrays                         
+       7 -from odhorz0_compare import load_record as load_odhorz0_record 
+       6  
+       7  
+       8  def load_mmi(date, itime):
+
+● Now let's rerun the full D45 validation.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Found it — the pole-averaging sum() in oadvty2 uses np.sum() (pairwise
+  reduction), while Fortran's -fp-model strict SUM does sequential left-to-right
+  accumulation. Let me fix that.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 12 lines
+      36      return math.copysign(a, b) if b != 0.0 else abs(a)
+      37  
+      38  
+      39 +def _fortran_sum(a):                                           
+      40 +    """Sequential left-to-right accumulation, matching ifort's 
+         +`-fp-model strict` SUM intrinsic                               
+      41 +    (no reassociation). `np.sum()` uses pairwise/blocked reduct
+         +ion -- different rounding, which                               
+      42 +    was the actual source of a real (if small, ~1e-6 relative) 
+         +pole-row mismatch found by                                     
+      43 +    debugging D45's OADVTY2 pole-averaging step (`mo(:,j,l)=sum
+         +(mo(:,j,l))/im`) against real                                  
+      44 +    Fortran output."""                                         
+      45 +    total = 0.0                                                
+      46 +    for x in a:                                                
+      47 +        total += x                                             
+      48 +    return total                                               
+      49 +                                                               
+      50 +                                                               
+      51  def _get_i1i2(active):
+      52      """OCNDYN.f:1494 `get_i1i2`, transliterated: `active` is a 
+          1-indexed bool array (size IM+1,
+      53      index 0 unused). Finds maximal runs of True, LINEARLY (wrap
+          around explicitly disabled in the
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 3 lines, removed 3 lines
+      283          # average the pole
+      284          if lmm[1, JM] >= l:
+      285              j = JM
+      286 -            mo[1:IM + 1, j, l] = np.sum(mo[1:IM + 1, j, l]) / 
+          -IM                                                            
+      287 -            rm[1:IM + 1, j, l] = np.sum(rm[1:IM + 1, j, l]) / 
+          -IM                                                            
+      288 -            rz[1:IM + 1, j, l] = np.sum(rz[1:IM + 1, j, l]) / 
+          -IM                                                            
+      286 +            mo[1:IM + 1, j, l] = _fortran_sum(mo[1:IM + 1, j, 
+          +l]) / IM                                                      
+      287 +            rm[1:IM + 1, j, l] = _fortran_sum(rm[1:IM + 1, j, 
+          +l]) / IM                                                      
+      288 +            rz[1:IM + 1, j, l] = _fortran_sum(rz[1:IM + 1, j, 
+          +l]) / IM                                                      
+      289              rx[1:IM + 1, j, l] = 0.0
+      290              ry[1:IM + 1, j, l] = 0.0
+      291      return rm, rx, ry, rz, mo
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Found it — nbyzm restricts J=JM to I=1 only (the established D40 finding), but
+  my oadvtz2 processes every i pointwise via lmm[i,JM]. Let me apply the same
+  pole-mask override used throughout D40-D44.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Update(fullfidelity/oadvt2_ff.py)
+  ⎿  Added 15 lines, removed 2 lines
+      300      RM(...,L+1) at L+1=LMO+1) unreachable: whenever l==LMO for
+            an active cell, l==lmm(i,j)==LMO,
+      301      so cm=dt*mw[...,LMO]=0 exactly, taking the cm>=0 branch, n
+           ever the cm<0 one. `LUS_VERT_ADV`
+      302      is confirmed not defined for this rundeck (the preprocesso
+           r block), so the R_edge-weighted
+      303 -    `fm_ctr` path is always the live one (never just `fm_ctr=f
+          -m`). Returns fresh                                            
+      303 +    `fm_ctr` path is always the live one (never just `fm_ctr=f
+          +m`).                                                          
+      304 +                                                              
+      305 +    `nbyzm` restricts J=JM (the North Pole row) to I=1 only (D
+          +40's established finding, reused                              
+      306 +    throughout D40/42/43/44 as the `m_active` override) -- OAD
+          +VTZ2's `cmup`/`fmup`/... arrays are                           
+      307 +    PERSISTENT per-(i,j) state carried across layers, so proce
+          +ssing every I at J=JM pointwise via                           
+      308 +    `lmm[i,JM]` (rather than restricting to I=1) lets each I i
+          +ndependently accumulate its OWN                               
+      309 +    cmup/fmup history, while the real Fortran leaves I=2..IM's
+          + cmup/fmup frozen at 0 forever                                
+      310 +    (never touched) -- a real, accumulating-with-depth diverge
+          +nce found by isolating D45's                                  
+      311 +    residual MA mismatch to exactly this routine, at exactly t
+          +he pole row. Returns fresh                                    
+      312      (rm,rx,ry,rz,mo)."""
+      313      rm = rm.copy(); rx = rx.copy(); ry = ry.copy(); rz = rz.co
+           py(); mo = mo.copy()
+      314      rzlim = 1.0 if qlimit else 0.0
+     ...
+      319      fxup = np.zeros((IM + 1, JM + 1)); fyup = np.zeros((IM + 1
+           , JM + 1))
+      320      fzup = np.zeros((IM + 1, JM + 1)); fmup_ctr = np.zeros((IM
+            + 1, JM + 1))
+      321  
+      322 +    def m_active(i, j, l):                                    
+      323 +        if j == JM:                                           
+      324 +            return i == 1 and lmm[1, JM] >= l                 
+      325 +        return lmm[i, j] >= l                                 
+      326 +                                                              
+      327      for l in range(1, LMO + 1):
+      328          for j in range(1, JM + 1):
+      329              for i in range(1, IM + 1):
+      317 -                if lmm[i, j] < l:                             
+      330 +                if not m_active(i, j, l):                     
+      331                      continue
+      332                  cm = dt * mw[i, j, l]
+      333                  ldn = min(l + 1, lmm[i, j])
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All fields bitwise exact across all 3 dates. Now let me remove the debug-only
+  stage instrumentation before generating the final clean patches.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now remove the ffdump_oadvt2_stage subroutine from ATM_DRV.f.
+
+  Read 1 file, ran 6 shell commands (ctrl+o to expand)
+
+● Good, that's clean now. Let's verify the end of the file and the whole
+  ffdump_mmi subroutine is intact.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Clean. Now let's rebuild and do a final verification run on all 3 dates.
+  Ran 1 shell command (ctrl+o to expand)
+
+● Build succeeded cleanly. Now the final rerun on all 3 dates to regenerate
+  clean dumps.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While the rerun proceeds, let me write the pytest suite for D45.
+
+● Write(fullfidelity/tests/test_oadvt2_ff.py)
+  ⎿  Interrupted · What should Claude do instead?
+
+● Background command "Final clean rerun of all 3 dates after removing debug
+instrumentation" completed (exit code 0)
+
+❯ We're on D45, how many DXX are there?
+
+● We're at 45 deltas total (D1–D45): D1–D44 are committed and pushed; D45 (the
+  OADVT2/OADVTX2/OADVTY2/OADVTZ2 tracer-advection port) is validated
+  bitwise-exact on all 3 dates but not yet committed — I still need to finalize
+  the patches, write the pytest suite, update the tracking docs, and run the
+  full regression before committing it.
