@@ -1,0 +1,14 @@
+# RECONSTRUCTED (D55): the scratch mE2 tree was removed before patches could be regenerated with
+# diff. These hunks are the exact text inserted into OCNKPP.f's OCONV, with line numbers omitted;
+# verify against the real source before applying. Inserts follow the
+# "Call OVDIFFS (G0ML...)" and "Call OVDIFFS (S0ML...)" statements (OCNKPP.f ~2331, ~2336).
+
+  Call OVDIFFS (G0ML(1),AKVG(1),GHATG,DTP4G,DTBYDZ,BYDZ2,DTS,LMIJ,
+       G0ML0(1),FLG)
++      CALL ffdump_ovdiffs(0,I,J,LMIJ,DTS,G0ML0(1),AKVG(1),GHATG,DTP4G,
++     *     DTBYDZ,BYDZ2,G0ML(1),FLG)
+
+  Call OVDIFFS (S0ML(1),AKVS(1),GHATS,DTP4S,DTBYDZ,BYDZ2,DTS,LMIJ,
+       S0ML0(1),FLS)
++      CALL ffdump_ovdiffs(1,I,J,LMIJ,DTS,S0ML0(1),AKVS(1),GHATS,DTP4S,
++     *     DTBYDZ,BYDZ2,S0ML(1),FLS)
