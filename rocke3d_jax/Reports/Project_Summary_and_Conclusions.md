@@ -1,4 +1,4 @@
-# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D51, 2026-09-30)
+# ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D54, 2026-10-01)
 
 This is the front page for the full-fidelity port (branch `full-fidelity-port`). It states the
 goal, the method, the results with their numbers, what is still open, and where each piece of
@@ -6,8 +6,8 @@ code lives. It links to the detailed ledger for the evidence rather than repeati
 `README_START_HERE.md` is the index of that ledger.
 
 **Status of code:** every delta described here is committed and pushed to `full-fidelity-port`
-on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `f648263`
-(D51). Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of
+on the `or0cky` GitHub repository (`nasa-nccs-hpda/or0cky`), most recently commit `3b3a052`
+(D54). Nothing is staged-but-uncommitted; the standing workflow commits and pushes at the end of
 every delta.
 
 ## 1. Summary
@@ -27,7 +27,7 @@ every delta.
   the dumped routine to plain Python and to batched JAX, and check both against the real numbers
   — bitwise or float64-rounding exact, with a pytest suite (including mutation and non-vacuous-
   branch checks) added per delta.
-- **Progress.** 51 deltas complete (D1-D51). Ice
+- **Progress.** 54 deltas complete (D1-D54). Ice
   dynamics (Stage 1, D26-D32) is fully closed. Ocean core (Stage 2, D33-D51) has reached two major
   milestones: `OCNDYN2.f`'s entire real per-step dynamical core (mass/momentum solve, mass-flux
   redistribution, and tracer advection) is fully ported and validated, and the mesoscale-mixing
@@ -47,8 +47,14 @@ every delta.
   bitwise-exact; D49 caught one real North-Pole-masking bug, the same recurring class since D40.
   D51 (`GMFEXP`+helpers) -- the largest delta of this family -- validated bitwise-exact on the
   first try with no bugs found.
-- **Not established yet:** `OCNKPP.f` (vertical mixing, likely the single largest remaining item
-  now that Gent-McWilliams is closed), `OSTRAITS.f`+`OSTRAITS_COM.f` (unread); a chained
+- **D52-D54 (2026-09-30/10-01).** Scoped `OCNKPP.f` end to end (D52), corrected a mis-scoping
+  of `bldepth` as live (D53: it is dead; `KPPMIX` inlines that logic), then ported `KPPMIX` and
+  its setup dependencies (D54). D54 is the first delta not validated bit-for-bit: two
+  single-precision literals in the real source (`**(1./3.)`, `0.2/...`) were matched exactly, and
+  the remaining ~0.02% of lookup-table cells differing by 1 ULP is traced to `pow`/`exp`/`log` not
+  being correctly rounded in IEEE 754. Max per-call residual ~5e-6 over 76,011 real calls; `KBL`
+  never mismatched.
+- **Not established yet:** the rest of `OCNKPP.f` (`OCONV` driver, `OVDIFF`/`OVDIFFS`), `OSTRAITS.f`+`OSTRAITS_COM.f` (unread); a chained
   whole-model Track B step; GPU speed numbers for any of the Stage 1/Stage 2 pieces (not yet
   JAX-batched beyond the per-routine level; no GPU used this session).
 
@@ -192,7 +198,8 @@ path is fully ported and validated.
 | D47 | 644 | 0 |
 | D49 | 653 | 0 |
 | D50 | 665 | 0 |
-| D51 | **680** | **0** |
+| D51 | 680 | 0 |
+| D54 | **705** | **0** |
 
 **Validation standard, every delta:** bitwise-exact or float64-rounding-exact (typically 1e-9 to
 1e-17 absolute difference, consistent with floating-point operation-order noise, not a real
@@ -227,9 +234,9 @@ standing constraint, unconditional.
 
 ## 8. For discussion / decisions still open
 
-1. **Whether to start `OCNKPP.f`'s `KPPMIX`+`OCONV`** (likely the single largest remaining item,
-   vertical mixing, now that the Gent-McWilliams family is fully closed) or
-   `OSTRAITS.f`+`OSTRAITS_COM.f` first -- both are currently unread and unscoped.
+1. **`OCNKPP.f`**: `KPPMIX`+`z121`+`kmixinit`+`init_solar` are ported (D54). Still open there:
+   `OCONV`'s per-column driver (with the HBL fixed-point iteration), `KVINIT`, `OVDIFF`/`OVDIFFS`,
+   `REDUCE_FIG`, and `STCONV` (blocked on unscoped `OSTRAITS.f`).
 2. **Whether `GLMELT` is worth a dedicated day-boundary-crossing test window**, given it's a small
    (72-line) routine whose validation would need new test-date tooling.
 3. **Whether/when to fully read `OCNKPP.f`/`OSTRAITS.f`+`OSTRAITS_COM.f`** — still unread and
