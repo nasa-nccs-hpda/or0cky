@@ -1,0 +1,332 @@
+  2560	c      UO(IVNP,JM,1:LMU(1,JM)) = UO(IVNP,JM,1:LMU(1,JM)) +
+  2561	c     +                          UKJM(1:LMU(1,JM),IM+2)
+  2562	c      end if
+  2563	
+  2564	C**** Everywhere else
+  2565	      DO J=j_0s,j_1s
+  2566	        IM1=IM
+  2567	        DO I=1,IM
+  2568	          UO(IM1,J,1:LMU(IM1,J)) = UO(IM1,J,1:LMU(IM1,J)) +
+  2569	     +                             UKM(1:LMU(IM1,J),1,I,J)
+  2570	          UO(I  ,J,1:LMU(I  ,J)) = UO(I  ,J,1:LMU(I  ,J)) +
+  2571	     +                             UKM(1:LMU(I  ,J),2,I,J)
+  2572	          VO(I,J-1,1:LMV(I,J-1)) = VO(I,J-1,1:LMV(I,J-1)) +
+  2573	     +                             UKM(1:LMV(I,J-1),3,I,J)
+  2574	          VO(I,J  ,1:LMV(I,J  )) = VO(I,J  ,1:LMV(I,J  )) +
+  2575	     +                             UKM(1:LMV(I,J  ),4,I,J)
+  2576	#ifndef DISABLE_KPP_DGRID_MIXING
+  2577	          VOD(IM1,J,1:LMU(IM1,J)) = VOD(IM1,J,1:LMU(IM1,J)) +
+  2578	     +                             UKMD(1:LMU(IM1,J),1,I,J)
+  2579	          VOD(I  ,J,1:LMU(I  ,J)) = VOD(I  ,J,1:LMU(I  ,J)) +
+  2580	     +                             UKMD(1:LMU(I  ,J),2,I,J)
+  2581	          UOD(I,J-1,1:LMV(I,J-1)) = UOD(I,J-1,1:LMV(I,J-1)) +
+  2582	     +                             UKMD(1:LMV(I,J-1),3,I,J)
+  2583	          UOD(I,J  ,1:LMV(I,J  )) = UOD(I,J  ,1:LMV(I,J  )) +
+  2584	     +                             UKMD(1:LMV(I,J  ),4,I,J)
+  2585	#endif
+  2586	          IM1=I
+  2587	        END DO
+  2588	      END DO
+  2589	      if (.not.have_north_pole) then
+  2590	        j=j_1s+1
+  2591	        DO I=1,IM
+  2592	          VO(I,J-1,1:LMV(I,J-1)) = VO(I,J-1,1:LMV(I,J-1)) +
+  2593	     *                             UKM(1:LMV(I,J-1),3,I,J)
+  2594	#ifndef DISABLE_KPP_DGRID_MIXING
+  2595	          UOD(I,J-1,1:LMV(I,J-1)) = UOD(I,J-1,1:LMV(I,J-1)) +
+  2596	     *                             UKMD(1:LMV(I,J-1),3,I,J)
+  2597	#endif
+  2598	        END DO
+  2599	      end if
+  2600	
+  2601	C**** sum global mean diagnostics
+  2602	c     DO J=j_0s,j_1
+  2603	c       DO L=1,LMO
+  2604	c         OL(L,L_RHO) = OL(L,L_RHO) + OLJ(1,L,J)
+  2605	c         OL(L,L_TEMP)= OL(L,L_TEMP)+ OLJ(2,L,J)
+  2606	c         OL(L,L_SALT)= OL(L,L_SALT)+ OLJ(3,L,J)
+  2607	c       END DO
+  2608	c     END DO
+  2609	
+  2610	      call globalsum(grid,OLJ(1,:,:),OLtemp(:,L_RHO)  ,jband=(/1,jm/) )
+  2611	      call globalsum(grid,OLJ(2,:,:),OLtemp(:,L_TEMP) ,jband=(/1,jm/) )
+  2612	      call globalsum(grid,OLJ(3,:,:),OLtemp(:,L_SALT) ,jband=(/1,jm/) )
+  2613	      OL(:,L_RHO ) = OL(:,L_RHO ) + OLtemp(:,L_RHO)
+  2614	      OL(:,L_TEMP) = OL(:,L_TEMP) + OLtemp(:,L_TEMP)
+  2615	      OL(:,L_SALT) = OL(:,L_SALT) + OLtemp(:,L_SALT)
+  2616	
+  2617	
+  2618	      if(adjust_zslope_using_flux) then
+  2619	C**** Vertical Gradients of scalars
+  2620	C**** Implicitly apply interpolated KV to linear profile
+  2621	C**** Surface tracer + mass fluxes included (no solar flux)
+  2622	C**** Note that FL[GS] are upward fluxes.
+  2623	#ifdef TRACERS_OCEAN
+  2624	        if(ntrtrans.gt.1) then
+  2625	          call stop_model('ocnkpp: not yet implemented',255)
+  2626	        endif
+  2627	#endif
+  2628	        do j=j_0,j_1
+  2629	        do ib=1,nbyzm(j,1)
+  2630	        do i=i1yzm(ib,j,1),i2yzm(ib,j,1)
+  2631	          lmij = lmm(i,j)
+  2632	          dtbydz(1:lmij) = dts/mo(i,j,1:lmij)
+  2633	          DO L=1,LMIJ
+  2634	            DTBYDZ2 = 6d0*DTBYDZ(L)**2*BYDTS
+  2635	            GZMO(I,J,L)=(GZMO(I,J,L)+3d0*(FLG3D(L-1,I,J)+FLG3D(L,I,J)))
+  2636	     *           /(1d0+DTBYDZ2*(AKVG3D(L-1,I,J)+AKVG3D(L,I,J)))
+  2637	            SZMO(I,J,L)=(SZMO(I,J,L)+3d0*(FLS3D(L-1,I,J)+FLS3D(L,I,J)))
+  2638	     *           /(1d0+DTBYDZ2*(AKVS3D(L-1,I,J)+AKVS3D(L,I,J)))
+  2639	#ifdef TRACERS_OCEAN
+  2640	            TZMO(I,J,L,:)=(TZMO(I,J,L,:)
+  2641	     &           +3d0*(FLT3D(L-1,:,I,J)+FLT3D(L,:,I,J)))
+  2642	     &           /(1d0+DTBYDZ2*(AKVC3D(L-1,I,J)+AKVC3D(L,I,J)))
+  2643	#endif
+  2644	          END DO
+  2645	        enddo
+  2646	        enddo
+  2647	        enddo
+  2648	      elseif(relax_subgrid_zprofile) then
+  2649	        do j=j_0,j_1
+  2650	        do n=1,nbyzm(j,1)
+  2651	        do i=i1yzm(n,j,1),i2yzm(n,j,1)
+  2652	          l = lmm(i,j)
+  2653	          klen(i,j,l) = klen(i,j,l-1)
+  2654	        enddo
+  2655	        enddo
+  2656	        enddo
+  2657	        do l=lmo-1,2,-1
+  2658	        do j=j_0,j_1
+  2659	        do n=1,nbyzm(j,l+1)
+  2660	        do i=i1yzm(n,j,l+1),i2yzm(n,j,l+1)
+  2661	          klen(i,j,l) = .5d0*(klen(i,j,l)+klen(i,j,l-1))
+  2662	        enddo
+  2663	        enddo
+  2664	        enddo
+  2665	        enddo
+  2666	        do l=1,lmo
+  2667	        do j=j_0,j_1
+  2668	        do n=1,nbyzm(j,l)
+  2669	        do i=i1yzm(n,j,l),i2yzm(n,j,l)
+  2670	          MA(I,J,L) = MO(I,J,L)*DXYPO(J)
+  2671	          !klen(i,j,l) = exp(-12.*klen(i,j,l)*dts/(dzo(l)*dzo(l)))
+  2672	          klen(i,j,l) = 1./(1.+12.*klen(i,j,l)*dts/(dzo(l)*dzo(l)))
+  2673	        enddo
+  2674	        enddo
+  2675	        enddo
+  2676	        enddo
+  2677	        call relax_zmoms(ma,g0m,klen,gzmo,gzzmo)
+  2678	        call relax_zmoms(ma,s0m,klen,szmo,szzmo)
+  2679	#ifdef TRACERS_OCEAN
+  2680	        if(ntrtrans.gt.1) then
+  2681	        do l=1,lmo
+  2682	        do j=j_0,j_1
+  2683	        do n=1,nbyzm(j,l)
+  2684	        do i=i1yzm(n,j,l),i2yzm(n,j,l)
+  2685	          ma(i,j,l) = motr(i,j,l)*dxypo(j)
+  2686	        enddo
+  2687	        enddo
+  2688	        enddo
+  2689	        enddo
+  2690	        endif
+  2691	        do n=1,tracerlist%getsize()
+  2692	          call relax_zmoms(ma,trmo(1,j_0h,1,n),
+  2693	     &         klen,tzmo(1,j_0h,1,n),tzzmo(1,j_0h,1,n))
+  2694	        enddo
+  2695	#endif
+  2696	      elseif(mix_tripled_resolution) then
+  2697	#ifdef TRACERS_OCEAN
+  2698	        if(ntrtrans.gt.1) then
+  2699	          call stop_model('ocnkpp: not yet implemented',255)
+  2700	        endif
+  2701	#endif
+  2702	        do j=j_0,j_1
+  2703	        do ib=1,nbyzm(j,1)
+  2704	        do i=i1yzm(ib,j,1),i2yzm(ib,j,1)
+  2705	          lmij = lmm(i,j)
+  2706	          !akvg(1:lmij) = akvg3d(1:lmij,i,j)
+  2707	          akvg(1:lmij) = klen(i,j,1:lmij) ! m2/s units!!!!
+  2708	          mml(1:lmij) = mo(i,j,1:lmij)*dxypo(j)
+  2709	c
+  2710	          g0ml(1:lmij) = gsave3d(i,j,1:lmij)/mml(1:lmij)
+  2711	          gzml(1:lmij) = gzmo(i,j,1:lmij)/mml(1:lmij)
+  2712	          gzzml(1:lmij) = gzzmo(i,j,1:lmij)/mml(1:lmij)
+  2713	          call diffuse_moms(dz3d(1,i,j),akvg,g0ml,gzml,gzzml,lmij,dts)
+  2714	          gzmo(i,j,1:lmij) = gzml(1:lmij)*mml(1:lmij)
+  2715	          gzzmo(i,j,1:lmij) = gzzml(1:lmij)*mml(1:lmij)
+  2716	c
+  2717	          s0ml(1:lmij) = ssave3d(i,j,1:lmij)/mml(1:lmij)
+  2718	          szml(1:lmij) = szmo(i,j,1:lmij)/mml(1:lmij)
+  2719	          szzml(1:lmij) = szzmo(i,j,1:lmij)/mml(1:lmij)
+  2720	          call diffuse_moms(dz3d(1,i,j),akvg,s0ml,szml,szzml,lmij,dts)
+  2721	          szmo(i,j,1:lmij) = szml(1:lmij)*mml(1:lmij)
+  2722	          szzmo(i,j,1:lmij) = szzml(1:lmij)*mml(1:lmij)
+  2723	#ifdef TRACERS_OCEAN
+  2724	          do n=1,tracerlist%getsize()
+  2725	            trml(1:lmij,1) = trsave3d(i,j,1:lmij,n)/mml(1:lmij)
+  2726	            tzml(1:lmij,1) = tzmo(i,j,1:lmij,n)/mml(1:lmij)
+  2727	            tzzml(1:lmij,1) = tzzmo(i,j,1:lmij,n)/mml(1:lmij)
+  2728	            call diffuse_moms(dz3d(1,i,j),akvg,trml,tzml,tzzml,lmij,dts)
+  2729	            tzmo(i,j,1:lmij,n) = tzml(1:lmij,1)*mml(1:lmij)
+  2730	            tzzmo(i,j,1:lmij,n) = tzzml(1:lmij,1)*mml(1:lmij)
+  2731	          enddo
+  2732	#endif
+  2733	        enddo
+  2734	        enddo
+  2735	        enddo
+  2736	      endif
+  2737	
+  2738	
+  2739	C****
+  2740	C**** Vertically mix horizontal gradients as though they were scalars
+  2741	C****
+  2742	      ghatdum = 0.
+  2743	      do j=j_0s,j_1s ! gradients always set to zero in polar boxes
+  2744	      do ib=1,nbyzm(j,1)
+  2745	      do i=i1yzm(ib,j,1),i2yzm(ib,j,1)
+  2746	        lmij = lmm(i,j)
+  2747	        dtbydz(1:lmij) = dts/mo(i,j,1:lmij)
+  2748	        bydz2(1:lmij-1)= 2d0/(mo(i,j,2:lmij)+mo(i,j,1:lmij-1))
+  2749	        akvg(1:lmij-1) = akvg3d(1:lmij-1,i,j)
+  2750	        akvg(lmij) = 0.
+  2751	        akvs(1:lmij-1) = akvs3d(1:lmij-1,i,j)
+  2752	        akvs(lmij) = 0.
+  2753	#ifdef OCN_GISS_SM
+  2754	        DTP4G(1:lmij-1) = DTP4G3D(1:lmij-1,i,j)
+  2755	        DTP4G(lmij) = 0.
+  2756	        DTP4S(1:lmij-1) = DTP4S3D(1:lmij-1,i,j)
+  2757	        DTP4S(lmij) = 0.
+  2758	#endif
+  2759	        gxml(1:lmij) = gxmo(i,j,1:lmij)
+  2760	        gyml(1:lmij) = gymo(i,j,1:lmij)
+  2761	        sxml(1:lmij) = sxmo(i,j,1:lmij)
+  2762	        syml(1:lmij) = symo(i,j,1:lmij)
+  2763	        Call OVDIFFS (GXML(1),AKVG(1),GHATDUM,DTP4G,DTBYDZ,BYDZ2
+  2764	     *                ,DTS,LMIJ,GXML(1),FLDUM)
+  2765	        Call OVDIFFS (GYML(1),AKVG(1),GHATDUM,DTP4G,DTBYDZ,BYDZ2
+  2766	     *                ,DTS,LMIJ,GYML(1),FLDUM)
+  2767	        Call OVDIFFS (SXML(1),AKVS(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2
+  2768	     *                ,DTS,LMIJ,SXML(1),FLDUM)
+  2769	        Call OVDIFFS (SYML(1),AKVS(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2
+  2770	     *                ,DTS,LMIJ,SYML(1),FLDUM)
+  2771	        gxmo(i,j,1:lmij) = gxml(1:lmij)
+  2772	        gymo(i,j,1:lmij) = gyml(1:lmij)
+  2773	        sxmo(i,j,1:lmij) = sxml(1:lmij)
+  2774	        symo(i,j,1:lmij) = syml(1:lmij)
+  2775	        if(use_qus==1) then
+  2776	        gxxml(1:lmij) = gxxmo(i,j,1:lmij)
+  2777	        gyyml(1:lmij) = gyymo(i,j,1:lmij)
+  2778	        gxyml(1:lmij) = gxymo(i,j,1:lmij)
+  2779	        sxxml(1:lmij) = sxxmo(i,j,1:lmij)
+  2780	        syyml(1:lmij) = syymo(i,j,1:lmij)
+  2781	        sxyml(1:lmij) = sxymo(i,j,1:lmij)
+  2782	        Call OVDIFFS (GXXML(1),AKVG(1),GHATDUM,DTP4G,DTBYDZ,BYDZ2
+  2783	     *                ,DTS,LMIJ,GXXML(1),FLDUM)
+  2784	        Call OVDIFFS (GYYML(1),AKVG(1),GHATDUM,DTP4G,DTBYDZ,BYDZ2
+  2785	     *                ,DTS,LMIJ,GYYML(1),FLDUM)
+  2786	        Call OVDIFFS (GXYML(1),AKVG(1),GHATDUM,DTP4G,DTBYDZ,BYDZ2
+  2787	     *                ,DTS,LMIJ,GXYML(1),FLDUM)
+  2788	        Call OVDIFFS (SXXML(1),AKVS(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2
+  2789	     *                ,DTS,LMIJ,SXXML(1),FLDUM)
+  2790	        Call OVDIFFS (SYYML(1),AKVS(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2
+  2791	     *                ,DTS,LMIJ,SYYML(1),FLDUM)
+  2792	        Call OVDIFFS (SXYML(1),AKVS(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2
+  2793	     *                ,DTS,LMIJ,SXYML(1),FLDUM)
+  2794	        gxxmo(i,j,1:lmij) = gxxml(1:lmij)
+  2795	        gyymo(i,j,1:lmij) = gyyml(1:lmij)
+  2796	        gxymo(i,j,1:lmij) = gxyml(1:lmij)
+  2797	        sxxmo(i,j,1:lmij) = sxxml(1:lmij)
+  2798	        syymo(i,j,1:lmij) = syyml(1:lmij)
+  2799	        sxymo(i,j,1:lmij) = sxyml(1:lmij)
+  2800	        endif ! using qus
+  2801	#ifdef TRACERS_OCEAN
+  2802	        akvc(1:lmij-1) = akvc3d(1:lmij-1,i,j)
+  2803	        akvc(lmij) = 0.
+  2804	        do n=1,tracerlist%getsize()
+  2805	          txml(1:lmij) = txmo(i,j,1:lmij,n)
+  2806	          tyml(1:lmij) = tymo(i,j,1:lmij,n)
+  2807	          Call OVDIFFS ( TXML(1),AKVC(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2,
+  2808	     *         DTS,LMIJ, TXML(1),FLDUM)
+  2809	          Call OVDIFFS ( TYML(1),AKVC(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2,
+  2810	     *         DTS,LMIJ, TYML(1),FLDUM)
+  2811	          txmo(i,j,1:lmij,n) = txml(1:lmij)
+  2812	          tymo(i,j,1:lmij,n) = tyml(1:lmij)
+  2813	          if(use_qus==1) then
+  2814	          txxml(1:lmij) = txxmo(i,j,1:lmij,n)
+  2815	          tyyml(1:lmij) = tyymo(i,j,1:lmij,n)
+  2816	          txyml(1:lmij) = txymo(i,j,1:lmij,n)
+  2817	          Call OVDIFFS (TXXML(1),AKVC(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2,
+  2818	     *         DTS,LMIJ,TXXML(1),FLDUM)
+  2819	          Call OVDIFFS (TYYML(1),AKVC(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2,
+  2820	     *         DTS,LMIJ,TYYML(1),FLDUM)
+  2821	          Call OVDIFFS (TXYML(1),AKVC(1),GHATDUM,DTP4S,DTBYDZ,BYDZ2,
+  2822	     *         DTS,LMIJ,TXYML(1),FLDUM)
+  2823	          txxmo(i,j,1:lmij,n) = txxml(1:lmij)
+  2824	          tyymo(i,j,1:lmij,n) = tyyml(1:lmij)
+  2825	          txymo(i,j,1:lmij,n) = txyml(1:lmij)
+  2826	          endif ! using qus
+  2827	        enddo
+  2828	#endif
+  2829	      enddo
+  2830	      enddo
+  2831	      enddo
+  2832	
+  2833	      if(extra_slope_limitations) then
+  2834	        do l=1,lmo
+  2835	        do j=j_0s,j_1s
+  2836	        do ib=1,nbyzm(j,l)
+  2837	        do i=i1yzm(ib,j,l),i2yzm(ib,j,l)
+  2838	C****
+  2839	C**** Recreate main prognostic variables of potential enthalpy and
+  2840	C**** salt from those on the quarter boxes
+  2841	C****
+  2842	          NSIGG = EXPONENT(G0M(I,J,L)) -2 - 42
+  2843	          CALL REDUCE_FIG(NSIGG,GXMO(I,J,L))
+  2844	          CALL REDUCE_FIG(NSIGG,GYMO(I,J,L))
+  2845	          NSIGS = EXPONENT(S0M(I,J,L)) - 2 - 42 + 4
+  2846	          CALL REDUCE_FIG(NSIGS,SXMO(I,J,L))
+  2847	          CALL REDUCE_FIG(NSIGS,SYMO(I,J,L))
+  2848	C**** limit salinity gradients
+  2849	          TXY = abs(SXMO(I,J,L)) + abs(SYMO(I,J,L))
+  2850	          if ( TXY > S0M(I,J,L) ) then
+  2851	            SXMO(I,J,L)=SXMO(I,J,L)*(S0M(I,J,L)/(TXY + tiny(TXY)))
+  2852	            SYMO(I,J,L)=SYMO(I,J,L)*(S0M(I,J,L)/(TXY + tiny(TXY)))
+  2853	          end if
+  2854	          if ( abs(SZMO(I,J,L)) > S0M(I,J,L) )
+  2855	     *         SZMO(I,J,L) = sign(S0M(I,J,L),SZMO(I,J,L)+0d0)
+  2856	#ifdef TRACERS_OCEAN
+  2857	          DO N = 1,tracerlist%getsize()
+  2858	            entry=>tracerlist%at(n)
+  2859	            NSIGT = EXPONENT(TRMO(I,J,L,N)) - 2 - 42
+  2860	            CALL REDUCE_FIG(NSIGT,TXMO(I,J,L,N))
+  2861	            CALL REDUCE_FIG(NSIGT,TYMO(I,J,L,N))
+  2862	C****
+  2863	            if (entry%t_qlimit) then ! limit gradients
+  2864	              TXY = abs(TXMO(I,J,L,N)) + abs(TYMO(I,J,L,N))
+  2865	              if ( TXY > TRMO(I,J,L,N) ) then
+  2866	                TXMO(I,J,L,N) = TXMO(I,J,L,N)
+  2867	     *               *( TRMO(I,J,L,N)/(TXY + tiny(TXY)) )
+  2868	                TYMO(I,J,L,N) = TYMO(I,J,L,N)
+  2869	     *               *( TRMO(I,J,L,N)/(TXY + tiny(TXY)) )
+  2870	              end if
+  2871	              if ( abs(TZMO(I,J,L,N)) > TRMO(I,J,L,N) )
+  2872	     *             TZMO(I,J,L,N) = sign(TRMO(I,J,L,N),TZMO(I,J,L,N)+0d0)
+  2873	            end if
+  2874	C****
+  2875	          END DO
+  2876	#endif
+  2877	        enddo
+  2878	        enddo
+  2879	        enddo
+  2880	        enddo
+  2881	      endif ! extra_slope_limitations
+  2882	C****
+  2883	
+  2884	      RETURN
+  2885	      END SUBROUTINE OCONV
+  2886	
+=== KVINIT, OVDIFF, OVDIFFS, REDUCE_FIG ===
+1315:      SUBROUTINE KVINIT
+3410:      SUBROUTINE OVDIFF(U,K,GHAT,DTP4,ZE,Z,DTBYDZ,BYDZ2,LMIJ,U0)
+3470:      SUBROUTINE OVDIFFS(U,K,GHAT,DTP4,DTBYDZ,BYDZ2,DT,LMIJ,U0,FL)
+3517:      SUBROUTINE REDUCE_FIG(NSIG,RX)

@@ -1,0 +1,400 @@
+  2160	
+  2161	      buoy=0.
+  2162	      do l=1,lmij-1
+  2163	         otke(l,i,j)=e(l)
+  2164	         buoy(l)=-(akvg(l)-rrho(l)*akvs(l))/(1-rrho(l))*bv2(l)
+  2165	      end do
+  2166	#endif
+  2167	#ifdef OCN_GISS_SM
+  2168	C**** velocity at the cell center
+  2169	      uc=0.d0; vc=0.d0;
+  2170	      do l=1,lmij
+  2171	        if(j.lt.jm) then
+  2172	          uc(l)=.5d0*(ul(l,1)+ul(l,2))
+  2173	          vc(l)=.5d0*(ul(l,3)+ul(l,4))
+  2174	        else
+  2175	          uc(l)=ul(l,im+1)
+  2176	          vc(l)=ul(l,im+2)
+  2177	        endif
+  2178	      end do
+  2179	      if(j.lt.jm) then
+  2180	        rxl(:)=rx(i,j,:)
+  2181	        ryl(:)=ry(i,j,:)
+  2182	        gxl(:)=gx(i,j,:)
+  2183	        gyl(:)=gy(i,j,:)
+  2184	        sxl(:)=sx(i,j,:)
+  2185	        syl(:)=sy(i,j,:)
+  2186	      else
+  2187	        rxl(:)=rx(im,jm,:)
+  2188	        ryl(:)=rx(ivnp,jm,:)
+  2189	        gxl(:)=gx(im,jm,:)
+  2190	        gyl(:)=gx(ivnp,jm,:)
+  2191	        sxl(:)=sx(im,jm,:)
+  2192	        syl(:)=sx(ivnp,jm,:)
+  2193	      endif
+  2194	
+  2195	C-- time-averaging of u,v
+  2196	      au_sm(i,j,:)=wta*au_sm(i,j,:)+(1.d0-wta)*uc(:)
+  2197	      av_sm(i,j,:)=wta*av_sm(i,j,:)+(1.d0-wta)*vc(:)
+  2198	      rx_sm(i,j,:)=wta*rx_sm(i,j,:)+(1.d0-wta)*rxl(:)
+  2199	      ry_sm(i,j,:)=wta*ry_sm(i,j,:)+(1.d0-wta)*ryl(:)
+  2200	      gx_sm(i,j,:)=wta*gx_sm(i,j,:)+(1.d0-wta)*gxl(:)
+  2201	      gy_sm(i,j,:)=wta*gy_sm(i,j,:)+(1.d0-wta)*gyl(:)
+  2202	      sx_sm(i,j,:)=wta*sx_sm(i,j,:)+(1.d0-wta)*sxl(:)
+  2203	      sy_sm(i,j,:)=wta*sy_sm(i,j,:)+(1.d0-wta)*syl(:)
+  2204	      uc(:)=au_sm(i,j,:)
+  2205	      vc(:)=av_sm(i,j,:)
+  2206	      rxl(:)=rx_sm(i,j,:)
+  2207	      ryl(:)=ry_sm(i,j,:)
+  2208	      gxl(:)=gx_sm(i,j,:)
+  2209	      gyl(:)=gy_sm(i,j,:)
+  2210	      sxl(:)=sx_sm(i,j,:)
+  2211	      syl(:)=sy_sm(i,j,:)
+  2212	
+  2213	      lmix=kmld
+  2214	c     lmix=min(kmld,lmij-1)
+  2215	
+  2216	      call giss_sm_mix(
+  2217	      ! in:
+  2218	     &    ze,zgrid,dbloc,uc,vc,rxl,ryl,gxl,gyl,sxl,syl
+  2219	     &   ,grav,Coriol,lmix,lmij
+  2220	      ! out:
+  2221	     &   ,fvg,fvs,fvb,p4uv)
+  2222	
+  2223	#endif
+  2224	
+  2225	C**** Calculate non-local transport terms for each scalar
+  2226	C****        ghat[sg] = kv * ghat * <w[sg]0>   (J,kg)
+  2227	C**** Correct units for diffusivities (m^2/s) => (kg^2/m^4 s)
+  2228	C****                            ghat (s/m^2) => (s m^4/kg^2)
+  2229	      DO L=1,LMIJ-1
+  2230	#ifdef ENHANCED_DEEP_MIXING
+  2231	         akvg(l) = akvg(l) + kvextra(l)
+  2232	         akvs(l) = akvs(l) + kvextra(l)
+  2233	         akvc(l) = akvc(l) + kvextra(l)
+  2234	#endif
+  2235	         klen(i,j,l) = akvs(l)+kvtdiss(l)
+  2236	         R = 5d-1*(RHO(L)+RHO(L+1))
+  2237	         R2 = R**2
+  2238	c        GHATM(L) = 0.          ! no non-local momentum transport
+  2239	         DO K=1,KMUV
+  2240	           GHATM(L,K) = 0. ! no non-local momentum transport
+  2241	         END DO
+  2242	#ifndef OCN_GISS_TURB
+  2243	C**** GHAT terms must be zero for consistency with OSOURC
+  2244	! why is AKV[GS]*GHAT  IF(AKVG(L)*GHAT(L) .GT. 1D0) GHAT(L)=1D0/AKVG(L)
+  2245	! sometimes > 1?       IF(AKVS(L)*GHAT(L) .GT. 1D0) GHAT(L)=1D0/AKVS(L)
+  2246	         GHATG(L) = AKVG(L)*GHAT(L)*DELTAE*DXYPO(J)
+  2247	         GHATS(L) = AKVS(L)*GHAT(L)*(DELTAS-S0ML0(1)*BYMML(1)*DELTAM)
+  2248	     *        *DXYPO(J)
+  2249	#else
+  2250	         GHATG(L)=0.d0
+  2251	         GHATS(L)=0.d0
+  2252	#endif
+  2253	#ifdef TRACERS_OCEAN
+  2254	#ifndef OCN_GISS_TURB
+  2255	         GHATT(L,:)= AKVS(L)*GHAT(L)*(DELTATR(:)-
+  2256	     *        TRML(1,:)*DELTAM*BYMML(1))*DXYPO(J)
+  2257	#else
+  2258	         GHATT(L,:)=0.
+  2259	c        GHATT(L,:)=GHATS(L)*(DELTATR(:)-TRML(1,:)*DELTAM*BYMML(1))
+  2260	c    &                      /(DELTAS-S0ML0(1)*BYMML(1)*DELTAM+1d-30)
+  2261	#endif
+  2262	#endif
+  2263	         AKVM(L) = (AKVM(L)+KVTDISS(L))*R2
+  2264	         AKVG(L) = (AKVG(L)+KVTDISS(L))*R2
+  2265	         AKVS(L) = (AKVS(L)+KVTDISS(L))*R2
+  2266	         AKVC(L) = (AKVC(L)+KVTDISS(L))*R2
+  2267	         AKVG3D(L,I,J) = AKVG(L)
+  2268	         AKVS3D(L,I,J) = AKVS(L)
+  2269	         AKVC3D(L,I,J) = AKVC(L)
+  2270	      END DO
+  2271	      AKVG3D(0,I,J) = AKVG3D(1,I,J)
+  2272	      AKVS3D(0,I,J) = AKVS3D(1,I,J)
+  2273	      AKVC3D(0,I,J) = AKVC3D(1,I,J)
+  2274	      AKVG3D(LMIJ,I,J) = AKVG3D(LMIJ-1,I,J)
+  2275	      AKVS3D(LMIJ,I,J) = AKVS3D(LMIJ-1,I,J)
+  2276	      AKVC3D(LMIJ,I,J) = AKVC3D(LMIJ-1,I,J)
+  2277	
+  2278	      DTP4G=0.; DTP4S=0.; DTP4UV=0.
+  2279	#ifdef TRACERS_OCEAN
+  2280	      DTP4TR=0.
+  2281	#endif
+  2282	#ifdef OCN_GISS_SM
+  2283	      ! at the layer middle:
+  2284	      ! if j=jm, then i stays at 1
+  2285	      DO L=1,LMIJ-1
+  2286	         bydz=DTS/(ze(l-1)-ze(l))*MML(L)
+  2287	         DTP4G(l)=(fvg(l-1)-fvg(l))*bydz
+  2288	         DTP4S(l)=(fvs(l-1)-fvs(l))*bydz
+  2289	c        DTP4G(l)=-DTS*dfvgdz(l)*MML(L)
+  2290	c        DTP4S(l)=-DTS*dfvsdz(l)*MML(L)
+  2291	c        DTP4G(l)=0.d0
+  2292	c        DTP4S(l)=0.d0
+  2293	c        DO K=1,KMUV
+  2294	c          DTP4UV(L,K) = 0.d0
+  2295	c        END DO
+  2296	         DTP4G3D(L,I,J) = DTP4G(L)
+  2297	         DTP4S3D(L,I,J) = DTP4S(L)
+  2298	      END DO
+  2299	      DTP4G3D(0,I,J) = DTP4G3D(1,I,J)
+  2300	      DTP4S3D(0,I,J) = DTP4S3D(1,I,J)
+  2301	      DTP4G3D(LMIJ,I,J) = DTP4G3D(LMIJ-1,I,J)
+  2302	      DTP4S3D(LMIJ,I,J) = DTP4S3D(LMIJ-1,I,J)
+  2303	      DO L=1,LMIJ
+  2304	         DO K=1,KMUV
+  2305	           if(j.lt.jm.and.k.le.2) then
+  2306	             DTP4UV(l,k)=DTS*p4uv(l,1)
+  2307	           else
+  2308	             DTP4UV(l,k)=DTS*p4uv(l,2)
+  2309	           endif
+  2310	         END DO
+  2311	      END DO
+  2312	#endif
+  2313	
+  2314	C**** For each field (U,G,S + TRACERS) call OVDIFF
+  2315	C**** Momentum
+  2316	      DO K=1,KMUV
+  2317	        IF(LMUV(K).GT.1) THEN
+  2318	c         CALL OVDIFF(UL(1,K),AKVM(1),GHATM,DTBYDZ,BYDZ2
+  2319	c    *         ,LMUV(K),UL0(1,K))
+  2320	          CALL OVDIFF(UL(1,K),AKVM(1),GHATM(1,K)
+  2321	     *        ,DTP4UV(1,K),ZE(1),ZGRID(1)
+  2322	     *        ,DTBYDZ,BYDZ2,LMUV(K),UL0(1,K))
+  2323	        ENDIF
+  2324	      END DO
+  2325	C**** Enthalpy
+  2326	      Call OVDIFFS (G0ML(1),AKVG(1),GHATG,DTP4G,DTBYDZ,BYDZ2,DTS,LMIJ,
+  2327	     *             G0ML0(1),FLG)
+  2328	C**** Salinity
+  2329	      Call OVDIFFS (S0ML(1),AKVS(1),GHATS,DTP4S,DTBYDZ,BYDZ2,DTS,LMIJ,
+  2330	     *              S0ML0(1),FLS)
+  2331	      IF ((ITER.eq.1  .or. ABS(HBLP-HBL).gt.(ZE(KBL)-ZE(KBL-1))*0.25)
+  2332	     *     .and. ITER.lt.4) GO TO 510
+  2333	C**** D-grid velocities
+  2334	      If (.not.QPOLE)  Then
+  2335	        DO K=1,KMUV
+  2336	          IF(LMUV(K).GT.1) THEN
+  2337	            CALL OVDIFF(ULD(1,K),AKVM(1),GHATM(1,K)
+  2338	     *       ,DTP4UV(1,K),ZE(1),ZGRID(1)
+  2339	     *       ,DTBYDZ,BYDZ2,LMUV(K),ULD0(1,K))
+  2340	          ENDIF
+  2341	        END DO
+  2342	
+  2343	      EndIf
+  2344	#ifdef TRACERS_OCEAN
+  2345	C**** Tracers are diffused after iteration and follow salinity
+  2346	      if(ntrtrans.gt.1) then
+  2347	        do l=1,lmij
+  2348	          dtbydz_tr(l) = dts/motr(i,j,l)
+  2349	        enddo
+  2350	        do l=1,lmij-1
+  2351	          bydz2_tr(l)  = 2d0/(motr(i,j,l)+motr(i,j,l+1))
+  2352	        enddo
+  2353	      else
+  2354	        do l=1,lmij
+  2355	          dtbydz_tr(l) = dtbydz(l)
+  2356	          bydz2_tr(l) = bydz2(l)
+  2357	        enddo
+  2358	      endif
+  2359	      GHATDUM(:) = 0.
+  2360	      DTP4S(:)   = 0.  ! ????
+  2361	      DO N=1,tracerlist%getsize()
+  2362	        entry=>tracerlist%at(n)
+  2363	        if(entry%t_qlimit) then
+  2364	          ! Modify GHATT to prevent negative tracer.  Method: apply
+  2365	          ! a single multiplicative factor to the GHATT profile.
+  2366	          ! Might switch to alternative method (local flux adjustments).
+  2367	          minrat = 1.
+  2368	          dflux = ghatt(1,n)*dts
+  2369	          if(dflux.gt.0. .and. trml(1,n).lt.dflux) then
+  2370	            minrat = trml(1,n)/dflux
+  2371	          endif
+  2372	          do l=2,lmij-1
+  2373	            dflux = (ghatt(l,n)-ghatt(l-1,n))*dts
+  2374	            if(dflux.gt.0. .and. trml(l,n).lt.dflux) then
+  2375	              minrat = min(minrat, trml(l,n)/dflux)
+  2376	            endif
+  2377	          enddo
+  2378	          minrat = max(minrat, 0.d0) ! in case min tracer was already < 0
+  2379	          if(minrat .lt. 1.d0) then
+  2380	            minrat = minrat*0.95d0 ! leave min tracer slightly > 0
+  2381	            ghatt(1:lmij-1,n) = ghatt(1:lmij-1,n)*minrat
+  2382	          endif
+  2383	        endif
+  2384	        ! diffuse
+  2385	        Call OVDIFFS (TRML(1,N),AKVC(1),GHATT(1,N),DTP4TR(1,N)
+  2386	     *       ,DTBYDZ_tr,BYDZ2_tr,DTS,LMIJ,TRML(1,N),FLT(1,N))
+  2387	      END DO
+  2388	#endif
+  2389	
+  2390	C**** Save fluxes for adjustment of vertical gradients
+  2391	      DM = DELTAM*DTBYDZ(1)
+  2392	      FLG3D(1:LMIJ-1,I,J) = FLG(1:LMIJ-1)
+  2393	      FLG3D(LMIJ,I,J) = 0.
+  2394	      FLG3D(0,I,J) = DTS*DELTAE*DXYPO(J)
+  2395	      FLS3D(1:LMIJ-1,I,J) = FLS(1:LMIJ-1)
+  2396	      FLS3D(LMIJ,I,J) = 0.
+  2397	      FLS3D(0,I,J) = -DTS*DELTAS*DXYPO(J)*(1-DM) +DM*S0M1(I,J)
+  2398	#ifdef TRACERS_OCEAN
+  2399	      FLT3D(1:LMIJ-1,:,I,J) = FLT(1:LMIJ-1,:)
+  2400	      FLT3D(LMIJ,:,I,J) = 0.
+  2401	      FLT3D(0,:,I,J) = -DTS*DELTATR(:)*DXYPO(J)*(1-DM) +DM*TRMO1(:,I,J)
+  2402	#endif
+  2403	
+  2404	      DZ3D(1:LMIJ,I,J) = MO(I,J,1:LMIJ)*BYRHO(1:LMIJ)
+  2405	
+  2406	C**** Diagnostics for non-local transport and vertical diffusion
+  2407	       DO L=1,LMIJ-1
+  2408	         OIJL(I,J,L,IJL_KVM) = OIJL(I,J,L,IJL_KVM) + AKVM(L)
+  2409	         OIJL(I,J,L,IJL_KVG) = OIJL(I,J,L,IJL_KVG) + AKVG(L)
+  2410	         if(use_tdiss==1) then
+  2411	           OIJL(I,J,L,IJL_KVX) = OIJL(I,J,L,IJL_KVX) + KVTDISS(L)
+  2412	         endif
+  2413	#ifdef OCN_GISS_TURB
+  2414	         OIJL(I,J,L,IJL_KVS) = OIJL(I,J,L,IJL_KVS) + AKVS(L)
+  2415	         OIJL(I,J,L,IJL_KVC) = OIJL(I,J,L,IJL_KVC) + AKVC(L)
+  2416	         OIJL(I,J,L,ijl_ri) = OIJL(I,J,L,ijl_ri) + ri(L) ! Richardson number
+  2417	         OIJL(I,J,L,ijl_rrho)= OIJL(I,J,L,ijl_rrho) + rrho(L) ! density ratio
+  2418	         OIJL(I,J,L,ijl_bv2)= OIJL(I,J,L,ijl_bv2) + bv2(L) ! B.Vaisala freq sq
+  2419	         OIJL(I,J,L,ijl_buoy)= OIJL(I,J,L,ijl_buoy) + buoy(L) ! buoyancy flux
+  2420	         OIJL(I,J,L,ijl_otke)= OIJL(I,J,L,ijl_otke) + e(L) ! turbulent k.e.
+  2421	#endif
+  2422	#ifdef OCN_GISS_SM
+  2423	         OIJL(I,J,L,ijl_fvb)= OIJL(I,J,L,ijl_fvb) + fvb(L)
+  2424	#endif
+  2425	         OIJL(I,J,L,IJL_WGFL)= OIJL(I,J,L,IJL_WGFL) + FLG(L) ! heat flux
+  2426	         OIJL(I,J,L,IJL_WSFL)= OIJL(I,J,L,IJL_WSFL) + FLS(L) ! salt flux
+  2427	#ifdef TRACERS_OCEAN
+  2428	C**** vertical diffusive tracer flux
+  2429	         TOIJL(I,J,L,TOIJL_WTFL,:)=TOIJL(I,J,L,TOIJL_WTFL,:)+FLT(L,:)
+  2430	#endif
+  2431	       END DO
+  2432	C**** Also set vertical diagnostics
+  2433	       DO L=1,LMIJ
+  2434	CCC         OL(L,L_RHO) = OL(L,L_RHO) + RHO(L)
+  2435	CCC         OL(L,L_TEMP)= OL(L,L_TEMP)+ TEMGS(G(L),S(L))
+  2436	CCC         OL(L,L_SALT)= OL(L,L_SALT)+ S(L)
+  2437	         OLJ(1,L,J)= OLJ(1,L,J) + RHO(L) ! L_RHO
+  2438	         OLJ(2,L,J)= OLJ(2,L,J) + TEMGS(G(L),S(L)) ! L_TEMP
+  2439	         OLJ(3,L,J)= OLJ(3,L,J) + S(L) ! L_SALT
+  2440	       END DO
+  2441	C**** Set diagnostics
+  2442	       OIJ(I,J,IJ_HBL) = OIJ(I,J,IJ_HBL) + HBL ! boundary layer depth
+  2443	       OIJ(I,J,ij_mld) = OIJ(I,J,ij_mld) + mld ! mixed layer depth
+  2444	       OIJ(I,J,IJ_BO) = OIJ(I,J,IJ_BO) + Bo ! surface buoyancy forcing
+  2445	       OIJ(I,J,IJ_BOSOL) = OIJ(I,J,IJ_BOSOL) + Bosol ! solar buoy frcg
+  2446	       OIJ(I,J,IJ_USTAR) = OIJ(I,J,IJ_USTAR) + Ustar ! turb fric speed
+  2447	
+  2448	       OIJmm(I,J,IJ_HBLmax) = max(OIJmm(I,J,IJ_HBLmax), HBL)
+  2449	       OIJmm(I,J,ij_mldmax) = max(OIJmm(I,J,IJ_mldmax), mld)
+  2450	
+  2451	       IF(KBL.gt.KPL(I,J)) KPL(I,J)=KBL ! save max. mixed layer depth
+  2452	C****
+  2453	C**** Update current prognostic variables
+  2454	C****
+  2455	CCC      IF (QPOLE) THEN
+  2456	CCC        DO II=1,IM
+  2457	CCC          VO(II,JM-1,1:LMUV(II))=VO(II,JM-1,1:LMUV(II))+RAMV(II)*
+  2458	CCC     *         (UL(1:LMUV(II),II)-VT(II,JM-1,1:LMUV(II)))
+  2459	CCC        END DO
+  2460	CCC        UO(IM,JM,1:LMIJ)=UO(IM,JM,1:LMIJ) + RAMV(IM+1)*
+  2461	CCC     *       (UL(1:LMIJ,IM+1)-UT(IM,JM,1:LMIJ))
+  2462	CCC        UO(IVNP,JM,1:LMIJ)=UO(IVNP,JM,1:LMIJ) + RAMV(IM+2)*
+  2463	CCC     *       (UL(1:LMIJ,IM+2)-UT(IVNP,JM,1:LMIJ))
+  2464	CCC      ELSE
+  2465	CCC        UO(IM1,J,1:LMUV(1))=UO(IM1,J,1:LMUV(1)) + RAMV(1)*
+  2466	CCC     *       (UL(1:LMUV(1),1)-UT(IM1,J,1:LMUV(1)))
+  2467	CCC        UO(I  ,J,1:LMUV(2))=UO(I  ,J,1:LMUV(2)) + RAMV(2)*
+  2468	CCC     *       (UL(1:LMUV(2),2)-UT(I  ,J,1:LMUV(2)))
+  2469	CCC        VO(I,J-1,1:LMUV(3))=VO(I,J-1,1:LMUV(3)) + RAMV(3)*
+  2470	CCC     *       (UL(1:LMUV(3),3)-VT(I,J-1,1:LMUV(3)))
+  2471	CCC        VO(I,J  ,1:LMUV(4))=VO(I,J  ,1:LMUV(4)) + RAMV(4)*
+  2472	CCC     *       (UL(1:LMUV(4),4)-VT(I,J  ,1:LMUV(4)))
+  2473	CCC      END IF
+  2474	
+  2475	      IF(QPOLE)  THEN
+  2476	         DO II=1,IM
+  2477	           UKJM(1:LMUV(II),II) = RAMV(II)*(UL(1:LMUV(II),II)-
+  2478	     *          VT(II,JM-1,1:LMUV(II)))
+  2479	         END DO
+  2480	         UKJM(1:LMIJ,IM+1)= RAMV(IM+1)*(UL(1:LMIJ,IM+1)-
+  2481	     *        UT(IM,JM,1:LMIJ))
+  2482	         UKJM(1:LMIJ,IM+2)= RAMV(IM+2)*(UL(1:LMIJ,IM+2)-
+  2483	     *        UT(IVNP,JM,1:LMIJ))
+  2484	      ELSE
+  2485	        UKM(1:LMUV(1),1,I,J) = RAMV(1)*(UL(1:LMUV(1),1)
+  2486	     *          -UT(IM1,J,1:LMUV(1)))
+  2487	        UKM(1:LMUV(2),2,I,J) = RAMV(2)*(UL(1:LMUV(2),2)
+  2488	     *          -UT(I  ,J,1:LMUV(2)))
+  2489	        UKM(1:LMUV(3),3,I,J) = RAMV(3)*(UL(1:LMUV(3),3)
+  2490	     *          -VT(I,J-1,1:LMUV(3)))
+  2491	        UKM(1:LMUV(4),4,I,J) = RAMV(4)*(UL(1:LMUV(4),4)
+  2492	     *          -VT(I,J  ,1:LMUV(4)))
+  2493	
+  2494	        UKMD(1:LMUV(1),1,I,J) = RAMV(1)*(ULD(1:LMUV(1),1)
+  2495	     *          -VTD(IM1,J,1:LMUV(1)))
+  2496	        UKMD(1:LMUV(2),2,I,J) = RAMV(2)*(ULD(1:LMUV(2),2)
+  2497	     *          -VTD(I  ,J,1:LMUV(2)))
+  2498	        UKMD(1:LMUV(3),3,I,J) = RAMV(3)*(ULD(1:LMUV(3),3)
+  2499	     *          -UTD(I,J-1,1:LMUV(3)))
+  2500	        UKMD(1:LMUV(4),4,I,J) = RAMV(4)*(ULD(1:LMUV(4),4)
+  2501	     *          -UTD(I,J  ,1:LMUV(4)))
+  2502	      END IF
+  2503	
+  2504	  725 IF(QPOLE)  GO TO 750
+  2505	      DO L=1,LMIJ
+  2506	        G0M(I,J,L) = G0ML(L)
+  2507	        S0M(I,J,L) = S0ML(L)
+  2508	      END DO
+  2509	#ifdef TRACERS_OCEAN
+  2510	      DO N = 1,tracerlist%getsize()
+  2511	      DO L = 1,LMIJ
+  2512	        TRMO(I,J,L,N) = TRML(L,N)
+  2513	      ENDDO
+  2514	      ENDDO
+  2515	#endif
+  2516	C**** End of I loop
+  2517	  730 IM1=I
+  2518	      I=I+1
+  2519	      IF(I.LE.IM)  GO TO 210
+  2520	      GO TO 790
+  2521	C****
+  2522	C**** Load the prognostic variables of potential enthalpy and
+  2523	C**** salt from the column arrays at the poles
+  2524	C****
+  2525	  750 DO L=1,LMIJ
+  2526	      G0M(1,JM,L)  = G0ML(L)
+  2527	      S0M(1,JM,L)  = S0ML(L)
+  2528	#ifdef TRACERS_OCEAN
+  2529	      TRMO(1,JM,L,:) = TRML(L,:)
+  2530	#endif
+  2531	      END DO
+  2532	C**** End of outside J loop
+  2533	  790 CONTINUE
+  2534	
+  2535	c#ifdef OCN_GISS_TURB
+  2536	c     if(have_north_pole) then
+  2537	c     ! for the north pole, in subroutine obdrag only (not active) 
+  2538	c       unp=0.d0
+  2539	c       vnp=0.d0
+  2540	c       do i=1,im
+  2541	c         unp=unp-sinic(i)*tauby(i,jm-1)
+  2542	c         vnp=vnp+cosic(i)*tauby(i,jm-1)
+  2543	c       end do
+  2544	c       taubx(im,jm)  =unp*2/im
+  2545	c       taubx(ivnp,jm)=vnp*2/im
+  2546	c     endif
+  2547	c#endif
+  2548	
+  2549	C**** Update velocities outside parallel region
+  2550	      call halo_update_block (grid, UKM, from=north)
+  2551	      call halo_update_block (grid, UKMD, from=north)
+  2552	
+  2553	C**** North pole
+  2554	c      if (have_north_pole) then
+  2555	c      DO I=1,IM
+  2556	c        VO(I,JM-1,1:LMV(I,JM-1))=VO(I,JM-1,1:LMV(I,JM-1))+
+  2557	c     *       UKJM(1:LMV(I,JM-1),I)
+  2558	c      END DO
+  2559	c      UO(IM,JM,1:LMU(1,JM))=UO(IM,JM,1:LMU(1,JM))+UKJM(1:LMU(1,JM),IM+1)
