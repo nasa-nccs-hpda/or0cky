@@ -1,0 +1,20 @@
+--- OSTRAITS.f.orig_d69	2026-10-04 18:18:05.408343707 -0400
++++ OSTRAITS.f	2026-10-04 18:18:05.484390804 -0400
+@@ -298,6 +298,8 @@
+       use TimeConstants_mod, only: SECONDS_PER_DAY
+       USE OCEAN, only : lmo,dts
+       USE STRAITS, only : nmst,lmst,must,mmst,wist,dist,sxmst,gxmst
++      USE STRAITS, only : g0mst,gzmst,s0mst,szmst,jst
++      USE OCEAN, only : sinpo
+ #ifdef TRACERS_OCEAN
+       Use STRAITS, Only: TXMST
+ #endif
+@@ -323,6 +325,8 @@
+ #endif
+       END DO
+       END DO
++      CALL ffdump_st(2,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+ C****
+       RETURN
+       END SUBROUTINE STBDRA

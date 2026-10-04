@@ -2020,6 +2020,49 @@ itime-steps (`ocnhbl_jax_compare.py`, `ocnhbl_momentum_compare.py`):
 loader; the setup call reads the entry UL, not UL0 (UL0 is the momentum input); a fixed-form
 line over 72 columns in the new dump routines (caught by the compiler).
 
+## D67-D68: straits (STCONV) instrumented and ported to batched JAX -- exit state matches on all 18 real steps
+
+**Scope (confirmed):** straits are active for P2SAoM40 (`NMST = 12`). `STCONV` (OCNKPP.f:3032-790)
+runs once per model step from `OCNDYN2.f:487`. For each strait it builds two half-boxes (IQ = 1, 2),
+runs the KPP diffusivities, momentum and G/S diffusion with an ITER loop (the same HBL convergence
+rule as OCONV), applies the surface-free implicit G/S tendencies, and combines the half-boxes into
+the strait's prognostic state (MUST, G0MST, GXMST, GZMST, S0MST, SXMST, SZMST).
+
+**Instrumentation (D67):** `ffz_stin` (straits state at entry), `ffz_stout` (exit state), `ffz_stkpp`
+(KPPMIX inputs and raw outputs per strait, half-box and ITER). Patches `OCNKPP_stconv.f.patch` and
+`ATM_DRV_stconv.f.patch` (`diff -u`).
+
+**Port (D68), `fullfidelity/stconv_jax.py`:** batched over the 24 half-boxes, ITER loop unrolled to 4
+with masks, KPPMIX (`kppmix_jax`, D63), momentum OVDIFF (`ovdiff_jax`), G/S OVDIFFS (`ovdiffs_jax`),
+REDUCE_FIG (vectorized), `EXPONENT` via `frexp`. Differences from OCONV that matter: no ZSCALE
+(zgrid from ZE), plain shears (no RAVM), zero surface forcing, and the convergence test uses
+`ZE(KBL)-ZE(KBL-1)`, not zgrid differences (a bug found and fixed in validation).
+The EOS per ITER (BYRHO, DBLOC, DBSFC, RITOP) is passed in from the stkpp dump, as in D59/D66.
+
+**Validation (`stconv_compare.py`), exit state vs real STCONV output:**
+- Nov-26, Dec-01, Jan-01 (six steps each): worst relative error 3.8e-14 across all seven arrays.
+- KPPMIX on the recorded straits inputs (numpy and JAX): exact (0.0).
+
+**Bugs found in validation (not in the Fortran):** a wrong MMST index in BYDZ2 and the pressure
+step; the convergence test using zgrid differences instead of ZE. Both fixed.
+
+**Still open for straits:** `OSTRAITS.f` (1,219 lines, the namelist reader and the per-step straits
+routines it provides) and the other straits calls on the step path (`STPGF`, `STADV`, `STBDRA` use the
+straits state). Only STCONV is ported and validated so far.
+
+## D69: straits bottom and side drag (STBDRA) ported to batched JAX -- exact on all 18 real steps
+
+`STBDRA` (OSTRAITS.f:287-328) runs after STCONV each step (OCNDYN2.f:488): a bottom drag on the
+lowest layer, a side drag on every layer, and a 20-day decay of the cross-strait gradients. Ported
+in `fullfidelity/straits_jax.py` (`stbdra_jax`). Validated against the real post-drag state
+(`ffz_stdrag`, instrumented in STBDRA: `OSTRAITS_stbdra.f.patch`, `ATM_DRV_stbdra.f.patch`): worst
+relative error 0.0 on MUST, GXMST and SXMST across Nov-26, Dec-01 and Jan-01.
+
+**Not yet validated:** `stadvt_jax` (the vectorized STADVT, OSTRAITS.f:171-285) is written in the same
+module. Its validation needs the straits end-point arrays (MOE, G0ME, GXME, ...), which STADV reads and
+updates and which are not dumped yet. `STPGF` (OSTRAITS.f:6-65) and the STADV loop (67-169) also
+depend on those arrays. Next step for the straits port.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

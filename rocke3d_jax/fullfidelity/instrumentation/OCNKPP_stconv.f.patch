@@ -1,0 +1,30 @@
+--- OCNKPP.f.orig_d67	2026-10-04 18:12:25.973371486 -0400
++++ OCNKPP.f	2026-10-04 18:12:26.565872376 -0400
+@@ -3150,6 +3150,8 @@
+ C****
+ C**** Outside loop over straits
+ C****
++      CALL ffdump_st(0,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+       DO 790 N=1,NMST
+ C****
+ C**** Define parameters and currents
+@@ -3286,6 +3288,9 @@
+      *     ,Bosol ,alphaDT,betaDS,dbloc,Ritop,Coriol,byhwide,
+      *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
+       akvc=akvs
++      CALL ffdump_stkpp(N,IQ,ITER,LMIJ,G,S,BYRHO,dbloc,Ritop,
++     *     dbsfc,Shsq,dVsq,HBL,KBL,AKVM,AKVS,AKVG,GHAT,
++     *     UL,G0ML,S0ML)
+ #else
+       call bldepth(ZE,zgrid,byhwide,LMIJ,dVsq,Ustar,Bo,Bosol
+      *     ,dbloc,Ritop
+@@ -3436,6 +3441,8 @@
+       END DO
+ C**** End of outside loop over straits
+   790 CONTINUE
++      CALL ffdump_st(1,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+       RETURN
+       END SUBROUTINE STCONV
+ 

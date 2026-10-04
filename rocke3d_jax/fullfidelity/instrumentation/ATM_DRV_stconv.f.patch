@@ -1,0 +1,85 @@
+--- ATM_DRV.f.orig_d67	2026-10-04 18:12:25.983253607 -0400
++++ ATM_DRV.f	2026-10-04 18:12:26.557313131 -0400
+@@ -2316,6 +2316,82 @@
+       write(fu) dble(i),dble(j),dble(iter),dble(k),dble(lmuv),u,u0
+       end subroutine ffdump_momi
+ 
++      subroutine ffdump_st(kind,nmst,lmst,mmst,must,g0mst,gxmst,gzmst,
++     &     s0mst,sxmst,szmst,dist,wist,jst,sinpo,dts)
++!@sum full-fidelity-port instrumentation: straits state at STCONV
++!@+   entry (kind=0) and exit (kind=1), Stage 2, D67.
++      use model_com, only : itime
++      implicit none
++      integer :: kind,nmst,lmst(12),jst(12,2)
++      real*8 :: mmst(13,12),must(13,12),g0mst(13,12),gxmst(13,12)
++      real*8 :: gzmst(13,12),s0mst(13,12),sxmst(13,12),szmst(13,12)
++      real*8 :: dist(12),wist(12),sinpo(46),dts
++      integer, save :: it0=-1, nst=0, init=0
++      integer, save :: lastit(0:1)=-99
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      fu=1017+kind
++      if (itime.ne.lastit(kind)) then
++        if (lastit(kind).ge.0) close(fu)
++        lastit(kind)=itime
++        if (kind.eq.0) write(fname,'(A,I0,A)') 'ffz_stin_',itime,'.bin'
++        if (kind.eq.1) write(fname,'(A,I0,A)') 'ffz_stout_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(nmst),dble(lmst(1:nmst)),mmst(:,1:nmst),
++     &     must(:,1:nmst),g0mst(:,1:nmst),gxmst(:,1:nmst),
++     &     gzmst(:,1:nmst),s0mst(:,1:nmst),sxmst(:,1:nmst),
++     &     szmst(:,1:nmst),dist(1:nmst),wist(1:nmst),
++     &     dble(jst(1:nmst,1)),dble(jst(1:nmst,2)),sinpo,dts
++      end subroutine ffdump_st
++
++      subroutine ffdump_stkpp(n,iq,iter,lmij,g,s,byrho,dbloc,ritop,
++     &     dbsfc,shsq,dvsq,hbl,kbl,akvm,akvs,akvg,ghat,ul,g0ml,s0ml)
++!@sum full-fidelity-port instrumentation: STCONV KPPMIX call inputs and
++!@+   raw outputs per (strait, half-box, ITER), Stage 2, D67.
++      use model_com, only : itime
++      implicit none
++      integer :: n,iq,iter,lmij,kbl
++      real*8 :: g(13),s(13),byrho(13),dbloc(13),ritop(13),dbsfc(13)
++      real*8 :: shsq(13),dvsq(13),hbl
++      real*8 :: akvm(0:14),akvs(0:14),akvg(0:14),ghat(13)
++      real*8 :: ul(13,2),g0ml(13,2),s0ml(13,2)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1019
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_stkpp_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(n),dble(iq),dble(iter),dble(lmij),g,s,byrho,dbloc,
++     &     ritop,dbsfc,shsq,dvsq,hbl,dble(kbl),akvm,akvs,akvg,ghat,
++     &     ul,g0ml,s0ml
++      end subroutine ffdump_stkpp
++
+       subroutine ffdump_ul0pt(i,j,iter,ul0,ul)
+ !@sum full-fidelity-port instrumentation: UL0 and UL at the setup call
+ !@+   (before KPPMIX and the momentum solve), Stage 2, D66c.

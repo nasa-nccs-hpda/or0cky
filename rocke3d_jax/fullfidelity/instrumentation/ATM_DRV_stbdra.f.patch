@@ -1,0 +1,27 @@
+--- ATM_DRV.f.orig_d69	2026-10-04 18:18:05.417772537 -0400
++++ ATM_DRV.f	2026-10-04 18:18:47.791236059 -0400
+@@ -2327,7 +2327,7 @@
+       real*8 :: gzmst(13,12),s0mst(13,12),sxmst(13,12),szmst(13,12)
+       real*8 :: dist(12),wist(12),sinpo(46),dts
+       integer, save :: it0=-1, nst=0, init=0
+-      integer, save :: lastit(0:1)=-99
++      integer, save :: lastit(0:2)=-99
+       integer :: st, fu
+       character(len=64) :: buf
+       character(len=200) :: fname
+@@ -2341,11 +2341,15 @@
+       if (it0.lt.0) return
+       if (itime.lt.it0 .or. itime.ge.it0+nst) return
+       fu=1017+kind
++      if (kind.eq.2) fu=1021
+       if (itime.ne.lastit(kind)) then
+         if (lastit(kind).ge.0) close(fu)
+         lastit(kind)=itime
+         if (kind.eq.0) write(fname,'(A,I0,A)') 'ffz_stin_',itime,'.bin'
+         if (kind.eq.1) write(fname,'(A,I0,A)') 'ffz_stout_',itime,'.bin'
++        if (kind.eq.2) then
++          write(fname,'(A,I0,A)') 'ffz_stdrag_',itime,'.bin'
++        endif
+         open(fu,file=trim(fname),form='unformatted',access='stream',
+      &       status='replace')
+       endif
