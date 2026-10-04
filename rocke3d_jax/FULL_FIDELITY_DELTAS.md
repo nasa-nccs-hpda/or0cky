@@ -1952,6 +1952,28 @@ so it loses digits). Runtime about 0.2 s per 8,400 calls on CPU, including the f
 Note: the earlier bitwise ports (D54-D61, numpy) stay as the reference; JAX ports are checked
 against them, not against Fortran directly.
 
+## D63: KPPMIX ported to batched JAX -- matches the numpy port to 2.7e-11 on all 76,011 real calls
+
+`fullfidelity/kppmix_jax.py`: batched KPPMIX over N columns (one jit call per itime), restructured:
+the `z121` smoothing is a `lax.scan` (sequential v[0] carry); the bulk-Richardson search is
+vectorized over levels (`rib_ka` is the previous level's `rib_ku`, so there is no recurrence) with
+argmax for the first crossing; `_wscale` computes both branches and merges with `where`. The
+per-level boundary-layer loop and the kbl correction are masked vector ops.
+
+Validation (`kppmix_jax_compare.py`, speed-first tolerance 1e-9): against the numpy port
+(`kppmix_ff.kppmix`, D54) on every recorded call, 76,011 calls across the three dates:
+- kbl: 0 mismatches.
+- worst relative error: visc 2.5e-11, difs 2.7e-11, dift 2.7e-11, ghat 2.7e-11, hbl 6.6e-13.
+- runtime: about 23 s for all 76,011 calls, including the first JIT compile.
+
+Against the recorded Fortran values, the numpy port itself is off by up to 1.7e-7 (visc). That is the
+existing D54 table residual (pow/exp rounding), not something the JAX port adds: the JAX port is
+within 2.7e-11 of the numpy port. Accuracy against Fortran is therefore the D54 level, as the
+speed-first policy accepts.
+
+`kppmix_jax.py` loads the lookup tables (`kmixinit`, `init_solar`) from `kppmix_ff.py` unchanged.
+Known limitation: `lsrpd` and the table shapes are fixed for this build (LMO=13, NNI=890, NNJ=480).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
