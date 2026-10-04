@@ -1906,9 +1906,41 @@ patches, these were generated with `diff -u` against the pre-hook source, not re
 inserted text. The existing D54 `ffz_kppmix` and D55 `ffz_ovdiffs` dumps supply the rest.
 `DXYPO(J)` comes from `odhorz_ff.geomo_dyn_arrays` (D36/D40).
 
+## D61: OCONV mass bookkeeping + convergence test + post-loop flux save ported -- all bitwise-exact on real calls
+
+Piece 2b, first part: the `MML(1)`/`BYMML(1)` mass that the GHATS flux and DELTAM terms use.
+`OCNKPP.f:1813-1817` (non-pole) and `:1737-1743` (pole) set `MML = MO*DXYPO(J)` after the source
+step (ITER>=2) and `MMLT = MO1*DXYPO(J)` before it (ITER=1), with `BYMML = 1/MML`. The `MML := MML0`
+switch at ITER=2 is `OCNKPP.f:1981-1983`. Ported in `fullfidelity/oconv_mml_ff.py` as
+`mass_bookkeeping(mo1_prev, mo_cur, dxypo_j, iter_)`.
+
+Validated in `oconv_mml_compare.py` against the recorded `ffz_bymml` values (D60 follow-up dump):
+- ITER>=2: 38,301 calls, MML and BYMML bitwise-exact. `MO(I,J,1)` is the setup record's exact `mo1`.
+- ITER=1: 37,710 calls, bitwise-exact, but `MO1(I,J)` is not recorded. It is recovered from the
+  recorded DELTAM as `MO - DELTAM*DTS` (DTS=1800). The check is therefore indirect, and is reported
+  separately from the direct ITER>=2 check.
+
+Only index 1 is live. `MML(L>1)` feeds the OCN_GISS_SM branch, which is dead for this build.
+No post-loop code reads MML (grep over OCNKPP.f 2340-2700 finds none).
+
+`S0ML0(1)` (= `S0M(I,J,1)`, `OCNKPP.f:1865`/`:1741`) remains an input: no dump records the S0M array.
+Its value is recorded only as the S OVDIFFS `u0[1]`, which the GHATS check uses.
+
+Instrumentation: `OCNKPP_post.f.patch` and `ATM_DRV_post.f.patch` (unit 1012, `ffz_post` record:
+i, j, iter, lmij, S0M1(I,J), DM, FLG3D(0:13), FLS3D(0:13)), written after the iteration exits.
+Both patches are `diff -u` output against the pre-hook source.
+
+**Convergence and post-loop save (`oconv_save_ff.py`, validated by `oconv_save_compare.py`):**
+- The decision to re-run the iteration (`OCNKPP.f:2337-2338`) reproduces the recorded call count on
+  all 76,011 real KPPMIX calls (37,710 columns, every continue/stop decision consistent with the
+  recorded HBL and KBL sequence).
+- The post-loop save (`OCNKPP.f:2399-2405`) matches the `ffz_post` record bitwise on all 37,710
+  columns: DM, FLG3D(0:LMIJ), FLS3D(0:LMIJ), including the `S0M1(I,J)` surface term.
+
+
 ## Pending rows
-- BYMML(1) and S0ML0(1) inside the OCONV iteration: the glue takes them as inputs. Source them from
-  the MML bookkeeping (piece 2b). The recorded values are the reference to check against.
+- S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
+  BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
 - GPU speed numbers for the JAX-vectorized pieces (no GPU available on the node used for D14/D15/D16's
   CPU-only measurements).
 - The actual `jax.lax.scan`-chained whole-model Track B step (wiring ATURB/PBL/SURFACE/SEAICE/LAKES/

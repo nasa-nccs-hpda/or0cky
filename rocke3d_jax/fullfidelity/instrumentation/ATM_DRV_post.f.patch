@@ -1,0 +1,38 @@
+--- ATM_DRV.f.orig_d61	2026-10-04 13:39:26.409295362 -0400
++++ ATM_DRV.f	2026-10-04 13:39:26.469046944 -0400
+@@ -2176,3 +2176,35 @@
+       write(fu) dble(i),dble(j),dble(iter),dble(lmij),bymml1,mml1,
+      &     s0ml01,deltam,deltas
+       end subroutine ffdump_bymml
++
++      subroutine ffdump_post(i,j,iter,lmij,s0m1,dm,flg,fls)
++!@sum full-fidelity-port instrumentation: post-ITER-loop flux save inputs
++!@+   and outputs (FLG3D/FLS3D columns, S0M1, DM). Stage 2, D61.
++!@+   One record per OCNKPP call, after the loop exits.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,iter,lmij
++      real*8 :: s0m1,dm,flg(0:13),fls(0:13)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1012
++      integer :: st, l
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_post_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(iter),dble(lmij),s0m1,dm,
++     &     (flg(l),l=0,13),(fls(l),l=0,13)
++      end subroutine ffdump_post

@@ -1,0 +1,11 @@
+--- OCNKPP.f.orig_d61	2026-10-04 13:39:26.398536551 -0400
++++ OCNKPP.f	2026-10-04 13:39:26.476241833 -0400
+@@ -2405,6 +2405,8 @@
+       FLS3D(1:LMIJ-1,I,J) = FLS(1:LMIJ-1)
+       FLS3D(LMIJ,I,J) = 0.
+       FLS3D(0,I,J) = -DTS*DELTAS*DXYPO(J)*(1-DM) +DM*S0M1(I,J)
++      CALL ffdump_post(I,J,ITER,LMIJ,S0M1(I,J),DM,FLG3D(0,I,J),
++     *     FLS3D(0,I,J))
+ #ifdef TRACERS_OCEAN
+       FLT3D(1:LMIJ-1,:,I,J) = FLT(1:LMIJ-1,:)
+       FLT3D(LMIJ,:,I,J) = 0.
