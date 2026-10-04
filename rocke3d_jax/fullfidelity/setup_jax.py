@@ -39,7 +39,7 @@ def setup_jax(ze, lmij, kmuv, ogeoz, hocean, grav, ul, ravm, g, s, byrho, rhom, 
     rav = jnp.where(kmask, ravm, 0.0)                                           # (N, KMAX+1)
     d_int = ul[:, 1:LMO + 1, :] - ul[:, 2:LMO + 2, :]                           # ul(L)-ul(L+1)
     shsq_core = jnp.sum(rav[:, None, :] * d_int * d_int, axis=2)                 # (N, LMO)
-    d_tr = ul[:, 0:1, :] - ul[:, 1:LMO + 1, :]                                  # ul(1)-ul(L)
+    d_tr = ul[:, 1:2, :] - ul[:, 1:LMO + 1, :]                                  # ul(1)-ul(L)
     dvsq_core = jnp.sum(rav[:, None, :] * d_tr * d_tr, axis=2)                  # (N, LMO)
     Lidx = jnp.arange(1, LMO + 1)[None, :]
     shsq = jnp.zeros((N, LMO + 1)).at[:, 1:LMO + 1].set(

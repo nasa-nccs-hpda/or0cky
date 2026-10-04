@@ -1974,6 +1974,25 @@ speed-first policy accepts.
 `kppmix_jax.py` loads the lookup tables (`kmixinit`, `init_solar`) from `kppmix_ff.py` unchanged.
 Known limitation: `lsrpd` and the table shapes are fixed for this build (LMO=13, NNI=890, NNJ=480).
 
+## D64: momentum OVDIFF and the OCONV setup block ported to batched JAX
+
+Two more pieces of the JAX port, same policy as D62/D63 (speed first, tolerance-checked).
+
+- `ovdiffs_jax.ovdiff_jax` (momentum OVDIFF, D56). The Thomas solver is factored out as `_thomas`,
+  shared with `ovdiffs_jax`, so OVDIFFS results are unchanged (re-checked: worst 6e-10 on fl). The
+  momentum coefficients (DTBYDZ off-diagonals, DTP4(LMIJ) bottom RHS) follow ovdiff_ff.py.
+  `ovdiff_jax_compare.py`: 139,961 calls on the Nov-26 set; worst 5.9e-16 vs the numpy port and
+  vs the Fortran record.
+- `setup_jax.setup_jax` (the OCONV per-column setup, D59). Batched over columns with per-column
+  lmij, kmuv (IM+2 at the pole, 4 elsewhere) and ZSCALE. The shear sums run over K under a mask.
+  `setup_jax_compare.py`: all 25,282 calls on Nov-26 and Dec-01 (plus Jan-01 for the last check),
+  every output within 3.5e-16 of the recorded KPPMIX inputs.
+
+Not yet ported in JAX: the batched OCONV HBL loop itself (ITER glue, GHAT scaling, mass
+bookkeeping, convergence, post-loop save). Each of its pieces now has a JAX version, but an
+end-to-end check needs the full per-column state at loop entry (UL0, G0ML0, S0ML0, MO1, PO), which
+no current dump records. That needs one more instrumentation pass.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

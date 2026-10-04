@@ -33,7 +33,7 @@ def parse_batch(raw):
     g = pad(take(LMO)); s = pad(take(LMO)); po = pad(take(LMO))
     mo1 = take(1)[:, 0]
     ul_flat = take(LMO * KMAX)                                    # (N, LMO*KMAX), F order
-    ul = np.zeros((N, LMO + 1, KMAX + 1))
+    ul = np.zeros((N, LMO + 2, KMAX + 1))
     ul[:, 1:LMO + 1, 1:KMAX + 1] = ul_flat.reshape((N, KMAX, LMO)).transpose(0, 2, 1)
     ravm = np.concatenate([np.zeros((N, 1)), take(KMAX)], axis=1)
     take(KMAX)                                                    # lmuv (unused here)
