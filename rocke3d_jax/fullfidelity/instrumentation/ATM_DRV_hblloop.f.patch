@@ -1,0 +1,143 @@
+--- ATM_DRV.f.orig_d65	2026-10-04 16:17:57.434506211 -0400
++++ ATM_DRV.f	2026-10-04 17:30:28.423119333 -0400
+@@ -2208,3 +2208,140 @@
+       write(fu) dble(i),dble(j),dble(iter),dble(lmij),s0m1,dm,
+      &     (flg(l),l=0,13),(fls(l),l=0,13)
+       end subroutine ffdump_post
++
++      subroutine ffdump_hblin(i,j,lmij,kmuv,dts,dxypo,mo1,deltae,deltas,
++     &     deltam,deltasr,u2rho,ogeoz,hocean,mo,g0ml,g0ml0,s0ml,s0ml0,
++     &     ul,ul0,uld,uld0,ravm,lmuv,dtbydz,bydz2)
++!@sum full-fidelity-port instrumentation: OCONV HBL-loop state at entry
++!@+   (ITER=1), per column. Stage 2, D65. Record: 14 scalars, then
++!@+   mo,g0ml,g0ml0,s0ml,s0ml0 (13 each), ul,ul0,uld,uld0 (13x74 each),
++!@+   ravm,lmuv (74 each), dtbydz,bydz2 (13 each). 4101 doubles.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,lmij,kmuv
++      real*8 :: dts,dxypo,mo1,deltae,deltas,deltam,deltasr,u2rho,
++     &     ogeoz,hocean
++      real*8 :: mo(13),g0ml(13),g0ml0(13),s0ml(13),s0ml0(13)
++      real*8 :: ul(13,74),ul0(13,74),uld(13,74),uld0(13,74)
++      real*8 :: ravm(74)
++      integer :: lmuv(74)
++      real*8 :: dtbydz(13),bydz2(13)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1013
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_hblin_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(lmij),dble(kmuv),dts,dxypo,mo1,
++     &     deltae,deltas,deltam,deltasr,u2rho,ogeoz,hocean,
++     &     mo,g0ml,g0ml0,s0ml,s0ml0,ul,ul0,uld,uld0,ravm,
++     &     dble(lmuv),dtbydz,bydz2
++      end subroutine ffdump_hblin
++
++      subroutine ffdump_hblout(i,j,lmij,kmuv,iter,hbl,kbl,ul,uld,g0ml,
++     &     s0ml)
++!@sum full-fidelity-port instrumentation: OCONV HBL-loop outputs at exit
++!@+   (after the ITER loop and the D-grid pass), Stage 2, D65. Record:
++!@+   i,j,lmij,kmuv,iter,hbl,kbl, ul,uld (13x74 each), g0ml,s0ml (13 each).
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,lmij,kmuv,iter,kbl
++      real*8 :: hbl
++      real*8 :: ul(13,74),uld(13,74),g0ml(13),s0ml(13)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1014
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_hblout_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(lmij),dble(kmuv),dble(iter),hbl,
++     &     dble(kbl),ul,uld,g0ml,s0ml
++      end subroutine ffdump_hblout
++
++      subroutine ffdump_momi(i,j,iter,k,lmuv,u,u0)
++!@sum full-fidelity-port instrumentation: momentum OVDIFF output with the
++!@+   column index I (ffdump_ovdiff's i slot holds K, not I). Stage 2, D66.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,iter,k,lmuv
++      real*8 :: u(13),u0(13)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1015
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_momi_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(iter),dble(k),dble(lmuv),u,u0
++      end subroutine ffdump_momi
++
++      subroutine ffdump_ul0pt(i,j,iter,ul0,ul)
++!@sum full-fidelity-port instrumentation: UL0 and UL at the setup call
++!@+   (before KPPMIX and the momentum solve), Stage 2, D66c.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,iter
++      real*8 :: ul0(13,74),ul(13,74)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1016
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_ul0pt_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(iter),ul0,ul
++      end subroutine ffdump_ul0pt

@@ -1993,6 +1993,33 @@ bookkeeping, convergence, post-loop save). Each of its pieces now has a JAX vers
 end-to-end check needs the full per-column state at loop entry (UL0, G0ML0, S0ML0, MO1, PO), which
 no current dump records. That needs one more instrumentation pass.
 
+## D65-D66: OCONV HBL-loop state dumps, straits confirmed active, batched JAX HBL loop validated
+
+**Straits (confirmed active):** the instrumented reader prints `NMST = 12` in all 18 itime-steps of
+the three dates (`OSTRAITS` present in the run directory). Straits are read and STCONV runs each
+step. The port itself is not started (estimate 25-40 hours).
+
+**Instrumentation:** `ffz_hblin` (ITER=1 entry state per column), `ffz_hblout` (exit state: UL, ULD,
+G0ML, S0ML, HBL, KBL, iter), `ffz_momi` (momentum OVDIFF output with the column index I, ITER, K,
+LMUV(K), UL and UL0 at the call), `ffz_ul0pt` (UL and UL0 at the setup call). Patches:
+`OCNKPP_hblloop.f.patch`, `ATM_DRV_hblloop.f.patch`, `OSTRAITS_COM_nmst.f.patch` (all `diff -u`).
+`ffdump_ovdiff` stores K in its `i` slot and does not record the column; `ffz_momi` is the
+column-indexed replacement.
+
+**Batched JAX HBL loop (`fullfidelity/ocnhbl_jax.py`):** ITER loop unrolled to 4 with per-column
+masks, setup (`setup_jax`), KPPMIX (`kppmix_jax`), density rescale, GHAT, momentum OVDIFF and G/S
+OVDIFFS (`ovdiff_jax`, `ovdiffs_jax`), convergence, D-grid pass, flux save. The seawater EOS per
+ITER comes from the setup records (external table dependency, as in D59). Validated on all 18
+itime-steps (`ocnhbl_jax_compare.py`, `ocnhbl_momentum_compare.py`):
+- kbl: 0 mismatches on every column.
+- worst relative error over all active levels: hbl 1.3e-7, ul 1e-8, g0ml 2e-10, s0ml 6e-13,
+  flux saves (FLG3D/FLS3D) 1.5e-7.
+- momentum records (ffz_momi, 7,776 calls per itime): worst 4.8e-9.
+
+**Bugs found while validating (not in the Fortran):** a swapped return order in the entry-state
+loader; the setup call reads the entry UL, not UL0 (UL0 is the momentum input); a fixed-form
+line over 72 columns in the new dump routines (caught by the compiler).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

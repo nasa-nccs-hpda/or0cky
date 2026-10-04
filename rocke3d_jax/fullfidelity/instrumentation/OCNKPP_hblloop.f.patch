@@ -1,0 +1,50 @@
+--- OCNKPP.f.orig_d65	2026-10-04 16:17:57.417567182 -0400
++++ OCNKPP.f	2026-10-04 17:30:28.433826755 -0400
+@@ -1458,6 +1458,7 @@
+      &     DZ3D
+       REAL*8 bydz,rhoe
+       REAL*8 RFB
++      REAL*8 TMPMO(LMO)
+ #ifdef TRACERS_OCEAN
+       REAL*8 FLT3D(0:LMO,tracerlist%getsize(),IM,
+      &                  grid%J_STRT_HALO:grid%J_STOP_HALO)
+@@ -1977,6 +1978,15 @@
+       ITER = 0
+       HBL = 0
+   510 ITER =ITER + 1
++      IF (ITER.EQ.1) THEN
++        DO L=1,LMO
++          TMPMO(L)=MO(I,J,L)
++        END DO
++        CALL ffdump_hblin(I,J,LMIJ,KMUV,DTS,DXYPO(J),MO1(I,J),
++     *     DELTAE,DELTAS,DELTAM,DELTASR,U2rho,OGEOZ(I,J),HOCEAN(I,J),
++     *     TMPMO,G0ML,G0ML0,S0ML,S0ML0,UL,UL0,ULD,ULD0,RAVM,LMUV,
++     *     DTBYDZ,BYDZ2)
++      END IF
+       HBLP = HBL
+       IF (ITER.eq.2) THEN
+         MML = MML0      ! continue with post-source mass
+@@ -2100,6 +2110,7 @@
+       end if
+ 
+ #ifndef OCN_GISS_TURB
++      CALL ffdump_ul0pt(I,J,ITER,UL0,UL)
+       CALL ffdump_setup(I,J,ITER,LMIJ,G,S,PO,MO(I,J,1),UL(1,1),
+      *     RAVM(1),LMUV(1),OGEOZ(I,J),HOCEAN(I,J),DELTAE,DELTAS,
+      *     DELTAM,DELTASR,U2rho)
+@@ -2326,6 +2337,7 @@
+      *        ,DTBYDZ,BYDZ2,LMUV(K),UL0(1,K))
+           CALL ffdump_ovdiff(2,K,J,LMUV(K),UL0(1,K),AKVM(1),
+      *     GHATM(1,K),DTP4UV(1,K),DTBYDZ,BYDZ2,UL(1,K))
++          CALL ffdump_momi(I,J,ITER,K,LMUV(K),UL(1,K),UL0(1,K))
+         ENDIF
+       END DO
+ C**** Enthalpy
+@@ -2405,6 +2417,7 @@
+       FLS3D(1:LMIJ-1,I,J) = FLS(1:LMIJ-1)
+       FLS3D(LMIJ,I,J) = 0.
+       FLS3D(0,I,J) = -DTS*DELTAS*DXYPO(J)*(1-DM) +DM*S0M1(I,J)
++      CALL ffdump_hblout(I,J,LMIJ,KMUV,ITER,HBL,KBL,UL,ULD,G0ML,S0ML)
+       CALL ffdump_post(I,J,ITER,LMIJ,S0M1(I,J),DM,FLG3D(0,I,J),
+      *     FLS3D(0,I,J))
+ #ifdef TRACERS_OCEAN

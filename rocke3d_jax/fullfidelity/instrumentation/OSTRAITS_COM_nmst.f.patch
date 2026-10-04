@@ -1,0 +1,10 @@
+--- OSTRAITS_COM.f.orig_d65	2026-10-04 16:17:57.443893368 -0400
++++ OSTRAITS_COM.f	2026-10-04 16:20:20.372546559 -0400
+@@ -141,6 +141,7 @@
+           allocate(name_st(nmst),zst(nmst))
+         endif
+       enddo
++      write(6,*) 'FFD_NMST', nmst
+       if(iu.ne.-999) then
+         call closeunit(iu)
+       endif

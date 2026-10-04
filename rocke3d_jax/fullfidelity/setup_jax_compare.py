@@ -48,7 +48,7 @@ def parse_batch(raw):
 
 
 def run(setup_path, kpp_path):
-    raw = np.fromfile(setup_path, dtype='>f8').reshape(-1, RS)
+    raw = np.fromfile(setup_path, dtype='>f8').astype(np.float64).reshape(-1, RS)
     recs = load_kppmix_records(kpp_path)
     assert len(recs) == raw.shape[0]
     p = parse_batch(raw)
