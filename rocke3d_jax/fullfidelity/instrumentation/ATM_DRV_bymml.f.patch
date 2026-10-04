@@ -1,0 +1,39 @@
+--- ATM_DRV.f.orig_d60	2026-10-04 12:01:05.227936675 -0400
++++ ATM_DRV.f	2026-10-04 12:01:06.015498274 -0400
+@@ -2143,3 +2143,36 @@
+       write(fu) ogeoz,hocean,deltae,deltas,deltam,deltasr,u2rho
+       write(fu) byrho,rhom,rho1,ptd,alpha1,beta1,shc1
+       end subroutine ffdump_setup
++
++      subroutine ffdump_bymml(i,j,iter,lmij,bymml1,mml1,s0ml01,
++     &     deltam,deltas)
++!@sum full-fidelity-port instrumentation: BYMML(1), MML(1), S0ML0(1) at
++!@+   the S-OVDIFFS call inside the OCONV ITER loop. Stage 2, D60 follow-up.
++!@+   One record per ITER, same i,j,iter as the ffz_kppmix record.
++      use model_com, only : itime
++      implicit none
++      integer :: i,j,iter,lmij
++      real*8 :: bymml1,mml1,s0ml01,deltam,deltas
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1011
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_bymml_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(i),dble(j),dble(iter),dble(lmij),bymml1,mml1,
++     &     s0ml01,deltam,deltas
++      end subroutine ffdump_bymml

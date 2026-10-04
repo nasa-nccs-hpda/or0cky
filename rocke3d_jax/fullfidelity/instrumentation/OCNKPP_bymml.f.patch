@@ -1,0 +1,11 @@
+--- OCNKPP.f.orig_d60	2026-10-04 12:01:05.241657628 -0400
++++ OCNKPP.f	2026-10-04 12:01:06.025688628 -0400
+@@ -2334,6 +2334,8 @@
+ C**** Salinity
+       Call OVDIFFS (S0ML(1),AKVS(1),GHATS,DTP4S,DTBYDZ,BYDZ2,DTS,LMIJ,
+      *              S0ML0(1),FLS)
++      CALL ffdump_bymml(I,J,ITER,LMIJ,BYMML(1),MML(1),S0ML0(1),
++     *     DELTAM,DELTAS)
+       IF ((ITER.eq.1  .or. ABS(HBLP-HBL).gt.(ZE(KBL)-ZE(KBL-1))*0.25)
+      *     .and. ITER.lt.4) GO TO 510
+ C**** D-grid velocities
