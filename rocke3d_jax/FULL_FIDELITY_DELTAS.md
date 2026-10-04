@@ -1938,6 +1938,20 @@ Both patches are `diff -u` output against the pre-hook source.
   columns: DM, FLG3D(0:LMIJ), FLS3D(0:LMIJ), including the `S0M1(I,J)` surface term.
 
 
+## D62: OVDIFFS + TRIDIAG ported to batched JAX (speed-first, tolerance-checked)
+
+Direction change from the user: JAX port and runtime speed take priority over bitwise verification.
+Accuracy is checked to a stated tolerance instead (1e-9 relative, per column scale).
+
+`fullfidelity/ovdiffs_jax.py`: batched OVDIFFS + TRIDIAG over N columns. Per-column active length
+via masks (rows past lmij become identity), Thomas solve as two `lax.scan` sweeps, jitted.
+`ovdiffs_jax_compare.py` runs it on the recorded D55 calls (ffz_ovdiffs, Nov-26 itime set):
+50,564 calls. Worst relative error: u 3.1e-16, flux 6.3e-10 (flux is a difference of u values,
+so it loses digits). Runtime about 0.2 s per 8,400 calls on CPU, including the first JIT.
+
+Note: the earlier bitwise ports (D54-D61, numpy) stay as the reference; JAX ports are checked
+against them, not against Fortran directly.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
