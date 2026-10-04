@@ -233,30 +233,30 @@ tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
 next for the one-page version.
 
-## Current state
+## Current state (refreshed 2026-10-04)
 
-**57 deltas committed (D1-D57), D58 ready to commit.** The branch has been under continuous, explicitly
-user-directed autonomous work ("keep going all night, never stop until there is no work left in
-the port") since 2026-09-28 evening. Every delta follows the same **dump-hook-and-validate**
-method: read the real Fortran source fully, instrument it with a new dump-hook subroutine and
-call-site edit in a scratch copy of the tree, generate a diff patch, rebuild the real `ifort`
-executable, rerun all 3 real test dates (1950-11-26, 1950-12-01, and a `1951-01-01`-equivalent
-"jan01" point, 6 `DTsrc` steps / 3 hours each) against real restart files, copy the new dumps into
-`ff_data/`, write a plain-Python reference port and a batched JAX port, validate both against the
-real dumps (bitwise or float64-rounding exact — never a synthetic/approximate substitute except
-where explicitly documented), write a pytest suite with mutation and non-vacuous-branch checks,
-rerun the **entire** project regression suite, update the three tracking documents, commit and
-push. Nothing is marked done without a real Fortran number to check it against. **D54 is the one
-documented exception to "bitwise exact"**: a diagnosed, quantified IEEE 754 `pow`/`exp`/`log`
-libm-implementation gap, not an unexplained discrepancy — see D54's entry below.
+**Committed through D64 (`a9654ec`, pushed; the stray "myxilodian" commit `063b724` and the
+draft-file move `818f365` are on top of it).** D54-D61 are the bitwise-exact numpy ports of the
+ocean core (KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, the OCONV setup block, the HBL scaling,
+the mass bookkeeping, the convergence test, the post-loop flux save). D62-D64 are batched JAX ports
+(OVDIFFS, momentum OVDIFF, KPPMIX, the setup block), checked to a tolerance against the numpy ports.
 
-**Test count: 766 passed, 0 failed** (as of D57's commit `4c93716`). Every regression run this
-session has been zero-failure — no delta has ever broken an earlier one. D58 passed 785 with 0
-failed; its skip count (23, up from 6) is being investigated before commit.
+**Direction change (2026-10-04, user):** JAX port and runtime speed take priority over bitwise
+verification. JAX ports are checked to a stated tolerance (1e-9 relative), against the numpy port
+(which itself is checked against Fortran). The bitwise standard still applies to the numpy ports.
 
-**Nothing is running that needs attention.** The autonomous loop was stopped at the user's
-request. A skip-reason rerun of the suite is writing to `/tmp/regr_d58_skips.log` (may not survive
-a reboot). D58's files are uncommitted in the working tree.
+**In progress:** the batched OCONV HBL loop (`fullfidelity/ocnhbl_jax.py`, not yet committed).
+Instrumentation D65/D66 adds loop-state dumps (`ffz_hblin`, `ffz_hblout`, `ffz_momi`) and a straits
+count print. The loop matches the first iteration (HBL to 1e-8, KBL exact) but not yet the full
+loop. The open question is the momentum state after iteration 1; the column-indexed momentum dump
+(`ffz_momi`) is what resolves it.
+
+**Straits: confirmed ACTIVE for P2SAoM40.** The straits reader counts `NMST = 12` (`OSTRAITS`
+present in the run directory). The straits port itself has not started; estimate 25-40 hours.
+
+**Test count: 805 passed, 23 skipped, 0 failed** (regression at D64, `a9654ec`).
+
+**Background work:** none running as of this refresh.
 
 ## Standing conditions
 
@@ -337,12 +337,12 @@ work started 2026-09-28):**
    and `OCNGISS_TURB.f`/`OCNGISS_SM.f` (1,252 lines) confirmed entirely dead — do not port.
    JAX vectorization for this whole family deliberately deferred, same discipline as `ODHORZ`/
    `OADVT2` (item 1).
-5a. **Ocean core remaining (as of D58):** `OCONV`'s driver (~1,500 lines, including the HBL
-   fixed-point iteration) and the straits code (`OSTRAITS.f`+`OSTRAITS_COM.f`, ~1,200 lines, unread;
-   `STCONV`, 378 lines, depends on it). `KVINIT` (D58), `REDUCE_FIG` (D57), `OVDIFF`/`OVDIFFS`
-   (D55-D56) are done.
-5b. **`OCNKPP.f` (KPP vertical mixing) — scoped in full (D52, corrected D53), `KPPMIX`+`z121`+
-   `kmixinit`+`init_solar` ported (D54).** Four subroutines confirmed entirely dead
+5a. **Ocean core remaining (refreshed 2026-10-04):** the batched JAX OCONV HBL loop (in progress,
+   see Current state); the straits code is ACTIVE for this build (`NMST=12`), so `OSTRAITS.f` +
+   `OSTRAITS_COM.f` (~1,200 lines) and `STCONV` (378 lines) must be ported. Estimate 25-40 hours.
+   The earlier "OCONV driver ~1,500 lines" item is now split into the pieces D59-D64 cover.
+5b. **`OCNKPP.f` (KPP vertical mixing) — scoped in full (D52, corrected D53); `KPPMIX` (D54, JAX D63),
+   `OVDIFF`/`OVDIFFS` (D55-D56, JAX D62/D64), `REDUCE_FIG` (D57), `KVINIT` (D58), setup (D59, JAX D64) all done.** Four subroutines confirmed entirely dead
    (`get_kvtdiss`/`get_gradients0`/`wscale`/`swfrac`) plus `ddmix` (compile-time `LDD=.false.`)
    and `bldepth` (D53: dead, `KPPMIX` inlines its own boundary-layer-depth logic instead).
    Remaining in this file: `OCONV`'s own ~1,526-line per-column driver (including the

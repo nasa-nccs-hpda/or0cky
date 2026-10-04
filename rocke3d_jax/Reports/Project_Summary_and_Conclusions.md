@@ -1,5 +1,12 @@
 # ROCKE-3D → JAX full-fidelity port: what was done and what was concluded (to D51, 2026-09-30)
 
+> **Update 2026-10-04 (refresh).** This summary was written through D51. Since then: the ocean core
+> ports D54-D61 (bitwise-exact numpy: KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, the OCONV setup
+> block, HBL scaling, mass bookkeeping, convergence, flux save) and D62-D64 (batched JAX, checked to
+> 1e-9 relative, per the user's speed-first direction of 2026-10-04). Straits (`OSTRAITS`/`STCONV`)
+> are confirmed active for P2SAoM40 (`NMST=12`) and not yet ported. The batched HBL loop is in
+> progress. See `README_START_HERE.md` (Current state) for the current picture.
+
 This is the front page for the full-fidelity port (branch `full-fidelity-port`). It states the
 goal, the method, the results with their numbers, what is still open, and where each piece of
 code lives. It links to the detailed ledger for the evidence rather than repeating it;
