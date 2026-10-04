@@ -1,0 +1,162 @@
+--- OCNKPP.f.orig
++++ OCNKPP.f
+@@ -1315,6 +1315,8 @@
+       END DO
+       END DO
+ 
++      call ffdump_kvinit(G0M1,S0M1,MO1,GXM1,GYM1,SXM1,SYM1,UO1,VO1,UOD1,VOD1)
++
+       return
+       end subroutine kvinit
+ 
+@@ -2102,6 +2104,9 @@
+       CALL KPPMIX(LDD,ZE,zgrid,hwide,LMIJ,Shsq,dVsq,Ustar,Bo
+      *     ,Bosol ,alphaDT,betaDS,dbloc,Ritop,Coriol,byhwide,
+      *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
++      CALL ffdump_kppmix(I,J,ITER,LMO,LMIJ,ZE,zgrid,hwide,byhwide,
++     *     Shsq,dVsq,Ustar,Bo,Bosol,dbloc,Ritop,
++     *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
+       akvc=akvs
+ #else
+       call bldepth(ZE,zgrid,byhwide,LMIJ,dVsq,Ustar,Bo,Bosol
+@@ -2884,6 +2889,10 @@
+       endif ! extra_slope_limitations
+ C****
+ 
++      call ffdump_oconv(G0M,S0M,GXMO,GYMO,SXMO,SYMO,GZMO,SZMO,
++     *     KPL,AKVG3D,AKVS3D,AKVC3D,FLG3D,FLS3D,
++     *     GXXMO,GYYMO,GXYMO,SXXMO,SYYMO,SXYMO)
++
+       RETURN
+       END SUBROUTINE OCONV
+ 
+@@ -4048,3 +4057,180 @@
+       write(fu) tym1
+       write(fu) tzm1
+       end subroutine ffdump_gmfexp
++
++      subroutine ffdump_kvinit(g0m1,s0m1,mo1,gxm1,gym1,sxm1,sym1,
++     &     uo1,vo1,uod1,vod1)
++!@sum full-fidelity-port instrumentation: KVINIT's real outputs,
++!@+   Stage 2, D56 (OCNKPP.f:1315-1360). Called once per step from
++!@+   PRECIP_OC. Saves pre-flux surface values of G0M/S0M/MO and
++!@+   horizontal gradients into KPP_COM module variables for use by
++!@+   KPPMIX inside OCONV's ITER loop.
++      use model_com, only : itime
++      implicit none
++      real*8 :: g0m1(IM,JM,LSRPD),s0m1(IM,JM),mo1(IM,JM)
++      real*8 :: gxm1(IM,JM),gym1(IM,JM),sxm1(IM,JM),sym1(IM,JM)
++      real*8 :: uo1(IM,JM),vo1(IM,JM),uod1(IM,JM),vod1(IM,JM)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1006
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_kvinit_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) g0m1
++      write(fu) s0m1
++      write(fu) mo1
++      write(fu) gxm1
++      write(fu) gym1
++      write(fu) sxm1
++      write(fu) sym1
++      write(fu) uo1
++      write(fu) vo1
++      write(fu) uod1
++      write(fu) vod1
++      end subroutine ffdump_kvinit
++
++      subroutine ffdump_oconv(g0m,s0m,gxmo,gymo,sxmo,symo,gzmo,szmo,
++     &     kpl,akvg3d,akvs3d,akvc3d,flg3d,fls3d,
++     &     gxxmo,gyymo,gxymo,sxxmo,syymo,sxymo)
++!@sum full-fidelity-port instrumentation: OCONV's real outputs,
++!@+   Stage 2, D56 (OCNKPP.f:1361-2886). Called once per step after
++!@+   the full OCONV body completes. Dumps the final mixed-layer
++!@+   state (G0M/S0M/GZMO/SZMO/KPL) and the 3D diffusivity/flux
++!@+   arrays (AKVG3D/AKVS3D/AKVC3D/FLG3D/FLS3D) plus the horizontal
++!@+   gradient moments (GXXMO/GYYMO/GXYMO/SXXMO/SYYMO/SXYMO) that
++!@+   are vertically mixed by OVDIFFS in the tail of OCONV.
++!@+   TRACERS_OCEAN and OCN_GISS_SM branches are dead for this
++!@+   rundeck (D55), so tracer and submesoscale arrays are not dumped.
++      use model_com, only : itime
++      use ocean, only : im,jm,lmo
++      use oceanr_dim, only : grid=>ogrid
++      implicit none
++      real*8 :: g0m(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: s0m(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: gxmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: gymo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: sxmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: symo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: gzmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: szmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      integer :: kpl(IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: akvg3d(0:LMO,IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: akvs3d(0:LMO,IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: akvc3d(0:LMO,IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: flg3d(0:LMO,IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: fls3d(0:LMO,IM,grid%J_STRT_HALO:grid%J_STOP_HALO)
++      real*8 :: gxxmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: gyymo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: gxymo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: sxxmo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: syymo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      real*8 :: sxymo(IM,grid%J_STRT_HALO:grid%J_STOP_HALO,LMO)
++      integer, save :: it0=-1, nst=0, init=0, lastit=-99, fu=1007
++      integer :: st
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (itime.ne.lastit) then
++        if (lastit.ge.0) close(fu)
++        lastit=itime
++        write(fname,'(A,I0,A)') 'ffz_oconv_',itime,'.bin'
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(itime)
++      write(fu) g0m
++      write(fu) s0m
++      write(fu) gxmo
++      write(fu) gymo
++      write(fu) sxmo
++      write(fu) symo
++      write(fu) gzmo
++      write(fu) szmo
++      write(fu) kpl
++      write(fu) akvg3d
++      write(fu) akvs3d
++      write(fu) akvc3d
++      write(fu) flg3d
++      write(fu) fls3d
++      write(fu) gxxmo
++      write(fu) gyymo
++      write(fu) gxymo
++      write(fu) sxxmo
++      write(fu) syymo
++      write(fu) sxymo
++      end subroutine ffdump_oconv
++

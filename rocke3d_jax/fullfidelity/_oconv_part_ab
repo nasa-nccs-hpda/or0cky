@@ -1,0 +1,400 @@
+  1760	        G0ML(L) = G0M1(1,JM,L)
+  1761	      END DO
+  1762	      DO L=LSRPD+1,LMIJ
+  1763	        G0ML(L) = G0ML0(L)
+  1764	      END DO
+  1765	#ifdef TRACERS_OCEAN
+  1766	      TRML1(:)=TRMO1(:,1,JM)
+  1767	      DO L = 1,LMIJ
+  1768	        TRML(L,:) = TRMO(1,JM,L,:)
+  1769	      END DO
+  1770	#endif
+  1771	C**** Calculate whole box turbulent stresses sqrt(|tau_0|/rho_0)
+  1772	C**** except for RHO factor and sqrt: U2rho = Ustar**2 * rho
+  1773	C**** DM[UV]A are defined on t-grid. DM[UV]I defined on u,v grid
+  1774	C**** Note that rotational ice stresses are not calculated at the pole
+  1775	C**** DMUA/I now defined over whole box, not just surface type
+  1776	      UISTR = 0
+  1777	      VISTR = 0
+  1778	      DO I=1,IM
+  1779	        UISTR = UISTR + oDMVI(I,JM-1)*COSIC(I)
+  1780	        VISTR = VISTR - oDMVI(I,JM-1)*SINIC(I)
+  1781	      END DO
+  1782	      UISTR = UISTR/IM
+  1783	      VISTR = VISTR/IM
+  1784	      U2rho = SQRT(
+  1785	     *     (oDMUA(1,JM) + UISTR)**2+
+  1786	     *     (oDMVA(1,JM) + VISTR)**2)*BYDTS
+  1787	C**** Calculate surface mass, salt and heat fluxes
+  1788	      DELTAM = (MO(1,JM,1) -  MO1(1,JM))*BYDTS
+  1789	      DELTAE = (G0ML0(1) - G0ML(1))*BYDXYPO(JM)*BYDTS
+  1790	      DELTAS = (S0ML0(1) - S0ML(1))*BYDXYPO(JM)*BYDTS
+  1791	      DELTASR= (oSOLARw(1,JM)*(1d0-oRSI(1,JM))+oSOLARi(1,JM)
+  1792	     *     *oRSI(1,JM))*BYDTS               ! W/m^2
+  1793	#ifdef TRACERS_OCEAN
+  1794	      DELTATR(:) = (TRML(1,:)-TRML1(:))*BYDXYPO(JM)*BYDTS  !  kg/m2*s
+  1795	#endif
+  1796	      KPL(1,JM) = 1  ! Initialize mixed layer depth
+  1797	      I=1
+  1798	      GOTO 500
+  1799	      END IF
+  1800	C****
+  1801	C**** Define parameters and currents away from the poles
+  1802	C****
+  1803	      IM1=IM
+  1804	      I=1
+  1805	  210 IF(LMM(I,J).LE.1)  GO TO 730
+  1806	      LMIJ=LMM(I,J)
+  1807	      KMUV=4
+  1808	      LMUV(1) = LMU(IM1,J)
+  1809	      LMUV(2) = LMU(I  ,J)
+  1810	      LMUV(3) = LMV(I,J-1)
+  1811	      LMUV(4) = LMV(I,J  )
+  1812	      MML0(1)   = MO(I,J,1)*DXYPO(J)
+  1813	      BYMML0(1) = 1 / MML0(1)
+  1814	      DTBYDZ(1) = DTS/MO(I,J,1)
+  1815	      MMLT(1)   = MO1(I,J)*DXYPO(J)
+  1816	      BYMMLT(1) = 1 / MMLT(1)
+  1817	      DO L=2,LMIJ
+  1818	        MML0(L)   = MO(I,J,L)*DXYPO(J)
+  1819	        BYMML0(L) = 1d0/MML0(L)
+  1820	        DTBYDZ(L) = DTS/MO(I,J,L)
+  1821	        BYDZ2(L-1)= 2d0/(MO(I,J,L)+MO(I,J,L-1))
+  1822	        MMLT(L)   = MML0(L)
+  1823	        BYMMLT(L) = BYMML0(L)
+  1824	      END DO
+  1825	C**** Calculate whole box turbulent stresses sqrt(|tau_0|/rho_0)
+  1826	C**** except for RHO factor and sqrt: U2rho = Ustar**2 * rho
+  1827	C**** DM[UV]A are defined on t-grid. DM[UV]I defined on u,v grid
+  1828	C**** DMUA/I now defined over whole box, not just surface type
+  1829	      UISTR = 0
+  1830	      VISTR = 0
+  1831	      IF (oRSI(I,J).gt.0) THEN
+  1832	        IF (LMU(I,J).gt.0)   UISTR = UISTR + oDMUI(I,J)
+  1833	        IF (LMU(IM1,J).gt.0) UISTR = UISTR + oDMUI(IM1,J)
+  1834	        ANSTR=1.-SIGN(0.25,LMU(I,J)-0.5)-SIGN(0.25,LMU(IM1,J)-0.5)
+  1835	        UISTR = UISTR*ANSTR
+  1836	        IF (LMV(I,J).gt.0)   VISTR = VISTR + oDMVI(I,J)
+  1837	        IF (LMV(I,J-1).gt.0) VISTR = VISTR + oDMVI(I,J-1)
+  1838	        ANSTR=1.-SIGN(0.25,LMV(I,J)-0.5)-SIGN(0.25,LMV(I,J-1)-0.5)
+  1839	        VISTR = VISTR*ANSTR
+  1840	      END IF
+  1841	      U2rho = SQRT((oDMUA(I,J) + UISTR)**2 +
+  1842	     *             (oDMVA(I,J) + VISTR)**2)*BYDTS
+  1843	C**** Calculate surface mass flux and Solar forcing
+  1844	      DELTAM = (MO(I,J,1) -  MO1(I,J))*BYDTS ! kg/m^2 s
+  1845	      DELTASR = (oSOLARw(I,J)*(1d0-oRSI(I,J))+oSOLARi(I,J)*oRSI(I,J))
+  1846	     *     *BYDTS               ! W/m^2
+  1847	      KPL(I,J) = 1  ! Initialize mixed layer depth
+  1848	
+  1849	      RAVM(1:4) = .5
+  1850	      RAMV(1:2) = .5
+  1851	      RAMV(3) = RAMVS(J)
+  1852	      RAMV(4) = RAMVN(J)
+  1853	      UL0(1,1) = UT(IM1,J,1)
+  1854	      UL0(1,2) = UT(I  ,J,1)
+  1855	      UL0(1,3) = VT(I,J-1,1)
+  1856	      UL0(1,4) = VT(I,J  ,1)
+  1857	
+  1858	      ULD0(1,1) = VTD(IM1,J,1)
+  1859	      ULD0(1,2) = VTD(I  ,J,1)
+  1860	      ULD0(1,3) = UTD(I,J-1,1)
+  1861	      ULD0(1,4) = UTD(I,J  ,1)
+  1862	
+  1863	      G0ML0(1) = G0M(I,J,1)
+  1864	      S0ML0(1) = S0M(I,J,1)
+  1865	      UL(1,1) = UO1(IM1,J)
+  1866	      UL(1,2) = UO1(I  ,J)
+  1867	      UL(1,3) = VO1(I,J-1)
+  1868	      UL(1,4) = VO1(I,J  )
+  1869	
+  1870	      ULD(1,1) = VOD1(IM1,J)
+  1871	      ULD(1,2) = VOD1(I  ,J)
+  1872	      ULD(1,3) = UOD1(I,J-1)
+  1873	      ULD(1,4) = UOD1(I,J  )
+  1874	
+  1875	      S0ML(1) = S0M1(I,J)
+  1876	      DO 250 L=2,LMIJ
+  1877	      UL0(L,1) = UT(IM1,J,L)
+  1878	      UL0(L,2) = UT(I  ,J,L)
+  1879	      UL0(L,3) = VT(I,J-1,L)
+  1880	      UL0(L,4) = VT(I,J  ,L)
+  1881	
+  1882	      ULD0(L,1) = VTD(IM1,J,L)
+  1883	      ULD0(L,2) = VTD(I  ,J,L)
+  1884	      ULD0(L,3) = UTD(I,J-1,L)
+  1885	      ULD0(L,4) = UTD(I,J  ,L)
+  1886	
+  1887	      G0ML0(L) = G0M(I,J,L)
+  1888	      S0ML0(L) = S0M(I,J,L)
+  1889	      UL(L,1) = UL0(L,1)
+  1890	      UL(L,2) = UL0(L,2)
+  1891	      UL(L,3) = UL0(L,3)
+  1892	      UL(L,4) = UL0(L,4)
+  1893	
+  1894	      ULD(L,1) = ULD0(L,1)
+  1895	      ULD(L,2) = ULD0(L,2)
+  1896	      ULD(L,3) = ULD0(L,3)
+  1897	      ULD(L,4) = ULD0(L,4)
+  1898	
+  1899	      S0ML(L) = S0ML0(L)
+  1900	  250 CONTINUE
+  1901	      G0ML(1) = G0M1(I,J,1)
+  1902	      DO L=2,MIN(LSRPD,LMIJ)
+  1903	        G0ML(L) = G0M1(I,J,L)  ;  END DO
+  1904	      DO L=LSRPD+1,LMIJ
+  1905	        G0ML(L) = G0ML0(L)  ;  END DO
+  1906	#ifdef TRACERS_OCEAN
+  1907	      DO N=1,tracerlist%getsize()
+  1908	        entry=>tracerlist%at(n)
+  1909	        TRML1(N) = TRMO1(N,I,J)
+  1910	        DO L=1,LMIJ
+  1911	          TRML(L,N) = TRMO(I,J,L,N)
+  1912	C****
+  1913	          if (entry%t_qlimit) then
+  1914	            TRML(L,N) = Max (0d0,TRML(L,N))
+  1915	          end if
+  1916	        END DO
+  1917	      END DO
+  1918	#endif
+  1919	
+  1920	C**** Calculate surface heat and salt flux: dE(W/m^2);dS,dTr(kg/m^2/s)
+  1921	      DELTAE = (G0ML0(1)-G0ML(1))*BYDXYPO(J)*BYDTS
+  1922	      DELTAS = (S0ML0(1)-S0ML(1))*BYDXYPO(J)*BYDTS
+  1923	#ifdef TRACERS_OCEAN
+  1924	      DELTATR(:) = (TRML(1,:)-TRML1(:))*BYDXYPO(J)*BYDTS
+  1925	#endif
+  1926	C****
+  1927	C**** Vertical mixing dependent on KPP boundary layer scheme
+  1928	C****
+  1929	  500 IF(LMIJ.LE.1)  GO TO 725
+  1930	C**** Z0 = OGEOZ/GRAV+HOCEAN Ocean depth (m)
+  1931	C****      scale depths using Z0/ZE(LMIJ)
+  1932	
+  1933	      ZSCALE = (OGEOZ(I,J) + GRAV*HOCEAN(I,J))/(ZE(LMIJ)*GRAV)
+  1934	c       OIJ(I,J,IJ_OGEOZ)=OIJ(I,J,IJ_OGEOZ)+OGEOZ(I,J)
+  1935	      zgrid(0) = epsln
+  1936	      hwide(0) = epsln
+  1937	      byhwide(0) = 0.
+  1938	      POE(0) = 0.
+  1939	      DO L=1,LMIJ
+  1940	        POE(L) = POE(L-1) + GRAV*MO(I,J,L)
+  1941	      ENDDO
+  1942	      PO(1) = 5d-1*MO(I,J,1)*GRAV
+  1943	      DO L=1,LMO-1
+  1944	         zgrid(L) = -0.5*ZSCALE*(ZE(L-1) + ZE(L)) ! tracer level
+  1945	         hwide(L) = zgrid(L-1) - zgrid(L)       ! tracer level
+  1946	         byhwide(L) = 1d0/hwide(L)
+  1947	         PO(L+1) = PO(L) + 5d-1*GRAV*(MO(I,J,L)+MO(I,J,L+1))
+  1948	      END DO
+  1949	      zgrid(LMO)   = -0.5*ZSCALE*(ZE(LMO-1) + ZE(LMO)) ! tracer level
+  1950	      hwide(LMO)   = zgrid(LMO-1) - zgrid(LMO) ! tracer level
+  1951	      byhwide(LMO) = 1d0/hwide(LMO)
+  1952	      zgrid(LMO+1) = -ZE(LMO)*ZSCALE
+  1953	      hwide(LMO+1) = epsln
+  1954	      byhwide(LMO+1) = 0.
+  1955	
+  1956	C**** If swfrac is not used add solar from next two levels to Bo
+  1957	C      DELTAE = DELTAE + FSR(2)*DELTASR
+  1958	C**** else remove solar from Bo
+  1959	      DELTAE = DELTAE - (1d0-FSR(2))*DELTASR
+  1960	
+  1961	C**** Start iteration for diffusivities
+  1962	      MML = MMLT   ! start with pre-source mass
+  1963	      BYMML = BYMMLT
+  1964	
+  1965	      if(use_tdiss==1) then
+  1966	        do l=1,lmij
+  1967	          g(l) = g0ml(l)*bymml(l)
+  1968	          s(l) = s0ml(l)*bymml(l)
+  1969	          m1d(l) = mml(l)*bydxypo(j)
+  1970	        enddo
+  1971	        call get_kvtdiss(lmij,g,s,m1d,po,tdiss(i,j),tdiss_n(i,j),
+  1972	     &       kvtdiss,
+  1973	     &       .false.) ! debug ?
+  1974	      endif
+  1975	
+  1976	      ITER = 0
+  1977	      HBL = 0
+  1978	  510 ITER =ITER + 1
+  1979	      HBLP = HBL
+  1980	      IF (ITER.eq.2) THEN
+  1981	        MML = MML0      ! continue with post-source mass
+  1982	        BYMML = BYMML0
+  1983	      END IF
+  1984	C**** Initiallise fields
+  1985	      Shsq=0.
+  1986	      dVsq=0.
+  1987	      dbloc=0.
+  1988	      dbsfc=0.
+  1989	      Ritop=0.
+  1990	
+  1991	C**** velocity shears
+  1992	      DO L=1,LMIJ-1
+  1993	        DO K=1,KMUV
+  1994	          Shsq(L) = Shsq(L) + RAVM(K)*(UL(L,K)-UL(L+1,K))**2 !interface
+  1995	          dVsq(L) = dVsq(L) + RAVM(K)*(UL(1,K)-UL(L  ,K))**2 !tracer pts
+  1996	         END DO
+  1997	      END DO
+  1998	      DO K=1,KMUV
+  1999	        dVsq(LMIJ)=dVsq(LMIJ)+RAVM(K)*(UL(1,K)-UL(LMIJ,K))**2
+  2000	      END DO
+  2001	
+  2002	C****    density related quantities
+  2003	C****
+  2004	C****    density of surface layer                                (kg/m3)
+  2005	C****          rho   = rho{G(1),S(1),PO(1)}
+  2006	C****    local buoyancy gradient at km interfaces:                (m/s2)
+  2007	C****          dbloc = g/rho{k+1,k+1} * [ rho{k,k+1}-rho{k+1,k+1} ]
+  2008	C****    buoyancy difference with respect to "zref", the surface  (m/s2)
+  2009	C****          dbsfc = g/rho{k,k} * [ rho{k,k}-rho{1,k} ] (CORRECT)
+  2010	C****    thermal expansion coefficient without 1/rho factor    (kg/m3/C)
+  2011	C****          talph= d(rho{k,k})/d(T(k))
+  2012	C****    salt expansion coefficient without 1/rho factor     (kg/m3/PSU)
+  2013	C****          sbeta = d(rho{k,k})/d(S(k))
+  2014	
+  2015	      DO L=1,LMIJ
+  2016	         G(L)     = G0ML(L)*BYMML(L)
+  2017	         S(L)     = S0ML(L)*BYMML(L)
+  2018	         BYRHO(L) = VOLGSP(G(L),S(L),PO(L))
+  2019	         RHO(L)   = 1d0/BYRHO(L)
+  2020	         IF (L.ge.2) THEN
+  2021	           RHOM = 1d0/VOLGSP(G(L-1),S(L-1),PO(L)) ! L-1 density wrt P_L
+  2022	           RHO1 = 1d0/VOLGSP(G(1),S(1),PO(L)) ! surf density wrt P_L
+  2023	           dbsfc(L)   = GRAV*(1d0-RHO1*BYRHO(L))
+  2024	           dbloc(L-1) = GRAV*(1d0-RHOM*BYRHO(L))
+  2025	C**** numerator of bulk richardson number on grid levels
+  2026	           Ritop(L) = (zgrid(1)-zgrid(L)) * dbsfc(L)
+  2027	         END IF
+  2028	      END DO
+  2029	C**** find mld, the mixed layer depth 
+  2030	      ptdd=0.03d0       ! kg/m^3  pot.dens.diff criterion
+  2031	      mld=-zgrid(lmij)
+  2032	      kmld=lmij
+  2033	      do l=1,lmij
+  2034	c       G(L)=G0ML(L)*BYMML(L)
+  2035	c       S(L)=S0ML(L)*BYMML(L)
+  2036	        ptd(l) = 1d0/VOLGS(G(L),S(L))-1000d0
+  2037	        if (abs(ptd(l)-ptd(1)).gt.ptdd) then
+  2038	          ptdm=ptd(1)+sign(ptdd,ptd(l)-ptd(1))
+  2039	          mld=-zgrid(l-1)+(zgrid(l-1)-zgrid(l))*
+  2040	     &        (ptdm-ptd(l-1))/(ptd(l)-ptd(l-1)+1.d-30)
+  2041	          kmld=l ! kmld is the layer number immediately below the mld
+  2042	          exit
+  2043	        endif
+  2044	      end do
+  2045	      talpha(1) =  ALPHAGSP(G(1),S(1),PO(1)) ! <0
+  2046	      sbeta(1)  =   BETAGSP(G(1),S(1),PO(1))*1d3
+  2047	
+  2048	C**** surface wind turbulent friction speed (m/s) = sqrt( |tau_0|/rho )
+  2049	      Ustar = SQRT(U2rho*BYRHO(1))
+  2050	
+  2051	C**** surface buoyancy forcing turbulent and solar (m^2/s^3)
+  2052	C****    Bo    = -g*(talpha * wtsfc - sbeta * wssfc)/rho
+  2053	C****    Bosol = -g*(talpha * wtsol                )/rho
+  2054	C**** Bo includes all buoyancy and heat forcing
+  2055	      BYSHC = 1d0/SHCGS(G(1),S(1))
+  2056	      Bo    = - GRAV*BYRHO(1)**2 *(
+  2057	     *       sbeta(1)*DELTAS + talpha(1)*BYSHC*DELTAE -
+  2058	     *     ( sbeta(1)*S(1)   + talpha(1)*BYSHC*G(1) )*DELTAM)
+  2059	      Bosol = - GRAV*BYRHO(1)**2 * talpha(1)*BYSHC*DELTASR
+  2060	
+  2061	C**** Double diffusive option (ddmix) needs alphaDT,betaDS
+  2062	C**** alphaDT  = mean -talpha * delta(temp.) at interfaces (kg/m3)
+  2063	C**** betaDS   = mean sbeta  * delta(salt)  at interfaces (kg/m3)
+  2064	
+  2065	      if (LDD) then
+  2066	        TO(1)     =    TEMGSP(G(1),S(1),PO(1))
+  2067	        do L=2,LMIJ
+  2068	          TO(L)     =   TEMGSP(G(L),S(L),PO(L))
+  2069	          talpha(L)= ALPHAGSP(G(L),S(L),PO(L)) ! <0
+  2070	          sbeta(L) =  BETAGSP(G(L),S(L),PO(L))*1d3
+  2071	          alphaDT(L-1) = - 5d-1 * (talpha(L-1) + talpha(L))
+  2072	     $         * (TO(L-1) - TO(L))
+  2073	          betaDS (L-1) = - 5d-1 * (sbeta (L-1) + sbeta(L))
+  2074	     $         * (S(L-1) - S(L))
+  2075	        end do
+  2076	
+  2077	        do l=1,lmij-1
+  2078	          alphaDG(l) = rho(l+1) - 1d0/VOLGSP(G(L),S(L+1),PO(L+1))
+  2079	          if(abs(g(l+1)-g(l))/4185d0.gt.1d-6) then
+  2080	            galpha(l) = alphaDG(l)/(g(l+1)-g(l))
+  2081	            if(galpha(l).eq.0d0) then
+  2082	              write(6,*) 'galpha == 0',i,j,l,g(l+1)-g(l),
+  2083	     &             g(l:l+1)/4185d0,s(l:l+1)
+  2084	            endif
+  2085	          else
+  2086	            galpha(l) = -1.
+  2087	          endif
+  2088	          betaDS(l) = rho(l+1) - 1d0/VOLGSP(G(L+1),S(L),PO(L+1))
+  2089	          if(abs(s(l+1)-s(l)).gt.1d-9) then
+  2090	            sbeta(l) = betaDS(l)/(s(l+1)-s(l))
+  2091	          else
+  2092	            sbeta(l) = 1000.
+  2093	          endif
+  2094	          rhoe = .5d0*(rho(l)+rho(l+1))
+  2095	          galpha(l) = galpha(l)/rhoe
+  2096	          sbeta(l) = sbeta(l)/rhoe
+  2097	        enddo
+  2098	
+  2099	      end if
+  2100	
+  2101	#ifndef OCN_GISS_TURB
+  2102	      CALL KPPMIX(LDD,ZE,zgrid,hwide,LMIJ,Shsq,dVsq,Ustar,Bo
+  2103	     *     ,Bosol ,alphaDT,betaDS,dbloc,Ritop,Coriol,byhwide,
+  2104	     *     AKVM,AKVS,AKVG,GHAT,HBL,KBL)
+  2105	      akvc=akvs
+  2106	#else
+  2107	      call bldepth(ZE,zgrid,byhwide,LMIJ,dVsq,Ustar,Bo,Bosol
+  2108	     *     ,dbloc,Ritop
+  2109	     *     ,rib,HBL,KBL,bf)
+  2110	c     gawt0=GRAV*BYRHO(1)**2*talpha(1)*BYSHC*DELTAE
+  2111	c     gbws0=-GRAV*BYRHO(1)**2*sbeta(1)*(DELTAS-S0ML0(1)*BYMML(1)*DELTAM)
+  2112	cc    gawt0=GRAV*BYRHO(1)**2*talpha(1)*BYSHC*(DELTAE-G(1)*DELTAM)
+  2113	cc    gbws0=GRAV*BYRHO(1)**2*sbeta(1)*(-DELTAS+S(1)*DELTAM)
+  2114	c-c     omfrac=(bf-Bo)/(Bosol+1d-20)
+  2115	c-c     wt0=-BYRHO(1)*(BYSHC*(DELTAE+omfrac*DELTASR)-
+  2116	c-c    *              (BYSHC*G(1))*DELTAM)
+  2117	c-c     ws0=-BYRHO(1)*(DELTAS-S(1)*DELTAM)
+  2118	C if j<jm: ul(:,1)=u(i-1,j) ul(:,2)=u(i,j) ul(:,3)=v(i,j-1) ul(:,4)=v(i,j)
+  2119	C          uld(:,1)=vd(i-1,j) uld(:,2)=vd(i,j) uld(:,3)=ud(i,j-1) uld(:,4)=ud(i,j)
+  2120	C ud is u interpolated to the v point and vd is v interpolated to the u point.
+  2121	
+  2122	      strait=0   ! not in strait area (for most of the oceans)
+  2123	      l=lmij
+  2124	      ! at tracer grid:
+  2125	      u2b=0.d0
+  2126	      do k=1,kmuv
+  2127	        u2b=u2b+ravm(k)*ul(l,k)**2
+  2128	      end do
+  2129	      ut2=ut2a(i,j)
+  2130	      ustarb2=cd*(ut2*(u2b+ut2))**.5d0
+  2131	      exy=exya(i,j)
+  2132	      rhobot(i,j)=rho(l)
+  2133	      ! at velocity grid:
+  2134	      if(j.lt.jm) then
+  2135	        ip1=i+1
+  2136	        if(i.eq.im) ip1=1
+  2137	        uob=ul(l,2)
+  2138	        vob=ul(l,4)
+  2139	        uodb=uld(l,4)
+  2140	        vodb=uld(l,2)
+  2141	        u2bx=uob**2+vodb**2
+  2142	        u2by=vob**2+uodb**2
+  2143	        ut2x=0.5D0*(ut2+ut2a(ip1,j))
+  2144	        ut2y=0.5D0*(ut2+ut2a(i,j+1))
+  2145	        taubx(i,j)=cd*(u2bx+ut2x)**.5D0*uob
+  2146	        tauby(i,j)=cd*(u2by+ut2y)**.5D0*vob
+  2147	      endif
+  2148	
+  2149	      do l=1,lmij-1
+  2150	         e(l)=otke(l,i,j)
+  2151	      end do
+  2152	
+  2153	      call gissmix(
+  2154	      ! in:
+  2155	     &    lmij,ze,zgrid,dbloc,Shsq,alphaDT,betaDS,alphaDG,rho
+  2156	     &   ,ustarb2,exy,Coriol,hbl,talpha,sbeta,galpha,strait,kbl,bf,ustar
+  2157	     &   ,i,j
+  2158	      ! out:
+  2159	     &   ,ri,rrho,bv2,akvm,akvg,akvs,akvc,e)
