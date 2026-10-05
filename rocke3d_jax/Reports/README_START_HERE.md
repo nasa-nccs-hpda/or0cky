@@ -294,6 +294,11 @@ calls (about 7 MB of dumps per date), 99.5-100% bitwise, worst relative 3.9e-14 
 in MASS_FLUX. Several REAL(4) literals in CONVECTIVE_MICROPHYSICS must stay single precision. Branches never
 exercised by real data (see ledger) are covered only by labelled line-by-line transcription tests.
 
+**D101-D102 (dynamics):** `dyn_filter_ff.py` ports the SLP FILTER chain (SLP, SHAP1D, isotropslp, MAtoPMB) and the
+energy functions (getTotalEnergy, conserv_PE, addEnergyAsDiffuseHeat); bitwise on all 18 calls with the Intel libimf
+pow (numpy pow: 1-2 of 3,312 cells differ in 6 of 18 calls, worst 3.4e-13 mb); the SLP exp branch, the +-1.18% clip
+and shap1 n>1 are never exercised (hand-tested only).
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -324,7 +329,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 1895 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1090 new D78-D100 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20).
+**Test count: 1974 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1169 new D78-D102 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79).
 
 ## Standing conditions
 
