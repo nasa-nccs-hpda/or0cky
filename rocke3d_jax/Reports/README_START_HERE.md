@@ -233,26 +233,44 @@ tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
 next for the one-page version.
 
-## Current state (refreshed 2026-10-05)
+## Current state (refreshed 2026-10-05, handoff)
 
-**Committed through D73 (`d1134bd`, pushed).** Ocean core: D54-D61 bitwise-exact numpy ports
-(KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, the OCONV setup block, HBL scaling, mass bookkeeping,
-convergence, flux save). Batched JAX ports, checked to a stated tolerance (1e-9 relative), per the
-user's speed-first direction of 2026-10-04: OVDIFFS and momentum OVDIFF (D62, D64), KPPMIX (D63),
-the setup block (D64), the full HBL loop (D66, validated on 18 real steps), and the straits step
-(D67-D73): STCONV, STBDRA, STADV, STPGF chained as one step, validated on 18 real steps with the
-seawater EOS read from the OFTAB table.
+**Committed through D77 (`db561d7`, pushed).** Ocean core numerics:
+- D54-D61: bitwise-exact numpy ports (KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, OCONV setup block,
+  HBL scaling, mass bookkeeping, convergence, flux save).
+- D62-D64: batched JAX ports, checked to 1e-9 relative (OVDIFFS, momentum OVDIFF, KPPMIX, setup block).
+- D66: batched JAX OCONV HBL loop, validated on 18 real steps.
+- D67-D73: straits step in batched JAX (STPGF, STADV with shared-cell copy, STCONV, STBDRA), chained,
+  validated on 18 real steps. Seawater EOS from OFTABLE_NEW (`eos_jax.py`).
+- D74-D75: OPFIL2 application, validated (3e-15). D76: OCONV loop computes EOS from the table.
+  D77: OPFIL2 as batched 72x72 row operators (`opfil2_jax.py`).
 
-**In progress:** OPFIL2, the polar zonal smoother (OCNDYN2.f, live on the step path at polar rows).
-Instrumented (D74); the coefficient setup is taken as recorded input; the application is ported in
-`fullfidelity/opfil2_ff.py`, pending validation against the real calls.
+**D78-D79 (ODHORZ batched numpy, then JAX layer body, `odhorz_jax.py`; see deltas ledger).**
+Originally uncommitted at handoff: `odhorz_vec.py` (D78): batched ODHORZ,
+layer loop kept sequential, grid vectorized. Matches the scalar port to ~3e-17 and the real Fortran
+outputs to ~2e-7 on all three dates (`odhorz_vec_compare.py <date> <itime>`).
 
-**Not ported:** `init_STRAITS` (start-up only; the port takes its recorded state as input), `GLMELT`
-(daily cadence; not exercised by the six-step test windows), `IRRIG_LK` (Stage 1, external dataset),
-the full OPFIL2 coefficient setup (`calc_opfil2_coeffs`, taken as input), and a chained whole-model
-step.
+**D80-D81:** `oadvt_vec.py` batches OADVTX2/Y2/Z2 in numpy, bitwise identical to the scalar port and the
+real Fortran dumps on all three dates (`oadvt_vec_compare.py`).
 
-**Test count: 805 passed, 0 failed** (regression at D72).
+**D82:** `ocnmeso_vec.py` batches the OCNMESO inputs (bitwise identical to the scalar port, all three dates).
+
+**Next step for a new session:** Gent-McWilliams (GMKDIF/GMFEXP/GMREDI) batching, then JAX-jit the OADVT2 sweeps.
+
+**Still recorded or not ported (cut corners, listed in FULL_FIDELITY_DELTAS.md):** `calc_opfil2_coeffs`
+(OPFIL2 coefficients read from `ffz_opcoef.bin`), `init_STRAITS` (start-up straits state read as input),
+`GLMELT` (daily cadence, never exercised), `IRRIG_LK` (Stage 1, external dataset not in this environment),
+PO for the OCONV loop (read from the setup record), and a chained whole-ocean JAX step.
+
+**Remaining effort, my estimate:** ocean side about 30-50 hours (the batching items dominate); full port
+more. Not started: the atmosphere-side scope.
+
+**Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
+(has jax and omegaconf); the default python lacks omegaconf. Run regression with
+`python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
+`$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
+
+**Test count: 826 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 21 new D78-D82 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3).
 
 ## Standing conditions
 

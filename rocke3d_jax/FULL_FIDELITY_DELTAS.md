@@ -2120,6 +2120,54 @@ per (layer, row). `fullfidelity/opfil2_jax.py` builds them once from the validat
 (D74-D75; 4.6 s) and applies them as a batched JAX product. On 260 recorded Nov-26 calls the batched
 form agrees with the recorded output to 3.0e-15 (relative).
 
+## D78: ODHORZ batched (numpy, grid vectorized)
+
+`fullfidelity/odhorz_vec.py` replaces the (i, j) loops of the scalar ODHORZ port (`odhorz_ff.odhorz`)
+with masked array operations. The layer loop stays sequential (PDN and OGEOZ are carried down the
+layers); the polar row is handled by the same `polevel` call. Agrees with the scalar port to ~3e-17
+and with the real Fortran outputs to ~2e-7 (relative) on all three dates
+(`odhorz_vec_compare.py <date> <itime>`).
+
+## D79: ODHORZ layer body in JAX
+
+`fullfidelity/odhorz_jax.py` runs the D78 layer body under `jax.jit` (one compile for all 13 layers;
+the layer loop stays a Python loop, the `lmm[1, JM] >= l` polar branches became masked updates).
+Agrees with `odhorz_vec` to 1.5e-13 (dec01), 9.7e-14 (jan01), 1.9e-13 (nov26) and with the real
+Fortran to the same ~2e-7 (`odhorz_jax_compare.py <date> <itime>`). The ~1e-13 gap to the numpy
+version is not isolated; likely the summation order in the polar reduction. Tests:
+`tests/test_odhorz_vec_jax.py` (6 tests).
+
+## D80-D81: OADVT2 batched (numpy): OADVTY2, OADVTZ2, then OADVTX2
+
+`fullfidelity/oadvt_vec.py` batches the three advection sweeps of the OADVT2 family, keeping each
+sweep's one sequential dimension and vectorizing the rest.
+- **OADVTY2 (D80):** sequential in j (46 steps), vectorized over (i, l). One bug found and fixed while
+  porting: the scalar port updates RM first and the RY update then uses the *new* RM; the first batched
+  version used the old RM (3.6e-6 / 4.3e-5 mismatch), now corrected. The pole average uses `cumsum`
+  (sequential, as Fortran SUM under strict FP).
+- **OADVTZ2 (D80):** sequential in l (13 steps), vectorized over (i, j); donor-layer RZ limiter applied in
+  place as in the Fortran; layer l+1 is only read where cm < 0, which is unreachable at l = LMO.
+- **OADVTX2 (D81):** sequential in i (71 steps), vectorized over all (l, j) passes at once. The
+  Fortran's single MUDT array carries stale values between passes (see `oadvt2_ff.oadvtx2`), so MUDT,
+  NCOURANT and the pass-skip logic are precomputed per pass in the scalar order (`_x_prepass`; they depend
+  only on MU, the input MM and the masks), then the flux sweep runs on all passes together. The
+  carried-over flux state across segments and the single-cell-segment skip are reproduced with masks.
+- **Result:** every sweep is bitwise identical (0.0 difference) to the scalar port on all three dates for
+  both G0M and S0M; the full `oadvt2_vec` matches the real Fortran dumps with 0.0 difference.
+  Scalar -> batched time: X 0.21 s -> 0.07 s, Y 0.17 s -> 0.01 s, Z 0.26 s -> 0.01 s.
+  Check: `oadvt_vec_compare.py <date> <itime>`; tests: `tests/test_oadvt_vec.py` (12 tests).
+- Not done: a JAX (jit) version of the OADVT2 sweeps; the numpy X sweep still has a Python loop over i.
+
+## D82: OCNMESO inputs batched (numpy)
+
+`fullfidelity/ocnmeso_vec.py` replaces the (i, j) loops of `ocnstate_derived`, `densgrad_vertical` and
+`get_1d_mesodiff` (D47) with masked array operations. `ocnstate_derived` keeps a loop over the 13 layers
+(interface pressure accumulated in the scalar order, so rounding is unchanged); the other two have no
+cross-layer recurrence. Bitwise identical (0.0 difference) to the scalar port on all three dates.
+Scalar -> batched time: 0.06 s -> 0.005 s and 0.08 s -> 0.003 s. The inputs it consumes (VUP/VDN/VUPU/
+VDNU from the EOS table) are still the recorded values, as in D47. Check: `ocnmeso_vec_compare.py
+<date> <itime>`; tests: `tests/test_ocnmeso_vec.py` (3 tests).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
