@@ -2342,6 +2342,45 @@ Full-suite note: ran only the four dynamics test files (`test_dyn_fltruv_ff`, `_
 
 **Known duplication (noted at merge):** the FFT72 radix code exists twice, `dyn_avrx_ff.py` (D94, machine-translated `DOCALC`/`FFTI`) and `dyn_fft72_ff.py` (D96, transliterated for AFLUX); both are validated bitwise against the real model. Consolidate onto one before the JAX conversion.
 
+## D99: AADVT driver (X/Y/Z sweeps, Courant nstep) + `adv1d` + `advection_1D_custom` + `limitq` ported, bitwise-exact on all 36 real calls (2026-10-05)
+
+`AADVT` (QUS_DRV.f:70-196) with `AADVTX` (198-316), `AADVTY` (318-471), `AADVTZ` (474-573), and the 1-D kernels
+`adv1d` (QUSDEF.f:43-221), `advection_1D_custom` (224-635, qlimit=.false. path) and `limitq` (639-758) as separate
+importable functions (shared with moist convection). New files: `fullfidelity/dyn_aadvt_ff.py` (driver, sweeps,
+Courant counters, scalar per-row reference loops), `dyn_adv1d_ff.py` (kernels), `dyn_aadvt_compare.py`,
+`dyn_adv1d_compare.py`, `tests/test_dyn_aadvt_ff.py` (82 tests, ~40 s).
+Validation: per call, 3 dates (nov26 33312, dec01 33552, jan01 17520) x 6 steps x 2 AADVT calls = 36 calls
+(the two even leapfrog passes of DYNAM). Input (MMA, T, TMOM(9), MU, MV, MW, DT) and output (MMA, T, TMOM, FPEU,
+FPEV) at the call boundary plus mass-unit checkpoints after X1, Y, Z and the per-row/column Courant nstep.
+Result: **0.0 max difference on every array, every call (1,324,800 T/TMOM values per call all equal), all three
+checkpoints, nstep arrays equal.** First try; no bug found in the port. Two details that mattered: `fracm**3` must be
+`np.power(fracm, 3.)` (x*x*x differs from ifort in 516 of 38,448 synthetic cells), and `ierr/nerr` from adv1d's
+qlimit loop are the LAST limitq call's status.
+Reductions in Fortran order (polar `sum` via cumsum; fqu/fqv accumulated over l sequentially).
+Coverage (measured): in the real windows EVERY row/column has nstep=1 (X: 126,720 row-sweeps, Z: 119,232 columns;
+max Courant 0.28-0.39), qlimit is always .false. so `limitq` never runs, no cell reaches mass<=0. So the real
+windows do NOT exercise multi-step masking: see D100.
+Instrumentation: `ATMDYN_aadvt.f.patch`, `QUS_DRV_aadvt.f.patch`, `ATM_DRV_dynC.f.patch` (diff -u against pristine, local
+hunks, verified to apply to pristine); units 1100 (in/out), 1101 (nstep), 1102 (checkpoints). 72 files, ~868 MB per
+date in `ff_data/<date>/ffd_aadvt_*`. Owner: project owner; source: ModelE2_planet_2.0 (read-only).
+
+## D100: nstep>1 and qlimit paths validated by stress dumps and a standalone ifort harness (2026-10-05)
+
+Because D99's windows never exercise nstep>1, the helper (env `FFD_AADVT_STRESS=<f>`, off by default; a rerun with it
+unset reproduced the first run byte for byte) scales MU and MW seen by one AADVT call by f. Real Fortran, f=4:
+21 complete calls (7 per date; the model then stops in `aadvtx/aadvtz` courmax>1 at nstep=20, i.e. the model's own
+error exit) with X nstep 1..4 (225 rows nstep 2, 7 nstep 3, 2 nstep 4) and Z nstep 1..3 (151 / 24 columns): **all 21
+calls bitwise-exact (outputs, 3 checkpoints, nstep arrays)**. f=12 aborted in the first call (no complete call).
+The batched implementation groups rows by their own nstep; the literal per-row Fortran loop reference gives identical
+bits; running every row for max-nstep (the scoping-doc warning) is shown by a mutation test to change the result.
+`adv1d` with qlimit=.true. and all `limitq` branches: validated against a STANDALONE ifort build of the real
+QUSDEF.f adv1d+limitq (same flags) on 3,000 seeded synthetic lines (all 3 direction permutations; every limitq branch
+hit): ierr/nerr match on all; 2293 of 2295 non-aborted lines bitwise, 2 differ by 1 ulp (1e-17) in one moment at
+|fracm|>1 (unphysical) pow(x,3) cells. This is NOT model data; limitq in CLOUDS2 remains to be validated with real
+dumps in the clouds work. Never exercised anywhere: y-direction limiter (`apply_limiter`, not ported, raises),
+`prather_limits` (dead, not ported), the mass<=0 reset (hand/synthetic only). Data: `ff_data/qus1d_harness/{in,out}.bin`,
+stress dumps `ff_data/<date>/ffd_aadvtS4_*`. Harness source: `instrumentation/qus1d_standalone_drv.f90`.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

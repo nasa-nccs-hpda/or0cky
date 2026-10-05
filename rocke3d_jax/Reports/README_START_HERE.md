@@ -282,6 +282,12 @@ passes). AFLUX/ADVECM and ADVECV are bitwise identical; `x**KAPA` needs the Inte
 `dyn_geom_ff.py` (analytic geometry); bitwise on every recorded real call. SDRAG's wind-clamp branch is never
 exercised (max wind 64-71 m/s vs 200) and is hand-tested only; the FFT72 code exists twice (D94, D96): consolidate.
 
+**D99-D100 (dynamics):** `dyn_aadvt_ff.py`/`dyn_adv1d_ff.py` port the AADVT temperature-advection family (X/Y/Z
+sweeps, per-row Courant nstep, adv1d, advection_1D_custom, limitq as importable functions); bitwise on 36 real calls
+plus 21 forced multi-substep calls. In the real windows every nstep is 1 and qlimit is always false, so the
+limiter branches are validated only against a standalone ifort build on 3,000 synthetic lines (2 of 2,295 differ
+by 1 ulp, unphysical |fracm|>1); the y-direction `apply_limiter` is not ported.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -312,7 +318,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 1764 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 959 new D78-D98 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227).
+**Test count: 1846 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1041 new D78-D100 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82).
 
 ## Standing conditions
 

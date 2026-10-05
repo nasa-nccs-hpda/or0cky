@@ -384,3 +384,28 @@ Dumps (add to the dump list in build_and_run.md; layouts and loaders in the comp
 Validate: `python3 dyn_avrx_compare.py; python3 dyn_isotropuv_compare.py; python3 dyn_sdrag_compare.py`;
 `pytest fullfidelity/tests/test_dyn_avrx_ff.py test_dyn_isotropuv_ff.py test_dyn_sdrag_ff.py` (dump-based tests skip if the dumps are absent).
 Scratch tree used here: `<scratchpad>/mE_dynA/mE2` (the original ModelE tree and other sessions' scratch builds were not touched).
+
+## D99/D100 (AADVT) build and run lines
+
+Patches (fresh `rsync` copy, never the original tree; hunks local; each verified to apply to PRISTINE files; units 1100-1102
+were grepped over model/*.f, *.F90, *.h and all instrumentation patches: unused):
+
+    cd $COPY/model      # chmod u+w the three files first
+    patch ATMDYN.f  < <this dir>/ATMDYN_aadvt.f.patch     # ffdc_aadvt_in/_out around CALL AADVT (ATMDYN.f:337)
+    patch QUS_DRV.f < <this dir>/QUS_DRV_aadvt.f.patch    # ffdc_setx/ffdc_ckpt (after X1,Y,Z), ffdc_nsx/ffdc_nsz in aadvtx/aadvtz
+    patch ATM_DRV.f < <this dir>/ATM_DRV_dynC.f.patch     # helpers ffdc_*; inserted after 'end subroutine alloc_drv_atm'
+
+Build and run exactly as the D96-D98 section (absolute make target, ~1-2 min). NOTE the run end time: for a restart run the
+FIRST `YEARE=...,HOURE=0` line (I:109, the &INPUTZ namelist) is the end time, not the &INPUTZ_cold one; set it to
+1950,11,26,3 / 1950,12,1,3 / 1950,1,1,3 (editing the cold line makes nov26/jan01 run days and dec01 stop at once).
+`FFD_START=<itime> FFD_NSTEP=6 ./P2SAoM40 -i I` (33312 / 33552 / 17520), ~50 s per date. Stress runs: additionally
+`FFD_AADVT_STRESS=4` (files get prefix `ffd_aadvtS4_`; the model stops on its own courmax>1 error after ~3.5 steps).
+Copy `ffd_aadvt*` into `ff_data/<date>/` with `\cp -n`.
+
+Dumps (per date 72 files, ~868 MB; big-endian f8): `ffd_aadvt_<itime>_c<k>_{in,out,s1,s2,s3,ns}.bin`, k=1,2 = AADVT call within
+DYNAM. Layouts in the docstring of `dyn_aadvt_compare.py` (loaders `load_in/load_out/load_ckpt/load_ns`).
+Validate: from `fullfidelity/`: `python3 dyn_aadvt_compare.py [aadvt|aadvtS4]`, `python3 dyn_adv1d_compare.py`,
+`PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_dyn_aadvt_ff.py` (82 passed, ~40 s).
+Standalone harness: `{ sed -n 1,221p QUSDEF.f; sed -n 636,758p QUSDEF.f; } > qus1d_ext.f; ifort -O2 -ftz -convert big_endian
+-assume protect_parens -fp-model strict -c qus1d_ext.f; ifort <same> instrumentation/qus1d_standalone_drv.f90 qus1d_ext.o -o drv`;
+inputs by `python3 dyn_adv1d_compare.py --gen <dir>` then `./drv` in that dir (in.bin -> out.bin).
