@@ -25,6 +25,7 @@ import jax.numpy as jnp
 import numpy as np
 
 import kppmix_jax as KP
+from eos_jax import volgsp
 from setup_jax import setup_jax
 from ovdiffs_jax import ovdiff_jax, ovdiffs_jax
 
@@ -47,7 +48,8 @@ def _take(arr, idx):
 
 def hbl_loop(ze, grav, lmij, kmuv, pole, dts, dxypo, mo, mo1, deltae, deltas, deltam, deltasr,
              u2rho, ogeoz, hocean, s0m1, ravm, lmuv, dtbydz, bydz2,
-             ul0, ulm, uld0, uld, g0ml0, s0ml0, g0ml, s0ml, eos, tabs, itmax=ITMAX):
+             ul0, ulm, uld0, uld, g0ml0, s0ml0, g0ml, s0ml, eos, tabs, itmax=ITMAX,
+             po=None, vgsp=None):
     """Batched ITER loop + post-loop pass.
 
     Shapes: lmij, kmuv (N,) int64; pole (N,) bool; dxypo, mo1, deltae, deltas, deltam, deltasr,
@@ -91,9 +93,18 @@ def hbl_loop(ze, grav, lmij, kmuv, pole, dts, dxypo, mo, mo1, deltae, deltas, de
         s = jnp.concatenate([jnp.zeros((N, 1)), s_cur[:, 1:]], axis=1) * bymml
         g = g.at[:, 0].set(0.0)
         s = s.at[:, 0].set(0.0)
-        byrho = eos['byrho'][k - 1]
-        rhom = eos['rhom'][k - 1]
-        rho1 = eos['rho1'][k - 1]
+        if vgsp is not None:
+            # EOS from the OFTAB table (OCNDYN/OCNKPP VOLGSP): BYRHO, RHOM, RHO1 from G, S, PO
+            byrho = volgsp(vgsp, g, s, po)
+            g_prev = jnp.concatenate([jnp.zeros((N, 1)), g[:, :LMO]], axis=1)
+            s_prev = jnp.concatenate([jnp.zeros((N, 1)), s[:, :LMO]], axis=1)
+            rhom = 1.0 / volgsp(vgsp, g_prev, s_prev, po)
+            rho1 = 1.0 / volgsp(vgsp, jnp.broadcast_to(g[:, 1:2], (N, LMO + 1)),
+                                jnp.broadcast_to(s[:, 1:2], (N, LMO + 1)), po)
+        else:
+            byrho = eos['byrho'][k - 1]
+            rhom = eos['rhom'][k - 1]
+            rho1 = eos['rho1'][k - 1]
         ul_pad = jnp.concatenate([ulx, jnp.zeros((N, 1, KM + 1))], axis=1)   # (N, LMO+2, KM+1)
         su = setup_jax(ze, lmij, kmuv, ogeoz, hocean, grav, ul_pad, ravm, g, s, byrho, rhom, rho1,
                        eos['alpha'][k - 1], eos['beta'][k - 1], eos['shc'][k - 1], u2rho,

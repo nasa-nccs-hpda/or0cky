@@ -17,6 +17,9 @@ from kppmix_compare import load_kppmix_records  # noqa: E402
 from oconv_save_compare import column_groups  # noqa: E402
 from setup_jax_compare import parse_batch, RS  # noqa: E402
 from ocnhbl_jax import hbl_loop  # noqa: E402
+from eos_jax import load_vgsp  # noqa: E402
+
+VG = load_vgsp()
 
 LMO = 13
 KMAX = 74
@@ -108,7 +111,9 @@ def run(d):
         out = hbl_loop(ze, 9.80665, h['lmij'], h['kmuv'], pole, h['dts'][0], h['dxypo'], mo, h['mo1'],
                        h['deltae'], h['deltas'], h['deltam'], h['deltasr'], h['u2rho'], h['ogeoz'],
                        h['hocean'], s0m1, ravm, lmuv, dtbydz, bydz2, ul0, ulm, uld0, uld,
-                       g0ml0, s0ml0, g0ml, s0ml, eos, tabs)
+                       g0ml0, s0ml0, g0ml, s0ml, eos, tabs,
+                       po=np.stack([sp['po'][pos[(c, 0)]] for c in range(len(groups))]),
+                       vgsp=VG)
         out = {k: np.asarray(v) for k, v in out.items()}
         el = time.time() - t0
         ref = load_hblout(f'{d}/ffz_hblout_{itime}.bin')

@@ -2106,6 +2106,20 @@ Instrumentation: `ffz_opfil_in/out` (D74, per call: l, jmin, jmax, X(72,46)) and
 (D75). Patches `OCNDYN2_opfil2.f.patch`, `ATM_DRV_opfil2.f.patch` (`diff -u`). Two build errors
 were fixed on the way: a line over 72 columns, and the output dump placed after a RETURN.
 
+## D76: OCONV HBL loop computes its seawater EOS from the OFTAB table (no recorded densities)
+
+`ocnhbl_jax.hbl_loop` now computes BYRHO, RHOM and RHO1 from G, S and PO with the table
+(`eos_jax.volgsp`), instead of reading them from the setup dump. PO is still taken from the setup
+record (its driver computation is not ported). Validation on all 18 real steps (`ocnhbl_jax_compare.py`):
+KBL exact on every column; worst HBL 8.7e-8, worst flux save 1.6e-7, accuracy unchanged from D66.
+
+## D77: OPFIL2 as batched linear operators (JAX)
+
+OPFIL2 acts on each latitude row independently and linearly, so the application is one 72x72 operator
+per (layer, row). `fullfidelity/opfil2_jax.py` builds them once from the validated scalar port
+(D74-D75; 4.6 s) and applies them as a batched JAX product. On 260 recorded Nov-26 calls the batched
+form agrees with the recorded output to 3.0e-15 (relative).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
