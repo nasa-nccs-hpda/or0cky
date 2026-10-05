@@ -233,30 +233,26 @@ tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
 next for the one-page version.
 
-## Current state (refreshed 2026-10-04)
+## Current state (refreshed 2026-10-05)
 
-**Committed through D64 (`a9654ec`, pushed; the stray "myxilodian" commit `063b724` and the
-draft-file move `818f365` are on top of it).** D54-D61 are the bitwise-exact numpy ports of the
-ocean core (KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, the OCONV setup block, the HBL scaling,
-the mass bookkeeping, the convergence test, the post-loop flux save). D62-D64 are batched JAX ports
-(OVDIFFS, momentum OVDIFF, KPPMIX, the setup block), checked to a tolerance against the numpy ports.
+**Committed through D73 (`d1134bd`, pushed).** Ocean core: D54-D61 bitwise-exact numpy ports
+(KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, the OCONV setup block, HBL scaling, mass bookkeeping,
+convergence, flux save). Batched JAX ports, checked to a stated tolerance (1e-9 relative), per the
+user's speed-first direction of 2026-10-04: OVDIFFS and momentum OVDIFF (D62, D64), KPPMIX (D63),
+the setup block (D64), the full HBL loop (D66, validated on 18 real steps), and the straits step
+(D67-D73): STCONV, STBDRA, STADV, STPGF chained as one step, validated on 18 real steps with the
+seawater EOS read from the OFTAB table.
 
-**Direction change (2026-10-04, user):** JAX port and runtime speed take priority over bitwise
-verification. JAX ports are checked to a stated tolerance (1e-9 relative), against the numpy port
-(which itself is checked against Fortran). The bitwise standard still applies to the numpy ports.
+**In progress:** OPFIL2, the polar zonal smoother (OCNDYN2.f, live on the step path at polar rows).
+Instrumented (D74); the coefficient setup is taken as recorded input; the application is ported in
+`fullfidelity/opfil2_ff.py`, pending validation against the real calls.
 
-**In progress:** the batched OCONV HBL loop (`fullfidelity/ocnhbl_jax.py`, not yet committed).
-Instrumentation D65/D66 adds loop-state dumps (`ffz_hblin`, `ffz_hblout`, `ffz_momi`) and a straits
-count print. The loop matches the first iteration (HBL to 1e-8, KBL exact) but not yet the full
-loop. The open question is the momentum state after iteration 1; the column-indexed momentum dump
-(`ffz_momi`) is what resolves it.
+**Not ported:** `init_STRAITS` (start-up only; the port takes its recorded state as input), `GLMELT`
+(daily cadence; not exercised by the six-step test windows), `IRRIG_LK` (Stage 1, external dataset),
+the full OPFIL2 coefficient setup (`calc_opfil2_coeffs`, taken as input), and a chained whole-model
+step.
 
-**Straits: confirmed ACTIVE for P2SAoM40.** The straits reader counts `NMST = 12` (`OSTRAITS`
-present in the run directory). The straits port itself has not started; estimate 25-40 hours.
-
-**Test count: 805 passed, 23 skipped, 0 failed** (regression at D64, `a9654ec`).
-
-**Background work:** none running as of this refresh.
+**Test count: 805 passed, 0 failed** (regression at D72).
 
 ## Standing conditions
 
