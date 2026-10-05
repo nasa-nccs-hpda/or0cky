@@ -271,8 +271,19 @@ written by a subagent, re-verified here).
 `GLMELT` (daily cadence, never exercised), `IRRIG_LK` (Stage 1, external dataset not in this environment),
 PO for the OCONV loop (read from the setup record), and a chained whole-ocean JAX step.
 
-**Remaining effort, my estimate:** ocean side about 30-50 hours (the batching items dominate); full port
-more. Not started: the atmosphere-side scope.
+**Remaining effort, revised 2026-10-05 (focused effort hours, including validation; an estimate, not a measurement):**
+- Ocean side about 20-35 h (was 30-50 h; the ODHORZ/OADVT2/OCNMESO/GM batching and JAX items of D78-D86
+  are done). Left: sea-ice dynamics batching (D87, in progress) 1-3 h; X pre-pass 1-2 h; the cut corners
+  listed above 4-8 h; DYNSI body regrid/stress setup 3-6 h; chained whole-ocean JAX step and its multi-step
+  validation 8-15 h.
+- Atmosphere side, not started, low confidence (line counts from the plan table, not yet read in detail;
+  SOCRATES excluded per the standing condition): clouds (MSTCNV/LSCOND) 15-25 h, atmospheric dynamics
+  (~8,500 lines) 12-20 h, non-SOCRATES radiation driver/utilities 8-20 h (depends on a scope decision),
+  atmosphere driver/coupling glue 8-15 h.
+- F1/F2 multi-step validation of the chained model 10-20 h.
+- **Total for the full port: about 75-135 h, central estimate ~100 h.** Basis: the plan's observed rate of
+  roughly one hour per 1,000 Fortran lines for stateless pieces, longer for stateful or heavily branching
+  code. Subagents shorten wall-clock time, not effort.
 
 **Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
 (has jax and omegaconf); the default python lacks omegaconf. Run regression with
