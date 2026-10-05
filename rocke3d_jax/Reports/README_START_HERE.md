@@ -278,6 +278,10 @@ passes). AFLUX/ADVECM and ADVECV are bitwise identical; `x**KAPA` needs the Inte
 `intel_libm_ff.py`, optional): with numpy pow, PK differs by 1 ulp in ~0.04% of cells and PGF outputs agree to
 ~1e-12 of field scale. Mode-0 topography patches, ADVECM exception paths and MPI-halo branches are not exercised.
 
+**D94-D95 (dynamics):** `dyn_avrx_ff.py` (FFT/FFTI/AVRX radix port, bitwise), `dyn_isotropuv_ff.py`, `dyn_sdrag_ff.py`,
+`dyn_geom_ff.py` (analytic geometry); bitwise on every recorded real call. SDRAG's wind-clamp branch is never
+exercised (max wind 64-71 m/s vs 200) and is hand-tested only; the FFT72 code exists twice (D94, D96): consolidate.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -308,7 +312,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 1537 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 732 new D78-D98 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116).
+**Test count: 1764 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 959 new D78-D98 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227).
 
 ## Standing conditions
 
