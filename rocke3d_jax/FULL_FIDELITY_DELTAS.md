@@ -2168,6 +2168,18 @@ Scalar -> batched time: 0.06 s -> 0.005 s and 0.08 s -> 0.003 s. The inputs it c
 VDNU from the EOS table) are still the recorded values, as in D47. Check: `ocnmeso_vec_compare.py
 <date> <itime>`; tests: `tests/test_ocnmeso_vec.py` (3 tests).
 
+## D83: Gent-McWilliams batched (numpy)
+
+Batched `gmredi_ff.isoslope4`, `gmkdif` and `gmfexp` (with `_compute_fxx_fyy_fzz_fzx_fzy`, `_compute_fluxes`, `_wrap_adjust_fluxes`, `_add_fluxes`) into `gm_vec.py` (`isoslope4_vec`, `gmkdif_vec`, `gmfexp_vec`), with the (i, j, l) loops replaced by masked array operations on the same 1-based (IM+1, JM+1, LMO+1) arrays. All three functions are fully batched; nothing was left as a scalar call.
+
+Rounding-order choices: every expression keeps the scalar operand order. The two off-by-one write targets (BXX at (IM1,J,L), BYY at (I,J-1,L)) are handled by a periodic west/east shift of the masked values. `_add_fluxes` (G0M path) applies the horizontal flux terms to TRM in the scalar's per-cell order (west-wrap term at cell IM first, then +FX, +FY, -FX(i+1), -FY(j+1), pole-box terms last) and keeps a loop over the 13 layers for the vertical redistribution. `_wrap_adjust_fluxes` (S0M limiter) uses `np.cumsum(...)[-1]` for the pole sums and for CONVPOS/CONVADJ in the scalar's (l, i) order per J then over J. The vertical convergence is rebuilt as (xy + fz[l]) - fz[l-1], the order the descending-l scalar loop produces.
+
+Validation (`gm_vec_compare.py <date> <itime>`, `tests/test_gm_vec.py`, 9 tests passed): on nov26 33312, dec01 33552 and jan01 17520, the batched results are bitwise identical to the scalar port (max abs and max rel difference 0.0) for all 24 ISOSLOPE4 fields, all 15 GMKDIF fields, and TRM/TXM/TYM/TZM of both GMFEXP calls (qlimit False and True). Inputs are the real dumps, loaded as in gmredi_compare.py, gmkdif_compare.py and gmfexp_compare.py (each stage fed its own recorded inputs, not chained).
+
+Timings (scalar -> batched, one host, single run): isoslope4 0.33 -> 0.022 s, gmkdif 0.19 -> 0.004 s, gmfexp 0.52 -> 0.014 s per call.
+
+Not changed: QCROSS branches remain excluded as in the scalar port (D48).
+
 ## D84: OADVT2 sweeps under jax.jit
 
 `fullfidelity/oadvt_jax.py` runs the D80-D81 sweeps under `jax.jit`: Y as a `lax.fori_loop` over j, Z as
