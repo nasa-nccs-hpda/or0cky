@@ -2168,6 +2168,19 @@ Scalar -> batched time: 0.06 s -> 0.005 s and 0.08 s -> 0.003 s. The inputs it c
 VDNU from the EOS table) are still the recorded values, as in D47. Check: `ocnmeso_vec_compare.py
 <date> <itime>`; tests: `tests/test_ocnmeso_vec.py` (3 tests).
 
+## D84: OADVT2 sweeps under jax.jit
+
+`fullfidelity/oadvt_jax.py` runs the D80-D81 sweeps under `jax.jit`: Y as a `lax.fori_loop` over j, Z as
+13 unrolled layer steps, X as a `lax.fori_loop` over i inside a loop over courant sub-steps, with all
+(l, j) passes as fixed-shape lanes. Agrees with `oadvt_vec` to 1e-16 to 3.5e-16 (relative, per sweep and
+for the full call) and with the real Fortran dumps to the same 1e-16 level, on all three dates for
+G0M and S0M (`oadvt_jax_compare.py <date> <itime>`; tests: `tests/test_oadvt_jax.py`, 6 tests).
+- **Speed (CPU, warm, one tracer):** about 0.15 s, the same as the numpy version (0.15 s), so there is no
+  CPU gain; the point is a jit-able, device-resident form for the chained step. The X MUDT/NCOURANT
+  pre-pass is still numpy (0.04 s per call, two calls per OADVT2) and is now the largest single cost.
+- Open: batch or jit the X pre-pass (its stale-MUDT state makes it sequential over passes); GPU timing
+  (no GPU on this node).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

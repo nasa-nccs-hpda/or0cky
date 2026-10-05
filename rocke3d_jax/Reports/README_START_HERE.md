@@ -255,7 +255,10 @@ real Fortran dumps on all three dates (`oadvt_vec_compare.py`).
 
 **D82:** `ocnmeso_vec.py` batches the OCNMESO inputs (bitwise identical to the scalar port, all three dates).
 
-**Next step for a new session:** Gent-McWilliams (GMKDIF/GMFEXP/GMREDI) batching, then JAX-jit the OADVT2 sweeps.
+**D84:** `oadvt_jax.py` jits the OADVT2 sweeps (1e-16 vs numpy and real Fortran; same CPU speed, the X pre-pass
+is the remaining cost).
+
+**Next step for a new session:** Gent-McWilliams (GMKDIF/GMFEXP/GMREDI) batching (D83), then the X pre-pass.
 
 **Still recorded or not ported (cut corners, listed in FULL_FIDELITY_DELTAS.md):** `calc_opfil2_coeffs`
 (OPFIL2 coefficients read from `ffz_opcoef.bin`), `init_STRAITS` (start-up straits state read as input),
@@ -270,7 +273,7 @@ more. Not started: the atmosphere-side scope.
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 826 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 21 new D78-D82 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3).
+**Test count: 832 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 27 new D78-D84 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6).
 
 ## Standing conditions
 
