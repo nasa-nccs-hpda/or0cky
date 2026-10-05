@@ -2193,6 +2193,15 @@ G0M and S0M (`oadvt_jax_compare.py <date> <itime>`; tests: `tests/test_oadvt_jax
 - Open: batch or jit the X pre-pass (its stale-MUDT state makes it sequential over passes); GPU timing
   (no GPU on this node).
 
+## D86: OCNMESO inputs under jax.jit
+
+`fullfidelity/ocnmeso_jax.py` runs `ocnstate_derived`, `densgrad_vertical` and `get_1d_mesodiff` (D47,
+batched in D82) under `jax.jit`; `ocnstate_derived` keeps its 13-layer loop (unrolled). Agrees with
+`ocnmeso_vec` to 3.8e-16 relative (`ocnstate_derived`) and exactly (`densgrad_vertical`, k3d) on all
+three dates (`ocnmeso_jax_compare.py <date> <itime>`; tests: `tests/test_ocnmeso_jax.py`, 3 tests).
+Warm CPU time for both functions: about 6-7 ms (numpy) -> 3.5 ms (jax). The EOS-table outputs (VUP/VDN/
+VUPU/VDNU) are still the recorded values, as in D47.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
