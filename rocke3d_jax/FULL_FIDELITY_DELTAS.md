@@ -2193,6 +2193,19 @@ G0M and S0M (`oadvt_jax_compare.py <date> <itime>`; tests: `tests/test_oadvt_jax
 - Open: batch or jit the X pre-pass (its stale-MUDT state makes it sequential over passes); GPU timing
   (no GPU on this node).
 
+## D85: Gent-McWilliams under jax.jit
+
+`gm_jax.py` ports `gm_vec.py` (D83) to JAX: `isoslope4_jax`, `gmkdif_jax`, `gmfexp_jax`, each wrapped in `jax.jit` (x64 enabled). `gmfexp_jax` takes `qlimit` as a static argument (it selects the salt-limiter vs plain flux-add path); the other inputs (lmm/lmu/lmv, fields) are jnp arrays. Same operation order as gm_vec; in-place mutation replaced by `.at[...]`; the `if sumpos > 0` branch became `jnp.where`, and the `lmm[1,jp] > l` pole branches in the layer loop became `jnp.where` masks. The 13-layer redistribution loop is unrolled at trace time; pole and global sums use `jnp.cumsum`, which on CPU reproduced numpy's left-to-right cumsum exactly. Geometry (`geomo_dyn_arrays`) is numpy and enters as trace-time constants. Nothing left unconverted.
+
+Validation against gm_vec on the real dumps (nov26 33312, dec01 33552, jan01 17520) via `gm_jax_compare.py <date> <itime>` and `tests/test_gm_jax.py` (9 tests, all pass, tolerance 1e-10 on every output array, both qlimit values):
+- isoslope4 (24 arrays), gmkdif (15 arrays): max rel diff 0 (bitwise) on all three dates.
+- gmfexp TRM, TZM: max rel diff 0 (bitwise) for both qlimit calls on all three dates.
+- gmfexp TXM/TYM: max rel diff 1.3e-16 to 3.5e-16 (last-bit rounding in the division).
+
+Warm CPU timings (mean of 5 calls after a compile call, jax 0.5.3, CPU; numpy gm_vec vs gm_jax): isoslope4 ~0.017 s vs ~0.0025 s; gmkdif ~0.0032 s vs ~0.0008 s; gmfexp ~0.012-0.014 s vs ~0.0046-0.0048 s (qlimit=False) and ~0.0025-0.0028 s (qlimit=True). Single machine, not a controlled benchmark; compile time excluded.
+
+Files: `gm_jax.py`, `gm_jax_compare.py`, `tests/test_gm_jax.py`.
+
 ## D86: OCNMESO inputs under jax.jit
 
 `fullfidelity/ocnmeso_jax.py` runs `ocnstate_derived`, `densgrad_vertical` and `get_1d_mesodiff` (D47,
