@@ -279,14 +279,17 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
   are done). Left: sea-ice dynamics batching (D87, in progress) 1-3 h; X pre-pass 1-2 h; the cut corners
   listed above 4-8 h; DYNSI body regrid/stress setup 3-6 h; chained whole-ocean JAX step and its multi-step
   validation 8-15 h.
-- Atmosphere side, not started, low confidence (line counts from the plan table, not yet read in detail;
-  SOCRATES excluded per the standing condition): clouds (MSTCNV/LSCOND) 15-25 h, atmospheric dynamics
-  (~8,500 lines) 12-20 h, non-SOCRATES radiation driver/utilities 8-20 h (depends on a scope decision),
-  atmosphere driver/coupling glue 8-15 h.
+- Atmosphere side, scoped 2026-10-05 (low-to-moderate confidence; see `fullfidelity/scoping/`; SOCRATES excluded
+  per the standing condition): clouds (MSTCNV/LSCOND, `ATM_CLOUDS_SCOPE.md`) about 70-110 h including JAX
+  (numpy-only 57-92 h); atmospheric dynamics (`ATM_DYNAMICS_SCOPE.md`) about 35-80 h, central 50 h; radiation
+  driver/utilities not scoped, placeholder 8-20 h; atmosphere driver/coupling glue 8-15 h. These supersede the
+  earlier 15-25 h (clouds) and 12-20 h (dynamics) placeholders, which were taken from raw line counts and left out
+  instrumentation, JAX batching and chained validation.
 - F1/F2 multi-step validation of the chained model 10-20 h.
-- **Total for the full port: about 75-135 h, central estimate ~100 h.** Basis: the plan's observed rate of
-  roughly one hour per 1,000 Fortran lines for stateless pieces, longer for stateful or heavily branching
-  code. Subagents shorten wall-clock time, not effort.
+- **Total for the full port: about 150-280 h, central estimate ~200 h** (revised up from 75-135 h after the
+  atmosphere scoping). Basis: the scoping documents' per-piece hours plus the plan's observed rate of roughly one
+  hour per 1,000 Fortran lines for stateless pieces, longer for stateful or heavily branching code. Subagents
+  shorten wall-clock time, not effort.
 
 **Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
 (has jax and omegaconf); the default python lacks omegaconf. Run regression with
