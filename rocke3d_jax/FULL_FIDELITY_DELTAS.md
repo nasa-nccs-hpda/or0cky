@@ -2441,6 +2441,81 @@ Also in `fullfidelity/dyn_filter_ff.py` (same compare script and test file as D1
 - Not exercised: nothing in these functions branches on data except the pole conventions, which are exercised (pole rows of KE/PE are the polar-box formulas). MPI/halo variants and the SCM dummy versions (`ATMDYN_SCM_EXT.f`, `ATM_DUM.f`) are not live and not ported.
 - Limitations as D101. Owner: project owner of `rocke3d_jax` (Glenn Tamkin); drafted by a Claude Code session, 2026-10-05; not yet reviewed.
 
+## D107: LSCOND particle size / optical thickness tail block (scoping D-C5) -- bitwise-exact with libimf on all 14,262 real column calls
+
+Ported `CLOUDS2.F90:4927-5285` (from `SNdO = 59.68d0/(RWCLDOX**3)` to the end of LSCOND): the `OPTICAL_THICKNESS` loop
+(`do L=1,LMCLD`: RCLD/RCLDE from WTEM, CSIZEL, CSIZELIP, TAUSSL/TAUSSLIP incl. the `use_vmp` precip arm, WMSUM) and the final
+`do L=1,LMCLD` loop (CLDSV1, SVLHXL reset, boundary-layer / free-troposphere CLDSSL-TAUSSL rescaling with CKIJ and TAUMCL,
+QLss/QIss). One column per call, explicit L loops, plain Python floats (`fullfidelity/clouds_lscond_size_ff.py`). The
+CLD_AER_CDNC / AIE_DIAG_FIX_MET / COSP sub-blocks are not compiled in P2SAoM40 and are not ported; the non-VMP arm (dead,
+`use_vmp=1` in the rundeck) is coded for `use_vmp=False` but unvalidated.
+Validation: new instrumentation (`CLOUDS2_lscond.f90.patch` + `ATM_DRV_clouds_lscond.f.patch`, units 1170-1173) records the
+block entry (23 LM arrays + LHP + 12 scalars) and exit (13 arrays + WMSUM) of every 4th LSCOND call of each step (a different
+column subset each step): 4,754 columns per date x 3 dates = 14,262 columns (190,160 values per output field per date).
+Result: with the platform libm, every output field agrees to max_rel <= 8.2e-14 (99.987-100.000% of values bitwise; 29-43 of
+4,754 records per date have a last-bit difference); with Intel libimf `exp`/`pow` (optional ctypes bridge, `--imf`) ALL outputs are
+bitwise equal on all 14,262 columns. Branch flips (SVLHXL reset, TAUSSL=0 / =100, TAUSSLIP=0, CLDSSL=0, QCLX=0): 0.
+Single-precision-literal audit: none needed in this block (all non-integer literals carry d0). Branches exercised by the real data
+(layer visits, 3 dates): liquid 195,660, ice 217,938, VMP ice precip under liquid cloud 35,807, TAUSSL cap 448, CSIZEL cap 741,
+RWMAX cap 164, bmax>=.95 7,601, BL rescaling 37,499, free-troposphere rescaling 317,087, TAUMCL skip 58,060. Never exercised
+by real data: negative TAUSS (`neg_tau`), the `stop_model('VMP: should not be here')` arm, the non-VMP arm -- covered only by
+clearly labelled SYNTHETIC tests.
+Files: `fullfidelity/clouds_lscond_size_ff.py`, `clouds_lscond_io.py`, `clouds_lscond_size_compare.py` (`--imf`),
+`tests/test_clouds_lscond_size_ff.py` (33 passed, incl. 10 input mutations and 2 algorithm mutations, all detected).
+Dumps: `ff_data/<date>/ffc_ls_tail_<itime>.bin` (6 files per date, ~9.5 MB each) + `ffc_ls_consts.txt`.
+Owner: (project lead to assign). Review date: before the first radiation hand-off delta.
+
+## D108: LSCOND main layer loop (scoping D-C6, part 1) -- bitwise-exact with libimf on all 5,706 real column calls
+
+Ported the initialisation and `CLOUD_FORMATION: do L=LMCLD,1,-1` (CLOUDS2.F90:3211-4634 live code, use_vmp arm): RH00/RHF, VMP phase
+(LHX/LHP from TMIN_WATER/TF), RH1 (incl. the Karcher-Lohmann ice formula), phase-change bookkeeping, autoconversion with the
+VMP wtliq interpolation, evaporation of precip ER, condensation/evaporation QHEATL/QHEATI, cloud-water evaporation EC, PREBAR/PREICE/LHP
+precipitation carry and HPHASE, QNEW and moment scaling, the RH>1 `get_dq_cond` pass, rain-out of cloud water, CLEARA/CLDSSL/
+CLDSAVL and the HCNDSS/SSHR/DQLSC diagnostics, PRCPSS (`fullfidelity/clouds_lscond_ff.py::lscond_main`). Calls the D89
+`get_dq_cond/get_dq_evap` by import. TRACERS_*, CLD_AER_CDNC, do_blU00 (=0) and debug blocks are not live and not ported.
+Validation: the whole LSCOND call boundary (all inputs: 18 LM arrays + RNDSSL + PRECNVL + RA + 22 scalars; module state in/out: 24 LM
+arrays + LHP + prebar1 + QMOM/SMOM (9x40) + UM/VM (4x40)) is recorded for every 10th LSCOND call of each step
+(`ffc_ls_bnd_`; 317 columns/step, 1,902 per date, 5,706 total, 12.9 MB per step) plus a checkpoint after the main loop before CTEI
+(`ffc_ls_mid_`, state + 9 local LM arrays + PREBAR/PREICE + PRCPSS/HCNDSS; 6.4 MB per step). N=10 and sizes are documented in
+`clouds_lscond_io.py`. Result (entry -> mid checkpoint): with Intel libimf exp/pow: 100.0000% bitwise on all 4,741,686 compared
+values per date (state, locals, PRCPSS, HCNDSS), 0 mismatches; with platform libm: 99.97-99.98% bitwise, max_rel <= 3.5e-9
+except CLEARA/CLDSAVL/CLDSSL/RHF, where `CLEARA = DSQRT((1-RH)/(...))` amplifies a last-bit RH difference to at most 1.2e-7 absolute
+(32/32/35 layer mismatches per date, every one coincident with a differing RH and within 4x the sqrt-amplified bound).
+Single-precision literals reproduced with f4(): `-0.2` (cm0*10.**(-0.2*vdef)), `238.16`, `207.83`, `.999999`; `.001` in
+WMUI=WMUIX*.001 (taken from the dump: 1.0000000475e-6 shows the REAL(4) rounding). Mutation checks show the f4(0.2) and f4(207.83)
+corrections matter (77,920 / 10,257 mismatching values over 700 columns when replaced by the double literal); 238.16 and .999999 are NOT
+observable on this data (no real value in the 4e-6 / 1e-6 wide gap) and rest on the source reading.
+Branch counts over the real data (layer visits, 3 dates, 165,474 layers): ice-forced 87,125, water 78,349, form_clouds 27,906,
+no_form 137,568, autoconversion cap CM 834, TEM cap 10,153, RH>1 condensation 4,339, rain-out liquid 878 / ice 4, phase change
+LE->LS 29 / LS->LE 23, oldlat LS->LE 16,471, evaporation of precip ER (qcl 25,563, ice-precip 742, rh 1,601), no-form cloud
+evaporation liquid 1,746 / ice 97, HPHASE melt 2,187 / freeze 25. NEVER exercised by real data: OLDLAT=LHE with LHX=LHS, ER>ERMAX clip
+(and the unreachable ER<0 clip), QNEW<0 (and IERR=1), -- first, second and third are covered by SYNTHETIC tests (not validated
+against Fortran); IERR=1 was not reachable even synthetically. The non-VMP arm raises NotImplementedError (dead in this rundeck).
+Branch flips from last-bit differences (SVLHXL, LHP, QCLX/QCIX=0, CTEI-mixed layer, TAUSSL/CLDSSL=0, IERR): 0 in libm and libimf modes.
+
+## D109: LSCOND CTEI + remainder (scoping D-C6, part 2) -- whole LSCOND column call bitwise-exact with libimf, 5,706 columns
+
+Ported `CLOUD_TOP_ENTRAINMENT: do L=LMCLD-1,1,-1` (CLOUDS2.F90:4647-4924): SM/QM/WMXM set-up, the cycle conditions (cloud above,
+clear below, CKR>CKM, CK<CKR, FPMAX, DSE>=DSEC), SIGK/EXPST/CKIJ, the bounded `do ITER=1,9` FPLUME iteration with `exit`,
+post-mix SM/QM/WM updates, CTMIX of SM/QM and their moments (with the FSSL-ratio rescaling), U/V momentum mixing, temperature
+correction for the phase difference between the layers, CLEARA/CLDSSL/CLDSAVL and HCNDSS/SSHR/DQLSC/DCTEI. `lscond()` chains
+main loop + CTEI + the D107 tail (`lscond_main`, `lscond_ctei`, `lscond_tail`). Key finding: the integer power `**5` in the SIGK
+formula is a libm `pow(x,5.)` call in the real build; x*x*x*x*x or ((x*x)*(x*x))*x differ in about 1 of 100 mixed layers (detected by a mutation test).
+Validation: whole call (entry -> exit, 5,706 columns, 3,967,572 compared values per date): libimf mode 100.0000% bitwise, 0 branch
+flips; platform libm: 99.96-99.97% bitwise, max_rel <= 2.8e-11 except the sqrt-amplified CLEARA family (<= 1.2e-7 abs). CTEI alone
+(mid checkpoint -> tail-block entry, 948 calls per date present in both files): libimf 100% bitwise; libm 99.998-100%, max_rel <= 8e-12.
+CTEI statistics (3 dates): 159,768 layer pairs visited, 2,533 mixed (2,414 iterations exited, 119 ran all 9 iterations, 3,678
+iterations in total), 233 mixed pairs with FSSL(L)/FSSL(L+1)!=1, CKIJ set (L=1) 354, cycle reasons: cloud above 24,943, clear
+layer 125,924, CK<CKR 6,013, DSE>=DSEC 355. NEVER exercised: CKR>CKM cycle, FPMAX<=0 cycle, FMASS clipped to the harmonic cap
+(no synthetic coverage found either). UM/VM are validated for K=1..4 (all columns except the two pole columns have KMAX=4; the pole
+column's other 68 K entries are not recorded).
+Tests: `tests/test_clouds_lscond_ff.py` (45 tests: layout, main loop, whole call, CTEI, chain, branch coverage with explicit
+never-exercised list, 10 constant mutations + COEEC/pow5/iteration-cap/f4 mutations, unit and SYNTHETIC tests); both new test files:
+78 passed, 89 s.
+Files: `fullfidelity/clouds_lscond_ff.py`, `clouds_lscond_io.py`, `clouds_lscond_compare.py` (`--imf`, `--quiet`, `--max N`),
+`instrumentation/CLOUDS2_lscond.f90.patch`, `instrumentation/ATM_DRV_clouds_lscond.f.patch`.
+Owner: (project lead to assign). Review date: before the first radiation hand-off delta.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
