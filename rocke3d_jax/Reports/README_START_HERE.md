@@ -269,6 +269,9 @@ written by a subagent, re-verified here).
 **D89 (first atmosphere/cloud delta):** `clouds_dq_ff.py` ports get_dq_cond/get_dq_evap, validated on 174,097
 sampled real calls (10% sample, 6 steps per date), 0 branch mismatches, rounding-level agreement (99.2% bitwise).
 
+**D90 (first atmosphere-dynamics delta):** `dyn_fltruv_ff.py` ports the end-of-DYNAM velocity filter chain
+(FLTRUV, fltry2, angular-momentum fix); bitwise identical to the real model on all 18 calls, all three dates.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -299,7 +302,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 917 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 112 new D78-D89 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20).
+**Test count: 965 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 160 new D78-D90 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48).
 
 ## Standing conditions
 

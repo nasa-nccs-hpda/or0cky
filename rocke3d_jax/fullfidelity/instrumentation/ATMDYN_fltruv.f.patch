@@ -1,0 +1,22 @@
+--- ATMDYN.f.orig
++++ ATMDYN.f
+@@ -376,7 +376,9 @@
+       MWs(:,:,1:LM-1) = MWs(:,:,1:LM-1) * DTLF  !  positive downward
+ 
+ c apply east-west filter to U and V once per physics timestep
++      call ffdump_fltruv_in(IM,JM,LM,MA,MASUM,U,V)
+       Call FLTRUV
++      call ffdump_fltruv_uv('flt',IM,JM,LM,U,V)
+ c apply north-south filter to U and V once per physics timestep
+       call conserv_amb_ext(u,am1) ! calculate ang. mom. before filter
+       call fltry2(u,1d0) ! 2nd arg could be set using DT_YUfilter
+@@ -384,7 +386,9 @@
+       call conserv_amb_ext(u,am2) ! calculate ang. mom. after filter
+       am2(:,j_0stg:j_1stg) = am1(:,j_0stg:j_1stg)-am2(:,j_0stg:j_1stg)
+       call globalsum(grid,am2,damsum,all=.true.)
++      call ffdump_fltruv_ny(IM,JM,LM,U,V,DAMSUM,AM1)
+       call add_am_as_solidbody_rotation(u,damsum) ! maintain global ang. mom.
++      call ffdump_fltruv_uv('out',IM,JM,LM,U,V)
+ 
+       RETURN
+       END SUBROUTINE DYNAM

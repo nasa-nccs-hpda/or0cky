@@ -285,3 +285,31 @@ each (itime,site) pair, `ncall` is the running count of ALL calls at that site i
 multiple of the stride). ~10k records/step (~1 MB), ~56-60k records per date. `ffc_dq_consts.txt` (written once)
 holds bysha, mrat, rvap, tf, lhe, lhs and the stride. Read with `fullfidelity/clouds_dq_compare.py`
 (`load_date`). SCM.F90's call to get_dq_cond is not live in this rundeck and not instrumented.
+
+Patches (apply to a fresh `rsync` copy, never the original tree; only these two on top of the base set are needed, they touch no unit number used by earlier patches):
+
+    cd $COPY/model
+    patch ATM_DRV.f < <this dir>/ATM_DRV.f.patch          # base (ffdump + call sites)
+    patch MODELE.f  < <this dir>/MODELE.f.patch           # base
+    patch ATMDYN.f  < <this dir>/ATMDYN_fltruv.f.patch    # D90: 4 dump calls in DYNAM (end-of-DYNAM filter chain)
+    patch ATM_DRV.f < <this dir>/ATM_DRV_fltruv.f.patch   # D90: adds ffdump_fltruv_on/_geom/_in/_uv/_ny, unit 1070
+      -- apply AFTER ATM_DRV.f.patch; in a full stack apply it last (it only appends at end of file; the
+      patch was generated against ATM_DRV.f.patch alone, so re-diff if applied after other ATM_DRV_*.patch files:
+      the end-of-file context will differ and `patch` will report an offset/fuzz or reject)
+    (ATM_DRV.f and ATMDYN.f are read-only in the rsync copy: `chmod u+w` first, as the original tree has them r/o)
+
+Build: `source env_modele.sh` in the SAME shell (not in a pipeline subshell, or ifort is not found), then
+`export SOCRATESPATH=$SRC/ModelE_Support/socrates; cd $COPY/decks && gmake RUN=P2SAoM40 $COPY/model/P2SAoM40.bin` (~50 s).
+
+Run (per date, own run dir; used here: `$COPY/run_<date>`): copy `I P2SAoM40ln P2SAoM40uln runtime_opts modules` from
+`ModelE_Support/huge_space/P2SAoM40`, then `\cp model/P2SAoM40.bin` to BOTH `P2SAoM40.bin` and `P2SAoM40` (the binary itself, not
+the 1.6 kB wrapper script that is in huge_space), `sh P2SAoM40ln`, set in `I`: `YEARE=1950,MONTHE=11,DATEE=26,HOURE=3`
+(nov26) / `MONTHE=12,DATEE=1` (dec01) / `MONTHE=1,DATEE=1` (jan01), `rm -f fort.1.nc fort.2.nc` and copy
+`ff_data/_pristine_restarts/fort1_<date>_itime<N>.nc` to BOTH names, then
+`FFD_START=<N> FFD_NSTEP=6 ./P2SAoM40 -i I > run.PRT 2>&1` with `LD_LIBRARY_PATH` and `OMP_NUM_THREADS=1` as in build_and_run.md
+(~1 min each; the three runs were executed concurrently, rc=0). Itimes: nov26 33312, dec01 33552, jan01 17520.
+Copy `ffd_fltruv_*.bin` (25 files per date: geom + 6 steps x {in,flt,ny,out}) into `ff_data/<date>/`; do not overwrite existing files.
+
+Dumps (add to the dump list in build_and_run.md): `ffd_fltruv_<itime>_{in,flt,ny,out}.bin`, `ffd_fltruv_geom.bin`; layouts and
+loader in `fullfidelity/dyn_fltruv_compare.py` (`load_in/load_uv/load_ny/load_geom`). Validate: `python3 dyn_fltruv_compare.py [--analytic]`,
+`pytest fullfidelity/tests/test_dyn_fltruv_ff.py`.

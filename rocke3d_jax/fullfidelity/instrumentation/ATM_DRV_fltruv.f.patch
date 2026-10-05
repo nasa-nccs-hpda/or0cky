@@ -1,0 +1,114 @@
+--- ATM_DRV.f.orig
++++ ATM_DRV.f
+@@ -2465,3 +2465,111 @@
+       endif
+       write(fu) rec
+       end subroutine ffdump_lakes
++
++      logical function ffdump_fltruv_on()
++!@sum full-fidelity-port instrumentation (D90): true when env
++!@+   FFD_START/FFD_NSTEP select this itime.
++      use model_com, only : itime
++      implicit none
++      integer, save :: it0=-1, nst=0, init=0
++      integer :: st
++      character(len=64) :: buf
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      ffdump_fltruv_on = .not.(it0.lt.0 .or. itime.lt.it0
++     &     .or. itime.ge.it0+nst)
++      end function ffdump_fltruv_on
++
++      subroutine ffdump_fltruv_geom(jm)
++!@sum D90: static geometry used by FLTRUV/CONSERV_AMB_EXT/
++!@+   ADD_AM_AS_SOLIDBODY_ROTATION; written once (unit 1070).
++      use geom, only : dxyn,dxys,cosv
++      use constant, only : radius,omega
++      implicit none
++      integer :: jm
++      integer, save :: init=0
++      integer :: fu
++      if (init.ne.0) return
++      init=1
++      fu=1070
++      open(fu,file='ffd_fltruv_geom.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(fu) dble(jm),radius,omega
++      write(fu) dxyn(1:jm)
++      write(fu) dxys(1:jm)
++      write(fu) cosv(1:jm)
++      close(fu)
++      end subroutine ffdump_fltruv_geom
++
++      subroutine ffdump_fltruv_in(im,jm,lm,ma,masum,u,v)
++!@sum D90: inputs to the end-of-DYNAM filter chain (unit 1070).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lm
++      real*8 :: ma(lm,im,jm),masum(im,jm),u(im,jm,lm),v(im,jm,lm)
++      logical, external :: ffdump_fltruv_on
++      character(len=200) :: fname
++      integer :: fu
++      if (.not.ffdump_fltruv_on()) return
++      call ffdump_fltruv_geom(jm)
++      fu=1070
++      write(fname,'(A,I0,A)') 'ffd_fltruv_',itime,'_in.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) u
++      write(fu) v
++      write(fu) ma
++      write(fu) masum
++      close(fu)
++      end subroutine ffdump_fltruv_in
++
++      subroutine ffdump_fltruv_uv(tag,im,jm,lm,u,v)
++!@sum D90: U,V after FLTRUV ('flt') or after the whole chain ('out').
++      use model_com, only : itime
++      implicit none
++      character(len=*) :: tag
++      integer :: im,jm,lm
++      real*8 :: u(im,jm,lm),v(im,jm,lm)
++      logical, external :: ffdump_fltruv_on
++      character(len=200) :: fname
++      integer :: fu
++      if (.not.ffdump_fltruv_on()) return
++      fu=1070
++      write(fname,'(A,I0,A,A,A)') 'ffd_fltruv_',itime,'_',trim(tag),
++     &     '.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) u
++      write(fu) v
++      close(fu)
++      end subroutine ffdump_fltruv_uv
++
++      subroutine ffdump_fltruv_ny(im,jm,lm,u,v,damsum,am1)
++!@sum D90: after both fltry2 calls, before the solid-body fix:
++!@+   U,V, global damsum, and AM1 (pre-filter angular momentum).
++      use model_com, only : itime
++      implicit none
++      integer :: im,jm,lm
++      real*8 :: u(im,jm,lm),v(im,jm,lm),damsum,am1(im,jm)
++      logical, external :: ffdump_fltruv_on
++      character(len=200) :: fname
++      integer :: fu
++      if (.not.ffdump_fltruv_on()) return
++      fu=1070
++      write(fname,'(A,I0,A)') 'ffd_fltruv_',itime,'_ny.bin'
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(itime)
++      write(fu) damsum
++      write(fu) am1
++      write(fu) u
++      write(fu) v
++      close(fu)
++      end subroutine ffdump_fltruv_ny
