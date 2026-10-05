@@ -1,0 +1,69 @@
+--- OSTRAITS.f.orig_d69	2026-10-04 18:18:05.408343707 -0400
++++ OSTRAITS.f	2026-10-04 19:38:30.520884147 -0400
+@@ -21,6 +21,8 @@
+       REAL*8 VOLGSP
+       Real*8,Dimension(LMO,2) :: PEND,PHI,DH
+ C****
++      CALL ffdump_pgf(0,MUST,OPRESE,HOCEANE,LMME,MOE,G0ME,GZME,
++     *     S0ME,SZME,DISTPG,WIST,LMST,DTS)
+       DO N=1,NMST
+ C****
+ C**** Accelerate the channel speed due to the pressure gradient
+@@ -61,6 +63,8 @@
+       EndDo  !  End of Do L=1,LMST(N)
+       EndDo  !  End of Do N=1,NMST
+ C****
++      CALL ffdump_pgf(1,MUST,OPRESE,HOCEANE,LMME,MOE,G0ME,GZME,
++     *     S0ME,SZME,DISTPG,WIST,LMST,DTS)
+       RETURN
+       END SUBROUTINE STPGF
+ 
+@@ -77,6 +81,8 @@
+      *                   MOE, G0ME,GXME,GYME,GZME, S0ME,SXME,SYME,SZME,
+      *                   KN2
+       USE ODIAG, only : olnst,ln_mflx,ln_gflx,ln_sflx
++      USE STRAITS, only : dist
++      USE OCEAN, only : sinpo
+ 
+ #ifdef TRACERS_OCEAN
+       USE OCN_TRACER_COM, only : tracerlist, ocn_tracer_entry
+@@ -93,6 +99,10 @@
+       type(ocn_tracer_entry), pointer :: entry
+ #endif
+ C****
++      CALL ffdump_me(0,MOE,G0ME,GXME,GYME,GZME,S0ME,SXME,
++     *     SYME,SZME)
++      CALL ffdump_st(3,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+       DO N=1,NMST
+       I1=IST(N,1)
+       J1=JST(N,1)
+@@ -165,6 +175,10 @@
+       enddo
+ 
+       EndDo  !  End of Do N=1,NMST
++      CALL ffdump_me(1,MOE,G0ME,GXME,GYME,GZME,S0ME,SXME,
++     *     SYME,SZME)
++      CALL ffdump_st(4,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+       RETURN
+       END SUBROUTINE STADV
+ 
+@@ -298,6 +312,8 @@
+       use TimeConstants_mod, only: SECONDS_PER_DAY
+       USE OCEAN, only : lmo,dts
+       USE STRAITS, only : nmst,lmst,must,mmst,wist,dist,sxmst,gxmst
++      USE STRAITS, only : g0mst,gzmst,s0mst,szmst,jst
++      USE OCEAN, only : sinpo
+ #ifdef TRACERS_OCEAN
+       Use STRAITS, Only: TXMST
+ #endif
+@@ -323,6 +339,8 @@
+ #endif
+       END DO
+       END DO
++      CALL ffdump_st(2,NMST,LMST,MMST,MUST,G0MST,GXMST,GZMST,
++     *     S0MST,SXMST,SZMST,DIST,WIST,JST,SINPO,DTS)
+ C****
+       RETURN
+       END SUBROUTINE STBDRA

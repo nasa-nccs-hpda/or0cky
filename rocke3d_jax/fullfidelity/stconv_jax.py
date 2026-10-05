@@ -20,6 +20,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 
 import kppmix_jax as KP
+from eos_jax import volgsp
 from ovdiffs_jax import ovdiff_jax, ovdiffs_jax
 
 LMO = 13
@@ -76,8 +77,8 @@ def geometry(grav, dts, mmst, dist, wist, lmst):
     return po, dtbydz, bydz2, mml, bymml
 
 
-def stconv_jax(ze, grav, dts, nmst, lmst, mmst, dist, wist, jst, sinpo,
-               must, g0mst, gxmst, gzmst, s0mst, sxmst, szmst, eos, tabs, debug=None):
+def stconv_jax(ze, grav, dts, nmst, lmst, mmst, dist, wist, jst, sinpo, vgsp,
+               must, g0mst, gxmst, gzmst, s0mst, sxmst, szmst, tabs, debug=None):
     """Batched STCONV. Inputs with leading dimension NMST (per-strait), 1-indexed arrays (N, LMO+1).
     eos: dict with byrho, dbloc, dbsfc, ritop, each (ITMAX, 2N, LMO+1) per (ITER, half-box).
     Returns dict of the post-state (must, g0mst, gxmst, gzmst, s0mst, sxmst, szmst), (N, LMO+1)."""
@@ -96,6 +97,7 @@ def stconv_jax(ze, grav, dts, nmst, lmst, mmst, dist, wist, jst, sinpo,
     bydz2 = rep(bydz2_n)
     mml = rep(mml_n)
     bymml = rep(bymml_n)
+    po_h = rep(po)
     iq = jnp.tile(jnp.array([1, 2]), N)
     ri = BETA * (2.0 * iq - 3.0)
     L = jnp.arange(LMO + 1)[None, :]
@@ -121,10 +123,24 @@ def stconv_jax(ze, grav, dts, nmst, lmst, mmst, dist, wist, jst, sinpo,
     zeros = jnp.zeros((H, LMO + 1))
     for k in range(1, ITMAX + 1):
         act_h = ~done
-        byrho = eos['byrho'][k - 1]
-        dbloc = eos['dbloc'][k - 1]
-        dbsfc = eos['dbsfc'][k - 1]
-        ritop = eos['ritop'][k - 1]
+        # EOS from the OFTAB table (STCONV:3125-3160): G, S per level from the half-box state
+        gcur = jnp.where(act, g0ml * bymml, 0.0)
+        scur = jnp.where(act, s0ml * bymml, 0.0)
+        byrho = jnp.where(act, volgsp(vgsp, gcur, scur, po_h), 1.0)
+        rho_L = 1.0 / byrho
+        gprev = jnp.concatenate([jnp.zeros((H, 1)), gcur[:, :LMO]], axis=1)
+        sprev = jnp.concatenate([jnp.zeros((H, 1)), scur[:, :LMO]], axis=1)
+        rhom = jnp.where(act, 1.0 / volgsp(vgsp, gprev, sprev, po_h), 1.0)
+        rho1 = jnp.where(act, 1.0 / volgsp(vgsp, jnp.broadcast_to(gcur[:, 1:2], (H, LMO + 1)),
+                                           jnp.broadcast_to(scur[:, 1:2], (H, LMO + 1)), po_h), 1.0)
+        Lall = jnp.arange(LMO + 1)[None, :]
+        dbsfc = jnp.where((Lall >= 2) & act, grav * (1.0 - rho1 * byrho), 0.0)
+        # dbloc(L-1) = g*(1 - RHOM(L)*BYRHO(L)) for L = 2..LMIJ
+        dbloc = jnp.concatenate([jnp.zeros((H, 1)),
+                                 jnp.where((Lall[:, 2:] >= 2) & act[:, 2:],
+                                           grav * (1.0 - rhom[:, 2:] * byrho[:, 2:]), 0.0),
+                                 jnp.zeros((H, 1))], axis=1)[:, :LMO + 1]
+        ritop = jnp.where((Lall >= 2) & act, (zg[:, 1:2] - zg[:, :LMO + 1]) * dbsfc, 0.0)
         # shears: plain (no RAVM), interface and tracer-point forms
         Lm1 = jnp.arange(LMO + 1)[None, :]
         ul_p = jnp.concatenate([ul, jnp.zeros((H, 1))], axis=1)            # index L+1 for L=LMO

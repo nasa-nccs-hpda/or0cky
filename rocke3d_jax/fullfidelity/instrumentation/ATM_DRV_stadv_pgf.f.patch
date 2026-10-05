@@ -1,0 +1,121 @@
+--- ATM_DRV.f.orig_d69	2026-10-04 18:18:05.417772537 -0400
++++ ATM_DRV.f	2026-10-04 19:38:30.512845431 -0400
+@@ -2327,7 +2327,7 @@
+       real*8 :: gzmst(13,12),s0mst(13,12),sxmst(13,12),szmst(13,12)
+       real*8 :: dist(12),wist(12),sinpo(46),dts
+       integer, save :: it0=-1, nst=0, init=0
+-      integer, save :: lastit(0:1)=-99
++      integer, save :: lastit(0:4)=-99
+       integer :: st, fu
+       character(len=64) :: buf
+       character(len=200) :: fname
+@@ -2341,11 +2341,23 @@
+       if (it0.lt.0) return
+       if (itime.lt.it0 .or. itime.ge.it0+nst) return
+       fu=1017+kind
++      if (kind.eq.2) fu=1021
++      if (kind.eq.3) fu=1026
++      if (kind.eq.4) fu=1027
+       if (itime.ne.lastit(kind)) then
+         if (lastit(kind).ge.0) close(fu)
+         lastit(kind)=itime
+         if (kind.eq.0) write(fname,'(A,I0,A)') 'ffz_stin_',itime,'.bin'
+         if (kind.eq.1) write(fname,'(A,I0,A)') 'ffz_stout_',itime,'.bin'
++        if (kind.eq.2) then
++          write(fname,'(A,I0,A)') 'ffz_stdrag_',itime,'.bin'
++        endif
++        if (kind.eq.3) then
++          write(fname,'(A,I0,A)') 'ffz_stadv_in_',itime,'.bin'
++        endif
++        if (kind.eq.4) then
++          write(fname,'(A,I0,A)') 'ffz_stadv_out_',itime,'.bin'
++        endif
+         open(fu,file=trim(fname),form='unformatted',access='stream',
+      &       status='replace')
+       endif
+@@ -2356,6 +2368,85 @@
+      &     dble(jst(1:nmst,1)),dble(jst(1:nmst,2)),sinpo,dts
+       end subroutine ffdump_st
+ 
++      subroutine ffdump_me(kind,moe,g0me,gxme,gyme,gzme,s0me,sxme,
++     &     syme,szme)
++!@sum full-fidelity-port instrumentation: straits end-point arrays at
++!@+   STADV entry (kind=0) and exit (kind=1), Stage 2, D70.
++      use model_com, only : itime
++      implicit none
++      integer :: kind
++      real*8 :: moe(2,12,13),g0me(2,12,13),gxme(2,12,13),gyme(2,12,13)
++      real*8 :: gzme(2,12,13),s0me(2,12,13),sxme(2,12,13)
++      real*8 :: syme(2,12,13),szme(2,12,13)
++      integer, save :: it0=-1, nst=0, init=0
++      integer, save :: lastit(0:1)=-99
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      fu=1024+kind
++      if (itime.ne.lastit(kind)) then
++        if (lastit(kind).ge.0) close(fu)
++        lastit(kind)=itime
++        if (kind.eq.0) then
++          write(fname,'(A,I0,A)') 'ffz_me_in_',itime,'.bin'
++        else
++          write(fname,'(A,I0,A)') 'ffz_me_out_',itime,'.bin'
++        endif
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) moe,g0me,gxme,gyme,gzme,s0me,sxme,syme,szme
++      end subroutine ffdump_me
++
++      subroutine ffdump_pgf(kind,must,oprese,hoceane,lmme,moe,g0me,
++     &     gzme,s0me,szme,distpg,wist,lmst,dts)
++!@sum full-fidelity-port instrumentation: STPGF entry (kind=0) and exit
++!@+   (kind=1), Stage 2, D71.
++      use model_com, only : itime
++      implicit none
++      integer :: kind,lmme(2,12),lmst(12)
++      real*8 :: must(13,12),oprese(2,12),hoceane(2,12)
++      real*8 :: moe(2,12,13),g0me(2,12,13),gzme(2,12,13),s0me(2,12,13)
++      real*8 :: szme(2,12,13),distpg(12),wist(12),dts
++      integer, save :: it0=-1, nst=0, init=0
++      integer, save :: lastit(0:1)=-99
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      fu=1028+kind
++      if (itime.ne.lastit(kind)) then
++        if (lastit(kind).ge.0) close(fu)
++        lastit(kind)=itime
++        if (kind.eq.0) then
++          write(fname,'(A,I0,A)') 'ffz_pgf_in_',itime,'.bin'
++        else
++          write(fname,'(A,I0,A)') 'ffz_pgf_out_',itime,'.bin'
++        endif
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) must,oprese,hoceane,dble(lmme),moe,g0me,gzme,s0me,
++     &     szme,distpg,wist,dble(lmst),dts
++      end subroutine ffdump_pgf
++
+       subroutine ffdump_stkpp(n,iq,iter,lmij,g,s,byrho,dbloc,ritop,
+      &     dbsfc,shsq,dvsq,hbl,kbl,akvm,akvs,akvg,ghat,ul,g0ml,s0ml)
+ !@sum full-fidelity-port instrumentation: STCONV KPPMIX call inputs and

@@ -2063,6 +2063,32 @@ module. Its validation needs the straits end-point arrays (MOE, G0ME, GXME, ...)
 updates and which are not dumped yet. `STPGF` (OSTRAITS.f:6-65) and the STADV loop (67-169) also
 depend on those arrays. Next step for the straits port.
 
+## D70-D73: the straits step ported to batched JAX and validated end to end (all three dates)
+
+Scope: the straits (active, NMST = 12) are advanced once per step by four routines (OCNDYN2.f:483-488):
+STPGF, STADV, STCONV, STBDRA. All four are now batched JAX ports, validated individually and chained.
+
+- **STBDRA** (`straits_jax.stbdra_jax`, D69): exact (0.0) on all 18 steps.
+- **STADV** (`straits_jax.stadv_jax` / `stadv_seq`, D70-D71): exact (0.0) on all 18 steps, with the
+  shared-cell copy (KN2) applied in order; 4 of the 12 straits share end cells in this build.
+  Namelist geometry (IST, JST, XST, YST) from `parse_straits_nml`.
+- **STPGF** (`straits_jax.stpgf_jax`, D72): worst 4.3e-13 on all 18 steps. Uses the seawater EOS
+  from the OFTAB table (`eos_jax.py`, D72): the table is the first record of OFTABLE_NEW (big-endian,
+  80-byte title then VGSP). VOLGSP reproduces the recorded setup-record densities on 109,566 calls,
+  all but 33 to 1e-9 (the 33 differ by about 5e-5, unexplained; noted).
+- **STCONV** (`stconv_jax.stconv_jax`, D68): now computes its EOS from OFTAB (no recorded values):
+  worst 4e-14 on all 18 steps.
+- **Chain** (`straits_step_jax.straits_step`, `straits_step_compare.py`, D73): entry state and
+  end-point arrays through STPGF->STADV->STCONV->STBDRA, compared with the recorded post-drag
+  state and end-point arrays: worst 1.2e-12 on all 18 steps.
+
+Instrumentation: `ffz_stin/stout` (D67), `ffz_stdrag` (D69), `ffz_me_in/out`, `ffz_stadv_in/out`,
+`ffz_pgf_in/out` (D70-D71). Patches in `fullfidelity/instrumentation/` (`diff -u`).
+
+Not done in the straits port: `init_STRAITS` (the one-time initial end-point state, computed from the
+ocean grid at model start; the port takes the recorded initial state as input); the neighbour copy
+is validated only for this build's shared end cells.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

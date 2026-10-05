@@ -42,7 +42,7 @@ def parse_batch(raw):
     take(LMO)                                                     # ptd
     alpha1, beta1, shc1 = [take(1)[:, 0] for _ in range(3)]
     assert off == RS
-    return dict(grav=grav, g=g, s=s, mo1=mo1, ul=ul, ravm=ravm, ogeoz=ogeoz, hocean=hocean,
+    return dict(grav=grav, g=g, s=s, po=po, mo1=mo1, ul=ul, ravm=ravm, ogeoz=ogeoz, hocean=hocean,
                 deltae=deltae, deltas=deltas, deltam=deltam, deltasr=deltasr, u2rho=u2rho,
                 byrho=byrho, rhom=rhom, rho1=rho1, alpha1=alpha1, beta1=beta1, shc1=shc1)
 

@@ -13,6 +13,9 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kppmix_ff as K  # noqa: E402
 from stconv_jax import stconv_jax  # noqa: E402
+from eos_jax import load_vgsp  # noqa: E402
+
+VGSP = load_vgsp()
 
 LMO = 13
 NM = 12
@@ -78,8 +81,8 @@ def run(d, itime, ze, grav=9.80665):
         eos[key] = stack
     tabs = tabs_and_grid(ze)
     res = stconv_jax(ze, grav, s['dts'], NM, s['lmst'], s['mmst'], s['dist'], s['wist'], s['jst'],
-                     s['sinpo'], s['must'], s['g0'], s['gx'], s['gz'], s['s0'], s['sx'], s['sz'],
-                     eos, tabs)
+                     s['sinpo'], VGSP, s['must'], s['g0'], s['gx'], s['gz'], s['s0'], s['sx'], s['sz'],
+                     tabs)
     got = {k: np.asarray(v) for k, v in res.items() if k in
            ('must', 'g0mst', 'gxmst', 'gzmst', 's0mst', 'sxmst', 'szmst')}
     ref_map = {'must': 'must', 'g0mst': 'g0', 'gxmst': 'gx', 'gzmst': 'gz', 's0mst': 's0',
