@@ -1,0 +1,75 @@
+--- ATM_DRV.f.orig_d74	2026-10-05 04:51:57.482389507 -0400
++++ ATM_DRV.f	2026-10-05 04:57:01.249193242 -0400
+@@ -2368,6 +2368,72 @@
+      &     dble(jst(1:nmst,1)),dble(jst(1:nmst,2)),sinpo,dts
+       end subroutine ffdump_st
+ 
++      subroutine ffdump_opfil(kind,l,jmin,jmax,x)
++!@sum full-fidelity-port instrumentation: OPFIL2 input (kind=0) and output
++!@+   (kind=1), Stage 2, D74. X is written as (IM,JM), rows outside the
++!@+   band are zero.
++      use model_com, only : itime
++      implicit none
++      integer :: kind,l,jmin,jmax
++      real*8 :: x(72,46)
++      integer, save :: it0=-1, nst=0, init=0
++      integer, save :: lastit(0:1)=-99
++      integer :: st, fu
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      fu=1030+kind
++      if (itime.ne.lastit(kind)) then
++        if (lastit(kind).ge.0) close(fu)
++        lastit(kind)=itime
++        if (kind.eq.0) then
++          write(fname,'(A,I0,A)') 'ffz_opfil_in_',itime,'.bin'
++        else
++          write(fname,'(A,I0,A)') 'ffz_opfil_out_',itime,'.bin'
++        endif
++        open(fu,file=trim(fname),form='unformatted',access='stream',
++     &       status='replace')
++      endif
++      write(fu) dble(l),dble(jmin),dble(jmax),x
++      end subroutine ffdump_opfil
++
++      subroutine ffdump_opcoef(nred,nfft,nfil,nmn,nsm,smooth,nmin,
++     &     jfft,n1fft,n2fft,jfil,i1fil,i2fil,indx_fil,n1fil,n2fil,
++     &     reduco)
++!@sum full-fidelity-port instrumentation: OPFIL2 setup coefficients
++!@+   (calc_opfil2_coeffs), written once per process to ffz_opcoef.bin.
++!@+   Stage 2, D75.
++      implicit none
++      integer :: nred,nfft,nfil,nmn,nsm
++      real*8 :: smooth(*),reduco(*)
++      integer :: nmin(*),jfft(*),n1fft(*),n2fft(*),jfil(*),i1fil(*)
++      integer :: i2fil(*),indx_fil(*),n1fil(*),n2fil(*)
++      integer :: fu
++      logical, save :: done=.false.
++      if (done) return
++      done=.true.
++      fu=1040
++      open(fu,file='ffz_opcoef.bin',form='unformatted',access='stream',
++     &     status='replace')
++      write(fu) dble(nred),dble(nfft),dble(nfil),dble(nmn),dble(nsm)
++      write(fu) dble(smooth(1:nsm)),dble(nmin(1:nmn))
++      write(fu) dble(jfft(1:nfft)),dble(n1fft(1:13)),dble(n2fft(1:13))
++      write(fu) dble(jfil(1:nfil)),dble(i1fil(1:nfil)),
++     &     dble(i2fil(1:nfil))
++      write(fu) dble(indx_fil(1:nfil)),dble(n1fil(1:13)),
++     &     dble(n2fil(1:13))
++      write(fu) reduco(1:nred)
++      close(fu)
++      end subroutine ffdump_opcoef
++
+       subroutine ffdump_me(kind,moe,g0me,gxme,gyme,gzme,s0me,sxme,
+      &     syme,szme)
+ !@sum full-fidelity-port instrumentation: straits end-point arrays at

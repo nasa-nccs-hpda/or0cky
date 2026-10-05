@@ -2089,6 +2089,23 @@ Not done in the straits port: `init_STRAITS` (the one-time initial end-point sta
 ocean grid at model start; the port takes the recorded initial state as input); the neighbour copy
 is validated only for this build's shared end cells.
 
+## D74-D75: OPFIL2 (polar zonal smoother) ported and validated on all three dates
+
+OPFIL2 (OCNDYN2.f, `opfil2`) is live on the ocean step path at the polar rows, applied to the
+west-east velocity (`usmooth`) and to the pressure-gradient term (`pgfx`). Two parts:
+- **Application** (`fullfidelity/opfil2_ff.py`, validated): the FFT smoother on the FFT segments
+  (OFFT/OFFTI, a real 72-point transform; the inverse is the exact inverse of the forward map) and
+  the per-basin matrix filter with its running index into REDUCO, including wrap-around basins.
+  Validated on 780 real calls per date (`opfil2_compare.py`): worst relative error 3.0e-15 (Nov-26),
+  2.9e-15 (Dec-01), 2.3e-15 (Jan-01).
+- **Setup** (`calc_opfil2_coeffs`, ~180 lines of basin geometry): NOT ported. Its outputs (SMOOTH,
+  NMIN, REDUCO and the segment tables) are recorded once per run to `ffz_opcoef.bin` (D75) and
+  read as inputs. This is a cut corner, the same precedent as the EOS.
+
+Instrumentation: `ffz_opfil_in/out` (D74, per call: l, jmin, jmax, X(72,46)) and `ffz_opcoef.bin`
+(D75). Patches `OCNDYN2_opfil2.f.patch`, `ATM_DRV_opfil2.f.patch` (`diff -u`). Two build errors
+were fixed on the way: a line over 72 columns, and the output dump placed after a RETURN.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

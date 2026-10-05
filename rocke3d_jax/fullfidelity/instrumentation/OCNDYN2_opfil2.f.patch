@@ -1,0 +1,22 @@
+--- OCNDYN2.f.orig_d74	2026-10-05 04:51:57.466560692 -0400
++++ OCNDYN2.f	2026-10-05 04:57:05.910591410 -0400
+@@ -1088,7 +1088,11 @@
+       if(ifirst == 1) then
+         ifirst = 0
+         call calc_opfil2_coeffs
++        call ffdump_opcoef(size(reduco),nbas_fft,nbas_fil,
++     &       size(nmin),size(smooth),smooth,nmin,jfft,n1fft,n2fft,
++     &       jfil,i1fil,i2fil,indx_fil,n1fil,n2fil,reduco)
+       endif
++      call ffdump_opfil(0,l,jmin,jmax,x)
+ 
+ C**** Extract domain decomposition band parameters
+ C****                          Band1  Band2  BandM
+@@ -1169,6 +1173,7 @@
+         endif  ! wraparound or not        
+       enddo
+ 
++      call ffdump_opfil(1,l,jmin,jmax,x)
+       return
+       end subroutine opfil2
+ 
