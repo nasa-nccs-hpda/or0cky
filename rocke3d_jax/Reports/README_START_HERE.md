@@ -263,8 +263,11 @@ written by a subagent, re-verified here).
 
 **D85-D86:** GM (`gm_jax.py`) and OCNMESO (`ocnmeso_jax.py`) under `jax.jit` (bitwise to 4e-16 vs numpy).
 
-**Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; sea-ice dynamics
-(`icedyn_dynsi_ff.py`, D87) batching was started in parallel.
+**D87-D88:** sea-ice dynamics VPICEDYN batched (`icedyn_vec.py`, bitwise vs scalar, ~55x) and under jit
+(`icedyn_jax.py`, <=8e-12 vs numpy; no CPU speedup over numpy).
+
+**Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
+side from the scoping documents in `fullfidelity/scoping/`.
 
 **Still recorded or not ported (cut corners, listed in FULL_FIDELITY_DELTAS.md):** `calc_opfil2_coeffs`
 (OPFIL2 coefficients read from `ffz_opcoef.bin`), `init_STRAITS` (start-up straits state read as input),
@@ -290,7 +293,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 853 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 48 new D78-D86 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9).
+**Test count: 897 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 92 new D78-D88 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21).
 
 ## Standing conditions
 

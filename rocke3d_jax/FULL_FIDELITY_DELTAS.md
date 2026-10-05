@@ -2215,6 +2215,22 @@ three dates (`ocnmeso_jax_compare.py <date> <itime>`; tests: `tests/test_ocnmeso
 Warm CPU time for both functions: about 6-7 ms (numpy) -> 3.5 ms (jax). The EOS-table outputs (VUP/VDN/
 VUPU/VDNU) are still the recorded values, as in D47.
 
+## D87: Sea-ice dynamics (VPICEDYN) batched (numpy)
+
+`fullfidelity/icedyn_vec.py` batches the viscous-plastic ADI solve of `icedyn_dynsi_ff.py` (plast, form, relax, tridiag_thomas, tridiag_cyclic, vpicedyn). Nothing is left scalar.
+- PLAST/FORM and every coefficient/RHS stencil in RELAX are shifted-slice array expressions with the scalar term order copied verbatim (including the stale-boundary quirks: after the J-direction solves only columns 2..NX1-1 are updated; the pole row/cyclic columns are filled before the stencils; `aa9` pole terms only on j=NYPOLE).
+- Tridiagonal solves are batched across lines (`tridiag_thomas_batch`, `tridiag_cyclic_batch`, shape (n, nlines)); the Thomas / Sherman-Morrison recurrence stays a Python loop along the line. The cyclic `b[0]==1` doubling is applied per line with `np.where`. Pole-row means and the RMS accumulators use `np.cumsum` so the summation order equals the scalar left-to-right sum.
+- The outer pseudo-timestep convergence loop is the same data-dependent Python `while`.
+- Validation (`icedyn_vec_compare.py`, `tests/test_icedyn_vec.py`, 23 tests, all 18 real records = 3 dates x 6 steps): form, plast, relax, both tridiagonal solvers and the full vpicedyn are bit-identical to the scalar port (max scale-relative difference 0.0 on every record; same kki=2 on all). Vs the real Fortran dumps, same comparison/tolerance as `test_dynsi_ff.py`: worst max_rel uice1 2.4e-10 / 8.9e-10 / 5.1e-9 (nov26 / dec01 / jan01 first record; identical to the scalar port's values).
+- Timing (first record per date): full vpicedyn scalar 1.4-1.5 s -> batched 0.025 s (~55x); relax 0.29 s -> 6 ms; form 60 ms -> 1 ms; plast 30 ms -> 0.4 ms.
+- Limitations: only the validated OSURF_TILT=1 path was exercised with real data (the OSURF_TILT!=1 branch is ported but untested); every real record converged in kki=2, so the kki>2 / max_kki path of the outer loop is not exercised by real data.
+
+## D88: Sea-ice dynamics under jax.jit
+
+`fullfidelity/icedyn_jax.py`: icedyn_vec's stencils as jnp expressions, with `_form` and `_relax` each one `jax.jit` function (geometry passed as a pytree), tridiagonal solves via `lax.scan` along the line (Thomas forward/backward; cyclic Sherman-Morrison with per-line b0==1 doubling). The outer VPICEDYN convergence loop (and its RMS test, on the host) stays in Python. FORM supports OSURF_TILT=1 only (asserted).
+- Validation (`icedyn_jax_compare.py`, `tests/test_icedyn_jax.py`, 21 tests; with icedyn_vec tests 44 passed in 36 s): vs icedyn_vec on real inputs: form <=1e-15, plast <=3.2e-16, tridiag 2.4e-16, relax <=2.2e-12, full vpicedyn <=8.2e-12 across all 18 records (target 1e-10). Vs the real Fortran: same max_rel as the numpy version to within roundoff (uice1 up to 1.5e-9 on jan01, tolerance 1e-6).
+- Timing: jitted form ~6 ms, relax ~7 ms; the full vpicedyn is 0.043 s vs 0.025 s for numpy on this small (46x74) grid, so jit is not faster here (host conversions, per-call dispatch, and the lax.scan recurrences on CPU); its value is portability to GPU/batched ensembles, not CPU speed.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
