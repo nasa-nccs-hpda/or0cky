@@ -313,3 +313,39 @@ Copy `ffd_fltruv_*.bin` (25 files per date: geom + 6 steps x {in,flt,ny,out}) in
 Dumps (add to the dump list in build_and_run.md): `ffd_fltruv_<itime>_{in,flt,ny,out}.bin`, `ffd_fltruv_geom.bin`; layouts and
 loader in `fullfidelity/dyn_fltruv_compare.py` (`load_in/load_uv/load_ny/load_geom`). Validate: `python3 dyn_fltruv_compare.py [--analytic]`,
 `pytest fullfidelity/tests/test_dyn_fltruv_ff.py`.
+
+## D96-D98 (AFLUX/ADVECM/MAtoP, PGF, ADVECV) build and run lines
+
+Patches (apply to a fresh `rsync` copy, never the original tree; independent of the other D-patches: the hunks are local and anchored in unchanged code; verified to apply to pristine files and after `ATM_DRV.f.patch`, `ATM_DRV_clouds_dq`, `ATM_DRV_fltruv`, `ATMDYN_fltruv`). Only these three are needed on top of pristine source (the helper reads FFD_START/FFD_NSTEP itself, no base ATM_DRV/MODELE patch is required):
+
+    cd $COPY/model      # all three files are read-only in the rsync copy: chmod u+w first
+    patch ATMDYN.f  < <this dir>/ATMDYN_aflux_pgf_advecv.f.patch   # D96/D97: hooks in AFLUX, ADVECM(+MAtoP), live PGF
+    patch MOMEN2ND.f < <this dir>/MOMEN2ND_advecv.f.patch          # D98: hooks in ADVECV
+    patch ATM_DRV.f < <this dir>/ATM_DRV_dynB.f.patch              # helpers ffdb_on/ffdb_pass_inc/ffdb_open/ffdb_geom/
+                                                                    #   ffdb_aflux_in/out, ffdb_advecm_in/out, ffdb_pgf_in/out,
+                                                                    #   ffdb_advecv_in/out; units 1081-1085
+
+Units: 1081 AFLUX, 1082 ADVECM, 1083 geometry, 1084 PGF, 1085 ADVECV (1081-1099 grepped over model/*.f, *.F90, *.h and all instrumentation patches: unused;
+D89 uses 1050, D90 1070, another agent 1071-1080). The ATM_DRV patch is anchored after `end subroutine finalize_atm`, so it does not clash with D89 (before `#ifdef CACHED_SUBDD` near `read_aic`) or D90 (end of file).
+
+Build (as for D89/D90): `source env_modele.sh` in the SAME shell, `export SOCRATESPATH=$SRC/ModelE_Support/socrates`,
+`cd $COPY/decks && gmake RUN=P2SAoM40 $COPY/model/P2SAoM40.bin` (absolute target; ~50 s incremental on the rsync copy, 0 errors). The real flags are
+`-O2 -ftz -convert big_endian -assume protect_parens -fp-model strict` (no FMA, no reassociation), which is why strict left-to-right numpy order matches.
+
+Run (per date, own run dir `$COPY/run_<date>`; the three runs concurrently, rc=0, about a minute each): copy `I P2SAoM40ln P2SAoM40uln runtime_opts` from
+`ModelE_Support/huge_space/P2SAoM40`, `\cp model/P2SAoM40.bin` to BOTH `P2SAoM40.bin` and `P2SAoM40`, set the `YEARE/MONTHE/DATEE/HOURE` line of `I`
+to 1950,11,26,3 / 1950,12,1,3 / 1950,1,1,3, `rm -f fort.1.nc fort.2.nc` and copy `ff_data/_pristine_restarts/fort1_<date>_itime<N>.nc` to BOTH, `sh P2SAoM40ln`, then
+`export LD_LIBRARY_PATH=/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/lib:$LD_LIBRARY_PATH OMP_NUM_THREADS=1 MP_SET_NUMTHREADS=1` and
+`FFD_START=<N> FFD_NSTEP=6 ./P2SAoM40 -i I > run.PRT 2>&1` (N = 33312 nov26, 33552 dec01, 17520 jan01). Copy `ffd_aflux_*`, `ffd_pgf_*`, `ffd_advecv_*` into
+`ff_data/<date>/` with `\cp -n`.
+
+Dumps (add to the dump list in build_and_run.md; per date 241 files, ~1.8 GB: geom + 6 steps x 5 passes x {aflux, aflux_advecm, pgf, advecv} x {in,out}):
+`ffd_aflux_geom.bin`; `ffd_aflux_<itime>_p<k>_{in,out}.bin`; `ffd_aflux_advecm_<itime>_p<k>_{in,out}.bin`; `ffd_pgf_<itime>_p<k>_{in,out}.bin`;
+`ffd_advecv_<itime>_p<k>_{in,out}.bin`, with k = leapfrog pass within DYNAM (1 fwd MRCH=0 NS=4, 2 bwd MRCH=-1 NS=4, 3 even MRCH=2 NS=4, 4 odd MRCH=-2 NS=3,
+5 even MRCH=2 NS=2; counted at AFLUX entry, reset when itime changes). Record layouts are documented in the docstrings of `dyn_aflux_compare.py`,
+`dyn_pgf_compare.py`, `dyn_advecv_compare.py` (loaders `load_*`, geometry loader `dyn_aflux_ff.load_geom`).
+
+Validate: from `fullfidelity/` (bare module imports, as for D90): `python3 dyn_aflux_compare.py [--recorded-avrx] [--imf-pow]`, `python3 dyn_pgf_compare.py [--imf-pow]`,
+`python3 dyn_advecv_compare.py`; `PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_dyn_aflux_ff.py test_dyn_pgf_ff.py test_dyn_advecv_ff.py` (572 passed, ~55 s).
+`--imf-pow` / the libimf tests need the Intel runtime (`libimf.so`, path in `intel_libm_ff.py`, override with `INTEL_LIBIMF_DIR`); they are skipped elsewhere.
+New code files: `dyn_fft72_ff.py` (FFT72 radix FFT, batched), `intel_libm_ff.py`, `dyn_aflux_ff.py`, `dyn_pgf_ff.py`, `dyn_advecv_ff.py` and the three `*_compare.py`.
