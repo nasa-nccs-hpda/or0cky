@@ -2916,7 +2916,7 @@ sweeps still JAX); diagnostics sbf..scf3d not computed. Validated: 18 real calls
 numpy z-extra fallback): 0 unequal in q, qmom, MUs, MVs, MWs, ncyc, ncycxy, nstepx vs numpy AND vs the real dump `fin` files. Not reached: ncycxy>1,
 ncyc>ncmax errors (error flags exist, untested). Warm 0.58 s -> 0.20 s (about 1.2 s on the stress calls with fallback). Compile ~4 s.
 
-## D145: chained step with D142-D144 stages (dyn_step_jax2.py, dyn_jax2_compare.py, tests/test_dyn_jax2.py)
+## D144b: chained step with D142-D144 stages (dyn_step_jax2.py, dyn_jax2_compare.py, tests/test_dyn_jax2.py)
 `dyn_step_jax2.Kit` / `dyn_step_jax` extend D140's executor with aflux, advecm, aadvt, qdynam (dyn_step_jax.py untouched). Per-stage boundary mode (1 step/date): all 55
 compared variables 0 unequal. 18-step end state (3 dates x 6): JAX vs numpy-pow chain 0 unequal in all 22 fields; JAX vs real equals numpy-pow vs real
 exactly (u scale-rel 3.8e-13 worst, mus/mws 1e-13: the known libimf-pow gap). Whole step nov26 warm: numpy 2.70-2.79 s, JAX 1.01 s (2.7x;
