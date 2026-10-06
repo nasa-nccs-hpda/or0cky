@@ -45,6 +45,13 @@ def run_ghy(g, forcing_over=None, dyn_over=None):
     f = dict(f)
     if forcing_over:
         f.update(forcing_over)
+    # Condition the precipitation exactly as ghy_ref.GhyColumn.__init__ does (ghy_ref.py:597-599, 648): pr>=0, 0<=prs<=pr,
+    # htprs = htpr/pr*prs. Without it the JAX GHY got htprs=0 and the cell with snowfall at (62,34) of nov26 33312 went wrong
+    # (found by the F1-gate diagnosis, D135, 2026-10-06).
+    pr = np.maximum(f["pr"], 0.0)
+    prs = np.minimum(np.maximum(f["prs"], 0.0), pr)
+    f["pr"], f["prs"] = pr, prs
+    f["htprs"] = np.where(pr <= 0.0, 0.0, f["htpr"] / np.where(pr <= 0.0, 1.0, pr) * prs)
     d0 = dict(d0)
     if dyn_over:
         d0.update(dyn_over)

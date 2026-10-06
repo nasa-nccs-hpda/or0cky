@@ -374,6 +374,12 @@ this build; the TMOM/QMOM first-layer update (SURFACE.f:1068-1089) needed a port
 Timing with the per-column CONDSE: ~6 s per step plus 116-138 s CONDSE (the batched CONDSE of D130-D132 is not yet wired in).
 119 tests (`ATM_STEP_SLOW=1`).
 
+**D135 (land model fix):** the F1 diagnosis found a real porting error, not a threshold flip: `land_chain.run_ghy` fed the JAX
+GHY `htprs=0` instead of the conditioned precipitation (pr>=0, 0<=prs<=pr, htprs=htpr/pr*prs) of ghy_ref; fixed, with a regression
+test. With the fix the F1 verdict with the *ported* GHY is **PARTLY MET on all three dates** (nov26 was NOT MET; worst field Q 9.96e-7
+of scale). Still open: ~97 of 753 nov26 land cells have runoff terms (aruns etc., up to 3.7e-4 of scale) that differ from the real
+record in both ghy_ref and ghy_jax; undiagnosed.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
