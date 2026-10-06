@@ -2596,6 +2596,51 @@ adds (`jl_totntlh` etc.; diagnostics), `TrDYNAM` (tracers off). Remaining unexer
 
 **D113 (not exercised in the 3 x 6-step windows).** limitq (positivity limiter, Q subsidence advection) never triggers (no limitq branch counted; tests show removing it changes nothing) so it is validated only by the D99/D100 standalone harness; IERR/LERR are always 0 (adv1d error returns, the negative-cloud-cover stop); the `SVLATL != VLAT` heat correction (svlat_phase_diff) never fired; plume reaching L=LM (out-of-range U_0(.,LM+1)); polar columns (not called); MC_NEW_DDRFT_THETAV=0, MC_ENTR_MASS_LIM_PLUME=0, MC_REVP_ABV_CLDBASE=0 arms (compile/runtime defaults not used); tracer, CLD_AER_CDNC, SCM, WEAKER_MC_LIMITS, COSP and lightning code (undefined in this build, not ported); the polar/KMAX=72 momentum case and ISC are untested; ksub=2 occurs in only ~1 % of calls (1 checkpoint block per date) so the 2-sub-step path rests on few examples; other seasons/columns than 3 dates x 6 steps. AIRXL/PRHEAT of non-convective calls are stale module state and excluded.
 
+## D121: chained dynamics step plan (`scoping/ATM_DYNAMICS_CHAIN_PLAN.md`)
+
+Read DYNAM (ATMDYN.f:186-390) and atm_phase1 (ATM_DRV.f:88-235) line by line and wrote the exact live call order, the argument bindings of every
+call, which existing port implements each call, the data carried between the 5 leapfrog passes (1 forward 300 s, 1 backward 450 s, even 900 s,
+odd 900 s, even 900 s; NS = 4,4,4,3,2) and every gap. Gaps found: the glue (MUs/MVs/MWs zero/accumulate/scale by DTLF, MASUM re-sum, UX/UT/VX/VT/TZ/MEVEN/MODD1/TT/TZT
+copies and averaging, PU/PV/SD scaling, MMA=MEVEN*AXYP, NS control flow), a full-field SDRAG wrapper, ADVECM's MAtoP side effect on module PEDN/PMID/PDSIG/PK/P
+(read by the same pass's SDRAG), and, discovered while validating D122, **DIAGA's polar Q fill** (DIAG.f:221-233, called from DYNAM when MODDA<2, NDAA=13,
+ITIMEI=16032) which is the only state change of Q inside DYNAM. Diagnostics (DIAGA0, DIAGB, EPFLUX (empty), COMPUTE_MASS_FLUX_DIAGS, AIJ/AJL) are not ported; "no
+state feedback" is an inference except for the DIAGA polar fill, which the comparison exposed.
+
+## D122: `dyn_step.py` chained dynamics step, bitwise against real Fortran; new state dumps
+
+New files: `fullfidelity/dyn_step.py`, `instrumentation/ATM_DRV_dynG.f.patch` (unit 1300; dumps `ffd_state_<itime>_s1..s4.bin` = step start, DYNAM exit, end of the
+dynamics block after QDYNAM + energy fix, physics exports; 24 files per date, 6 steps x 3 dates, ~34 MB per full-state record; new files only, `\cp -n`).
+The dumps on disk did not contain QCL at step start nor TMOM/QMOM/MUs/MVs/MWs at the end, so the patch was needed. Scratch build `mE_dynG`.
+
+`dyn_step.dyn_step(state, ctx, itime)` runs a plan (list of Stage objects whose argument bindings are the actual arguments of the Fortran CALLs) on a workspace that
+mirrors the Fortran variables. Pass sequence: forward, backward, even, odd, even; accumulation of MUs/MVs/MWs only in the even passes; AADVT twice; SDRAG twice; five
+isotropuv; MAtoPMB; flux scaling by DTLF; FLTRUV + fltry2 + angular-momentum fix; then COMPUTE_WSAVE, QCL/QCI rescale, QDYNAM, energy fix, CALC_TROP, PGRAD_PBL,
+calc_kea_3d. Starting only from the real step-start state:
+
+* with the Intel libimf pow bridge (`imf_pow=True`): **bitwise identical, 0 unequal elements, for all 18 steps** (nov26 33312-17, dec01 33552-57, jan01 17520-25), every
+  field of s2 (DYNAM exit), s3 (end of block: U V T Q QCL QCI MA PEDN PMID PK P MASUM TMOM QMOM MUs MVs MWs GZ), s4 (PTROPO LTROPO WSAVE KEA DPDX/DPDY(_0) PHI) and the
+  existing pre_condse dump (first 2 steps per date); every input and output of the 264 (stage, field) per-call series (AFLUX, ADVECM(+MAtoP), ADVECV, PGF, AADVT of
+  each pass) is bitwise equal, i.e. 0 of the 264 series has any unequal element. Stage-boundary replay (real inputs except the port output of the preceding stages): 115
+  series, all bitwise.
+* with numpy pow: first non-exact quantity is PK=PMID**KAPA in pass-1 ADVECM (1 ulp in 916 of 2.38e6 cells), then it propagates. Worst scale-relative difference over
+  18 steps: u 3.5e-13, v 3.8e-13, T 1.1e-15, Q 8.8e-15, QCL 5.0e-16, MA 9.6e-15, PK 7.3e-16, TMOM 5.1e-14, QMOM 3.0e-14, MUs/MVs/MWs 3.8e-14/4.7e-14/9.8e-14, GZ 3.4e-14,
+  WSAVE 5.6e-14, KEA 4.6e-14, PTROPO 9.3e-16, LTROPO exact, PGRAD_PBL dpdx/dpdy/dpdx0/dpdy0 2.7e-11/2.2e-12/1.7e-13/1.9e-14 (near-cancelling gradient terms; element-wise
+  relative up to 7e-7 where the field is near zero). No tolerance was loosened to obtain these numbers.
+
+Not done: the loop through the physics (CONDSE, RADIA, SURFACE, ocean, ATM_DIFFUS, DISSIP, FILTER) back to the next step's start; DIAGA/DIAGB bodies other than the polar Q
+fill; MAtoPMB's ATMSRF exports; NIdyn != 4 / 8-pass restart path (generated, not exercised).
+
+## D123: compare script, tests, timing
+
+`fullfidelity/dyn_step_compare.py` (`python dyn_step_compare.py [--both-pow|--numpy-pow] [--boundary] [--timing] [--date d] [--steps n]`), `tests/test_dyn_step_ff.py`
+(66 tests, 264 s: plan-structure tests without dumps; 18 bitwise chain tests; 3 boundary replays; 3 numpy-pow tolerance tests with per-field bounds 2e-12 (1e-10 for the
+four PGRAD_PBL terms) set above the measured worst values; 27 drop-a-stage and 7 swap-two-stages mutation tests plus post-DYNAM reorderings, all of which must make the
+chain differ from the real state or raise; the DIAGA stage test on dec01 33555; dump-based tests skip if the dumps are absent, libimf-dependent ones skip without the Intel
+runtime). Mutation notes: swaps of independent neighbours (advecv<->pscale, qscale<->qdynam, pgf<->pscale) and dropping PU/PV/SD scaling in non-even passes are
+legitimately benign and were replaced by dependent pairs after the first run flagged them. Warm CPU timing, one chained step on forest204 (single process, numpy 2.2.4,
+12 cores on the node, OMP_NUM_THREADS=1): libimf mode cold 3.5 s, warm 3.34-3.40 s (pgf 0.79, aadvt 0.58, qdynam 0.54, advecm 0.41, aflux 0.34,
+advecv 0.22); numpy-pow mode warm 2.35-2.41 s. A 48-step model day of dynamics is therefore ~2.7 min of this path (extrapolation, not measured).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

@@ -618,3 +618,28 @@ date), `PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_clouds_mstcnv_ff.
 libimf tests skip without the Intel runtime). New code files: `clouds_mstcnv_ff.py`, `clouds_mstcnv_io.py`,
 `clouds_mstcnv_compare.py`. Scratch tree used here: `<scratchpad>/mE_cloud4/mE2` (the original ModelE tree and the other
 sessions' scratch builds were not touched).
+
+## D121-D123 (chained dynamics step state dumps) build and run lines
+
+Patch (diff -u against the PRISTINE ATM_DRV.f, 2026-10-05; hunks local; verified with `patch --dry-run` on a fresh copy of the pristine file; independent of the other ATM_DRV patches
+except that it shares the file, so apply it to pristine or re-diff when stacking):
+
+    cd $COPY/model; chmod -R u+w .
+    patch ATM_DRV.f < <this dir>/ATM_DRV_dynG.f.patch   # ffds_on/ffds_state/ffds_exports inserted after 'end subroutine get_atm_layer1'; hooks in atm_phase1:
+                                                        #   ffds_state(1) before 'Save MA and PMID', (2) after CALL DYNAM(), (3) before stopTimer('Atm. Dynamics'),
+                                                        #   ffds_exports after the step-7 calc_kea_3d
+
+Unit 1300 only (1300-1329 grepped over model/*.f, *.F90, *.h and all instrumentation patches: unused; ATURB.f `write(67,1300)` is a FORMAT label). Fixed-form lines <=72 columns.
+Build/run exactly as the D99/D114 sections (rsync copy excluding ModelE_Support, `source env_modele.sh` in the same shell, `export SOCRATESPATH=$SRC/ModelE_Support/socrates`, absolute make
+target `$COPY/model/P2SAoM40.bin`, ~1 min incremental; \cp the binary to BOTH P2SAoM40.bin and P2SAoM40; restore BOTH fort.1.nc and fort.2.nc from
+`ff_data/_pristine_restarts/fort1_<date>_itime<N>.nc`; first YEARE line 1950,11,26,3 / 1950,12,1,3 / 1950,1,1,3; `FFD_START=<N> FFD_NSTEP=6`; three dates concurrently, rc=0, ~1 min).
+Scratch tree and scripts: <scratchpad>/mE_dynG (work/build.sh, work/rundates.sh). Copy `ffd_state_*.bin` into `ff_data/<date>/` with `\cp -n` (24 files per date).
+
+Dumps (big-endian float64 streams, layout in `dyn_step.load_state` / `load_exports`): `ffd_state_<itime>_s1|s2|s3.bin` = [itime,site,0,0], U V T Q QCL QCI (IM,JM,LM), MA (LM,IM,JM),
+PEDN (LM+1,IM,JM), PMID PK (LM,IM,JM), P MASUM (IM,JM), TMOM QMOM (9,IM,JM,LM), MUs MVs MWs GZ (IM,JM,LM) (33,994,400 bytes); `s4` = [itime,4,0,0], PTROPO LTROPO (IM,JM),
+WSAVE (IM,JM,LM-1), KEA (IM,JM,LM), DPDX_BY_RHO DPDY_BY_RHO DPDX_BY_RHO_0 DPDY_BY_RHO_0 (IM,JM), PHI (IM,JM,LM) (3,312,032 bytes). Sites: s1 step start (before MAOLD=MA), s2 DYNAM exit,
+s3 after QCL/QCI rescale + QDYNAM + energy fix, s4 after CALC_TROP/PGRAD_PBL/COMPUTE_WSAVE/calc_kea_3d.
+
+Validate (from fullfidelity/, conda python): `PYTHONPATH=. python dyn_step_compare.py [--both-pow] [--boundary]`; `PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_dyn_step_ff.py` (66 passed, ~4.4 min);
+`python dyn_step_compare.py --timing`. The Intel runtime path comes from `intel_libm_ff.py`.
+Facts used by the chain that came from outside the dumps: NDAA=13 (decks/P2SAoM40.R:265), ITIMEI=16032 (netCDF variable `itimei` of the three restart files).

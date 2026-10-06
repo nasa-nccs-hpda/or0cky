@@ -328,6 +328,16 @@ platform without libimf will therefore need statistical rather than bitwise acce
 exercised: the limitq limiter, IERR/LERR, SVLATL!=VLAT correction, plumes reaching L=LM, polar columns (not called);
 ksub=2 subsidence in ~1% of calls.
 
+**D121-D123 (chained dynamics step, milestone):** `dyn_step.py` chains all dynamics ports (5 leapfrog passes, AFLUX/
+ADVECM/MAtoP, ADVECV, PGF, AADVT, QDYNAM, filters, SDRAG, SLP FILTER, glue, plus the DIAGA polar Q fill) in the real
+order from the real state at the start of a step. **With the Intel libimf pow the whole DYNAM exit state and the
+end-of-block state are bit-for-bit identical to the real model on all 18 steps (3 dates x 6)**, all 264 per-stage
+series and 115 stage-boundary replays exact. Without libimf (numpy pow) most cells differ at rounding level (first
+inexact quantity: PK=PMID**KAPA, 1 ulp in 916 of 2.38e6 cells; worst scale-relative 3.8e-13, PGRAD_PBL gradients up
+to 2.7e-11). One chained step: 3.3 s warm (libimf), 2.4 s (numpy), CPU, not yet JAX. Gaps: the loop through
+physics and atm_phase2 back to the next step, DIAGA/DIAGB bodies beyond the polar Q fill (no-feedback is an
+inference), ATMSRF exports of MAtoPMB, NIdyn other than 4 and the 8-pass restart path.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -358,7 +368,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 2172 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1367 new D78-D117 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79, `test_clouds_lscond_size_ff.py` 33, `test_clouds_lscond_ff.py` 45, `test_dyn_glue_ff.py` 43, `test_dyn_aadvq_ff.py` 46, `test_clouds_mstcnv_ff.py` 31).
+**Test count: 2238 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1433 new D78-D123 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79, `test_clouds_lscond_size_ff.py` 33, `test_clouds_lscond_ff.py` 45, `test_dyn_glue_ff.py` 43, `test_dyn_aadvq_ff.py` 46, `test_clouds_mstcnv_ff.py` 31, `test_dyn_step_ff.py` 66).
 
 ## Standing conditions
 
