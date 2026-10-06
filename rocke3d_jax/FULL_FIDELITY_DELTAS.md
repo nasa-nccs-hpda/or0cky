@@ -2840,6 +2840,57 @@ to the run with the recorded file at the printed precision. Assumes the serial d
 nmn=44 confirms; geometry from the analytic OGEOM formulas with DLAT = 4*(pi/180).
 Still recorded: AG2OG/IG2OG regrid fluxes, init_STRAITS start state.
 
+## D139: JAX conversion of the dynamics step, stage 1: profile and the converted stages
+
+**Profile** (dyn_step.py, numpy-pow mode, nov26 33312, warm, one 30-min step, 12-core CPU, no GPU; per stage kind, summed over the 5 leapfrog passes): total about 2.6 s. aadvt 0.607, qdynam 0.517, pgf 0.465, aflux 0.382, advecv 0.255, trop 0.081, advecm 0.059, filter_chain 0.058, iso 0.036, sdrag 0.029, matopmb 0.018, ke_init 0.010, ke_final 0.009, kea 0.005, se_init 0.005, pgrad 0.005, qscale 0.004, wsave 0.003, rest < 0.003 each. (Script: scratchpad prof.py; the same numbers come out of `dyn_step_compare.time_step`.)
+
+**Converted to jitted JAX (new files in fullfidelity/, same operation order as the numpy ports, jax_enable_x64):**
+- `dyn_jax_fft.py`: FFT72/FFTI (the dict-based dyn_fft72_ff transliteration traced with jnp arrays; elementwise ops only) and `avrx_field_jax` (AVRX over the 44 rows x 40 layers batch; the per-harmonic multiplier BYSN*DRAT is precomputed on the host with the same double product).
+- `dyn_jax_advecv.py`: ADVECV whole (horizontal fluxes with the per-cell Fortran update order, polar-row fix, vertical advection vectorised over L because each level reads only its own old DUT, Coriolis, final division).
+- `dyn_jax_pgf.py`: PGF whole: the top-down pressure/geopotential column recursion is a `lax.scan` over L (carry M,PU,PKU,PKPU,PKPPU), the bottom-up GZ integration a second `lax.scan`, then N-S/E-W derivatives, AVRX (through dyn_jax_fft), polar scaling, UT/VT update.  x**KAPA = `jnp.power` (numpy pow semantics; see below).
+- `dyn_jax_filter.py`: FLTRUV (8-pass E-W Shapiro, angular-momentum fix as a `lax.scan` over I in the Fortran order I=IM,1..IM-1), fltry2 x2, CONSERV_AMB_EXT x2 (sequential L sum as `lax.scan`), ADD_AM_AS_SOLIDBODY_ROTATION, the GLOBALSUM sums (`seqsum_jax` = scan), calc_kea_3d (regrid_btoa_3d) and COMPUTE_WSAVE.
+- `dyn_jax_pointwise.py`: SDRAG (all 45x72 columns at once, level loop LS1..LM unrolled; the T-range stop_model test is returned as a flag and raised on the host) and isotropuv (rows with COSV<0.15; shap1 with per-row sub-iteration counts via `lax.while_loop`; the two polar rows through the traced FFT72).
+- `dyn_jax_env.py`: sets `XLA_FLAGS=--xla_cpu_max_isa=AVX` before jax is imported (see D140, FMA finding); `DYN_JAX_ALLOW_FMA=1` disables it.
+- `dyn_step_jax.py`, `dyn_jax_compare.py`, `tests/test_dyn_jax.py` (D140/D141).
+
+**Left in numpy, and why:** aadvt (+adv1d; 0.61 s, the largest stage: sequential moment recurrences with data-dependent branches, 391+320 lines of bitwise code, not converted in this task), qdynam/aadvq (0.52 s, 1075 lines), aflux/advecm/matop (0.44 s; the AVRX call inside aflux could reuse `avrx_field_jax`, not wired), calc_trop (0.08 s, per-column search loops), matopmb, conserv_se/ke, energy_fix, pgrad_pbl and the glue copies (< 0.04 s together).  Not ported: DISSIP and the SLP row loop (not part of the dynamics step).  Together the unconverted stages are about two thirds of the step time, so the whole-step speedup is bounded accordingly (D141).
+
+**Not claimed:** bitwise agreement with the real Fortran or with the Intel libimf pow mode.  The JAX path is validated against the numpy chain in numpy-pow mode only; libimf pow cannot be called from JAX.
+
+## D140: JAX dynamics stages validated against numpy and the real dumps; chained JAX step
+
+**Method** (`dyn_jax_compare.py`, from fullfidelity/: `python dyn_jax_compare.py --steps 2 --endsteps 6`): (a) per stage: the numpy plan runs in boundary mode (`dyn_step_compare.Recorder`: before every dumped stage, inputs not produced by earlier ported stages are replaced by the real recorded `ffd_*` inputs); before each converted stage the workspace is copied, the JAX stage is run on the copy and its outputs are compared with the numpy stage's; for advecv/pgf also with the real per-call output dump.  2 steps per date x 3 dates (nov26 33312-33313, dec01 33552-33553, jan01 17520-17521), all 5 leapfrog passes.  (b) whole chained step `dyn_step_jax.dyn_step_jax` (converted stages + numpy for the rest) vs `dyn_step.dyn_step` (numpy-pow) and vs the real s3/s4 dumps, 6 steps x 3 dates.  Statistics: max|a-b|, relative to the field scale max|b|, elementwise relative, number of unequal elements.
+
+**Finding 1 (important): XLA:CPU contracts a*b+c into FMA.**  Out of the box 23% of random jitted a*b+c results differ from numpy.  First run (default ISA, 3 dates x 1 step), JAX vs numpy per stage, scale-relative worst: advecv UT 5.0e-16, VT 4.3e-16; iso 1.7e-16; sdrag 8.3e-17; filter_chain U 1.7e-16 (V 0); kea 2.9e-16; wsave 2.0e-16; but pgf UT 3.8e-13, VT 3.4e-13, DUT 2.5e-12, DVT 1.8e-12, GZ/PHI 4.3e-14 (cancellation in the E-W pressure derivative amplifies 1e-16 differences in GZ), i.e. PGF DUT/DVT above the 1e-12 target.  End state of the step JAX vs numpy (default ISA): U 3.9e-13, V 5.8e-13 (worst over dates), MWS 1.6e-13, QMOM 7.9e-14, MVS 9.8e-14, others <= 1e-13.
+**Fix:** `--xla_cpu_max_isa=AVX` (set by `dyn_jax_env.py` before jax import) removes the FMA instructions; jitted a*b+c is then identical to numpy.  Second finding: XLA's algebraic simplifier rewrites operations on closure constants ((x*c1)*c2 -> x*(c1*c2), x/const), which changed ADM by 2e-16 and isotropuv in a few hundred cells; the scalar constants of PGF and the iso constants are therefore passed as traced arguments instead of closure constants.
+
+**Result with these two measures (this host, CPU, jax/jaxlib 0.5.3):**
+- Per stage, JAX vs numpy, worst over 3 dates x 2 steps x 5 passes: **0.0 (bit-identical) for every field of every converted stage**: advecv UT,VT,U,V,UX,VX,DUT,DVT; pgf UT,VT,U,V,UX,VX,DUT,DVT,GZ,PHI,SPA(ADM); iso U,V,UX,VX,UT,VT; sdrag U,V; filter_chain U,V; wsave; kea (31 field series, 0 unequal elements).  (iso was 3.6e-17..1.1e-16 scale-relative, 225-308 unequal cells, before the traced-constants change.)
+- JAX vs the real per-call dumps (advecv, pgf), equal to the numpy-vs-real numbers because the JAX output equals numpy's: advecv UT 2.9e-16, VT 2.1e-16; pgf UT 1.6e-13, VT 1.3e-13, DUT 5.1e-13, DVT 4.3e-13, GZ/PHI 1.3e-14, ADM 3.3e-15 (scale-relative; this is the numpy-pow vs libimf-pow-built Fortran difference, not a JAX effect).
+- Whole chained step (6 steps x 3 dates), end state JAX vs numpy: **0.0 for all 22 compared fields (U,V,T,Q,QCL,QCI,MA,PEDN,PMID,PK,P,MASUM,TMOM,QMOM,MUS,MVS,MWS,GZ, WSAVE,KEA,PTROPO,PHI)**, i.e. JAX chain bitwise equal to the numpy-pow chain.  Hence JAX vs the real end state s3/s4 equals numpy-pow vs real; worst scale-relative over the 6 steps (nov26 / dec01): U 3.5e-13 / 2.5e-13, V 2.7e-13 / 2.4e-13, T 1.1e-15, Q 8.8e-15 / 4.8e-15, MA 6.4e-15, PK 7.3e-16, TMOM 3.2e-14 / 5.1e-14, QMOM 3.0e-14, MUS 3.1e-14, MVS 4.7e-14, MWS 9.8e-14, GZ 2.7e-14, WSAVE 5.6e-14, KEA 2.9e-14 (jan01 values in `dyn_jax_compare.py` output, same order of magnitude).  These bound the numpy-pow-vs-Fortran difference and are the numbers D123 reports for numpy-pow mode; they are not bitwise-with-Fortran (that needs libimf pow).
+- Caveat on the bitwise statement: it holds on this CPU, jaxlib 0.5.3, with the AVX-only flag, for these 18 steps; other XLA versions/backends (and any GPU, where FMA is normal) may differ at the 1e-16..1e-13 level (see Finding 1 for the size of that effect).  Not claimed: bitwise with libimf/Fortran.
+
+**Tests:** `tests/test_dyn_jax.py` (6 tests, 45 s warm cache, ~60 s wall): FMA-free probe; FFT/FFTI traced vs numpy (+mutation); every converted stage vs numpy on step 0 of nov26 in boundary mode (bound 1e-13, measured 0); advecv/pgf vs real dumps no worse than numpy (1.5x or 1e-14); direct advecv/pgf on dumped pass-3 inputs with mutations (perturbed DXV 1.001, KAPA x1.0001, both detected >1e-8/1e-6); end state vs numpy/real with bound 1e-12 and mutations (dropping SDRAG, swapping PGF before ADVECV, both detected by > 1e-7 / 1e-9).  Skipped if ff_data dumps are absent.
+
+## D141: timing of the JAX dynamics step (CPU, no GPU) and structure
+
+`python dyn_jax_compare.py --timing` (nov26 33312, numpy-pow, 12-core CPU, 3 warm calls each, per-stage min):
+
+| stage (5 passes) | numpy warm | JAX warm | JAX cold (compile incl.) |
+|---|---|---|---|
+| advecv | 0.235 s | 0.039 s | 1.08 s |
+| pgf | 0.490 s | 0.096 s | 6.45 s |
+| iso | 0.043 s | 0.012 s | 11.33 s |
+| sdrag | 0.034 s | 0.031 s | 1.67 s |
+| filter_chain | 0.067 s | 0.026 s | 1.11 s |
+| kea / wsave | 0.006 / 0.004 s | 0.001 / 0.001 s | 0.10 / 0.04 s |
+| stages left in numpy (aadvt, qdynam, aflux, advecm, trop, ...) | 1.71 s | 1.77 s | |
+| **whole step** | **2.6-2.8 s** (3 calls: 2.63, 2.61, 2.82) | **2.06-2.08 s** (2.06, 2.07, 2.08) | **23.5 s** cold (numpy cold 2.8 s) |
+
+The converted stages sum to 0.88 s (numpy) vs 0.21 s (JAX; the figure includes jax<->numpy array conversion and the copy to writable arrays), a 4x speedup on those stages (advecv 6x, pgf 5x, iso 3.6x, filter_chain 2.6x, sdrag 1.1x); the whole step is 1.3x faster because about two thirds of the time (aadvt 0.6 s, qdynam 0.5 s, aflux 0.4 s, ...) stays numpy.  Compile cost: about 21 s once per process (iso 11 s and pgf 6 s dominate because the FFT72 straight-line code, thousands of ops per transform, is unrolled; the jit cache is per process, no persistent cache enabled).  With `DYN_JAX_ALLOW_FMA=1` (default ISA, FMA contraction allowed) the warm step was 2.0-2.2 s, i.e. no measurable speed gain from FMA here, so the bitwise-faithful mode costs nothing on this CPU.
+
+**Jit structure:** not a single jit.  The step is the Python plan of `dyn_step.py` (leapfrog control flow, 5 passes) executing one jitted call per converted stage, with the workspace as numpy arrays between stages; the numpy stages (aflux, advecm, aadvt, qdynam, trop, ...) sit in between.  Making the whole step one jitted function needs all stages in JAX (aadvt/adv1d, aadvq, aflux/advecm/matop, trop first), the plan unrolled or expressed with `lax.fori_loop` over passes (the 5-pass structure and the NS control flow are static for NIdyn=4, so a Python-unrolled jit is possible; compile time would be large), and the data-dependent `stop_model` checks (ADVECM mass error, SDRAG T range) turned into returned flags.  Not attempted and not tested here.  On a GPU the per-stage dispatch and the host round trips between stages would dominate; this is the main reason to convert the remaining numpy stages next, aadvt first.  No GPU timing exists: all numbers are CPU.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

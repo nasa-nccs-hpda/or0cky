@@ -401,6 +401,14 @@ exit errors <=1.9e-9, the level of the other steps; a free-running 12-step chain
 52,861 REDUCO values differ by <=1.1e-16. The seventh step of each window is validated only through its exit snapshot; assumes
 AKHFAC=1 (rundeck override not searched). Still recorded in the ocean chain: AG2OG/IG2OG fluxes and the init_STRAITS start state.
 
+**D139-D141 (dynamics step, first JAX stages):** `dyn_step_jax.py` runs ADVECV, PGF (column recursion as lax.scan, traced FFT72),
+isotropuv, SDRAG, the filter chain, calc_kea_3d and COMPUTE_WSAVE in jitted JAX; every converted stage and the 18-step chained
+step are bitwise identical to the numpy-pow chain (bitwise-with-libimf is not claimed for the JAX path). Needs
+`--xla_cpu_max_isa=AVX` (set by `dyn_jax_env.py`) because XLA:CPU fuses a*b+c into FMAs (PGF DUT off by 2.5e-12), and constants
+passed as traced arguments; other XLA versions or a GPU may differ at 1e-16 to 1e-13. Whole step only ~1.3x faster on CPU
+(2.6-2.8 s -> 2.06-2.08 s) because AADVT, QDYNAM, AFLUX/ADVECM/MAtoP (two thirds of the time) remain numpy; compile ~21 s per process.
+No GPU run was possible.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
