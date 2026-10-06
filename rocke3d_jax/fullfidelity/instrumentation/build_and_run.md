@@ -764,3 +764,56 @@ added to ff_data, and the original ModelE tree was not touched. Limitation: tags
 is stage-validated on the first (firing) step only; the seventh step (itime 17526/33318/33558) is validated through the exit snapshot.
 If a stage-level check of that step is wanted, extend the D118 patch (OCNDYN2_oceanchain.f.patch) to write tags 12/13 on steps 7-12
 (units 1270-1271) or add a new patch on units 1400-1401 and re-grep the tree first.
+
+## D149-D151 build and run lines (for build_and_run.md): one-model-day real dumps, one-ulp perturbed members
+
+New instrumentation: `instrumentation/ATM_DRV_pert.f.patch` only (diff -u against the ATM_DRV.f that the stack below produces; `patch --dry-run` on a copy of that
+file succeeds). It adds three helpers after `end subroutine ffas_dump`: `ffpt_perturb` (called at atm_phase1 entry just before `call ffas_dump('a')`),
+`ffpt_all` (whole-field perturbation) and `ffpt_dump` (called at the end of atm_phase2 just before `call ffas_dump('e')`). Unit 1410 only (1410-1439 grepped over
+model/*.f, *.F90, *.h and every patch in this directory before use: no unit in 1410-1439). Fixed-form: the lines I added are <= 72 columns.
+Env: `FFPT_START` (itime), `FFPT_NSTEP`, `FFPT_TAG` (file tag), `FFPT_PERT='<T|Q> i j l s'` (one point, 1-based, s=+1/-1 -> `nearest(x,s)` = one ulp)
+or `'<T|Q> 0 lev 0 s'` (whole field: every cell of level lev, all levels if lev<=0, checkerboard sign). Unset -> bitwise no-op.
+Dump: `ffpt_<TAG>_<itime>.bin` = U V T Q QCL QCI (IM,JM,LM), P (IM,JM), record format as the other dumps (`clouds_condse_io.read_cse`), 6.4 MB per step.
+
+Stack (apply in this order to a fresh rsync copy of the pristine tree, as in the D127-D129 section; ATM_DRV_dynG and ATM_DRV_atmstep both insert after
+`end subroutine get_atm_layer1` and apply with offsets/fuzz 2 on the second one, the result was checked: helper blocks are in distinct places, 0 rejects, 0 errors):
+    cd $C/model
+    patch ATM_DRV.f < $INS/ATM_DRV.f.patch ; patch MODELE.f < $INS/MODELE.f.patch ; patch ATURB.f < $INS/ATURB.f.patch ; patch PBL_DRV.f < $INS/PBL_DRV.f.patch
+    patch SURFACE.f < $INS/SURFACE.f.patch ; patch SURFACE_LANDICE.f < $INS/SURFACE_LANDICE.f.patch ; patch giss_LSM/GHY.f < $INS/GHY.f.patch ; patch GHY_DRV.f < $INS/GHY_DRV.f.patch
+    patch CLOUDS2_DRV.F90 < $INS/CLOUDS2_DRV_condse.f90.patch ; patch ATM_DRV.f < $INS/ATM_DRV_clouds_condse.f.patch     # ffc_cse_in/out (units 1330-1333)
+    patch ATM_DRV.f < $INS/ATM_DRV_dynG.f.patch                                                                          # ffd_state_<it>_s1..s4 (unit 1300)
+    patch ATM_DRV.f < $INS/ATM_DRV_atmstep.f.patch                                                                       # ffa_step_<it>_{a,r,d,e} (unit 1360)
+    patch ATM_DRV.f < $INS/ATM_DRV_pert.f.patch                                                                          # NEW, apply LAST (unit 1410)
+    source fullfidelity/env_modele.sh ; export SOCRATESPATH=$SRC/ModelE_Support/socrates
+    cd $C/decks && gmake RUN=P2SAoM40 $C/model/P2SAoM40.bin          # about 1.3 min, 0 errors
+Scratch tree and scripts: <scratchpad>/mE_day1/{mE2, work/build.sh, work/rundays.sh}. Not included (not needed by atm_step_fast): the D101/D102 filter dumps, D114 glue dumps,
+D118 ocean-chain dumps (FFO_*), ffz_* ocean/ice dumps, D99 AADVT etc.
+
+Run (six jobs concurrently on one 12-core node; each in its own run dir under <scratchpad>/mE_day1/run_<name>): copy `I P2SAoM40ln P2SAoM40uln runtime_opts` from
+`ModelE_Support/huge_space/P2SAoM40`; `\cp` the binary to BOTH `P2SAoM40.bin` and `P2SAoM40`; edit ONLY line 109 of `I` (the first YEARE line) to
+`YEARE=1950,MONTHE=11,DATEE=27,HOURE=3` (54 steps from 1950-11-26 00:00 = itime 33312..33365: the 48 steps of the model day plus the first 6 of the next one, so the
+day boundary at itime 33360 is inside the window); `rm -f fort.1.nc fort.2.nc` and copy `ff_data/_pristine_restarts/fort1_nov26_itime33312.nc` to BOTH; `sh P2SAoM40ln`;
+`OMP_NUM_THREADS=1 FFPT_START=33312 FFPT_NSTEP=54 FFPT_TAG=<name>` plus, for the full-dump control only, `FFD_START=33312 FFD_NSTEP=54`; `./P2SAoM40 -i I`.
+Members: ctrl (no perturbation, full dumps), p1 `T 36 23 10 1`, p2 `T 20 12 20 -1`, p3 `Q 50 30 5 1`, p4 `T 10 30 1 1`, p5 `T 0 0 0 1` (every cell, all levels, +-1 ulp checkerboard).
+Wall: control with all hooks 5 min 23 s, perturbed members (FFPT dump only) 3 min 24 s - 3 min 38 s, all concurrent, rc=0 for all six.
+Copy into `ff_data/nov26_day/` (new directory) with `rsync -a --ignore-existing` (the `\cp -n` of earlier sections would also do): every `ff*` file of the control run dir and `ffpt_p<k>_*` of the members, plus,
+for the date constants that this stack does not write, `ffa_consts.txt ffa_geom.txt ffd_aflux_geom.bin ffd_qdyn_geom.bin ffd_glue_consts.bin ffd_avrx_consts.bin
+ffd_sdrag_consts.bin ffd_filt_consts.bin ffd_glue_daily_33360.bin ffd_glue_daily_calls.txt` from `ff_data/nov26/` (copies; the originals are untouched). 1744 files, 37 GB for 54 steps = about 0.55 GB per step in total, of which per step: ffa_step a/r/d/e 112 MB, ffa c1/c2 61 MB, ffc_cse_in/out 164 MB, ffp/ffs/ffl/ffg/fft 24 MB,
+ffd_state s1-s4 105 MB, ffd_<it>_pre/post_* 82 MB, ffpt 6 MB. The files that atm_step_fast.run_chain itself needs are ffa_step (a/r/e, d only for the comparison), ffc_cse_in/out and the five tile records = about 0.30 GB
+per step, about 14.4 GB per 48-step day (the D148 estimate of ~15 GB was right for that set; the older ffa c1/c2, ffd_state and ffd_ site dumps are only needed for stage-level comparisons and could be dropped).
+
+Checks of the new dumps (tests/test_atm_day.py): ffa_step a/r/e of steps 33312 and 33317 and ffc_cse_in/out are bit-identical to the existing 6-step dumps in ff_data/nov26 (the
+54-step run and the 6-step run are the same trajectory); ffpt_ctrl == ffa_step_e (U V T Q QCL QCI P) for all 54 steps; the day boundary changes exactly MA, PEDN, PMID, PK, PDSIG, PEK, P (DAILY_ATMDYN) and Q (DAILY_ch4ox) between
+the end of 33359 and the start of 33360.
+Hooks and FFD_NSTEP: every hook of this stack (ffa_step, ffc_cse, ffp/ffs/ffl/ffg/fft, ffa c1/c2, ffd_state, ffd_<it>_pre/post_*) gates on the same FFD_START/FFD_NSTEP test `itime in [it0,it0+nst)` and needed no change to be widened to 54 steps (all 54 steps of every file type exist).
+The ocean-chain hooks (D118, FFO_START/FFO_NFULL/FFO_NSTEP) and the older ffz_* ocean/ice dumps were NOT part of this build, so no ocean/sea-ice state beyond what the tile records carry exists for the day.
+
+Replay and report (from fullfidelity/, graphcast-env python):
+    python atm_day_open_loop.py --nsteps 54 --tag imf_np                    # numpy dynamics, libimf pow backend, batched numpy CONDSE, land 'recorded'; ~16 min
+    python atm_day_open_loop.py --nsteps 54 --dyn jax --tag imf_jax         # JAX dynamics (dyn_step_jax2, needs dyn_jax_env XLA flag); ~14 min
+    python atm_day_report.py --ours <ff_data>/nov26_day/ours_imf_np --ours2 <ff_data>/nov26_day/ours_imf_jax --nsteps 54 --json ... --md ... --png ...   # ~20 s
+    PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_atm_day.py       # 11 tests, 2.5 min
+Outputs: ff_data/nov26_day/ours_<tag>/{step_<it>.npz, run.json}, overlay json/png/md under scratchpad (d149_overlay_*.md/png).
+Pitfalls: (1) `sleep N; cat ...` chains are refused by the tool harness - use an until-loop; (2) a one-ulp perturbation of T does NOT stay local: after ONE step 132407-132480 of 132480 T cells differ
+(rms 4.5e-5 K, max 1.2e-2 K at a column ~25 cells from the perturbed one) because every cell differs at ~1e-13 (median |dT| 4e-14; cause inferred, not verified: a global quantity such as the SE/KE energy fix) and that tips CONDSE threshold
+columns, while the same ulp in Q stays local for 2 steps (2 cells, 2e-16); so the real "noise" of a T member is not ulp-sized from step 0 on.
