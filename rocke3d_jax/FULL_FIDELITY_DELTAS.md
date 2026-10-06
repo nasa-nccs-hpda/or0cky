@@ -2641,6 +2641,22 @@ legitimately benign and were replaced by dependent pairs after the first run fla
 12 cores on the node, OMP_NUM_THREADS=1): libimf mode cold 3.5 s, warm 3.34-3.40 s (pgf 0.79, aadvt 0.58, qdynam 0.54, advecm 0.41, aflux 0.34,
 advecv 0.22); numpy-pow mode warm 2.35-2.41 s. A 48-step model day of dynamics is therefore ~2.7 min of this path (extrapolation, not measured).
 
+## D124: CONDSE glue plan (scoping/CLOUDS_CONDSE_PLAN.md)
+Read CLOUDS2_DRV.F90:3-2854 (cpp-live text). Plan lists the 32-step live call order with lines, inputs, outputs, carried and hidden state (FRAC_AREA_CNV not reset at 2068-2078; CSIZMC above LMCMAX; CLDSAV1 not in restart), gaps. Not live/unused: ISC=0 block (1288-1315, dump records isc=0), RIS/RI1/RI2 (do_blU00=0), diagnostics, ISCCP.
+
+## D125: CONDSE boundary dumps (units 1330-1333)
+Patches instrumentation/CLOUDS2_DRV_condse.f90.patch + ATM_DRV_clouds_condse.f.patch (diff -u vs pristine, local hunks). Per step an entry file (85.8 MB) and an exit file (77.9 MB), per date 6 steps (nov26 33312, dec01 33552, jan01 17520) + geom + consts = 1.2 GB per date, 3.4 GB total (ff_data/<date>/ffc_cse_*). Contents: atmosphere (U V T Q QCL QCI TMOM QMOM PK PMID PEDN PDSIG GZ MWS ...), PBL/surface inputs, cloud state and all 15 radiation hand-off arrays at entry and exit, RNDSS+seeds, UKM/VKM + pole arrays, precip/energy outputs. Old ffd_*_pre/post_condse exist only for 2 steps per date, so the new files carry the atmosphere too. Found/fixed during the build: TLS/QLS/TMC/QMC are (I,J,L); RNDSS halo shift.
+
+## D126: CONDSE port (clouds_condse_ff.py, _io, _compare, tests/test_clouds_condse_ff.py)
+Imports the MSTCNV and LSCOND ports; adds column set-up, post-MSTCNV block, LSCOND set-up, precip/energy bookkeeping, SNOAGE, hand-off, final merge, RANDU stream (bitwise vs RNDSS, all 18 steps), replicate/avg momentum transfer + recalc_agrid_uv, init_CLD derived constants (BYDTsrc, XMASS, BYBR; bybr bitwise only with libimf).
+Validation: 3 dates x 6 steps x 3170 columns (57,060), 68 exit fields per step.
+- libimf mode: setup and LSCOND inputs bitwise vs the MSTCNV/LSCOND boundary records (0 mismatches except downstream of the columns below); columns with any inexact cell 136 (0.24%, 1e-14..1e-23 relative, the known MSTCNV imf ulp residual); columns beyond the 1e-12 field-scale bound: 26 (nov26 24 incl. 17+6 from a carried CSIZSSIP chain, dec01 2, jan01 0): real threshold flips (e.g. dec01 33555 column (67,22) T off by 3.6e-5). Steps fully bitwise: jan01 17523 (68/68), nov26 33317 (67 exact + 1 bound).
+- libm mode: 1000-2000 of 3170 columns inexact per step; 58-169 per step beyond the bound (2074 total, 3.6%); 32-44 of 68 fields FAIL per step (first failing cell printed by the compare script); no tolerance loosened.
+- Module-state carry (CSIZELIP/TAUSSIP etc. from the previous column and step) is emulated; step-to-step chain in the compare script; first column of a window starts from zeros (step 1 of each window matches).
+- Momentum chain from recorded tendencies: U,V,UALIJ,VALIJ bitwise (test). Tests: 23 passed (~2 min), incl. 5 mutations detected, labelled non-real tests for stop_model exits, carry, renormalisation.
+- Timing (warm, 6 processes concurrent on 12 cores): about 40 ms/column imf, 35 ms/column libm, about 125 s (imf) / 110 s (libm) per step of 3170 columns.
+Gaps: diagnostics/ISCCP, ISC=1 block, RIS/RI1/RI2, init_CLD parameter reads (only derived constants), stop_model exits unreached on real data, renormalisation mutation undetectable by construction (result is 0/1). No JAX version.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

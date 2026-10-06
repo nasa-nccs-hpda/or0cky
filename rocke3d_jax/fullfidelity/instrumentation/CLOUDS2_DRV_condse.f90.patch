@@ -1,0 +1,34 @@
+--- a/CLOUDS2_DRV.F90	2026-10-05 21:23:10.508522312 -0400
++++ b/CLOUDS2_DRV.F90	2026-10-05 21:24:36.954719295 -0400
+@@ -487,6 +487,7 @@
+   integer :: iThread
+   integer :: numThreads
+   integer :: I_0thread, I_1thread, imaxj_thread
++  integer :: ffcse_ix0   ! D125 instrumentation: seed before the draws
+ #ifdef CACHED_SUBDD
+ #ifdef COSP_SIM
+   ! Declare local variables for the COSP simulator
+@@ -522,6 +523,7 @@
+   !
+   !     Burn some random numbers corresponding to latitudes off
+   !     processor
++  ffcse_ix0 = IX   ! D125 instrumentation
+   call BURN_RANDOM(nij_before_j0(J_0)*LMCLD*3)
+ 
+   do J=J_0,J_1
+@@ -573,6 +575,7 @@
+ 
+   !
+   !**** SAVE UC AND VC, AND ZERO OUT CLDSS AND CLDMC
++  call ffcse_dump(1,ffcse_ix0,seed,RNDSS,UKMSP,VKMSP,UKMNP,VKMNP)   ! D125
+   TLS=T
+   QLS=Q
+   TMC=T
+@@ -2601,6 +2604,7 @@
+     end do
+   end do
+ 
++  call ffcse_dump(2,ffcse_ix0,seed,RNDSS,UKMSP,VKMSP,UKMNP,VKMNP)   ! D125
+   if (isccp_diags.eq.1) call RINIT(seed) ! reset random number sequ.
+ 
+ 415 format(1X,'W500 AT I=21 L=5 TIME= ',I10/,1X,10F8.3/,1X,10F8.3)

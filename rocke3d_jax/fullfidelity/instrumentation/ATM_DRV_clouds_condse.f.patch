@@ -1,0 +1,237 @@
+--- a/ATM_DRV.f	2026-10-05 21:23:10.498847322 -0400
++++ b/ATM_DRV.f	2026-10-05 22:04:07.151168269 -0400
+@@ -956,6 +956,234 @@
+       return
+       end subroutine def_rsf_atmvars
+ 
++      subroutine ffcse_dump(mode,ix0,seed,rndss,ukmsp,vkmsp,ukmnp,vkmnp)
++!@sum D125 full-fidelity-port instrumentation of the CONDSE boundary
++!@+   (CLOUDS2_DRV.F90).  mode 1 = state at entry (after the A-grid
++!@+   replication, before TLS=T), mode 2 = state at exit (after the
++!@+   momentum back-transfer).  Files ffc_cse_in_<itime>.bin (unit
++!@+   1330), ffc_cse_out_<itime>.bin (1331), ffc_cse_geom.bin (1332),
++!@+   ffc_cse_consts.txt (1333); gated by FFD_START/FFD_NSTEP.
++!@+   Record: char*16 name, int32 rank, int32 n(1:4), float64 data
++!@+   (column-major).  Arrays are interior sections 1:IM, 1:JM.
++      use model_com, only : itime,dtsrc
++      use constant, only : grav,rgas,lhe,lhs,lhm,tf,sha,deltx,teeny,
++     &     bygrav,bysha
++      use resolution, only : im,jm,lm
++      use random, only : ix
++      use domain_decomp_atm, only : grid
++      use geom, only : axyp,byaxyp,imaxj,kmaxj,ravj
++      use atm_com, only : pk,pek,pmid,pedn,pdsig,gz,pmidold,mws,
++     &     ualij,valij,u,v,t,q,qcl,qci
++      use somtq_com, only : t3mom=>tmom,q3mom=>qmom
++      use pblcom, only : dclev,egcm,w2gcm,pblht,pblptop
++      use fluxes, only : prec,eprec,precss,focean,fland,flice,atmsrf
++      use seaice_com, only : si_atm
++      use ghy_com, only : fearth
++      use lakes_com, only : flake
++      use rad_com, only : snoage
++      use diag_com, only : p_acc,pm_acc
++      use clouds_com, only : ttold,qtold,svlhx,svlat,rhsav,cldsav,
++     &     cldsav1,fss,tls,qls,tmc,qmc,tauss,taussip,taumc,cldss,
++     &     cldmc,csizmc,csizss,csizssip,qlss,qiss,qlmc,qimc,ddm1,
++     &     ddms,tdn1,qdn1,ddml,airx,lmc,ukm,vkm,w_cloud,
++     &     frac_st_water,frac_st_ice,frac_cnv_water,frac_cnv_ice,
++     &     mix_ratio_st_water,mix_ratio_st_ice,mix_ratio_cnv_water,
++     &     mix_ratio_cnv_ice,dim_char_st_water,dim_char_st_ice,
++     &     dim_char_cnv_water,dim_char_cnv_ice,frac_area_st,
++     &     frac_area_cnv
++      use clouds, only : isc,lmcld,use_vmp,do_blu00,lmcm
++      implicit none
++      integer :: mode,ix0,seed
++      real*8 :: rndss(3,lm,grid%i_strt_halo:grid%i_stop_halo,
++     &     grid%j_strt_halo:grid%j_stop_halo)
++      real*8 :: ukmsp(im,lm),vkmsp(im,lm),ukmnp(im,lm),vkmnp(im,lm)
++      integer, save :: it0=-1, nst=0, init=0, gdone=0
++      integer :: st, fu, i, j
++      character(len=64) :: buf
++      character(len=200) :: fname
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      if (it0.lt.0) return
++      if (itime.lt.it0 .or. itime.ge.it0+nst) return
++      if (gdone.eq.0) then
++        gdone=1
++        fu=1332
++        open(fu,file='ffc_cse_geom.bin',form='unformatted',
++     &       access='stream',status='replace')
++        call w2('AXYP',axyp(1:im,1:jm))
++        call w2('BYAXYP',byaxyp(1:im,1:jm))
++        call w2('RAVJ',ravj(1:im,1:jm))
++        call w1('IMAXJ',dble(imaxj(1:jm)))
++        call w1('KMAXJ',dble(kmaxj(1:jm)))
++        close(fu)
++        open(1333,file='ffc_cse_consts.txt',status='replace')
++        write(1333,'(A,ES26.17E3)') 'dtsrc ',dtsrc
++        write(1333,'(A,ES26.17E3)') 'grav ',grav
++        write(1333,'(A,ES26.17E3)') 'bygrav ',bygrav
++        write(1333,'(A,ES26.17E3)') 'rgas ',rgas
++        write(1333,'(A,ES26.17E3)') 'lhe ',lhe
++        write(1333,'(A,ES26.17E3)') 'lhs ',lhs
++        write(1333,'(A,ES26.17E3)') 'lhm ',lhm
++        write(1333,'(A,ES26.17E3)') 'tf ',tf
++        write(1333,'(A,ES26.17E3)') 'sha ',sha
++        write(1333,'(A,ES26.17E3)') 'bysha ',bysha
++        write(1333,'(A,ES26.17E3)') 'deltx ',deltx
++        write(1333,'(A,ES26.17E3)') 'teeny ',teeny
++        write(1333,'(A,I8)') 'isc ',isc
++        write(1333,'(A,I8)') 'lmcld ',lmcld
++        write(1333,'(A,I8)') 'lmcm ',lmcm
++        write(1333,'(A,I8)') 'do_blu00 ',do_blu00
++        write(1333,'(A,L2)') 'use_vmp ',use_vmp
++        close(1333)
++      endif
++      if (mode.eq.1) then
++        write(fname,'(A,I0,A)') 'ffc_cse_in_',itime,'.bin'
++        fu=1330
++      else
++        write(fname,'(A,I0,A)') 'ffc_cse_out_',itime,'.bin'
++        fu=1331
++      endif
++      open(fu,file=trim(fname),form='unformatted',access='stream',
++     &     status='replace')
++      call w1('SEEDS',(/dble(ix0),dble(seed),dble(ix)/))
++      call w3('U',u(1:im,1:jm,:))
++      call w3('V',v(1:im,1:jm,:))
++      call w3('T',t(1:im,1:jm,:))
++      call w3('Q',q(1:im,1:jm,:))
++      call w3('QCL',qcl(1:im,1:jm,:))
++      call w3('QCI',qci(1:im,1:jm,:))
++      if (mode.eq.1) then
++        call w3('GZ',gz(1:im,1:jm,:))
++        call w3('MWS',mws(1:im,1:jm,:))
++        call w3('PMIDOLD',pmidold(:,1:im,1:jm))
++        call w3('EGCM',egcm(:,1:im,1:jm))
++        call w3('W2GCM',w2gcm(:,1:im,1:jm))
++        call w3('PEK',pek(:,1:im,1:jm))
++        call w3('PK',pk(:,1:im,1:jm))
++        call w3('PMID',pmid(:,1:im,1:jm))
++        call w3('PEDN',pedn(:,1:im,1:jm))
++        call w3('PDSIG',pdsig(:,1:im,1:jm))
++        call w2('DCLEV',dclev(1:im,1:jm))
++        call w2('PBLHT',pblht(1:im,1:jm))
++        call w2('PBLPTOP',pblptop(1:im,1:jm))
++        call w2('TSAVG',atmsrf%tsavg(1:im,1:jm))
++        call w2('QSAVG',atmsrf%qsavg(1:im,1:jm))
++        call w2('USAVG',atmsrf%usavg(1:im,1:jm))
++        call w2('VSAVG',atmsrf%vsavg(1:im,1:jm))
++        call w2('TGVAVG',atmsrf%tgvavg(1:im,1:jm))
++        call w2('QGAVG',atmsrf%qgavg(1:im,1:jm))
++        call w2('RSI',si_atm%rsi(1:im,1:jm))
++        call w2('FEARTH',fearth(1:im,1:jm))
++        call w2('FLAND',fland(1:im,1:jm))
++        call w2('FOCEAN',focean(1:im,1:jm))
++        call w2('FLICE',flice(1:im,1:jm))
++        call w2('FLAKE',flake(1:im,1:jm))
++        call w4('RNDSS',rndss(:,:,1:im,1:jm))
++      else
++        call w3('TLS',tls(1:im,1:jm,:))
++        call w3('QLS',qls(1:im,1:jm,:))
++        call w3('TMC',tmc(1:im,1:jm,:))
++        call w3('QMC',qmc(1:im,1:jm,:))
++        call w3('UALIJ',ualij(:,1:im,1:jm))
++        call w3('VALIJ',valij(:,1:im,1:jm))
++      endif
++      call w4('TMOM',t3mom(:,1:im,1:jm,:))
++      call w4('QMOM',q3mom(:,1:im,1:jm,:))
++      call w3('SNOAGE',snoage(:,1:im,1:jm))
++      call w2('P_ACC',p_acc(1:im,1:jm))
++      call w2('PM_ACC',pm_acc(1:im,1:jm))
++      call w2('PREC',prec(1:im,1:jm))
++      call w2('EPREC',eprec(1:im,1:jm))
++      call w2('PRECSS',precss(1:im,1:jm))
++      call w3('TTOLD',ttold(:,1:im,1:jm))
++      call w3('QTOLD',qtold(:,1:im,1:jm))
++      call w3('SVLHX',svlhx(:,1:im,1:jm))
++      call w3('SVLAT',svlat(:,1:im,1:jm))
++      call w3('RHSAV',rhsav(:,1:im,1:jm))
++      call w3('CLDSAV',cldsav(:,1:im,1:jm))
++      call w3('CLDSAV1',cldsav1(:,1:im,1:jm))
++      call w3('FSS',fss(:,1:im,1:jm))
++      call w3('TAUSS',tauss(:,1:im,1:jm))
++      call w3('TAUSSIP',taussip(:,1:im,1:jm))
++      call w3('TAUMC',taumc(:,1:im,1:jm))
++      call w3('CLDSS',cldss(:,1:im,1:jm))
++      call w3('CLDMC',cldmc(:,1:im,1:jm))
++      call w3('CSIZMC',csizmc(:,1:im,1:jm))
++      call w3('CSIZSS',csizss(:,1:im,1:jm))
++      call w3('CSIZSSIP',csizssip(:,1:im,1:jm))
++      call w3('QLSS',qlss(:,1:im,1:jm))
++      call w3('QISS',qiss(:,1:im,1:jm))
++      call w3('QLMC',qlmc(:,1:im,1:jm))
++      call w3('QIMC',qimc(:,1:im,1:jm))
++      call w2('DDM1',ddm1(1:im,1:jm))
++      call w2('DDMS',ddms(1:im,1:jm))
++      call w2('TDN1',tdn1(1:im,1:jm))
++      call w2('QDN1',qdn1(1:im,1:jm))
++      call w2('DDML',dble(ddml(1:im,1:jm)))
++      call w2('AIRX',airx(1:im,1:jm))
++      call w3('LMC',dble(lmc(:,1:im,1:jm)))
++      call w3('W_CLOUD',w_cloud(:,1:im,1:jm))
++      call w3('FRAC_ST_WATER',frac_st_water(:,1:im,1:jm))
++      call w3('FRAC_ST_ICE',frac_st_ice(:,1:im,1:jm))
++      call w3('FRAC_CNV_WATER',frac_cnv_water(:,1:im,1:jm))
++      call w3('FRAC_CNV_ICE',frac_cnv_ice(:,1:im,1:jm))
++      call w3('MIX_ST_WATER',mix_ratio_st_water(:,1:im,1:jm))
++      call w3('MIX_ST_ICE',mix_ratio_st_ice(:,1:im,1:jm))
++      call w3('MIX_CNV_WATER',mix_ratio_cnv_water(:,1:im,1:jm))
++      call w3('MIX_CNV_ICE',mix_ratio_cnv_ice(:,1:im,1:jm))
++      call w3('DIM_ST_WATER',dim_char_st_water(:,1:im,1:jm))
++      call w3('DIM_ST_ICE',dim_char_st_ice(:,1:im,1:jm))
++      call w3('DIM_CNV_WATER',dim_char_cnv_water(:,1:im,1:jm))
++      call w3('DIM_CNV_ICE',dim_char_cnv_ice(:,1:im,1:jm))
++      call w3('FRAC_AREA_ST',frac_area_st(:,1:im,1:jm))
++      call w3('FRAC_AREA_CNV',frac_area_cnv(:,1:im,1:jm))
++      call w4('UKM',ukm(:,:,1:im,1:jm))
++      call w4('VKM',vkm(:,:,1:im,1:jm))
++      call w2('UKMSP',ukmsp)
++      call w2('VKMSP',vkmsp)
++      call w2('UKMNP',ukmnp)
++      call w2('VKMNP',vkmnp)
++      close(fu)
++      contains
++      subroutine w1(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 1, size(a,1),1,1,1
++      write(fu) a
++      end subroutine w1
++      subroutine w2(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 2, size(a,1),size(a,2),1,1
++      write(fu) a
++      end subroutine w2
++      subroutine w3(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 3, size(a,1),size(a,2),size(a,3),1
++      write(fu) a
++      end subroutine w3
++      subroutine w4(nm,a)
++      character(len=*) :: nm
++      real*8 :: a(:,:,:,:)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 4, size(a,1),size(a,2),size(a,3),size(a,4)
++      write(fu) a
++      end subroutine w4
++      end subroutine ffcse_dump
++
+       subroutine new_io_atmvars(fid,iorw)
+       use model_com, only: ioread, iowrite
+       implicit none
