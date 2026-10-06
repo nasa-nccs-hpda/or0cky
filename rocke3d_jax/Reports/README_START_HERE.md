@@ -384,7 +384,9 @@ CONDSE column chain (D89-D126). What is left:
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 2273 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1468 new D78-D126 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79, `test_clouds_lscond_size_ff.py` 33, `test_clouds_lscond_ff.py` 45, `test_dyn_glue_ff.py` 43, `test_dyn_aadvq_ff.py` 46, `test_clouds_mstcnv_ff.py` 31, `test_dyn_step_ff.py` 66, `test_clouds_condse_ff.py` 23, `test_ocean_step.py` 12).
+**Test count: 2333 passed, 0 failed** (full regression `python -m pytest tests` from `fullfidelity/` on the committed tree at
+`dfed243`, run 2026-10-06, 35 min; it excluded the in-progress `tests/test_atm_step.py`). Many dump-based tests skip on hosts without
+`ff_data`, and the bitwise `pow` tests skip without the Intel libimf runtime.
 
 ## Standing conditions
 
