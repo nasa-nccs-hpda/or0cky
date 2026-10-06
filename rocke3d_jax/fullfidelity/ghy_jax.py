@@ -577,15 +577,18 @@ def flh(static, xkhm, tp, f, geothermal_heat):
 
 
 def flg(static, f, flmlt, flmlt_scale, dripw, drips, evapb, evapvg, fr_snow, pr, evapvw, evapbs,
-       evapvs, evapvd, fw, fd, fm):
+       evapvs, evapvd, fw, fd, fm, irrig=None):
     """GHY.f flg. Fills the OFFSET position 0 (Fortran f(1)) of `f`, plus canopy flux `fc`(N,2) and
     evap_tot(N,2). irrig is always 0 in this rundeck (ghy_ref hardcodes self.irrig=zeros in __init__
     regardless of the forcing dict's irrig value -- dead input, not used, so omitted here)."""
     process_bare, process_vege = static['process_bare'], static['process_vege']
+    # D136: GHY.f flg subtracts irrig(ibv) (irrig(1)=0, irrig(2)=irrig_in/fv); irrig is (N,2) or None
+    ir0 = 0.0 if irrig is None else irrig[:, 0]
+    ir1 = 0.0 if irrig is None else irrig[:, 1]
     f0_bare = (-flmlt[:, 0] * fr_snow[:, 0] - flmlt_scale[:, 0]
-              - (dripw[:, 0] - evapb) * (1.0 - fr_snow[:, 0]))
+              - (dripw[:, 0] - evapb) * (1.0 - fr_snow[:, 0]) - ir0)
     f0_vege = (-flmlt[:, 1] * fr_snow[:, 1] - flmlt_scale[:, 1]
-              - (dripw[:, 1] - evapvg) * (1.0 - fr_snow[:, 1]))
+              - (dripw[:, 1] - evapvg) * (1.0 - fr_snow[:, 1]) - ir1)
     f0 = jnp.stack([jnp.where(process_bare, f0_bare, f[:, 0, 0]),
                     jnp.where(process_vege, f0_vege, f[:, 0, 1])], axis=-1)
     f = f.at[:, 0, :].set(f0)
@@ -640,7 +643,7 @@ def runoff(static, w, f, xinfc, dripw, dripw_scale, evapb, evapvg, fr_snow, pr, 
 
 
 def flhg(static, fh, tp, fhsng, fhsng_scale, htdripw, htdrips, evapb, evapvg, evapvw, evapvd, snshg, snshv,
-        snshs, thrmsn, fr_snow, srht, trht, htpr, fw, fd, fm):
+        snshs, thrmsn, fr_snow, srht, trht, htpr, fw, fd, fm, htirrig=None):
     """GHY.f flhg. Takes the `fh` array flh() built (position 0 still a placeholder there, since flh()
     runs before flhg() in advnc()'s real order) and fills OFFSET position 0 (Fortran fh(1)), returning
     the merged fh -- same pattern as flg() merging into `f`. Also returns canopy heat flux `fch`(N,2)
@@ -652,10 +655,12 @@ def flhg(static, fh, tp, fhsng, fhsng_scale, htdripw, htdrips, evapb, evapvg, ev
 
     fh0_bare = (-fhsng[:, 0] * fr_snow[:, 0] - fhsng_scale[:, 0]
                + (-htdripw[:, 0] + evapb * (ELH + SHV * tp[:, 1, 0]) + snshg[:, 0]
-                  + thrm_soil0 - srht - trht) * (1.0 - fr_snow[:, 0]))
+                  + thrm_soil0 - srht - trht) * (1.0 - fr_snow[:, 0])
+               - (0.0 if htirrig is None else htirrig[:, 0]))
     fh0_vege = (-fhsng[:, 1] * fr_snow[:, 1] - fhsng_scale[:, 1]
                + (-htdripw[:, 1] + evapvg * (ELH + SHV * tp[:, 1, 1]) + snshg[:, 1]
-                  + thrm_soil1 - thrm_can) * (1.0 - fr_snow[:, 1]))
+                  + thrm_soil1 - thrm_can) * (1.0 - fr_snow[:, 1])
+               - (0.0 if htirrig is None else htirrig[:, 1]))
     fh0 = jnp.stack([jnp.where(process_bare, fh0_bare, fh[:, 0, 0]),
                     jnp.where(process_vege, fh0_vege, fh[:, 0, 1])], axis=-1)
     fh = fh.at[:, 0, :].set(fh0)
@@ -1398,6 +1403,10 @@ def advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_s
         lai = jnp.where(static["process_vege"], lai_raw, 0.0)
 
         hydra_out = hydra(static, theta, fice)
+        # D136: irrigation (vegetated tile only, GHY.f:2230-2234); forcing["irrig"], ["htirrig"] are irrig_in/fv, htirrig_in/fv (N,)
+        _z = jnp.zeros_like(forcing["pr"])
+        irrig2 = jnp.stack([_z, forcing["irrig"] if "irrig" in forcing else _z], axis=-1)
+        htirrig2 = jnp.stack([_z, forcing["htirrig"] if "htirrig" in forcing else _z], axis=-1)
         xklh_out = xklh(static, w, fice, theta)
         evap_out = evap_limits(static, w, theta, hydra_out["d"], tp, fice, tsn1, nsn, wsn, fr_snow, dt,
                                forcing["pr"], betadl, cnc, forcing["ch"], forcing["vs"], forcing["rho"],
@@ -1416,7 +1425,7 @@ def advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_s
         flg_out = flg(static, f_out["f"], snow_out["flmlt"], snow_out["flmlt_scale"], drip_out["dripw"],
                       drip_out["drips"], evap_out["evapb"], evap_out["evapvg"], snow_out["fr_snow"],
                       forcing["pr"], evap_out["evapvw"], snow_out["evapbs"], snow_out["evapvs"],
-                      evap_out["evapvd"], fw_i, fd_i, fm)
+                      evap_out["evapvd"], fw_i, fd_i, fm, irrig2)
         runoff_out = runoff(static, w, flg_out["f"], f_out["xinfc"], drip_out["dripw"],
                             drip_out["dripw_scale"], evap_out["evapb"], evap_out["evapvg"],
                             snow_out["fr_snow"], forcing["pr"], hydra_out["xku"], static["sl"])
@@ -1427,7 +1436,7 @@ def advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_s
                         drip_out["htdripw"], drip_out["htdrips"], evap_out["evapb"], evap_out["evapvg"],
                         evap_out["evapvw"], evap_out["evapvd"], sh_out["snshg"], sh_out["snshv"],
                         snow_out["snshs"], snow_out["thrmsn"], snow_out["fr_snow"], forcing["srht"],
-                        forcing["trht"], forcing["htpr"], fw_i, fd_i, fm)
+                        forcing["trht"], forcing["htpr"], fw_i, fd_i, fm, htirrig2)
         apply_out = apply_fluxes(static, w, ht, fllmt_out["f"], flhg_out["fh"], flg_out["fc"],
                                  flhg_out["fch"], fllmt_out["rnf"], fllmt_out["rnff"], tp,
                                  evap_out["evapdl"], snow_out["fr_snow"], fm, dts)

@@ -52,6 +52,12 @@ def run_ghy(g, forcing_over=None, dyn_over=None):
     prs = np.minimum(np.maximum(f["prs"], 0.0), pr)
     f["pr"], f["prs"] = pr, prs
     f["htprs"] = np.where(pr <= 0.0, 0.0, f["htpr"] / np.where(pr <= 0.0, 1.0, pr) * prs)
+    # Irrigation (vegetated tile only), GHY.f:2230-2234: irrig(2)=irrig_in/fv, htirrig(2)=htirrig_in/fv; ffg slots 147/148 (0-based)
+    # hold irrig_tot/htirrig_tot. Previously dropped (premise "irrig is always 0" was false: IRRIGATION_ON is defined; D136).
+    fv = np.asarray(f["fv"])
+    pos = fv > 0.0
+    f["irrig"] = np.where(pos, g[:, 147] / np.where(pos, fv, 1.0), 0.0)
+    f["htirrig"] = np.where(pos, g[:, 148] / np.where(pos, fv, 1.0), 0.0)
     d0 = dict(d0)
     if dyn_over:
         d0.update(dyn_over)

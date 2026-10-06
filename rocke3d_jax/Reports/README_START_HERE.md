@@ -388,6 +388,12 @@ end of step 1) and grow slowly (nov26 T 1.2e-4 -> 3.6e-4, Q 1.4e-2 -> 6.4e-2, U 
 a single real trajectory cannot be matched bitwise, so acceptance must be statistical (F2). Not instrumented: which CONDSE branch
 flips; libm nov26 step 5 shows a worst error of 1.3 on a small-scale field (not analysed). Land was recorded, not ported, in these runs.
 
+**D136 (second land-model error found and fixed):** the remaining runoff discrepancy (~97 of 753 nov26 cells) was the vegetated-tile
+irrigation term GHY.f applies (giss_LSM/GHY.f:2230-2234; IRRIGATION_ON is defined), dropped by both ports on the false premise that
+irrigation is always 0 (704 of 3012 cell-substeps in nov26/dec01 carry it). Fixed in ghy_jax, land_chain and ghy_ref; every output of
+all 753 cells on 3 dates now matches the real record to 2e-13 of field scale in the JAX port (aruns was off by up to 2.1e-3).
+The F1 verdict with the ported GHY has not been re-run with this second fix. ghy_ref keeps an undiagnosed residual on multi-substep cells.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 

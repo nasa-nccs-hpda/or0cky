@@ -597,8 +597,9 @@ class GhyColumn:
         self.htpr = forcing['htpr']
         self.prs = min(max(forcing['prs'], 0.0), self.pr)
         self.htprs = forcing['htprs']
-        self.irrig = np.zeros(2)
-        self.htirrig = np.zeros(2)
+        # GHY.f:2230-2234: irrig(2)=irrig_in/fv, htirrig(2)=htirrig_in/fv for the vegetated tile only (D136; was zeroed before)
+        self.irrig = np.array([0.0, forcing.get('irrig', 0.0) if forcing['fv'] > 0.0 else 0.0])
+        self.htirrig = np.array([0.0, forcing.get('htirrig', 0.0) if forcing['fv'] > 0.0 else 0.0])
         self.srht = forcing['srht']
         self.trht = forcing['trht']
         self.ts = forcing['ts']
