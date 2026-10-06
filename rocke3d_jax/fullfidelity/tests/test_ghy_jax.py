@@ -76,8 +76,18 @@ def per_file(request):
     return out, refs
 
 
-def test_matches_real_fortran(per_file):
+# Known limitation (D158, 2026-10-06), cause found: the ffg dump keeps the Ent exports and dts for at most 11 GHY sub-iterations, so for cells with
+# ffnit >= 12 (15 cells in the day-long nov26_day dumps, 1 per file in these four files) both ports advance the cell over less than the 900 s
+# step and ashg is off by 4-40% (tbcs <=3e-2 K). With the missing iterations reconstructed (ghy_advnc_test_nit.py / ghy_ref_nit.py) all 15 match the real
+# record (tests/test_ghy_jax_stiff_nit.py). These four files stay marked xfail (non-strict) here because build_batch has not yet been replaced by the
+# reconstructing builder; the tolerance is NOT loosened.
+KNOWN_STIFF_CELL_FILES = ("nov26_day/ffg_33321.bin", "nov26_day/ffg_33329.bin", "nov26_day/ffg_33336.bin", "nov26_day/ffg_33337.bin")
+
+
+def test_matches_real_fortran(per_file, request):
     out, refs = per_file
+    if FILES[request.node.callspec.params["per_file"]].endswith(KNOWN_STIFF_CELL_FILES):
+        request.applymarker(pytest.mark.xfail(reason="D158: ffg record truncated at 11 sub-iterations; fixed in ghy_advnc_test_nit.py", strict=False))
     def relerr(mine, ref):
         return np.max(np.abs(mine - ref) / np.maximum(np.abs(ref), 1e-6))
     for k, tol in TOLERANCES.items():

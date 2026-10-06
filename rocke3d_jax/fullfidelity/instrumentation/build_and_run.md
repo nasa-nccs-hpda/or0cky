@@ -833,3 +833,23 @@ Run (script <scratch>/mE_radsrv/work/run.sh <name> VAR=val ...; run dir with I P
 Reproduction check (D152): the 24 `ffa_step_<it>_{a,r,d,e}.bin` of the 6-step run with this binary (hook active in dump mode) are byte-identical to `ff_data/nov26` (cmp, 24 of 24). Timer table of that run: RADIA() 6 trips, max 10.9 s (radiation steps), min 0.0008 s.
 Python: `radiation_server.py` (packet reader/writer, `run_radiation`, `run_many`, `dump_state`), `radiation_server_compare.py oracle|audit|auditbig`, `tests/test_radiation_server.py` (3 passed, 105 s).
 Pitfall found: the first audit launch died with `forrtl: severe (43) file name specification error, unit 1440` because RADSRV_IN with an absolute scratch path exceeded the 256-character env buffer; fixed by passing relative names.
+
+# D155-D157 build notes (for instrumentation/build_and_run.md)
+
+No new patch, hook, or build. Re-used READ-ONLY: `scratchpad/mE_radsrv/mE2/model/P2SAoM40.bin` (pristine tree + ATM_DRV_atmstep.f.patch + ATM_DRV_radsrv.f.patch, D152). Own scratch dir: `scratchpad/mE_freeday/` (run dirs, logs, `dump54.py`).
+
+## Dump-mode recording of the live RADIA packets over the day (D155)
+- `mE_freeday/dump54.py`: `radiation_server._prepare(rundir, restart)` (copies I, P2SAoM40ln/uln, runtime_opts, the binary; restores fort.1/fort.2 from `ff_data/_pristine_restarts/fort1_nov26_itime33312.nc`; runs the link script), then edits `I`: `YEARE=1950,MONTHE=11,DATEE=27,HOURE=3,` (the D149 window; `_prepare` sets DATEE=26,HOURE=3 = 6 steps), then
+  `RADSRV_MODE=dump RADSRV_ITIME=33312 RADSRV_NSTEP=54 RADSRV_TAG=n26 OMP_NUM_THREADS=1 ./P2SAoM40 -i I` (LD_LIBRARY_PATH with the netcdf lib as in `radiation_server._env`). FFD_* env NOT set: no ffa/ffc dumps are written (the run dir holds only the rsv files). Wall 201 s.
+- Output: `rsv_n26_<it>_in.bin` (33.7 MB) and `_out.bin` (55.5 MB: includes AIJD, 1660 AIJ columns) for the 11 radiation steps itime 33312, 33317, ..., 33362; copied (`\cp`) to `ff_data/nov26_day/` (new files only, 1.2 GB). Packet format and field order: radiation_server.INPUT_FIELDS / OUTPUT_FIELDS + AIJD.
+- Verification (`live_vs_dumps.txt`): at all 11 steps the 33 packet fields present in ffc_cse_in/out/ffa_step_r are bitwise equal, BYMA = 1/MA bitwise, and the live outputs T Q SRHR TRHR COSZ1 equal ffa_step_r bitwise.
+
+## Server window trap (found 2026-10-06)
+`radiation_server._prepare` writes `YEARE=1950,MONTHE=11,DATEE=26,HOURE=3` (6-step window). A serve call for itime > 33317 never reaches the hook: the model ends normally ("reached maximum time"), rc=0, no `rsv_out.bin`, and `collect` raises "produced no output". `atm_day_free_rad.run_radiation_day` re-writes the window to DATEE=27 (54 steps) before launching; use it (or merge the window into `_prepare`) for any radiation step beyond 33317. Server cost grows with the step (real model re-run from the restart, including its own RADIA calls): 31 s (k=0) ... 190 s (k=50).
+
+## AIJ columns (1-based) in this build (kaij = 1660)
+SRINCP0 376, SRNFP0 377, TRNFP0 391, SRNFG 385 (identified by global means on step-0 live AIJD; the static count of DEFACC.f gives +152 less: 224/225/239/233, which are empty columns). `radiation_server.KAIJ = 750` is stale.
+
+## Day run
+`cd fullfidelity; python atm_day_free_rad.py run --tag free_np` (numpy dynamics, imf pow, batched CONDSE, land recorded; ~37 min, 11 sequential server calls, `FREERAD_RUNS` env = scratch run dirs, removed after each call). `python atm_day_free_rad.py report --tag free_np` (md/json in ff_data/nov26_day/ours_free_np/), `extra` (ratios, drift stats, cloud rms), `check0` (step-0 oracle through the assembler), `snoage --it N` (stale-SNOAGE sensitivity, one server call), `aijcheck`.
+Tests: `python -m pytest tests/test_atm_day_free_rad.py` (6 passed, 36 s; day not run in the test).

@@ -465,6 +465,34 @@ not read by RADIA in this build, FLAKE/DLAKE move outputs when changed macroscop
 the packet: PVT (Ent), BCdalbsn, RSDIST, gas/ozone/volcanic tables, random seeds (restart/time state). Cost: 27 s (step 0) to 42 s (step 5) per call,
 ~16 s of it model start-up (RADIA itself ~11 s); file exchange, no persistent server yet. Only nov26 was run (not dec01/jan01). 3 tests.
 
+**D155-D157 (one model day, free-running radiation; milestone):** `atm_day_free_rad.py` replaces the recorded radiation of the D150 day by calls to the
+radiation server (real RADIA, SOCRATES unmodified) with the packet assembled from OUR chained state on every radiation step (11 calls, steps 0,5,...,50);
+the surface stays replayed from the real run (a free-running ATMOSPHERE over a replayed surface), nov26 only. Plumbing check: at step 0 with the real
+state the assembled packet equals the live one in 52 of 52 fields and the server returns the recorded radiation bitwise. Whole 54-step day: 2250 s
+(1056 s chain + 1194 s in the server calls, 31-190 s each: each call re-runs the real model from the restart up to its radiation step, cost grows with the
+step; a persistent server would remove that). **Versus the real run, whole-column RMS against the real model's own chaos level (5 members): T, U, V within at all 54
+steps (largest ratio 0.96); Q within at 49 steps and near at 5 (1.13); P within at 52; QCL near at 11 steps (largest 1.44) and QCI near at 10 (largest 1.95);
+nothing beyond 2x; condensate excursions are dominated by single cells.** Versus the open loop (D150): the free-radiation drift is larger late in the day (T +9%,
+U +15%, V +19% at the last step) and the open loop's persistent negative global-mean dT is gone; both runs behave as chaotic realizations. Radiative flux
+differences free-minus-real: global means at most 0.75 W/m2 (net SW at the surface), 0.18 (downward LW at the surface), 0.70 (TOA net), signs alternating;
+pointwise RMS grows with the state divergence (TOA net 3.3 to 20.6 W/m2). No flux noise floor exists (the real members record no radiation). Validates the atmosphere
+with real radiation acting on our own T, Q and clouds for one day from one start state; does NOT validate radiation feedback onto the surface (replayed), multi-day
+behaviour, other dates, or flux-level chaos. Findings: radiation_server._prepare ends the model window at 03:00 on nov26 (calls after step 33317 returned nothing;
+fixed in the new file's run_radiation_day, merging into radiation_server.py is advisable); the AIJ column numbers were identified by global means, not an index table.
+6 tests (`tests/test_atm_day_free_rad.py`; the day itself is not run in the test).
+
+**D158 (stiff land cells, cause found, not a physics bug):** the ffg dump keeps the Ent exports and dts for at most 11 GHY sub-iterations, so for the 15 cells with ffnit >= 12
+in the day-long dumps (1 per file in 14 files) both ports advanced the cell over less than the 900 s step. With the missing iterations reconstructed
+(`ghy_advnc_test_nit.py`, `ghy_ref_nit.py`; the 12th iteration's dts is exactly 900 - sum of the recorded ones) all 15 cells match the real record (ashg to 5.4e-7 relative;
+iterations 12+ reuse iteration 11's Ent exports, leaving alhg/aevap off by up to 3.8e-6), and all 677 cells with ffnit 8-11 still match. A second bug surfaced once the
+loop is replayed: `ghy_ref.evap_limits` keeps epb/epv local where GHY.f:905,907 keeps them in module variables that gdtm reads (harmless for ffnit <= 11 where the recorded dts
+are imposed). Not yet applied to the existing modules (the diffs are in the ledger): build_batch, run_cell and every ghy_jax.advnc caller (needs max_substeps); the four
+nov26_day files stay marked xfail in `tests/test_ghy_jax.py`. A free-running land (no record) would need gdtm in JAX. 25 tests (`test_ghy_stiff_nit.py`, `test_ghy_jax_stiff_nit.py`).
+
+**Test isolation (2026-10-06):** the 2026-10-06 regression showed 18 failures in `test_dyn_jax*.py` and `test_clouds_jax.py`: their bitwise checks need XLA flags set before jax is
+imported and cannot work in a full run where jax is already imported; they now sit behind `tests/conftest.py` and run each in its own process via `fullfidelity/run_all_tests.sh`
+(`RUN_XLA_FLAG_TESTS=1`). **Run `./run_all_tests.sh` for the full regression.**
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -477,7 +505,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 covered speed work and the remaining chain items but not the plan's top rung (F3, a one-month comparison); the radiation scoping (D148) shows the
 larger picture. By target:
 - One-model-day open-loop run with recorded radiation (F2 start): **done 2026-10-06 (D149-D151)** in about 1 hour of agent time, against the 8-14 h estimated.
-- Free-running atmosphere day with black-box SOCRATES radiation (radiation server): the server and its bitwise oracle are done (D152-D154); wiring it into the day loop and validating a free-running day remain: ~10-18 h more (22-40 was the plan's total including the one-day run, now done).
+- Free-running atmosphere day with black-box SOCRATES radiation (radiation server): **done 2026-10-06 (D152-D157)**, surface replayed, nov26 only; a persistent server and other dates remain.
 - One-month F3 comparison against the real run's monthly diagnostics: ~110 h (90-150) including ~45 h to close the surface/ocean/ice/Ent loop.
 - Still needed for any of them: the remaining recorded inputs (AG2OG/IG2OG fluxes, straits start state, Ent), the remaining numpy stages in JAX,
   and a GPU host to measure what the project is for (none on this node).

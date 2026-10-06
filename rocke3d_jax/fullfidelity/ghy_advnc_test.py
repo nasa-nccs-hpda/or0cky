@@ -64,6 +64,14 @@ def build_batch(rec):
                   rho=farr("rho"), ch=farr("ch"), qm1=farr("qm1"), vs=farr("vs"), vs0=farr("vs0"),
                   gusti=farr("gusti"), tprime=farr("tprime"), qprime=farr("qprime"),
                   geothermal_heat=farr("geothermal_heat"))
+    # Forcing conditioning and irrigation as GHY.f does them (D135, D136): pr>=0, 0<=prs<=pr, htprs=htpr/pr*prs (ghy_ref.py:597-599, 648);
+    # irrig(2)=irrig_in/fv, htirrig(2)=htirrig_in/fv for the vegetated tile (giss_LSM/GHY.f:2230-2234). Both were missing before 2026-10-06.
+    _pr = np.maximum(forcing["pr"], 0.0)
+    _prs = np.minimum(np.maximum(forcing["prs"], 0.0), _pr)
+    forcing["pr"], forcing["prs"] = _pr, _prs
+    forcing["htprs"] = np.where(_pr <= 0.0, 0.0, forcing["htpr"] / np.where(_pr <= 0.0, 1.0, _pr) * _prs)
+    forcing["irrig"] = farr("irrig")
+    forcing["htirrig"] = farr("htirrig")
     refs = dict(
         w_out=np.stack([r[4]["w_out"] for r in unpacked]), ht_out=np.stack([r[4]["ht_out"] for r in unpacked]),
         tp_out=np.stack([r[4]["tp_out"] for r in unpacked]),
