@@ -1,0 +1,11 @@
+--- OCNDYN.f.orig
++++ OCNDYN.f
+@@ -5042,6 +5042,8 @@
+ 
+ C**** Convert fluxes on atmospheric grid to oceanic grid
+       CALL AG2OG_precip(atmocn,iceocn)
++C**** FFO 0 pre_precip
++      call ffo_snap(0)
+ C****
+       ocean_processors_only: if(ogrid%have_domain) then
+ 

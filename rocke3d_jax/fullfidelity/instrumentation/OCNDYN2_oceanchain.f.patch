@@ -1,0 +1,240 @@
+--- OCNDYN2.f.orig
++++ OCNDYN2.f
+@@ -109,10 +109,14 @@
+ c-------------------------------------------------------------------
+ 
+       OGEOZ_SV(:,:)=OGEOZ(:,:)
++C**** FFO 1 entry
++      call ffo_snap(1)
+ 
+ C**** Apply surface fluxes to ocean
+       CALL GROUND_OC
+          CALL CHECKO('GRNDOC')
++C**** FFO 2 post_ground
++      call ffo_snap(2)
+ #ifdef TRACERS_GASEXCH_ocean_CO2
+          Call CARBON ('GRNDOC')
+          Call NITR ('GRNDOC')
+@@ -146,12 +150,16 @@
+ C**** Apply ice/ocean and air/ocean stress to ocean
+       CALL OSTRES2
+          CALL CHECKO('OSTRES')
++C**** FFO 3 post_ostres
++      call ffo_snap(3)
+          CALL TIMER (NOW,MSURF)
+          IF (ATMOCN%MODD5S == 0) CALL DIAGCO (11,atmocn)
+ 
+ C**** Apply ocean vertical mixing
+       CALL OCONV
+          CALL CHECKO('OCONV ')
++C**** FFO 4 post_oconv
++      call ffo_snap(4)
+ #ifdef TRACERS_GASEXCH_ocean_CO2
+          Call CARBON ('OCONV ')
+          Call NITR ('OCONV ')
+@@ -160,6 +168,8 @@
+ C**** Apply bottom and coastal drags
+       if (OBottom_drag  == 1) CALL OBDRAG2
+       if (OCoastal_drag == 1) CALL OCOAST
++C**** FFO 5 post_drag
++      call ffo_snap(5)
+ 
+ C**** Add ocean biology
+ #ifdef TRACERS_OceanBiology
+@@ -230,6 +240,8 @@
+         enddo
+       enddo
+ 
++C**** FFO 6 post_polar
++      call ffo_snap(6)
+       DO L=1,LMO
+         MO1(:,:,L) = 0
+         UO1(:,:,L) = 0
+@@ -254,6 +266,8 @@
+       call halo_update(grid,vo)
+ 
+       CALL ODHORZ0
++C**** FFO 7 post_odhorz0
++      call ffo_snap(7)
+ 
+       do l=1,lmo
+         SMU(:,J_0:J_1,L) = 0
+@@ -343,11 +357,15 @@
+ 
+ c is this still needed?
+       if(j_1 == JM) UO(IVNP,JM,:) = VONP(:) ! not needed if Mod(IM,4)=0
++C**** FFO 8 post_odhorz
++      call ffo_snap(8)
+ 
+ c
+ c long-timestep vertical redistribution of mass (and momentum)
+ c
+       Call OFLUXV
++C**** FFO 9 post_ofluxv
++      call ffo_snap(9)
+ 
+ c
+ c long-timestep advection of potential enthalpy, salt, and tracers
+@@ -368,6 +386,8 @@
+      *        ,OIJL(1,J_0H,1,IJL_SFLX))
+       endif
+       Call CONSERV_OCE (G0FINAL)
++C**** FFO 10 post_oadvt
++      call ffo_snap(10)
+ 
+ c
+ c diagnostics
+@@ -490,6 +510,8 @@
+       END IF
+       call scatter_ocean_straits()
+       call BCAST_straits (.false.)
++C**** FFO 11 post_straits
++      call ffo_snap(11)
+ 
+       if(use_qus==1) then
+         ! Adjust second-order moments post-straits in upstream cells.
+@@ -558,10 +580,14 @@
+ 
+ C**** Apply Wajsowicz horizontal diffusion to UO and VO ocean currents
+ C**** every 3 hours
++C**** FFO 12 pre_odiff
++      call ffo_snap(12)
+       dt_odiff = 3.*3600.
+       if(mod(itime,int(dt_odiff/dts)).eq.0) then
+         CALL ODIFF(dt_odiff)
+       endif
++C**** FFO 13 post_odiff
++      call ffo_snap(13)
+ c      CALL OABFILx ! binomial filter
+ c      CALL OABFILy ! binomial filter
+ c      CALL CHECKO ('ODIFF0')
+@@ -658,6 +684,8 @@
+          Call NITR ('OCNMESO')
+ #endif
+       CALL CHECKO ('GMDIFF')
++C**** FFO 14 exit
++      call ffo_snap(14)
+ 
+ #ifdef TRACERS_OCEAN
+       CALL OC_TDECAY(DTS)
+@@ -698,6 +726,109 @@
+       RETURN
+       END SUBROUTINE OCEANS
+ 
++      SUBROUTINE ffo_snap(ktag)
++C**** FFO: ocean-chain state snapshots (instrumentation only).
++C**** Units 1270 (state stream), 1271 (static geometry).
++C**** Env: FFO_START (first itime), FFO_NFULL (steps with all tags),
++C**** FFO_NSTEP (total steps; steps past NFULL get tags 0,1,12,13,14 only).
++      USE MODEL_COM, only : itime
++      USE OCEAN, only : im,jm,lmo,mo,g0m,s0m,gxmo,gymo,gzmo,
++     *     sxmo,symo,szmo,uo,vo,uod,vod,opbot,opress,ogeoz,kpl,vonp,
++     *     focean,hocean,fgeotherm,lmm,lmu,lmv
++      USE OCEAN_DYN, only : mmi,smu,smv,smw
++      USE KPP_COM, only : g0m1,s0m1,mo1,gxm1,gym1,sxm1,sym1,uo1,vo1,
++     *     uod1,vod1
++      USE SW2OCEAN, only : lsrpd
++      USE STRAITS, only : nmst,lmst,ist,jst,wist,dist,distpg,mmst,must,
++     *     g0mst,gxmst,gzmst,s0mst,sxmst,szmst,moe,g0me,gxme,gyme,gzme,
++     *     s0me,sxme,syme,szme,kn2,xst,yst
++      USE OFLUXES
++      IMPLICIT NONE
++      INTEGER, INTENT(IN) :: ktag
++      INTEGER, SAVE :: istart=-1, nfull=6, nstep=12, iinit=0, igeo=0
++      INTEGER :: ios, it0
++      CHARACTER*64 fn, str
++      LOGICAL :: full
++      IF (iinit.eq.0) THEN
++        iinit = 1
++        CALL get_environment_variable('FFO_START',str)
++        READ(str,*,iostat=ios) it0
++        IF (ios.eq.0) istart = it0
++        CALL get_environment_variable('FFO_NFULL',str)
++        READ(str,*,iostat=ios) it0
++        IF (ios.eq.0) nfull = it0
++        CALL get_environment_variable('FFO_NSTEP',str)
++        READ(str,*,iostat=ios) it0
++        IF (ios.eq.0) nstep = it0
++      ENDIF
++      IF (istart.lt.0) RETURN
++      IF (itime.lt.istart .or. itime.ge.istart+nstep) RETURN
++      full = itime.lt.istart+nfull
++      IF (.not.full .and. ktag.ne.0 .and. ktag.ne.1 .and.
++     *     ktag.ne.12 .and. ktag.ne.13 .and. ktag.ne.14) RETURN
++      IF (igeo.eq.0) THEN
++        igeo = 1
++        OPEN(1271,file='ffo_geom.bin',form='unformatted',
++     *       access='stream',status='replace')
++        WRITE(1271) dble(im),dble(jm),dble(lmo),dble(nmst)
++        WRITE(1271) focean,hocean,fgeotherm
++        WRITE(1271) dble(lmm),dble(lmu),dble(lmv)
++        WRITE(1271) dble(lmst),dble(ist),dble(jst),wist,dist,distpg
++        WRITE(1271) dble(kn2),xst,yst
++        CLOSE(1271)
++      ENDIF
++      WRITE(fn,'(a,i0,a)') 'ffo_state_',itime,'.bin'
++      OPEN(1270,file=trim(fn),form='unformatted',access='stream',
++     *     position='append',status='unknown')
++      WRITE(1270) dble(ktag),dble(itime),dble(im),dble(jm),dble(lmo),
++     *     dble(nmst),dble(lsrpd),dble(size(mo))
++      WRITE(1270) g0m,s0m,gxmo,gymo,gzmo,sxmo,symo,szmo,mo,uo,vo,uod,
++     *     vod
++      WRITE(1270) mmi,smu,smv,smw
++      WRITE(1270) opbot,opress,ogeoz,dble(kpl)
++      WRITE(1270) vonp
++      WRITE(1270) must,mmst,g0mst,gxmst,gzmst,s0mst,sxmst,szmst
++      WRITE(1270) moe,g0me,gxme,gyme,gzme,s0me,sxme,syme,szme
++      IF (ktag.eq.0) THEN
++        WRITE(1270) oprec,oeprec,orsi,orunpsi,oerunpsi,osrunpsi
++      ENDIF
++      IF (ktag.eq.1) THEN
++        WRITE(1270) orsi,oflowo,omelti,oevapor,orunosi,oeflowo,
++     *       oemelti,oe0,oerunosi,osmelti,osrunosi,osolarw,osolari,
++     *       oapress,odmua,odmva,odmui,odmvi
++        WRITE(1270) g0m1
++        WRITE(1270) mo1,gxm1,gym1,sxm1,sym1,uo1,vo1,uod1,vod1,s0m1
++      ENDIF
++      IF (ktag.eq.2) THEN
++        WRITE(1270) odmsi,odhsi,odssi
++      ENDIF
++      CLOSE(1270)
++      RETURN
++      END SUBROUTINE ffo_snap
++
++      subroutine ffo_opcoef(nred,nfft,nfil,nmn,nsm,smooth,nmin,
++     &     jfft,n1fft,n2fft,jfil,i1fil,i2fil,indx_fil,n1fil,n2fil,
++     &     reduco)
++C**** FFO: OPFIL2 setup coefficients, once, unit 1272 (same layout
++C**** as the D75 ffz_opcoef.bin)
++      implicit none
++      integer :: nred,nfft,nfil,nmn,nsm
++      real*8 :: smooth(*),reduco(*)
++      integer :: nmin(*),jfft(*),n1fft(*),n2fft(*),jfil(*),i1fil(*)
++      integer :: i2fil(*),indx_fil(*),n1fil(*),n2fil(*)
++      open(1272,file='ffo_opcoef.bin',form='unformatted',
++     &     access='stream',status='replace')
++      write(1272) dble(nred),dble(nfft),dble(nfil),dble(nmn),dble(nsm)
++      write(1272) dble(smooth(1:nsm)),dble(nmin(1:nmn))
++      write(1272) dble(jfft(1:nfft)),dble(n1fft(1:13)),dble(n2fft(1:13))
++      write(1272) dble(jfil(1:nfil)),dble(i1fil(1:nfil)),
++     &     dble(i2fil(1:nfil))
++      write(1272) dble(indx_fil(1:nfil)),dble(n1fil(1:13)),
++     &     dble(n2fil(1:13))
++      write(1272) reduco(1:nred)
++      close(1272)
++      end subroutine ffo_opcoef
++
+       Subroutine OFLUXV
+       use constant, only : grav
+       Use OCEAN, Only: IM,JM,LMO, LMOM=>LMM,LMOU=>LMU,LMOV=>LMV,
+@@ -1088,6 +1219,10 @@
+       if(ifirst == 1) then
+         ifirst = 0
+         call calc_opfil2_coeffs
++C**** FFO opcoef
++      call ffo_opcoef(size(reduco),nbas_fft,nbas_fil,
++     &     size(nmin),size(smooth),smooth,nmin,jfft,n1fft,n2fft,
++     &     jfil,i1fil,i2fil,indx_fil,n1fil,n2fil,reduco)
+       endif
+ 
+ C**** Extract domain decomposition band parameters

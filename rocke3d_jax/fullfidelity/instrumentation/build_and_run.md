@@ -693,3 +693,15 @@ Validate (from `fullfidelity/`, bare imports, conda python):
     PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_clouds_condse_ff.py        # ~2 min; dump tests skip when ff_data is absent, libimf tests without the Intel runtime
 New code files: `clouds_condse_ff.py`, `clouds_condse_io.py`, `clouds_condse_compare.py`, `tests/test_clouds_condse_ff.py`,
 `instrumentation/{CLOUDS2_DRV_condse.f90.patch, ATM_DRV_clouds_condse.f.patch}`, `scoping/CLOUDS_CONDSE_PLAN.md`.
+
+## D118-D120 (ocean chain) build and run lines
+
+Patches (diff -u against PRISTINE; verified to apply to pristine files and reproduce the built sources byte for byte). Units 1270-1272 grepped over model/*.f,*.F90,*.h and all instrumentation patches: unused.
+    cd $COPY/model; chmod -R u+w .
+    patch OCNDYN2.f < <this dir>/OCNDYN2_oceanchain.f.patch   # call ffo_snap(k) at 15 points in OCEANS, subroutine ffo_snap + ffo_opcoef before OFLUXV, opcoef hook after calc_opfil2_coeffs
+    patch OCNDYN.f  < <this dir>/OCNDYN_oceanchain.f.patch    # ffo_snap(0) after AG2OG_precip in PRECIP_OC
+Build as D89/D99 (rsync copy excluding ModelE_Support, absolute make target, source env_modele.sh in the same shell, SOCRATESPATH set): ~1 min incremental, 0 errors. Scratch tree: <scratchpad>/mE_oceanchain/mE2 (generator: work/make_patch.py, run script work/rundates.sh).
+Run: as D99 (I, P2SAoM40ln, P2SAoM40uln, runtime_opts; both restarts from _pristine_restarts; OMP_NUM_THREADS=1), end date 6 hours after start (12 steps; first YEARE line only: 1950,11,26,6 / 1950,12,1,6 / 1950,1,1,6), env FFO_START=<itime> FFO_NFULL=6 FFO_NSTEP=12 (FFO_NFULL steps get all tags, the rest only 0,1,12,13,14). ~25 s per date. Copy ffo_state_*.bin, ffo_geom.bin, ffo_opcoef.bin into ff_data/<date>/ with \cp -n (~0.8 GB per date).
+Dump layout: docstring of fullfidelity/ocean_chain_io.py (tags 0..14, 15 stage snapshots; arrays big-endian float64, Fortran order). ffo_opcoef.bin has the layout of the D75 ffz_opcoef.bin.
+Validate (from fullfidelity/): python ocean_step_compare.py <date> [itime]; python ocean_step_chain_compare.py <date> 12; python ocean_step_speed.py nov26 3; pytest tests/test_ocean_step.py (12 passed, 65 s).
+Pitfalls: fixed-form lines <= 72 columns; the earlier D65-D77 dumps (ffz_hblin, ffz_stin, ffz_opcoef, ffz_pgf, ...) are not in ff_data any more.
