@@ -705,3 +705,54 @@ Run: as D99 (I, P2SAoM40ln, P2SAoM40uln, runtime_opts; both restarts from _prist
 Dump layout: docstring of fullfidelity/ocean_chain_io.py (tags 0..14, 15 stage snapshots; arrays big-endian float64, Fortran order). ffo_opcoef.bin has the layout of the D75 ffz_opcoef.bin.
 Validate (from fullfidelity/): python ocean_step_compare.py <date> [itime]; python ocean_step_chain_compare.py <date> 12; python ocean_step_speed.py nov26 3; pytest tests/test_ocean_step.py (12 passed, 65 s).
 Pitfalls: fixed-form lines <= 72 columns; the earlier D65-D77 dumps (ffz_hblin, ffz_stin, ffz_opcoef, ffz_pgf, ...) are not in ff_data any more.
+
+## D127-D129 (chained atmosphere step: step-boundary state dumps) build and run lines (for build_and_run.md)
+
+New instrumentation only: `instrumentation/ATM_DRV_atmstep.f.patch` (diff -u against the PRISTINE `ATM_DRV.f`, 5 local hunks; `patch --dry-run` on a fresh
+pristine copy succeeds, and it also applies after `ATM_DRV.f.patch` with offsets 3-5 lines). It adds `ffas_on`/`ffas_dump(site)` after the unchanged
+`end subroutine get_atm_layer1` and four call sites: `call ffas_dump('a')` after `NSTEP=(Itime-ItimeI)*NIdyn` (atm_phase1 entry), `call ffas_dump('r')` before
+`call atm_phase1_exports` (end of phase 1, after RADIA), `call ffas_dump('d')` after `CALL DISSIP`, `call ffas_dump('e')` before `call accum_ma_ia_src` (end of
+atm_phase2, after FILTER). Unit 1360 only (1360-1389 grepped over model/*.f, *.F90, *.f90, *.h and every patch in this directory: no unit 1360-1369 or 1371-1389; the
+only hit is `1370` inside `CLOUDS2_mstcnv.f90.patch`, a different routine and not used here). Fixed-form lines <= 72 columns (checked on the added lines).
+
+    SRC=/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0
+    INS=<repo>/projects/imvi/rocke3d_jax/fullfidelity/instrumentation
+    C=<scratch>/mE_atmstep/mE2          # own scratch tree, never the original
+    rsync -a --exclude=ModelE_Support $SRC/ $C/ && chmod -R u+w $C
+    cd $C/model
+    patch ATM_DRV.f        < $INS/ATM_DRV.f.patch            # older stack needed to regenerate the SURFACE-side dumps for steps 2-6
+    patch MODELE.f         < $INS/MODELE.f.patch
+    patch ATURB.f          < $INS/ATURB.f.patch
+    patch PBL_DRV.f        < $INS/PBL_DRV.f.patch
+    patch SURFACE.f        < $INS/SURFACE.f.patch
+    patch SURFACE_LANDICE.f< $INS/SURFACE_LANDICE.f.patch
+    patch giss_LSM/GHY.f   < $INS/GHY.f.patch
+    patch GHY_DRV.f        < $INS/GHY_DRV.f.patch
+    patch ATM_DRV.f        < $INS/ATM_DRV_atmstep.f.patch    # the new hooks (apply LAST)
+    source <repo>/projects/imvi/rocke3d_jax/fullfidelity/env_modele.sh ; export SOCRATESPATH=$SRC/ModelE_Support/socrates
+    cd $C/decks && gmake RUN=P2SAoM40 $C/model/P2SAoM40.bin      # about 1.5 min, 0 errors
+
+Run (per date, own run dir under the scratch tree, three dates concurrently, about 4 min wall, rc=0): copy `I P2SAoM40ln P2SAoM40uln runtime_opts` from
+`ModelE_Support/huge_space/P2SAoM40`; `\cp` the binary to BOTH `P2SAoM40.bin` and `P2SAoM40`; in `I` edit ONLY the first `YEARE=1950,MONTHE=12,DATEE=1,HOURE=0,`
+line to 1950,11,26,3 / 1950,12,1,3 / 1950,1,1,3; `rm -f fort.1.nc fort.2.nc` and copy `ff_data/_pristine_restarts/fort1_<date>_itime<N>.nc` to BOTH; `sh P2SAoM40ln`;
+`FFD_START=<N> FFD_NSTEP=6 ./P2SAoM40 -i I` (N = 33312 nov26, 33552 dec01, 17520 jan01). Scripts: <scratchpad>/mE_atmstep/work/build.sh, rundates.sh,
+make_patch.py (generates the patch from the pristine file).
+
+Files copied into `ff_data/<date>/` with `\cp -n` (nothing existing is overwritten):
+- NEW: `ffa_step_<itime>_{a,r,d,e}.bin` (6 steps x 4 sites = 24 files per date; a,e about 38 MB, r,d about 10 MB each).
+- Older surface-side dumps for the steps that only had 2: `ffa_<itime>_c{1,2}_{in,out}.bin`, `ffp_`, `ffs_`, `ffl_`, `ffg_`, `fft_<itime>.bin`, `ffd_<itime>_{pre,post}_{condse,radia,surface,aturb}.bin`
+  for steps 3-6 of each window. Determinism check against the existing files of steps 1-2 (cmp): `ffg`, `ffl`, `fft`, `ffd_*` identical; `ffp`/`ffs`/`ffa` differ only
+  in uninitialised-memory entries (1 of 9,182 PBL records col 49 = z0m is stack garbage 7e-317 in the new run; ffs cols 9 and 60 for ocean tiles hold stale values; ffa UFLUX1/TFLUX1
+  one cell each in cells the model does not compute). The dumps of steps 1-2 were not replaced.
+
+Dump record format (big-endian, same as the CONDSE dumps; reader `clouds_condse_io.read_cse`): name char*16, int32 rank, int32 n(1:4), float64 data in Fortran column-major
+order. Sites a/e: HDR(4: itime, ichar(site), 0, 0), U V T Q QCL QCI (IM,JM,LM), MA PMID PK PDSIG (LM,IM,JM), PEDN PEK (LM+1,IM,JM), P (IM,JM), KEA (IM,JM,LM), SRHR TRHR
+(LM+1,IM,JM; index 0 = surface term), COSZ1, TMOM QMOM (9,IM,JM,LM), UALIJ VALIJ EGCM W2GCM (LM,IM,JM), PBLHT DCLEV PBLPTOP T1AA U1AA V1AA USTARPBL LMONINPBL DDM1 TSAVG QSAVG
+USAVG VSAVG TGVAVG QGAVG (IM,JM). Sites r/d: HDR and U..COSZ1 (without the a/e-only fields).
+
+Checks of the dumps (all exact, tests/test_atm_step.py): site `a` == `ffd_state_<it>_s1` (18 of 18); site `e` of step k == `ffd_state_<it+1>_s1` (15 of 15 available pairs);
+SRHR/TRHR change between `a` and `r` exactly on the radiation steps (MOD(Itime-ItimeI,5)==0 with ITIMEI=16032: nov26 and dec01 steps 0 and 5, jan01 step 2).
+
+Pitfalls found: (1) `pkill -f <script name>` inside a command line that contains the script name kills the calling shell (exit 144): use `pkill -f "[s]cript"`; (2) dump arrays read with
+`np.fromfile('>f8')` stay big-endian and JAX refuses them (`atm_step._native` converts); (3) the B-grid U,V rows must be merged with all longitudes valid (the A-grid valid mask
+that keeps only i=1 on the pole rows is wrong for them: it produced 0.33 m/s errors in UALIJ at row JM-1).

@@ -1,0 +1,168 @@
+--- ATM_DRV.f.pristine	2026-10-02 11:00:40.898395792 -0400
++++ ATM_DRV.f.new	2026-10-06 08:18:59.701847115 -0400
+@@ -73,6 +73,7 @@
+ 
+ C**** INITIALIZE TIME PARAMETERS
+       NSTEP=(Itime-ItimeI)*NIdyn
++      call ffas_dump('a')
+ 
+ C****
+ C**** INTEGRATE DYNAMIC TERMS (DIAGA AND DIAGB ARE CALLED FROM DYNAM)
+@@ -288,6 +289,7 @@
+       call set_strattroptracer_diag(dtsrc)
+ #endif
+ 
++      call ffas_dump('r')
+       call atm_phase1_exports
+ 
+       return
+@@ -422,6 +424,133 @@
+ #endif
+       end subroutine get_atm_layer1
+ 
++      logical function ffas_on()
++!@sum D128: true when env FFD_START/FFD_NSTEP select this itime
++      use model_com, only : itime
++      implicit none
++      integer, save :: it0=-1, nst=0, init=0
++      integer :: st
++      character(len=64) :: buf
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('FFD_START',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        call get_environment_variable('FFD_NSTEP',buf,status=st)
++        if (st.eq.0) read(buf,*) nst
++      endif
++      ffas_on = .not.(it0.lt.0 .or. itime.lt.it0
++     &     .or. itime.ge.it0+nst)
++      end function ffas_on
++
++      subroutine ffas_dump(site)
++!@sum D128 atmosphere step-boundary dumps, unit 1360,
++!@+   ffa_step_<itime>_<site>.bin (big-endian float64 stream,
++!@+   records: char*16 name, int32 rank, int32 n(1:4), data).
++!@+   site a = atm_phase1 entry, r = end of atm_phase1 (after RADIA),
++!@+   d = after DISSIP, e = end of atm_phase2 (after FILTER).
++      use model_com, only : itime
++      use resolution, only : im,jm,lm
++      use atm_com, only : u,v,t,q,qcl,qci,ma,pedn,pmid,pk,p,pdsig,
++     &     pek,ualij,valij,kea
++      use somtq_com, only : tmom,qmom
++      use pblcom, only : egcm,w2gcm,pblht,dclev,pblptop,
++     &     t1_after_aturb,u1_after_aturb,v1_after_aturb
++      use fluxes, only : atmsrf
++      use clouds_com, only : ddm1
++      use rad_com, only : srhr,trhr,cosz1
++      implicit none
++      character(len=1) :: site
++      logical, external :: ffas_on
++      integer :: fu
++      character(len=16) :: ts
++      character(len=160) :: fn
++      if (.not.ffas_on()) return
++      fu=1360
++      write(ts,'(i0)') itime
++      fn='ffa_step_'//trim(ts)//'_'//site//'.bin'
++      open(fu,file=trim(fn),form='unformatted',access='stream',
++     &     status='replace')
++      call w1('HDR',(/dble(itime),dble(ichar(site)),0d0,0d0/),4)
++      call w3('U',u(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('V',v(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('T',t(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('Q',q(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('QCL',qcl(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('QCI',qci(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('MA',ma(1:lm,1:im,1:jm),lm,im,jm)
++      call w3('PEDN',pedn(1:lm+1,1:im,1:jm),lm+1,im,jm)
++      call w3('PMID',pmid(1:lm,1:im,1:jm),lm,im,jm)
++      call w3('PK',pk(1:lm,1:im,1:jm),lm,im,jm)
++      call w3('PDSIG',pdsig(1:lm,1:im,1:jm),lm,im,jm)
++      call w3('PEK',pek(1:lm+1,1:im,1:jm),lm+1,im,jm)
++      call w2('P',p(1:im,1:jm),im,jm)
++      call w3('KEA',kea(1:im,1:jm,1:lm),im,jm,lm)
++      call w3('SRHR',srhr(0:lm,1:im,1:jm),lm+1,im,jm)
++      call w3('TRHR',trhr(0:lm,1:im,1:jm),lm+1,im,jm)
++      call w2('COSZ1',cosz1(1:im,1:jm),im,jm)
++      if (site.eq.'a' .or. site.eq.'e') then
++        call w4('TMOM',tmom(1:9,1:im,1:jm,1:lm),9,im,jm,lm)
++        call w4('QMOM',qmom(1:9,1:im,1:jm,1:lm),9,im,jm,lm)
++        call w3('UALIJ',ualij(1:lm,1:im,1:jm),lm,im,jm)
++        call w3('VALIJ',valij(1:lm,1:im,1:jm),lm,im,jm)
++        call w3('EGCM',egcm(1:lm,1:im,1:jm),lm,im,jm)
++        call w3('W2GCM',w2gcm(1:lm,1:im,1:jm),lm,im,jm)
++        call w2('PBLHT',pblht(1:im,1:jm),im,jm)
++        call w2('DCLEV',dclev(1:im,1:jm),im,jm)
++        call w2('PBLPTOP',pblptop(1:im,1:jm),im,jm)
++        call w2('T1AA',t1_after_aturb(1:im,1:jm),im,jm)
++        call w2('U1AA',u1_after_aturb(1:im,1:jm),im,jm)
++        call w2('V1AA',v1_after_aturb(1:im,1:jm),im,jm)
++        call w2('USTARPBL',atmsrf%ustar_pbl(1:im,1:jm),im,jm)
++        call w2('LMONINPBL',atmsrf%lmonin_pbl(1:im,1:jm),im,jm)
++        call w2('DDM1',ddm1(1:im,1:jm),im,jm)
++        call w2('TSAVG',atmsrf%tsavg(1:im,1:jm),im,jm)
++        call w2('QSAVG',atmsrf%qsavg(1:im,1:jm),im,jm)
++        call w2('USAVG',atmsrf%usavg(1:im,1:jm),im,jm)
++        call w2('VSAVG',atmsrf%vsavg(1:im,1:jm),im,jm)
++        call w2('TGVAVG',atmsrf%tgvavg(1:im,1:jm),im,jm)
++        call w2('QGAVG',atmsrf%qgavg(1:im,1:jm),im,jm)
++      endif
++      close(fu)
++      contains
++      subroutine w1(nm,a,n1)
++      character(len=*) :: nm
++      integer :: n1
++      real*8 :: a(n1)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 1, n1,1,1,1
++      write(fu) a
++      end subroutine w1
++      subroutine w2(nm,a,n1,n2)
++      character(len=*) :: nm
++      integer :: n1,n2
++      real*8 :: a(n1,n2)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 2, n1,n2,1,1
++      write(fu) a
++      end subroutine w2
++      subroutine w3(nm,a,n1,n2,n3)
++      character(len=*) :: nm
++      integer :: n1,n2,n3
++      real*8 :: a(n1,n2,n3)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 3, n1,n2,n3,1
++      write(fu) a
++      end subroutine w3
++      subroutine w4(nm,a,n1,n2,n3,n4)
++      character(len=*) :: nm
++      integer :: n1,n2,n3,n4
++      real*8 :: a(n1,n2,n3,n4)
++      character(len=16) :: nm16
++      nm16=nm
++      write(fu) nm16, 4, n1,n2,n3,n4
++      write(fu) a
++      end subroutine w4
++      end subroutine ffas_dump
++
+ 
+       subroutine atm_phase2
+       USE TIMINGS, only : ntimemax,ntimeacc,timing,timestr
+@@ -464,6 +593,7 @@
+          CALL UPDTYPE
+ C**** ADD DISSIPATED KE FROM COLUMN PHYSICS CALCULATION BACK AS LOCAL HEAT
+       CALL DISSIP ! uses kea calculated before column physics
++      call ffas_dump('d')
+          CALL CHECKT ('DISSIP')
+          CALL TIMER (NOW,MSURF)
+          IF (MODD5S.EQ.0) CALL DIAGCA (7)
+@@ -501,6 +631,7 @@
+          CALL TIMER (NOW,MTRACE)
+          CALL CHECKT ('T3DSRC')
+ #endif
++      call ffas_dump('e')
+       call accum_ma_ia_src
+ C****
+ C**** WRITE SUB-DAILY DIAGNOSTICS EVERY NSUBDD hours

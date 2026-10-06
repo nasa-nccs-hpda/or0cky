@@ -361,6 +361,19 @@ bound; libm 149 columns (4.7%) beyond it (the D126 threshold flips, statistical 
 two pole columns, the `mc_new_ddrft_thetav=0` arm (asserted off), the Q-advection qlimit line loop. Diagnostic
 accumulators are not reproduced. Remaining cost: ~4.3 s MSTCNV per step.
 
+**D127-D129 (chained atmosphere step, F1 gate; milestone with caveats):** `atm_step.py` chains dynamics, radiation
+hand-off (recorded SOCRATES outputs), surface/PBL/GHY, CONDSE, DISSIP and FILTER for one 30-minute step from the real step-start
+state. **F1 verdict (pre-declared categories A bitwise / B <=1e-12 / C <=1e-6 / D worse, not loosened):** with the Intel
+libimf and the *recorded* land patch the gate is MET with named exception columns (dec01 step 0 strictly A/B; nov26 W2GCM
+4 columns at 1.7e-12; jan01 one column <=2.5e-12; one flipped CONDSE column at dec01 33555 gives PRECSS 1.7e-4). With the
+*ported* GHY it is NOT MET on nov26 step 0 (errors confined to the known runoff-threshold cell (62,34) and neighbours: T 6.2e-5 K,
+U 4.0e-4 m/s) and PARTLY MET on dec01/jan01 (all fields <=1e-6 of scale, worst 1.85e-7); I reproduced the dec01 verdict. Without
+libimf it is not met (CONDSE threshold flips in 3-4.6% of columns; free-running 6 steps diverge chaotically, T up to 0.07-0.16 K).
+Radiation (SOCRATES) and Ent vegetation exports are recorded inputs in every case. Findings: DRYCNV is not a separate stage in
+this build; the TMOM/QMOM first-layer update (SURFACE.f:1068-1089) needed a port; RADIA zeroes CLDSS/CLDMC on radiation steps.
+Timing with the per-column CONDSE: ~6 s per step plus 116-138 s CONDSE (the batched CONDSE of D130-D132 is not yet wired in).
+119 tests (`ATM_STEP_SLOW=1`).
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
