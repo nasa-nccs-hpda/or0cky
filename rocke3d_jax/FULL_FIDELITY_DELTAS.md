@@ -2526,6 +2526,62 @@ Real DAILY_ATMDYN deltam: nov26 -3.27e-11, dec01 -3.82e-11, jan01 -4.18e-11 (MA 
 Limitations: only 6-step windows (DAILY: 1 call/date); aij diagnostics inside these routines are not ported; pole cells I>1 of PGRAD_PBL/recalc outputs are unset in Fortran and excluded.
 Owner: Glenn Tamkin. Source: modelE2_planet_2.0 model/ATM_UTILS.f, ATMDYN.f, ATMDYN_COM.F90, DIAG.f, ATM_DRV.f. Review: next atmosphere session.
 
+## D103: `AADVQ0` (moisture-advection flux-cycle preparation) ported, exact on all 18 real calls (2026-10-05)
+
+`AADVQ0` (QUS3D.f:292-829), with `XSTEP` (835-893) and `ZSTEP` (896-928), ported in `fullfidelity/dyn_aadvq_ff.py`
+(`aadvq0`, `xstep_rows`, `zstep`). It picks `ncyc` (<=10), per-level `ncycxy`, per-row `nstepx`, the z-extra columns
+(`lminzij/lmaxzij/nstepz_extra/mw_extra`), rescales `MUs/MVs/MWs` (MV shifted one row, `pv_south` saved, `mw_extra` subtracted),
+and builds the flow-out-both-sides tables. Validated per call (3 dates x 6 steps = 18 QDYNAM calls) against
+`ffd_qdyn_<it>_q0.bin`: **all integer outputs equal, scaled MUs/MVs/MWs/pv_south max difference 0.0, checkflux tables identical.**
+Two single-precision traps replicated: `byn = 1./ncyc` and `byNXY = 1./ncycxy(l)` are REAL*4 divisions promoted to double;
+`mrat_limy = 0.20` is a REAL*4 literal (0.20000000298023224). Serial: both poles local, halo/pack code skipped (no state effect).
+Coverage (measured): in the real windows ncyc=1 and ncycxy=1 on every level in all 18 calls, no z-extra column, X nstep reaches 2
+(a few rows); so the cycle branches are validated by stress dumps (D104/D105) and a standalone ifort build of the real QUS3D.f (below).
+Branch note: for j=1 the Fortran reads `mv(i,0,l)` out of bounds in the z-extra div1d; the port uses the memory neighbour (0 for l>1).
+`ZSTEP` has no iteration cap in Fortran (a layer emptied to exactly 0 mass never converges; int32 wrap ends it); the port raises after 200000.
+Instrumentation: `ATMDYN_qdynam.f.patch`, `QUS3D_qdynam.f.patch` (the live routines are in QUS3D.f, not QUS_DRV.f), `ATM_DRV_dynE.f.patch`
+(`diff -u` vs pristine, local hunks, verified to apply to pristine); units 1140-1144, 1149 (grepped over tree and patches: unused).
+Owner: project owner; source ModelE2_planet_2.0 (read-only).
+
+## D104: moisture-advection sweeps `aadvqx/y/z`, `checkflux`, `aadvqz_column`, cycle loop `AADVQ` ported, exact (2026-10-05)
+
+`AADVQ` (QUS3D.f:53-289, qlimit=.TRUE., tname 'q'): cycle loop `ncyc`, per level (ncycxy sub-cycles) y-checkflux, `aadvqy`, `aadvqx`,
+z-checkflux, then the interface sweep `aadvqz` between layers L-1 and L carrying (`mwdn, fdn, fdn0, fmomdn`) sequentially in L (L=LM+1
+closes the top), and the extra column advection `aadvqz_column` for z-extra columns. One expression tree (`face_flux`, `cell_update`) with
+the direction permutation as data serves X/Y/Z; the sweeps are vectorised (every face flux uses the pre-update state of its two cells) and
+tested against literal scalar transcriptions (`aadvqx_rowloop`, `aadvqy_loop`, `aadvqz_loop`, `aadvqz_column`). `fracm**3` = `np.power`.
+Polar caps, `sbf/sbm/sfbm` and `scf/scm/sfcm` diagnostics accumulate left to right; `scf3d` accumulated per level.
+Validation, per call, against 199 recorded stages (after y-checkflux, Y, X per level; after z-checkflux; the vertical carry after every
+AADVQZ; full state after the L loop; AADVQ outputs RM/RMOM/MMA, the six zonal diagnostics, SCF3D): **max difference 0.0 on every array of
+all 18 real calls (1,324,800 Q/QMOM values per call all equal).** Real coverage: limiter branches all hit (x: 1656 pos<0, 455 neg>0, 367 pos>rm,
+30 neg<-rm over the windows; y and z likewise), y-checkflux fires 35 times, z-checkflux 21 times, x-checkflux never.
+Stress (real Fortran, env `FFD_QDYN_STRESS=8` scales MUs/MVs/MWs of the call; SYNTHETIC input perturbation, model keeps running):
+18 calls with ncyc 4 and 6, up to 3 extra z steps, 57 z-extra columns, x-checkflux fired 17 times: **all 18 bitwise exact incl. 800-1200
+checkpoints per call** (`ffd_qdynS8_*`). Stress x16 reached ncyc 7-8 then ncyc>ncmax (model's own stop). ncycxy>1 was never reached by any
+flux scaling of the real model state (u, v, w scaled separately or together up to x24: ncyc>ncmax first).
+Standalone harness (`instrumentation/qus3d_standalone_{stubs,drv}.f90`; the REAL QUS3D.f compiled unmodified with serial stubs for the
+domain-decomposition/ATM_COM/GEOM modules, same ifort flags): 7 SYNTHETIC cases (real state, hand-designed fluxes) -- zero flux, ncyc=2,
+ncycxy=2 on one level, a uniform zonal flux giving nstepx=5, a combination, real fluxes x(3,3,4) with ncyc=3, and the real call -- all
+bitwise exact against the port; the ncyc>ncmax case stops in both (stop_model / QusError). Hand-derived expectations asserted (ncyc==2,
+ncycxy[l]==2 and 1 elsewhere). Data `ff_data/qus3d_harness`. NOT validated against any model run: ncycxy>1 (synthetic only),
+`ncycxy>ncmax`, `too many steps in xstep` (unit test of ierr only), and a hand-built z-extra case (degenerate, see D103).
+
+## D105: `QDYNAM` driver glue ported, exact on all 18 real calls (2026-10-05)
+
+`QDYNAM` (ATMDYN.f:3039-3101) in `dyn_aadvq_ff.qdynam`: `MB = MAOLD*KG2MB*AXYP`, `AADVQ0`, concentration -> mass (`Q*MB`, `QMOM*MB`),
+`AADVQ`, back conversion with the UPDATED `MMA` (`1/MMA` multiply). Recorded Q/QMOM at exit (`ffd_qdyn_<it>_fin.bin`): **exact equality on
+all 1,324,800 values of every call, 3 dates x 6 steps.** `ain` (mass units at AADVQ entry) and MB (dumped) equal. The `AGC` diagnostic adds
+are not ported (diagnostics only); `safv/sbfv` module arrays are not ported (unused outside AADVQ). Tests: `tests/test_dyn_aadvq_ff.py` (46 tests, ~70 s, all pass)
+(mutations: checkflux off, X/Y spec swap, wrong carry, wrong KG2MB, REAL*8 byn -- all detected; the byn mutation only on the ncyc=6 stress call jan01 17520).
+Dump size per date: 37 files, ~750 MB (6 x {in 16 MB, q0 5 MB, ain 11 MB, ck 52 MB (ncyc=1), out 13 MB, fin 11 MB}); no subsampling.
+Stress S8: ~750-1100 MB per date (ncyc 4-6 gives 800-1200 checkpoints).
+
+## D106: remaining QDYNAM pieces
+
+The scoping doc lists nothing in QDYNAM beyond D103-D105 (`AADVQ0`, `AADVQ`, `aadvqx/y/z`, `aadvqz_column`, `XSTEP/ZSTEP`, `checkflux`).
+Not ported, by decision: the `*2` unlimited variants (dead: qlimit=.TRUE.), upwind-halo pack tables (serial no-ops), `AGC` zonal diagnostic
+adds (`jl_totntlh` etc.; diagnostics), `TrDYNAM` (tracers off). Remaining unexercised in model runs: ncycxy>1 and ncyc>=7 (synthetic/harness or stress only).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
