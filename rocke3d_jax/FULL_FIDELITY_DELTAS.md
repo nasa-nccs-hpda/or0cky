@@ -2516,6 +2516,16 @@ Files: `fullfidelity/clouds_lscond_ff.py`, `clouds_lscond_io.py`, `clouds_lscond
 `instrumentation/CLOUDS2_lscond.f90.patch`, `instrumentation/ATM_DRV_clouds_lscond.f.patch`.
 Owner: (project lead to assign). Review date: before the first radiation hand-off delta.
 
+## D114-D117: dynamics coupling glue (CALC_TROP/tropwmo, COMPUTE_WSAVE, calc_kea_3d, regrid_btoa_3d, DISSIP, CONSERV_SE + energy-fix block, PGRAD_PBL, recalc_agrid_uv, DAILY_ATMDYN) ported and validated bitwise
+
+Status: all nine routines bitwise exact (max |diff| = 0, 0 mismatching cells) on 3 dates x 6 steps, including every call of recalc_agrid_uv (6-7 per step, call sites 1-5 identified) and one REAL end-of-day DAILY_ATMDYN call per date (the dump runs were extended to 50 steps to cross the day boundary). Same result with numpy pow and with the libimf bridge (tropwmo), and with recorded or analytic geometry (dyn_geom_ff + new rapj/idij/idjj/sinip/cosip/bydxp). 43 tests pass (graphcast-env python, ~16 s).
+Files: fullfidelity/dyn_glue_ff.py, dyn_glue_io.py, dyn_glue_compare.py, tests/test_dyn_glue_ff.py; patches instrumentation/ATM_DRV_dynF.f.patch (helpers ffdg_*, units 1240-1251), ATMDYN_glue.f.patch, ATM_UTILS_glue.f.patch, ATMDYN_COM_glue.f90.patch, SURFACE_glue.f.patch, ATURB_glue.f.patch, CLOUDS2_DRV_glue.f90.patch, DIAG_glue.f.patch.
+Reused by import from dyn_filter_ff (not duplicated): seqsum, conserv_ke (CONSERV_KE + regrid_btoa_ext), global_sum_ij, matopmb.
+Real-data facts: tropopause level varies over >=5 levels; 57,060 columns checked; tropwmo branches exercised: pressure-limit exit, GISS failsafe, WMO candidate (61,897), zptf=0 (579), ldtdz false (57,910), jj cycle (3,987), jj valid exit (57,060), jj discard (4,837), ltropp overwritten after failsafe (22,264). NOT exercised in real data (hand tests only, labelled NOT VALIDATED): no pressure-limit exit, jj loop ended without exit, default ltropp=iplimt-1/ierr=1 (no "TROPWMO error" in any run), DAILY early returns and the ITIME==ITIMEI path. Dead/not hooked: ATM_DRV.f:729 and :1361 recalc_agrid_uv (cold start / relayer), STRATDYN regrid_btoa_3d callers, cubed-sphere PGRAD_PBL. regrid_btoa_ext/conserv_KE/conserv_PE were already covered by D101/D102.
+Real DAILY_ATMDYN deltam: nov26 -3.27e-11, dec01 -3.82e-11, jan01 -4.18e-11 (MA change ~2e-12 per layer) - small but the real code path.
+Limitations: only 6-step windows (DAILY: 1 call/date); aij diagnostics inside these routines are not ported; pole cells I>1 of PGRAD_PBL/recalc outputs are unset in Fortran and excluded.
+Owner: Glenn Tamkin. Source: modelE2_planet_2.0 model/ATM_UTILS.f, ATMDYN.f, ATMDYN_COM.F90, DIAG.f, ATM_DRV.f. Review: next atmosphere session.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

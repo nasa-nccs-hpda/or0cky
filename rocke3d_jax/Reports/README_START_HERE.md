@@ -306,6 +306,12 @@ most fields, and up to 1.2e-7 absolute on sqrt-amplified cloud fields (CLEARA, C
 flips. Never reached by real data: negative TAUSS, the VMP stop_model arm, ER>ERMAX clip, QNEW<0, CTEI CKR>CKM and
 FPMAX<=0 cycles, FMASS clipping (3 of these have synthetic tests).
 
+**D114-D117 (dynamics coupling glue):** `dyn_glue_ff.py` ports CALC_TROP/tropwmo, COMPUTE_WSAVE, PGRAD_PBL, DISSIP,
+calc_kea_3d, regrid_btoa_3d, recalc_agrid_uv, the energy-fix block and DAILY_ATMDYN (the latter validated by extending
+the dump runs to 50 steps across the day boundary); bitwise on all calls, 3 dates. Never hit in real data (hand tests,
+labelled): tropwmo no-limit-exit/no-valid-level/default-level paths, DAILY_ATMDYN early returns. Not hooked (dead):
+the two ATM_DRV recalc_agrid_uv cold-start/relayer calls, cubed-sphere PGRAD_PBL, STRATDYN callers.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -336,7 +342,7 @@ PO for the OCONV loop (read from the setup record), and a chained whole-ocean JA
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 2052 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1247 new D78-D109 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79, `test_clouds_lscond_size_ff.py` 33, `test_clouds_lscond_ff.py` 45).
+**Test count: 2095 passed, 0 failed** (805 from the full regression on the D77-level tree, run 2026-10-05 in 12 min; plus the 1290 new D78-D117 tests run separately: `test_odhorz_vec_jax.py` 6, `test_oadvt_vec.py` 12, `test_ocnmeso_vec.py` 3, `test_oadvt_jax.py` 6, `test_gm_vec.py` 9, `test_ocnmeso_jax.py` 3, `test_gm_jax.py` 9, `test_icedyn_vec.py` 23, `test_icedyn_jax.py` 21, `test_clouds_dq_ff.py` 20, `test_dyn_fltruv_ff.py` 48, `test_dyn_aflux_ff.py` 311, `test_dyn_pgf_ff.py` 145, `test_dyn_advecv_ff.py` 116, `test_dyn_avrx_ff.py`+`test_dyn_isotropuv_ff.py`+`test_dyn_sdrag_ff.py` 227, `test_dyn_aadvt_ff.py` 82, `test_clouds_helpers_ff.py` 29, `test_clouds_massflux_ff.py` 20, `test_dyn_filter_ff.py` 79, `test_clouds_lscond_size_ff.py` 33, `test_clouds_lscond_ff.py` 45, `test_dyn_glue_ff.py` 43).
 
 ## Standing conditions
 

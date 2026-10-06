@@ -524,3 +524,17 @@ literal (value taken from the dump); (3) the pole columns have KMAX=72 (UM/VM ar
 uninitialised Fortran stack above LMCLD (=29): compare only L<=LMCLD; (5) the LSCOND routine reads and writes module arrays, so the hooks
 live inside LSCOND and the packing routine `ffls_pack_state` inside module CLOUDS.
 Scratch tree used here: `<scratchpad>/mE_cloud3/mE2` (the original ModelE tree and other sessions' scratch builds were not touched).
+
+## D114-D117 (coupling glue) build and run lines
+
+Patches (diff -u against PRISTINE files, each verified with patch on a fresh copy; ATM_DRV_dynF verified byte-identical to the built file). Units 1240-1251 grepped over model/*.f,*.F90,*.f90,*.h and all instrumentation patches: unused (1252-1269 spare).
+    cd $COPY/model; chmod -R u+w .
+    patch ATM_DRV.f < ATM_DRV_dynF.f.patch   # helpers ffdg_* after 'end subroutine atm_phase1_exports' + efix/site hooks in atm_phase1
+    patch ATMDYN.f < ATMDYN_glue.f.patch; patch ATM_UTILS.f < ATM_UTILS_glue.f.patch; patch ATMDYN_COM.F90 < ATMDYN_COM_glue.f90.patch
+    patch SURFACE.f < SURFACE_glue.f.patch; patch ATURB.f < ATURB_glue.f.patch; patch CLOUDS2_DRV.F90 < CLOUDS2_DRV_glue.f90.patch; patch DIAG.f < DIAG_glue.f.patch
+Build as D89/D99 (rsync copy, absolute make target, source env_modele.sh in same shell, SOCRATESPATH set): about 2 min, 0 errors. Scratch tree: <scratchpad>/mE_dynF/mE2.
+Run: as D99 (I, P2SAoM40ln, P2SAoM40uln, runtime_opts; both restarts from _pristine_restarts; OMP_NUM_THREADS=1; FFD_START/FFD_NSTEP=6) BUT end date = one day + 1 h so DAILY_ATMDYN fires: first YEARE line 1950,11,27,1 / 1950,12,2,1 / 1950,1,2,1 (50 steps, ~6 min, three dates concurrent, rc=0). Run script: <scratchpad>/mE_dynF/work/rundates.sh. Dumps other than DAILY are gated to the 6-step window; DAILY only needs FFD_START.
+Copy ffd_glue_* into ff_data/<date>/ with \cp -n (51 files, ~480 MB per date: recalc 7 calls/step x 4.2 MB dominates, then kea/rg3/dissip/efix/trop/wsave; nothing sampled; consts 2.3 MB).
+Dump layouts: docstring of fullfidelity/dyn_glue_io.py. Call-site ids for recalc_agrid_uv: 1 SURFACE.f:426, 2 ATURB.f:619, 3 CLOUDS2_DRV.F90:565, 4 :2594, 5 DIAG.f:213 (DIAGA, fires on some steps), 0 unlabelled (none seen). calc_kea_3d sites: 1 ATM_DRV step-7, 2 inside DISSIP.
+Pitfalls: `mv`/`cp` are interactive aliases (use \mv, \cp); fixed-form lines must stay <=72 columns; efix needs Q and QCI for CONSERV_SE (added after the first build); stream files are opened with position='append' (works in ifort 19.1).
+Validate (fullfidelity/): python3 dyn_glue_compare.py [--imf-pow] [--analytic-geom]; PYTHONPATH=fullfidelity pytest fullfidelity/tests/test_dyn_glue_ff.py (43 passed).
