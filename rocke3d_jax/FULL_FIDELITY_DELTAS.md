@@ -2742,6 +2742,43 @@ Files: fullfidelity/ghy_fix_candidate.py, test_ghy_fix_candidate.py (pytest cell
 
 **Applied (2026-10-06, session driver):** the conditioning was applied to `land_chain.run_ghy` (existing file; `ghy_fix_candidate*.py` were not committed, superseded). 70 land tests pass; regression test `tests/test_land_chain_precip_conditioning.py` (2 tests, both substeps of cell (62,34) vs the real record at 1e-10 relative). I re-ran the nov26 step-0 F1 verdict with the ported GHY and libimf: PARTLY MET (13 fields C, 1 A, worst Q 9.96e-7 of scale), previously NOT MET. The second discrepancy (about 97 nov26 cells with runoff terms differing from the real record in both ghy_ref and ghy_jax) remains undiagnosed.
 
+## D133: batched CONDSE wired into the chained atmosphere step (atm_step_fast.py)
+
+New files (nothing existing edited): `fullfidelity/atm_step_fast.py`, `fullfidelity/atm_step_fast_compare.py`, `fullfidelity/tests/test_atm_step_fast.py`.
+`atm_step_fast.stage_condse_fast` is `atm_step.stage_condse` with `clouds_condse_batch.condse_step_batch` (poles per-column, LSCOND module-array carry `ms` as in D132); `run_step` / `run_chain` bind it into `atm_step.stage_condse` for the duration of the call (`atm_step.run_step` resolves the stage at call time), so dyn, radia (recorded), surface, dissip, filter and all recorded-input rules are exactly atm_step's. `ensure_backend(ctx)` re-applies the libm/libimf switch (process-global in clouds_condse_ff). The batch has no column-subset mode (`cols=` raises).
+
+Verification (step 0 of nov26, dec01, jan01, both modes, land_mode='recorded', from the real step-start state; `python3 atm_step_fast_compare.py --equiv [--imf]`): per-column chain (atm_step.run_step) vs fast chain.
+- CONDSE-exit state (18 fields) and end-of-step state (30 fields): **0 differing cells in every field, all 3 dates, libm and libimf** (bitwise identical). Hence the F1 verdict is unchanged: libimf nov26 and jan01 `MET with named exception columns`, dec01 `MET`; libm `NOT MET` (the known libm pow dynamics mismatch, not a CONDSE issue), identical for both chains.
+- Wall time per full step (dyn+CONDSE+radia+SURFACE(recorded land)+dissip+filter): per-column 139-196 s (libimf), 122-165 s (libm); fast **13.4-15.3 s (libimf)** [dyn ~4.0-4.8, CONDSE ~8.1-8.8, surface 0.6-1.0, filter 0.5], **8.7-9.6 s (libm)** [dyn ~3, CONDSE ~5-6]. Speed-up about 10-20x. (The per-column and fast runs of one date ran in one process, sequentially; other agents'/my other jobs ran concurrently on the node, so the timings are +/- noise.)
+- Tests: `tests/test_atm_step_fast.py`, 4 passed in 226 s (patch restore, cols NotImplemented, libm CONDSE-stage bitwise vs per-column incl. carry fields + input-perturbation mutation, libimf fast end state vs real <= 1e-9 on prognostic fields + whole step < 120 s + a 1e-3 T-perturbation mutation that must worsen the end state >= 100x).
+- Not done: GHY land mode was not exercised in these runs (recorded land; land is independent of CONDSE).
+- A harmless RuntimeWarning (divide, `fw0/(fw0+fsi)` in clouds_condse_batch.hand_off_b) is emitted by numpy on masked entries that np.where discards; not changed.
+
+## D134: multi-step fast chain (6 steps x 3 dates), step k+1 fed OUR end state of step k
+
+`python3 atm_step_fast_compare.py --chain [--imf]` (atm_step_fast.run_chain; same hand-over as atm_step.run_free: atmosphere + ATURB/PBL hidden state + CONDSE cloud/precip carry + LSCOND `ms`). Recorded per step k: SOCRATES SRHR/TRHR/COSZ1 (with RADIA cloud masking carried), SURFACE tile/PBL/land-ice/GHY(recorded land)/Ent records, sea-ice/lake/ocean state, the non-atmosphere CONDSE entry fields. After each stage the state is compared with the real boundary dump of that stage of the SAME step (so for k>=1 the inputs of the stage already differ); the end state is compared with ffa_step_e = the real next-step start. Categories A bitwise / B <=1e-12 / C <=1e-6 / D worse of field scale. All 3 dates x 6 steps ran, libimf and libm. Per-step wall 9-16 s (some steps 24-31 s while 4-5 jobs shared the node; first step of each process includes jit warm-up, 26-67 s).
+
+libimf (Intel libimf), end-of-step categories (30 fields) and gate-field growth:
+| date step | stage categories at stage exit | columns >1e-12 (T,Q,QCL,QCI,TMOM,QMOM,U,V): dyn exit / CONDSE exit / new at CONDSE / end | end rel T / Q / U |
+|---|---|---|---|
+| nov26 0 | dyn A27; condse A14 B4; end B26 C2 A2 | 0/0/0/0 | 1.9e-15 / 1.6e-13 / 8.4e-15 |
+| nov26 1 | dyn B24 C2 A1; condse D12 B5 A1; end D22 B8 | 0/176/176/597 | 1.2e-4 / 1.4e-2 / 3.1e-4 |
+| nov26 2 | dyn D26; condse D18; end D30 | 3240/3240/0/3312 | 2.1e-4 / 2.4e-2 / 3.5e-3 |
+| nov26 3,4,5 | all D | 3312 | T 3.1e-4..3.6e-4, Q 3.1e-2..6.4e-2, U 5.3e-3..5.6e-3 |
+| dec01 0 | dyn A27; condse B10 A8; end B27 A2 C1 | 0/0/0/0 | 1.9e-15 / 5.8e-13 / 4.6e-14 |
+| dec01 1 | dyn B24 C2; condse D12; end D22 C7 B1 | 0/209/209/3312 | 6.1e-5 / 5.2e-3 / 3.0e-4 |
+| dec01 2..5 | all D | 3312 | T 9e-5..2.3e-4, Q 7e-3..3.8e-2, U 2.5e-3..1.1e-2 |
+| jan01 0 | dyn A27; condse B12 A6; end B23 C5 A2 | 0/0/0/1 | 2.3e-15 / 1.1e-12 / 1.1e-13 |
+| jan01 1 | dyn B23 C3; condse D12; end D19 C9 | 1/157/156/3312 | 8.4e-5 / 7.4e-3 / 3.0e-4 |
+| jan01 2..5 | all D | 3312 | T 8.8e-5..2.1e-4, Q 1.7e-2..3.0e-2, U 3.9e-3..1.3e-2 |
+(column count is the union over the 8 prognostic fields, of 3312 horizontal columns incl. pole rows' duplicates as counted by atm_step_compare.columns_over_bound.)
+
+First failing stage (any field beyond the B bound, 1e-12 of scale): step 0, SURFACE (end state still within the D129 gate; first inexact stage is CONDSE, B level); steps >=1: `dyn` (because the stage inputs are already our drifted state; see below), then every stage.
+libm: the dynamics is already C level at step 0 (numpy pow, known), the CONDSE of step 0 creates 131 / 143 / 96 new columns beyond 1e-12 (nov26/dec01/jan01) with worst relative error 2.3e-2 / 1.3e-2 / 1.0e-2 in those columns versus <= 1.0e-12 outside them; all steps >= 1 are D everywhere (3312 columns); end-state rel after step 5: T 2.0e-4..4.7e-4, Q 2.8e-2..6.5e-2, U 4.2e-3..7.9e-3 (nov26 shows one outside-column worst 1.3 in step 5 for a small-scale field; not analysed).
+
+Interpretation (chaotic divergence), only what the runs show: in libimf mode step 0 is bitwise through dynamics and rounding-level (<= 2e-12 of scale) through the whole step with no CONDSE threshold flip beyond 1e-12 (0 columns). That rounding-level end state is the input of step 1: step 1's dynamics exit is still <=1e-12 of scale in 0-1 columns (smooth part, categories B/C only in a few fields), and at CONDSE of step 1 157-209 NEW columns jump to 1e-2 relative error (the largest relative error inside the new columns 1.4e-2..2.1e-2 versus <=1.0e-12 outside them): this is the first threshold-flip event; essentially all of the divergence that exceeds rounding level appears there, in one stage, localised in columns, not as smooth growth. Within the same step the differences spread through SURFACE/DISSIP/FILTER (597 columns at the end of nov26 step 1, 3312 at the end of dec01/jan01 step 1) and from step 2 on the dynamics exit already differs in 3240-3312 columns, so later growth is spreading plus slow amplification of an O(1e-2) local error (Q end rel 1.4e-2 -> 6.4e-2 in nov26 over steps 1-5; T 1.2e-4 -> 3.6e-4; U 3e-4 -> 5.6e-3), roughly an order of magnitude over the first flip event for U and little for Q, not exponential on this 6-step horizon. libm mode shows the same picture one step earlier (the rounding-level libm dynamics difference reaches the CONDSE flips already in step 0). Not shown by these runs: whether a flip-free chain would stay at rounding level (no such real data exists); which individual CONDSE branch flips (not instrumented here; D124-D126 attribute the isolated flips to threshold tests). The F1 gate (one step from the real state) is therefore met by the chain in libimf mode, but a free-running multi-step comparison against a single real trajectory cannot be bitwise beyond step 1; judge it statistically (F2), not pointwise.
+Files with the raw output (scratchpad): ch_imf_nov26.json/log, ch_imf_rest.json/log, ch_libm.json/log, eq_*.json/log.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

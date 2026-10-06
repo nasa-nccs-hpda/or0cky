@@ -380,6 +380,14 @@ test. With the fix the F1 verdict with the *ported* GHY is **PARTLY MET on all t
 of scale). Still open: ~97 of 753 nov26 land cells have runoff terms (aruns etc., up to 3.7e-4 of scale) that differ from the real
 record in both ghy_ref and ghy_jax; undiagnosed.
 
+**D133-D134 (fast chained step, first multi-step run):** `atm_step_fast.py` is the chained step with the batched CONDSE; it is
+bitwise identical to `atm_step.py` (0 differing cells, step 0, 3 dates, libm and libimf) at ~9-15 s per step instead of 120-196 s.
+Six-step run from our own end states (recorded land/radiation inputs): step 0 at rounding level (dynamics bitwise, CONDSE <=2e-12);
+at step 1 CONDSE threshold flips create 157-209 columns with 1-2% errors, which then spread (597 to all 3312 columns by the
+end of step 1) and grow slowly (nov26 T 1.2e-4 -> 3.6e-4, Q 1.4e-2 -> 6.4e-2, U 3e-4 -> 5.6e-3 of scale over steps 1-5); beyond step 1
+a single real trajectory cannot be matched bitwise, so acceptance must be statistical (F2). Not instrumented: which CONDSE branch
+flips; libm nov26 step 5 shows a worst error of 1.3 on a small-scale field (not analysed). Land was recorded, not ported, in these runs.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
