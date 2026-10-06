@@ -353,6 +353,14 @@ bitwise; a free-running 12-step chain stays within ~1e-8. 4.05 s per step warm (
 Still recorded inputs: AG2OG/IG2OG fluxes, the OPFIL2 coefficient file, the straits start state, ODIFF (not ported;
 recorded on the steps where it fires). Needs the OFTAB tables from the original ModelE support directory.
 
+**D130-D132 (clouds, batched across columns, numpy):** `clouds_lscond_batch.py`, `clouds_mstcnv_batch.py`,
+`clouds_condse_batch.py`. Profile of the per-column CONDSE (~111 s/step): MSTCNV 88%, LSCOND 3%. The batched CONDSE takes
+~5 s per step in libm mode (7.6-8.3 s with libimf), about 22x faster, and reproduces the per-column ports bit for bit in
+libm mode (0 of 62 exit fields differ, 3 dates). Against the real exit state: libimf 0 failing fields, 0 columns beyond the
+bound; libm 149 columns (4.7%) beyond it (the D126 threshold flips, statistical acceptance needed). Still per-column: the
+two pole columns, the `mc_new_ddrft_thetav=0` arm (asserted off), the Q-advection qlimit line loop. Diagnostic
+accumulators are not reproduced. Remaining cost: ~4.3 s MSTCNV per step.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
