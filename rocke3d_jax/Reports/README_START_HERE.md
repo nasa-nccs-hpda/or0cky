@@ -361,22 +361,23 @@ side from the scoping documents in `fullfidelity/scoping/`.
 `GLMELT` (daily cadence, never exercised), `IRRIG_LK` (Stage 1, external dataset not in this environment),
 PO for the OCONV loop (read from the setup record), and a chained whole-ocean JAX step.
 
-**Remaining effort, revised 2026-10-05 (focused effort hours, including validation; an estimate, not a measurement):**
-- Ocean side about 20-35 h (was 30-50 h; the ODHORZ/OADVT2/OCNMESO/GM batching and JAX items of D78-D86
-  are done). Left: sea-ice dynamics batching (D87, in progress) 1-3 h; X pre-pass 1-2 h; the cut corners
-  listed above 4-8 h; DYNSI body regrid/stress setup 3-6 h; chained whole-ocean JAX step and its multi-step
-  validation 8-15 h.
-- Atmosphere side, scoped 2026-10-05 (low-to-moderate confidence; see `fullfidelity/scoping/`; SOCRATES excluded
-  per the standing condition): clouds (MSTCNV/LSCOND, `ATM_CLOUDS_SCOPE.md`) about 70-110 h including JAX
-  (numpy-only 57-92 h); atmospheric dynamics (`ATM_DYNAMICS_SCOPE.md`) about 35-80 h, central 50 h; radiation
-  driver/utilities not scoped, placeholder 8-20 h; atmosphere driver/coupling glue 8-15 h. These supersede the
-  earlier 15-25 h (clouds) and 12-20 h (dynamics) placeholders, which were taken from raw line counts and left out
-  instrumentation, JAX batching and chained validation.
-- F1/F2 multi-step validation of the chained model 10-20 h.
-- **Total for the full port: about 150-280 h, central estimate ~200 h** (revised up from 75-135 h after the
-  atmosphere scoping). Basis: the scoping documents' per-piece hours plus the plan's observed rate of roughly one
-  hour per 1,000 Fortran lines for stateless pieces, longer for stateful or heavily branching code. Subagents
-  shorten wall-clock time, not effort.
+**Remaining effort, revised 2026-10-06 (focused effort hours, including validation; an estimate, not a measurement):**
+Done and validated since the 2026-10-05 scoping: the ocean pieces and a chained whole-ocean step (D118-D120), the
+atmosphere dynamics pieces and a chained dynamics step (D90-D123), and the cloud kernels, MSTCNV, LSCOND and the
+CONDSE column chain (D89-D126). What is left:
+- Finish and validate the chained atmosphere step and give the F1-gate verdict (D127-D129; plan, a 778-line chain and
+  tests written, the instrumented dump run and comparison still to do): 3-8 h.
+- Speed: CONDSE in Python is ~125 s per step, the ocean 4 s, dynamics 3 s: batching/JAX for the cloud code and the
+  chains so a run is possible at all: 15-30 h.
+- Remaining ocean items (ODIFF, AG2OG fluxes, OPFIL2 coefficients, straits start state, X pre-pass): 5-10 h.
+- Multi-step F2 validation of the chained model and the day-boundary physics not yet exercised: 6-12 h.
+- Radiation: only as a recorded-input boundary (SOCRATES is never ported); a runnable model still needs the library
+  or recorded values: undetermined, not counted.
+- Housekeeping: consolidate the duplicated FFT72 code, audit other constants for loose-tolerance errors like the
+  OMEGA error: 2-4 h.
+- **Total: about 30-65 h, central ~45 h**, down from 150-280 h on 2026-10-05 because the dynamics and cloud kernels and
+  the chains are done. Confidence is moderate: the earlier estimates grew when scoping found more work, and the
+  multi-step and speed items have not been tried.
 
 **Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
 (has jax and omegaconf); the default python lacks omegaconf. Run regression with
