@@ -22,7 +22,7 @@ ROCKE-3D Update - 20261006 (status as of 17:30 EDT; detailed evidence in README_
   - The batched cloud code is not yet wired into the joined step, and nothing is yet in a GPU (JAX) form for the atmosphere; per step the joined run is about 6 seconds plus clouds (about 5 s batched).
   - Only single steps (up to 12 steps) are validated, not days or months of simulated time, and a multi-step run will drift from the real model chaotically once a threshold flips.
 
-**Is the path realistic soon? Partly, and the scale depends on the target.** (Estimates; the radiation plan in  has the basis.)
+**Is the path realistic soon? Partly, and the scale depends on the target.** (Estimates; the radiation plan in `fullfidelity/scoping/RADIATION_AND_F2_PLAN.md` has the basis.)
 - **Reached:** a validated one-step atmosphere (radiation recorded) and ocean step; the cloud, dynamics and land pieces are fast enough to run a step in about 10 s on CPU.
 - **About 10 more hours:** one model day replayed with recorded radiation.
 - **About 40 more hours in total:** a free-running atmosphere day with the real radiation code called as a black box through a small server built from the original model (the surface, ocean and vegetation still replayed).
