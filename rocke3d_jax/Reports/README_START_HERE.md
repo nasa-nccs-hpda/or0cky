@@ -440,8 +440,9 @@ CONDSE column chain (D89-D126). What is left:
 `python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
 `$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
 
-**Test count: 2333 passed, 0 failed** (full regression `python -m pytest tests` from `fullfidelity/` on the committed tree at
-`dfed243`, run 2026-10-06, 35 min; it excluded the in-progress `tests/test_atm_step.py`). Many dump-based tests skip on hosts without
+**Test count: 2471 passed, 1 skipped, 0 failed** (full regression `python -m pytest tests` from `fullfidelity/`, 2026-10-06, 43 min, on the tree at
+`1194aed` minus the D136 irrigation edits), plus 206 passed / 1 skipped on the affected land and atmosphere-step tests after the D136 edits
+(`test_atm_step*`, `test_land_chain*`, `test_ghy_*`), plus 6 `test_dyn_jax.py` tests (D139-D141). Many dump-based tests skip on hosts without
 `ff_data`, and the bitwise `pow` tests skip without the Intel libimf runtime.
 
 ## Standing conditions
