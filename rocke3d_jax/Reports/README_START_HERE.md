@@ -417,6 +417,10 @@ the real dumps equals the numpy-pow chain, worst 3.8e-13 in u). Whole step 2.70-
 (dead), QDYNAM diagnostics, trop, MAtoPMB, efix/pgrad/glue. Untested (never reached): ncycxy>1 and the error-flag paths. Needs
 --xla_cpu_max_isa=AVX; CPU only.
 
+**F1 gate re-run with both land fixes (D136b, 2026-10-06, libimf mode, step 0):** with the *ported* GHY nov26 is now **MET** (worst field W2GCM
+5.1e-12 of scale) and dec01/jan01 are **PARTLY MET** (worst field EGCM 9.9e-9 / 7.6e-9 of scale, previously 1.85e-7 / 2.1e-7); with the
+recorded land patch all three dates are MET. Steps 1-5, libm mode and isolated stages were not re-run.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 

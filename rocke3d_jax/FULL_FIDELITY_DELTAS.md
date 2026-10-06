@@ -2924,6 +2924,10 @@ D141 was 2.06 s); cold (compile) 40.5 s per process. Remaining numpy: trop 0.09 
 Tests: tests/test_dyn_jax2.py 8 tests, 110 s, all pass (exact equality, mutation checks: perturbed dyp, unmasked nstep, dropped aadvt/qdynam, w*1.001).
 Caveats: needs --xla_cpu_max_isa=AVX (dyn_jax_env); CPU only, no GPU run; bitwise-with-libimf not claimed.
 
+## D136b: F1-gate re-run with both land fixes (D135 precipitation conditioning, D136 irrigation)
+
+`atm_step_compare.py --imf --dates nov26,dec01,jan01 --steps 0 --no-isolated` (libimf mode, step 0 from the real state, radiation and Ent exports recorded, categories A/B/C/D fixed in advance). **Ported GHY:** nov26 **MET** with named exception columns (11 fields B, 2 C, 1 A; worst W2GCM 5.1e-12 of scale); dec01 **PARTLY MET** (A 1, B 6, C 7; worst EGCM 9.9e-9); jan01 **PARTLY MET** (A 1, B 3, C 10; worst EGCM 7.6e-9). **Recorded land patch:** MET on all three dates (nov26 worst W2GCM 1.7e-12, dec01 worst EGCM 5.8e-13, jan01 worst EGCM 2.5e-12). Compared with D127-D129 (before the two land fixes): nov26 NOT MET -> MET; dec01/jan01 worst field 1.85e-7 / 2.1e-7 -> about 1e-8. Not re-run: steps 1-5 (CONDSE threshold flips dominate there regardless of the land model, D134), the libm mode, and the isolated-stage comparison. Log: scratchpad `f1_all_after_irrig.log`.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
