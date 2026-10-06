@@ -409,6 +409,14 @@ passed as traced arguments; other XLA versions or a GPU may differ at 1e-16 to 1
 (2.6-2.8 s -> 2.06-2.08 s) because AADVT, QDYNAM, AFLUX/ADVECM/MAtoP (two thirds of the time) remain numpy; compile ~21 s per process.
 No GPU run was possible.
 
+**D142-D144 (dynamics JAX, remaining big stages):** `dyn_jax_aflux.py`, `dyn_jax_aadvt.py`, `dyn_jax_qdynam.py` and `dyn_step_jax2.py`:
+AFLUX/ADVECM/MAtoP, AADVT (incl. 21 x4 stress calls, nstep up to 4, per-row masking) and QDYNAM (incl. 18 x8 stress calls, ncyc 4-6) run
+in JAX; every stage and the 18-step chained end state are bitwise identical to the numpy-pow chain (0 unequal elements; distance from
+the real dumps equals the numpy-pow chain, worst 3.8e-13 in u). Whole step 2.70-2.79 s numpy -> 1.01 s JAX on CPU (~2.7x), compile
+40 s per process. Still numpy: the QDYNAM extra-column branch (reached only by 8 of the 18 stress calls), AADVT qlimit=True limiter
+(dead), QDYNAM diagnostics, trop, MAtoPMB, efix/pgrad/glue. Untested (never reached): ncycxy>1 and the error-flag paths. Needs
+--xla_cpu_max_isa=AVX; CPU only.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 

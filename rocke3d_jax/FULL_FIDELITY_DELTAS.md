@@ -2891,6 +2891,39 @@ The converted stages sum to 0.88 s (numpy) vs 0.21 s (JAX; the figure includes j
 
 **Jit structure:** not a single jit.  The step is the Python plan of `dyn_step.py` (leapfrog control flow, 5 passes) executing one jitted call per converted stage, with the workspace as numpy arrays between stages; the numpy stages (aflux, advecm, aadvt, qdynam, trop, ...) sit in between.  Making the whole step one jitted function needs all stages in JAX (aadvt/adv1d, aadvq, aflux/advecm/matop, trop first), the plan unrolled or expressed with `lax.fori_loop` over passes (the 5-pass structure and the NS control flow are static for NIdyn=4, so a Python-unrolled jit is possible; compile time would be large), and the data-dependent `stop_model` checks (ADVECM mass error, SDRAG T range) turned into returned flags.  Not attempted and not tested here.  On a GPU the per-stage dispatch and the host round trips between stages would dominate; this is the main reason to convert the remaining numpy stages next, aadvt first.  No GPU timing exists: all numbers are CPU.
 
+## D142: AFLUX + ADVECM + MAtoP in JAX (dyn_jax_aflux.py)
+`make_aflux(g, tab)` gives jitted `aflux` and `advecm` (MAtoP inside): same statement order as dyn_aflux_ff.py, Fortran SUM loops as
+lax.scan carries, AVRX through the traced FFT72 (dyn_jax_fft), topography patch adjustment as an unrolled level loop with per-cell masks
+on static patch blocks, MW recursion as a reverse scan, geometry as traced arguments, PK = jnp.power (numpy-pow semantics). Validated on all
+real dumps (3 dates x 6 steps x 5 passes, AFLUX and ADVECM+MAtoP inputs): 0 unequal elements in every output field (bitwise vs the numpy
+port; the numpy port is bitwise vs real only with libimf pow). Wind x6 stress input exercises the topography move branch (counted in the test).
+Warm: aflux 0.40 s numpy -> 0.19 s JAX per step; advecm no gain (0.06 s, host transfers dominate). Compile ~12 s (aflux).
+
+## D143: AADVT / adv1d in JAX (dyn_jax_aadvt.py)
+adv1d / advection_1D_custom (qlimit=.false. only; the qlimit/limitq path stays numpy, it is dead in AADVT) with the cell axis as the
+array axis (no transposes), upwind selection by where() on the (cyclic/clamped) neighbour, Courant counts as while_loop over trial 1..20 with
+`active` mask, sub-stepping as fori_loop to the max nstep with a per-row mask (k < nstep); polar sums / fqu / fqv as scans; pow exponent traced.
+Validated: 12 real calls (+ their stage checkpoints x1, y, z and per-row nstep) and all 21 aadvtS4 stress calls (nstep up to 4): 0 unequal in
+rm, rmom, mm, fqu, fqv, checkpoints and nstep arrays, vs numpy and (S4 call) vs the real dump. Mutation: unmasked max-nstep run changes the result.
+x6-scaled real input compared numpy vs JAX (both stop or agree bitwise). Warm 0.58 s -> 0.17 s. Compile ~2.3 s.
+
+## D144: QDYNAM / AADVQ in JAX (dyn_jax_qdynam.py)
+AADVQ0 cycle counts in JAX: NCYC trial while_loop (REAL*4 reciprocal), per-level NCYCXY search (while loops vmapped over levels), XSTEP/NSTEPX,
+flux scalings, flow-out-both-sides masks (numpy lists -> boolean masks). AADVQ: nc cycle loop, L=1..LM+1 fori_loop with the vertical carry
+(mwdn, fdn, fdn0, fmomdn) in the loop state, per-level NCYCXY inner loop, aadvqy, aadvqx with per-row masked NSTEPX sub-steps, checkflux, aadvqz.
+Not in JAX: the extra-column branch (lminzij<LM): AADVQ0 z-extra partition and aadvqz_column advection stay numpy (fallback per call, main
+sweeps still JAX); diagnostics sbf..scf3d not computed. Validated: 18 real calls and all 18 x8 stress calls (ncyc 4 and 6; 8 calls use the
+numpy z-extra fallback): 0 unequal in q, qmom, MUs, MVs, MWs, ncyc, ncycxy, nstepx vs numpy AND vs the real dump `fin` files. Not reached: ncycxy>1,
+ncyc>ncmax errors (error flags exist, untested). Warm 0.58 s -> 0.20 s (about 1.2 s on the stress calls with fallback). Compile ~4 s.
+
+## D145: chained step with D142-D144 stages (dyn_step_jax2.py, dyn_jax2_compare.py, tests/test_dyn_jax2.py)
+`dyn_step_jax2.Kit` / `dyn_step_jax` extend D140's executor with aflux, advecm, aadvt, qdynam (dyn_step_jax.py untouched). Per-stage boundary mode (1 step/date): all 55
+compared variables 0 unequal. 18-step end state (3 dates x 6): JAX vs numpy-pow chain 0 unequal in all 22 fields; JAX vs real equals numpy-pow vs real
+exactly (u scale-rel 3.8e-13 worst, mus/mws 1e-13: the known libimf-pow gap). Whole step nov26 warm: numpy 2.70-2.79 s, JAX 1.01 s (2.7x;
+D141 was 2.06 s); cold (compile) 40.5 s per process. Remaining numpy: trop 0.09 s, matopmb, se/ke/efix, pgrad, copies, z-extra branch of QDYNAM.
+Tests: tests/test_dyn_jax2.py 8 tests, 110 s, all pass (exact equality, mutation checks: perturbed dyp, unmasked nstep, dropped aadvt/qdynam, w*1.001).
+Caveats: needs --xla_cpu_max_isa=AVX (dyn_jax_env); CPU only, no GPU run; bitwise-with-libimf not claimed.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
