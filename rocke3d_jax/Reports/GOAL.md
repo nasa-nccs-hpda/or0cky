@@ -1,4 +1,4 @@
-ROCKE-3D Update - 20261006 (status as of 14:00 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
+ROCKE-3D Update - 20261006 (status as of 13:10 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
 
 -----
 
@@ -20,7 +20,8 @@ ROCKE-3D Update - 20261006 (status as of 14:00 EDT; detailed evidence in README_
   - Only single steps (up to 12 steps) are validated, not days or months of simulated time, and a multi-step run will drift from the real model chaotically once a threshold flips.
 
 **Is the path realistic soon? Partly.**
-- **Within days:** a validated one-step demonstration (atmosphere with radiation recorded, plus the ocean). The first full-chain atmosphere test has not reported, so this is not yet certain.
+- **Already reached, with caveats:** a validated one-step atmosphere (radiation recorded) and a validated chained ocean step; the atmosphere meets the pass criteria only under the conditions listed above.
+- **Within days (if nothing surprising turns up):** the batched cloud code wired into the joined step, and a diagnosis of the land-surface differences on the one failing date.
 - **Not soon:** a complete replacement that runs a real simulation faster than the original. Estimate: about 30 to 65 more focused hours (central about 45), down from 150-280 on 2026-10-05 because the dynamics, cloud and ocean chains are now done. It is an estimate, not a measurement; earlier estimates had to be revised upward once, and the speed and multi-step validation items have not been tried.
 
 **For management:** real, steady progress with a credible route to a validated one-step model. "Finished in a day" is not realistic. The radiation dependency and the speed work are the two biggest open questions.
