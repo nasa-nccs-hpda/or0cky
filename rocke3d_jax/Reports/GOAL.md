@@ -1,4 +1,4 @@
-ROCKE-3D Update - 20261006 (status as of 12:00 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
+ROCKE-3D Update - 20261006 (status as of 14:00 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
 
 -----
 
@@ -11,11 +11,13 @@ ROCKE-3D Update - 20261006 (status as of 12:00 EDT; detailed evidence in README_
 **Where we are:**
 - **Done and checked against the real model:** the ocean (all pieces, plus a chained whole-ocean step that matches the real model over 12 steps on 3 dates), sea ice, the atmosphere's air-motion code (a chained whole dynamics step that matches the real model bit for bit on 18 steps, when using the same math library the real build uses), and the cloud and convection code (including the column driver, matching at rounding level with a few percent of cloud columns sensitive to last-digit differences when a different math library is used).
 - **Found and fixed while joining the pieces:** a wrong planet-rotation constant in the ocean code that had been hidden by a loose test tolerance. The other constants I checked match the original.
+- **Joined into one atmosphere step (new today):** dynamics, surface, clouds, and the rest of one 30-minute step now run chained from the real starting state, with radiation values recorded rather than computed. Verdict against the pre-set pass criteria: **met** when the land-surface part is taken from the recorded values and the same math library as the real build is used; **not met on one of three test dates and only partly met on the other two** when our own ported land-surface code is used (errors sit in a few cells near a known threshold; everything else is within one part in a million); **not met** without the real build's math library, because cloud columns near a threshold flip (3-5% of columns) and a 6-step free run drifts chaotically (up to about 0.1-0.2 K).
+- **Speed, first fix landed:** the cloud code now runs about 22 times faster (about 5 seconds per step instead of about 111) by processing all columns at once.
 - **Not done:**
   - Radiation (how sunlight and heat move through the air) is not ported, by a standing rule that the third-party library is never ported. A finished version needs that library, or recorded outputs from it.
-  - The atmosphere pieces are not yet joined into one validated atmosphere step (the plan and most of the code are written; the comparison against the real model has not been run). That is the next milestone.
-  - The Python is too slow to run the model: the cloud code takes about two minutes per 30-minute step, the ocean about 4 seconds and the dynamics about 3 seconds. Speed work (batched and GPU forms) is mostly still to do.
-  - Only single steps (up to 12 steps) are validated, not days or months of simulated time.
+  - Our own land-surface code does not yet meet the pass criteria on every date (see above).
+  - The batched cloud code is not yet wired into the joined step, and nothing is yet in a GPU (JAX) form for the atmosphere; per step the joined run is about 6 seconds plus clouds (about 5 s batched).
+  - Only single steps (up to 12 steps) are validated, not days or months of simulated time, and a multi-step run will drift from the real model chaotically once a threshold flips.
 
 **Is the path realistic soon? Partly.**
 - **Within days:** a validated one-step demonstration (atmosphere with radiation recorded, plus the ocean). The first full-chain atmosphere test has not reported, so this is not yet certain.
