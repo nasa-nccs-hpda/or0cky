@@ -421,6 +421,22 @@ the real dumps equals the numpy-pow chain, worst 3.8e-13 in u). Whole step 2.70-
 5.1e-12 of scale) and dec01/jan01 are **PARTLY MET** (worst field EGCM 9.9e-9 / 7.6e-9 of scale, previously 1.85e-7 / 2.1e-7); with the
 recorded land patch all three dates are MET. Steps 1-5, libm mode and isolated stages were not re-run.
 
+**D145-D147 (clouds in JAX):** `clouds_lscond_jax.py`, `clouds_mstcnv_jax.py`, `clouds_condse_jax.py` (+ `clouds_jax_env.py`): LSCOND, MSTCNV (host-side
+compaction of convecting columns into fixed buckets, jitted masked loops) and a JAX CONDSE reproduce the numpy batch bit for bit on
+the real steps run (0 of 3168 columns differ, 3 dates, steps 0-1; libm and xla modes for LSCOND). **Not faster than numpy on this CPU**
+(CONDSE 5.6-6.0 s vs 4.8-5.6 s) and MSTCNV compile costs ~2.5 min per fresh process (`CLOUDS_JAX_CACHE` enables the persistent cache).
+Finding: XLA's algebraic simplifier rewrites x/35.0 to x*(1/35.0), a/(b/c) to a*c/b etc. and changed 43 of 44 fields;
+`--xla_disable_hlo_passes=algsimp` fixes it (probably the real cause of the closure-constant problem seen in D139). XLA:CPU exp/pow equal
+glibm on this host (0 differences in 2e6 / 2e5 arguments); a GPU will probably differ by ulps. Still numpy: the QUS vertical advection
+in MSTCNV subsidence (host callback), the pole columns, set-up/bookkeeping, snow ageing, recalc_agrid_uv. No libimf mode, no GPU.
+
+**Radiation and F2/F3 plan (D148, scoping, `fullfidelity/scoping/RADIATION_AND_F2_PLAN.md`):** with GISS_RAD_OFF defined SOCRATES is the only radiation
+scheme. Recommendation: recorded radiation for a ~1-day open-loop run; for anything longer a 'radiation server' (a scratch build of the real
+ModelE objects running RADIA with SOCRATES untouched, exchanging state packets with Python). Hours (judgment): one-day open-loop 8-14 (central 10);
+free-running day with black-box radiation 22-40 (30); one-month F3 comparison 90-150 (110, incl. ~45 for closing the surface/ocean/ice/Ent loop).
+The surface, ocean, ice, lake and vegetation (Ent, recorded only) state is still replayed in every 'free-running' variant. Compute: ~11 min per model
+day per member on this CPU (the real model ~1.2-1.5 h per month).
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 
@@ -429,23 +445,15 @@ side from the scoping documents in `fullfidelity/scoping/`.
 `GLMELT` (daily cadence, never exercised), `IRRIG_LK` (Stage 1, external dataset not in this environment),
 PO for the OCONV loop (read from the setup record), and a chained whole-ocean JAX step.
 
-**Remaining effort, revised 2026-10-06 (focused effort hours, including validation; an estimate, not a measurement):**
-Done and validated since the 2026-10-05 scoping: the ocean pieces and a chained whole-ocean step (D118-D120), the
-atmosphere dynamics pieces and a chained dynamics step (D90-D123), and the cloud kernels, MSTCNV, LSCOND and the
-CONDSE column chain (D89-D126). What is left:
-- Finish and validate the chained atmosphere step and give the F1-gate verdict (D127-D129; plan, a 778-line chain and
-  tests written, the instrumented dump run and comparison still to do): 3-8 h.
-- Speed: CONDSE in Python is ~125 s per step, the ocean 4 s, dynamics 3 s: batching/JAX for the cloud code and the
-  chains so a run is possible at all: 15-30 h.
-- Remaining ocean items (ODIFF, AG2OG fluxes, OPFIL2 coefficients, straits start state, X pre-pass): 5-10 h.
-- Multi-step F2 validation of the chained model and the day-boundary physics not yet exercised: 6-12 h.
-- Radiation: only as a recorded-input boundary (SOCRATES is never ported); a runnable model still needs the library
-  or recorded values: undetermined, not counted.
-- Housekeeping: consolidate the duplicated FFT72 code, audit other constants for loose-tolerance errors like the
-  OMEGA error: 2-4 h.
-- **Total: about 30-65 h, central ~45 h**, down from 150-280 h on 2026-10-05 because the dynamics and cloud kernels and
-  the chains are done. Confidence is moderate: the earlier estimates grew when scoping found more work, and the
-  multi-step and speed items have not been tried.
+**Remaining effort, revised again 2026-10-06 evening (focused hours incl. validation; estimates, not measurements):** the 30-65 h figure given earlier today
+covered speed work and the remaining chain items but not the plan's top rung (F3, a one-month comparison); the radiation scoping (D148) shows the
+larger picture. By target:
+- One-model-day open-loop run with recorded radiation (F2 start): ~10 h (8-14).
+- Free-running atmosphere day with black-box SOCRATES radiation (radiation server): ~30 h more (22-40 total).
+- One-month F3 comparison against the real run's monthly diagnostics: ~110 h (90-150) including ~45 h to close the surface/ocean/ice/Ent loop.
+- Still needed for any of them: the remaining recorded inputs (AG2OG/IG2OG fluxes, straits start state, Ent), the remaining numpy stages in JAX,
+  and a GPU host to measure what the project is for (none on this node).
+- **Honest summary: a validated single step exists today; a free-running day needs roughly 40 more hours; the one-month F3 target roughly 100-170 hours more.**
 
 **Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
 (has jax and omegaconf); the default python lacks omegaconf. Run regression with

@@ -1,4 +1,4 @@
-ROCKE-3D Update - 20261006 (status as of 17:10 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
+ROCKE-3D Update - 20261006 (status as of 17:30 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
 
 -----
 
@@ -22,9 +22,11 @@ ROCKE-3D Update - 20261006 (status as of 17:10 EDT; detailed evidence in README_
   - The batched cloud code is not yet wired into the joined step, and nothing is yet in a GPU (JAX) form for the atmosphere; per step the joined run is about 6 seconds plus clouds (about 5 s batched).
   - Only single steps (up to 12 steps) are validated, not days or months of simulated time, and a multi-step run will drift from the real model chaotically once a threshold flips.
 
-**Is the path realistic soon? Partly.**
-- **Already reached, with caveats:** a validated one-step atmosphere (radiation recorded) and a validated chained ocean step; the atmosphere meets the pass criteria only under the conditions listed above.
-- **Within days (if nothing surprising turns up):** the batched cloud code wired into the joined step, and a diagnosis of the land-surface differences on the one failing date.
-- **Not soon:** a complete replacement that runs a real simulation faster than the original. Estimate: about 30 to 65 more focused hours (central about 45), down from 150-280 on 2026-10-05 because the dynamics, cloud and ocean chains are now done. It is an estimate, not a measurement; earlier estimates had to be revised upward once, and the speed and multi-step validation items have not been tried.
+**Is the path realistic soon? Partly, and the scale depends on the target.** (Estimates; the radiation plan in  has the basis.)
+- **Reached:** a validated one-step atmosphere (radiation recorded) and ocean step; the cloud, dynamics and land pieces are fast enough to run a step in about 10 s on CPU.
+- **About 10 more hours:** one model day replayed with recorded radiation.
+- **About 40 more hours in total:** a free-running atmosphere day with the real radiation code called as a black box through a small server built from the original model (the surface, ocean and vegetation still replayed).
+- **About 100-170 more hours:** a one-month comparison with the real run's monthly output, the plan's top validation level, including closing the surface, ocean, ice and vegetation loop.
+- **Not measurable on this node:** the GPU speed-up the project is for.
 
-**For management:** real, steady progress with a credible route to a validated one-step model. "Finished in a day" is not realistic. The radiation dependency and the speed work are the two biggest open questions.
+**For management:** real, steady progress and a credible route to each level above; the earlier "30 to 65 hours" figure was for the near-term items and understated the full one-month target. The radiation dependency, the vegetation (Ent) inputs and the missing GPU host are the biggest open questions.
