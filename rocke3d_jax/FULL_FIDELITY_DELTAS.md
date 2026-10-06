@@ -2137,6 +2137,8 @@ Fortran to the same ~2e-7 (`odhorz_jax_compare.py <date> <itime>`). The ~1e-13 g
 version is not isolated; likely the summation order in the polar reduction. Tests:
 `tests/test_odhorz_vec_jax.py` (6 tests).
 
+**Correction (2026-10-06, found by the whole-ocean chain D118-D120):** `odhorz_ff.OMEGA` was the sidereal-day value 2*pi/86164.09054, 1.8e-6 relative too high; the real rotation period is 86400*365/366 s (`shared/Earth365DayOrbit.F90:101`, `Constants_mod.F90:282`). With the corrected value ODHORZ agrees with the real run to ~1e-17 (scalar and numpy) and ~1e-13 (JAX) instead of the ~2e-7 quoted in D78/D79 above; the 2e-7 residual was this constant, not an unexplained discrepancy.
+
 ## D80-D81: OADVT2 batched (numpy): OADVTY2, OADVTZ2, then OADVTX2
 
 `fullfidelity/oadvt_vec.py` batches the three advection sweeps of the OADVT2 family, keeping each

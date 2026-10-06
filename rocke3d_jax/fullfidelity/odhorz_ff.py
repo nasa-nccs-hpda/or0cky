@@ -26,8 +26,8 @@ initialization) is recorded once as static geometry (real file-sourced data, not
 
 `OMEGA` (planetary rotation rate) is a genuine runtime planet parameter
 (`omega = 2*pi/rotationPeriod`, not a hardcoded constant) -- used here at Earth's standard
-sidereal value and validated empirically against real Fortran output (same approach as D29's
-RADIUS/GRAV, both confirmed Earth-standard for this rundeck via exact real-data matches).
+value 2*pi/(86400*365/366) s (CORRECTED 2026-10-06: an earlier sidereal-day value 86164.09054 s was 1.8e-6 too high and
+hid behind the 1e-6 test tolerance; see the OMEGA comment below).
 """
 import numpy as np
 from polerelax_ff import polevel, geomo_pole_arrays
@@ -36,7 +36,10 @@ from ostres2_ff import geomo_arrays
 IM, JM, LMO = 72, 46, 13
 GRAV = 9.80665
 RADIUS = 6371000.0
-OMEGA = 2.0 * np.pi / 86164.09054  # sidereal day, s -- Earth-standard; validated empirically
+# Real value: omega = 2*pi/rotationPeriod (shared/Constants_mod.F90:282) with rotationPeriod = 86400*365/366 s
+# (shared/Earth365DayOrbit.F90:101). The earlier 2*pi/86164.09054 (sidereal day) was 1.8e-6 relative too high; found
+# 2026-10-06 by the whole-ocean chain (D118-D120): with the correct value ODHORZ agrees with the real run to 1e-13.
+OMEGA = 2.0 * np.pi / (86400.0 * 365.0 / 366.0)
 
 
 def geomo_dyn_arrays():
