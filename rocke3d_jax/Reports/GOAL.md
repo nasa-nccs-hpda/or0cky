@@ -1,4 +1,4 @@
-ROCKE-3D Update - 20261006 (status as of 13:10 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
+ROCKE-3D Update - 20261006 (status as of 15:10 EDT; detailed evidence in README_START_HERE.md and FULL_FIDELITY_DELTAS.md)
 
 -----
 
@@ -13,6 +13,9 @@ ROCKE-3D Update - 20261006 (status as of 13:10 EDT; detailed evidence in README_
 - **Found and fixed while joining the pieces:** a wrong planet-rotation constant in the ocean code that had been hidden by a loose test tolerance. The other constants I checked match the original.
 - **Joined into one atmosphere step (new today):** dynamics, surface, clouds, and the rest of one 30-minute step now run chained from the real starting state, with radiation values recorded rather than computed. Verdict against the pre-set pass criteria: **met** when the land-surface part is taken from the recorded values and the same math library as the real build is used; **not met on one of three test dates and only partly met on the other two** when our own ported land-surface code is used (errors sit in a few cells near a known threshold; everything else is within one part in a million); **not met** without the real build's math library, because cloud columns near a threshold flip (3-5% of columns) and a 6-step free run drifts chaotically (up to about 0.1-0.2 K).
 - **Speed, first fix landed:** the cloud code now runs about 22 times faster (about 5 seconds per step instead of about 111) by processing all columns at once.
+- **Two real porting errors in the land-surface code were found and fixed today** (precipitation conditioning, and a dropped irrigation term); with them the JAX land model now matches the real model on every cell tested to about 2e-13 of field scale. The overall atmosphere verdict above has not been re-run with the second fix.
+- **Ocean:** two more recorded inputs are now computed by our code (momentum diffusion and the polar-filter coefficients); the ocean-atmosphere exchange fluxes and the straits start state are still recorded.
+- **GPU caveat:** the development node has no GPU (12 CPU cores only), so the speed-up on accelerators, the project's stated purpose, cannot be measured here. Everything is validated for correctness on CPU.
 - **Not done:**
   - Radiation (how sunlight and heat move through the air) is not ported, by a standing rule that the third-party library is never ported. A finished version needs that library, or recorded outputs from it.
   - Our own land-surface code does not yet meet the pass criteria on every date (see above).
