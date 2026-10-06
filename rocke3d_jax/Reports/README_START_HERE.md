@@ -394,6 +394,13 @@ irrigation is always 0 (704 of 3012 cell-substeps in nov26/dec01 carry it). Fixe
 all 753 cells on 3 dates now matches the real record to 2e-13 of field scale in the JAX port (aruns was off by up to 2.1e-3).
 The F1 verdict with the ported GHY has not been re-run with this second fix. ghy_ref keeps an undiagnosed residual on multi-substep cells.
 
+**D137-D138 (ocean ODIFF and OPFIL2 coefficients ported):** `ocean_odiff.py` ports ODIFF: stage replay on the firing step of each
+window gives UO/VO at <=2.3e-16 relative and VONP bitwise; the full ocean step on the ODIFF steps with no recorded ODIFF has UO/VO
+exit errors <=1.9e-9, the level of the other steps; a free-running 12-step chain stays <=3.6e-9 (one nov26 non-ODIFF step reaches
+1.9e-8). `ocean_opfil2_coeffs.py` computes the OPFIL2 coefficient file: integer tables and assigned SMOOTH entries bitwise, 665 of
+52,861 REDUCO values differ by <=1.1e-16. The seventh step of each window is validated only through its exit snapshot; assumes
+AKHFAC=1 (rundeck override not searched). Still recorded in the ocean chain: AG2OG/IG2OG fluxes and the init_STRAITS start state.
+
 **Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
 side from the scoping documents in `fullfidelity/scoping/`.
 

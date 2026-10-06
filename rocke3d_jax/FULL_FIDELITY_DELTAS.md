@@ -2796,6 +2796,50 @@ Owner/limits: Track B GHY; validated against the instrumented real records only 
 
 **Applied (2026-10-06, session driver):** the diffs were applied to `ghy_jax.py`, `land_chain.run_ghy` and `ghy_ref.py` (`ghy_compare.unpack` already returned both irrigation values); the agent's candidate copies were removed. Verified: 72 land/GHY tests and the new regression test `tests/test_land_chain_irrigation.py` (6 date-half cases to 1e-11 of field scale plus a non-vacuity check) pass; real GHY.f lines 2230-2234, 1283, 1298, 1334, 1349 and 1429 checked by hand. Note `ghy_ref` still has a separate residual on multi-substep (ffnit>1) cells (not in the jax port), undiagnosed.
 
+## D137: ODIFF (ocean horizontal momentum diffusion) ported; ODIFF no longer a recorded input of the chained ocean step
+
+Owner: full-fidelity port session (Claude, for G. Tamkin). 2026-10-06. Sources: OCNDYN.f:5092-5575 (ODIFF), OCNDYN.f:1236-1498
+(init_odiff), OCNDYN2.f:1530-1564 (polevel), solvers/TRIDIAG.f (TRIDIAG; TRIDIAG_3D_DIST_new), OGEOM.f, OCEAN_COM.f:170 (FSLIP=0),
+call site OCNDYN2.f:556-564 (every 6th step, DTDIFF=10800 s). All read-only.
+
+Files (all new): `fullfidelity/ocean_odiff.py` (init_ODIFF operators + ODIFF), `odiff_compare.py`, `ocean_step_odiff.py`
+(`stage_odiff_ported`, `ocean_step_odiff`; ocean_step.py unchanged), `ocean_step_odiff_compare.py`, `tests/test_ocean_odiff.py`.
+No new instrumentation: the D118 dumps bracket ODIFF (tag 12 pre_odiff -> tag 13 post_odiff) on the first step of each window.
+
+Result 1 (stage replay, tag 12 -> 13, firing step of each date, 3 dates): UO max rel 1.05e-16 / 1.85e-16 / 9.6e-17, VO 2.3e-16 /
+1.1e-16 / 1.7e-16 (<= 1 ulp of the field maximum); VONP bitwise equal; about 2% of the 43,056 values differ in the last bit
+(906/917, 1009/1021, 888/943), the rest are bitwise equal. Not claimed bitwise: residual is last-bit arithmetic (FMA/order) in the
+Fortran build. Using the reciprocal form of TRIDIAG for the x sweep raises the mismatches to ~5,200/43,056, so the division form
+(OPTIMIZED_TRIDIAG undefined) is the right one. The single-precision `SQRT(3.)` literal in the Munk length is reproduced
+(float32 sqrt) and covered by a mutation test.
+Result 2 (full ocean step, ported ODIFF, nothing recorded for ODIFF, entry = real tag 0, exit vs tag 14): max over 12 steps per date,
+ODIFF steps / other steps: UO 4.5e-10 / 7.7e-10 (jan01), 9.8e-10 / 8.3e-10 (nov26), 4.3e-10 / 1.6e-9 (dec01); VO 5.8e-10 / 1.1e-9,
+1.9e-9 / 2.1e-9, 5.2e-10 / 1.1e-9; VONP on the ODIFF steps 1.8e-9, 8.8e-9, 2.6e-9. Same level as the D118 numbers (UO/VO ~2e-9): no
+degradation on ODIFF steps. Free-running 12-step chain: UO/VO <= 3.6e-9 (jan01), UO 1.9e-8 (nov26, step 33321, a non-ODIFF step),
+<= 2.4e-9 (dec01).
+New capability: the second ODIFF step of each window (itime 17526, 33318, ...) has no recorded tag 12/13 snapshot and could not be run
+before; it now runs and is at the same error level (jan01 17526 UO 4.5e-10, VO 5.8e-10 from the real entry). It is validated only
+through the exit snapshot (tag 14), not by a stage-boundary comparison.
+Assumptions not independently verified: AKHFAC=1 (no rundeck override of the AKHFAC parameter was looked for beyond the default),
+serial domain (global arrays), RADIUS=6371000, OMEGA as in ocean_odhorz.py. DH is taken from the live second ODHORZ0.
+
+Still recorded after D137: AG2OG/IG2OG fluxes, OPFIL2 coefficient file (see D138), straits start state (init_STRAITS).
+
+## D138: calc_opfil2_coeffs (OPFIL2 setup tables) ported; the recorded coefficient file is no longer needed
+
+Source: OCNDYN2.f:887-1063 (module opfil2_coeffs), nbyzu/i1yzu/i2yzu from OCNDYN.f:505-518 (runs of LMU>=L). New files:
+`fullfidelity/ocean_opfil2_coeffs.py` (`calc_opfil2_coeffs(lmu)` returns the same flat vector as ffo_opcoef.bin, so
+`opfil2_ff.coef_from_dump` consumes it), `opfil2_coeffs_compare.py`, `ocean_step_opcoef_compare.py`; tests in tests/test_ocean_odiff.py.
+Result (3 dates; the recorded files agree across dates): vector length 56,745 equal; all integer tables (nred=52,861, nfft=31, nfil=542,
+nmn=44, nmin, jfft, n1/n2fft, jfil, i1/i2fil, indx_fil, n1/n2fil) and the assigned SMOOTH entries bitwise equal; REDUCO 665 of 52,861
+values differ, max abs 1.1e-16 (libm sin / FMA level). 1,124 SMOOTH entries (n < the exit index of the Fortran do-loop) are never
+assigned in the Fortran (uninitialised memory in the dump) and are never read by OPFIL2 (n >= NMIN only); they are excluded from the
+comparison. Full step with BOTH ODIFF and the OPFIL2 coefficients computed (the file written from the port, unassigned SMOOTH
+entries filled from the dump for the byte layout only): jan01 17520 uo 2.6e-10, vo 5.4e-10; 17521 uo 2.7e-10; 17526 uo 4.5e-10 -- identical
+to the run with the recorded file at the printed precision. Assumes the serial decomposition (js0=2, js1=JM-1), which the recorded
+nmn=44 confirms; geometry from the analytic OGEOM formulas with DLAT = 4*(pi/180).
+Still recorded: AG2OG/IG2OG regrid fluxes, init_STRAITS start state.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).

@@ -756,3 +756,11 @@ SRHR/TRHR change between `a` and `r` exactly on the radiation steps (MOD(Itime-I
 Pitfalls found: (1) `pkill -f <script name>` inside a command line that contains the script name kills the calling shell (exit 144): use `pkill -f "[s]cript"`; (2) dump arrays read with
 `np.fromfile('>f8')` stay big-endian and JAX refuses them (`atm_step._native` converts); (3) the B-grid U,V rows must be merged with all longitudes valid (the A-grid valid mask
 that keeps only i=1 on the pole rows is wrong for them: it produced 0.33 m/s errors in UALIJ at row JM-1).
+
+# D137/D138 build notes
+No new instrumentation or model builds were needed: the D118 ffo_state_* dumps (tags 12 pre_odiff and 13 post_odiff) and
+ffo_opcoef.bin already bracket ODIFF and the OPFIL2 setup. No patch files were written, units 1400-1409 were not used, nothing was
+added to ff_data, and the original ModelE tree was not touched. Limitation: tags 12/13 exist only for steps 1-6 of each date, so ODIFF
+is stage-validated on the first (firing) step only; the seventh step (itime 17526/33318/33558) is validated through the exit snapshot.
+If a stage-level check of that step is wanted, extend the D118 patch (OCNDYN2_oceanchain.f.patch) to write tags 12/13 on steps 7-12
+(units 1270-1271) or add a new patch on units 1400-1401 and re-grep the tree first.
