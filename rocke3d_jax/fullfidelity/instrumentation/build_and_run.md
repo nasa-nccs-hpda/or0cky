@@ -817,3 +817,19 @@ Outputs: ff_data/nov26_day/ours_<tag>/{step_<it>.npz, run.json}, overlay json/pn
 Pitfalls: (1) `sleep N; cat ...` chains are refused by the tool harness - use an until-loop; (2) a one-ulp perturbation of T does NOT stay local: after ONE step 132407-132480 of 132480 T cells differ
 (rms 4.5e-5 K, max 1.2e-2 K at a column ~25 cells from the perturbed one) because every cell differs at ~1e-13 (median |dT| 4e-14; cause inferred, not verified: a global quantity such as the SE/KE energy fix) and that tips CONDSE threshold
 columns, while the same ulp in Q stays local for 2 steps (2 cells, 2e-16); so the real "noise" of a T member is not ulp-sized from step 0 on.
+
+## D152-D154 build and run lines (for build_and_run.md): radiation server (units 1440-1469, 1440 used)
+
+New instrumentation only: `instrumentation/ATM_DRV_radsrv.f.patch` (diff -u against the PRISTINE `ATM_DRV.f`, 2 local hunks: `call radsrv_hook(1)`/`(2)` around `CALL RADIA`, and the routine `radsrv_hook` appended at the end of the file; `patch --dry-run` on the pristine file succeeds; it also applies after `ATM_DRV_atmstep.f.patch` with offsets 1 and 131 lines, 0 rejects). Unit 1440 only (1440-1469 reserved; grepped over model/*.f, *.F90, *.f90, *.h and every patch in this directory: no use). Fixed-form lines <= 72 columns (checked).
+Env (all unset = bitwise no-op): `RADSRV_MODE=dump|serve`, `RADSRV_ITIME` (first radiation itime, default first one), `RADSRV_NSTEP` (dump window), `RADSRV_TAG`, `RADSRV_IN`, `RADSRV_OUT` (read into 256-character buffers: use relative names, the scratch paths are longer).
+Build (own scratch tree <scratch>/mE_radsrv/mE2, script <scratch>/mE_radsrv/work/build.sh, 1 min 40 s, BUILD_RC=0):
+    rsync -a --exclude=ModelE_Support $SRC/ $C/ && chmod -R u+w $C ; cd $C/model
+    patch ATM_DRV.f < $INS/ATM_DRV_atmstep.f.patch ; patch ATM_DRV.f < $INS/ATM_DRV_radsrv.f.patch
+    source fullfidelity/env_modele.sh ; export SOCRATESPATH=$SRC/ModelE_Support/socrates
+    cd $C/decks && gmake RUN=P2SAoM40 $C/model/P2SAoM40.bin
+Run (script <scratch>/mE_radsrv/work/run.sh <name> VAR=val ...; run dir with I P2SAoM40ln P2SAoM40uln runtime_opts from huge_space/P2SAoM40, binary copied to BOTH names, `YEARE=1950,MONTHE=11,DATEE=26,HOURE=3`, the nov26 restart copied to BOTH fort.1.nc and fort.2.nc, `sh P2SAoM40ln`):
+    dump : FFD_START=33312 FFD_NSTEP=6 RADSRV_MODE=dump RADSRV_ITIME=33312 RADSRV_NSTEP=6 RADSRV_TAG=n26 ./P2SAoM40 -i I   (51 s wall with all hooks; rsv_n26_33312/33317_{in,out}.bin = 33.7 MB in, 55.5 MB out each)
+    serve: RADSRV_MODE=serve RADSRV_ITIME=33312 RADSRV_IN=rsv_in.bin RADSRV_OUT=rsv_out.bin ./P2SAoM40 -i I   (27 s; stops after writing the output packet; step 33317: 42 s)
+Reproduction check (D152): the 24 `ffa_step_<it>_{a,r,d,e}.bin` of the 6-step run with this binary (hook active in dump mode) are byte-identical to `ff_data/nov26` (cmp, 24 of 24). Timer table of that run: RADIA() 6 trips, max 10.9 s (radiation steps), min 0.0008 s.
+Python: `radiation_server.py` (packet reader/writer, `run_radiation`, `run_many`, `dump_state`), `radiation_server_compare.py oracle|audit|auditbig`, `tests/test_radiation_server.py` (3 passed, 105 s).
+Pitfall found: the first audit launch died with `forrtl: severe (43) file name specification error, unit 1440` because RADSRV_IN with an absolute scratch path exceeded the 256-character env buffer; fixed by passing relative names.
