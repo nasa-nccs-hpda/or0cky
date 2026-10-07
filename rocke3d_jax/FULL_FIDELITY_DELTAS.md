@@ -3510,6 +3510,220 @@ Direct comparison of our post-ADVSI ice with the real ffadv_out (ocean cells, po
 
 **Parent-session check (2026-10-07 05:45):** `tests/test_advsi_ff.py` + `tests/test_surface_loop_advsi.py` re-run: 30 passed, 83 s (ADVSI check asserts zero differing elements on every output field over the dumped calls and that the ice really moves). The patch `instrumentation/ICEDYN_DRV_advsi.f.patch` applies to the pristine ICEDYN_DRV.f (`patch --dry-run` rc 0), has no removed lines and no line over 72 columns, and units 1600/1601 are used by no other patch. A transient edit to `instrumentation/build_and_run.md` seen in `git status` mid-session is no longer in the tree (the agent states it did not edit that file). Not re-derived by the parent: the 150-call dump generation, the instrumented binary's bitwise no-op property (the agent did not check it, as stated), and the free-loop table. OPEN, flagged by the agent and left for the owner: the existing `seaice_core_ff.Ti/Ti2b` are float64 while SEAICE.f computes Ti2b in REAL*16, so they are not bitwise where that matters (the ADVSI port carries its own binary128 emulation). D164 corrections: the ice/ocean drift is removed by ADVSI (attribution confirmed); the lake and land-ice errors are NOT due to ADVSI (lake tg1/MWL identical with and without it; the land-ice tg1 jump starts at step 3, not step 4 as D164 wrote); the lake error is RIVERF (D167).
 
+# D169: Ent (vegetation) port, scoping and stage 1 (per-iteration exports cnc, betadl, lai, ...), 2026-10-07
+
+Owner: project owner (Glenn Tamkin); written by a Claude Code session. Project-local. Review: when stage 2/3b or the vectorised
+version starts, or when the first-step residual (section 4.3) is explained.
+Decision recorded by the owner (2026-10-07): Ent exports stay RECORDED for runs up to one day; the Ent port starts now because the
+one-month F3 run needs it.
+Sources (all read-only, `modelE2_planet_2.0`): `model/Ent/{ent.f, ent_mod.f, canopyspitters.f, FBBphotosynthesis.f, respauto_physio.f,
+phenology.f, patches.f, entcells.f, soilbgc.f, ent_prescribed_updates.f, ent_prescr_veg.f, ent_pfts_ENT.f, FBBpfts_ENT.f, ent_const.f,
+physutil.f, allometryfn.f, Makefile}`, `model/{ENT_DRV.f, ENT_COM.f, GHY.f (2198-2660), GHY_DRV.f, MODEL_COM.f, dd2d/timestream_mod.f}`,
+`decks/P2SAoM40.{R,mk}`, the executable `ModelE_Support/huge_space/P2SAoM40/P2SAoM40.bin` (`nm`), the compiled objects
+`model/Ent/{FBBphotosynthesis,canopyspitters}.o` (constants), the ffg dumps (`ff_data/{nov26,dec01,jan01,nov26_day}/ffg_*.bin`) and the
+pristine restarts (`ff_data/_pristine_restarts/*.nc`, variable `ent_state`).
+New code: `fullfidelity/ent_ff.py` (stage 1), `ent_ghy_compare.py` (validation driver), `ent_daily_ff.py` + `ent_tables_ff.py`
+(stage 3a, prescribed LAI/albedo), `tests/test_ent_ff.py`. No existing file was modified; nothing committed. No instrumentation patch was
+needed (no new unit used).
+
+## 1. Scope: what the P2SAoM40 build really runs
+
+### 1.1 Configuration (checked, not assumed)
+- `decks/P2SAoM40.R`: `OPTS_Ent = ONLINE=YES PS_MODEL=FBB PFT_MODEL=ENT`; no `RAD_MODEL`, no `MIXED_CANOPY_OPT`, no `FLUXNET`; preprocessor
+  options list has no `PS_BVOC`, `ENT_WATER_STRESS_4`, `ENT_QSIMP_FIX`, `ENT_USE_ANALYTIC_SOLVER_FOR_FBB`, `TRACERS_*`, `OFFLINE_RUN`.
+  Rundeck parameters not set for `do_soilresp`, `do_phenology_activegrowth`, `do_frost_hardiness`, `do_structuralgrowth`,
+  `do_patchdynamics`, `do_init_geo`, so the ENT_DRV.f defaults hold: soilresp 1, activegrowth 0, frost hardiness 1, others 0.
+  `LAI`, `LAIMAX`, `HITEent`, `VEG` files are present, so `do_modis_lai = .true.` (monthly prescribed LAI). `crops_yr` is commented out
+  (default `master_yr` = 1850).
+- `model/Ent/Makefile` for that configuration compiles `ent_prescribed_drv*.f ent_mod.f ent.f cohorts.f patches.f entcells.f physutil.f
+  allometryfn.f reproduction.f phenology.f respauto_physio.f disturbance.f soilbgc.f ent_const.f ent_types.f ent_prescr_veg.f
+  ent_prescribed_updates.f ent_debug.f ent_pfts_ENT.f FBBphotosynthesis.f canopyspitters.f FBBpfts_ENT.f`. So: **`biophysics.f`,
+  `canopyradiation.f`, `canopygort.f` are not part of this build.** Evidence from the executable's symbol table (`nm`): module
+  `biophysics` contains exactly the `canopyspitters.f` routines (`canopyfluxes, canopy_rad, canopy_rad_setup, canopy_transmittance,
+  gs_bound, gs_from_ci, photosynth_cond, photosynth_sunshd, qsimp, trapzd, respauto_npp_clabile`); none of the `biophysics.f` routines
+  (`veg, veg_C4, phot, Canopy_Resp, update_veg_locals, ...`) nor `canopyrad`/GORT/TwoStream symbols exist. The saved variables of
+  `ci_cubic` (`$RA $B $K $GAMOL $X1 $X2 $X2SAVE $XACC`) and of `Photosynth_analyticsoln` (`$A1C $F1C`) are static symbols: the SAVE semantics
+  are real. This corrects the D164 sizing (which counted `biophysics.f` 594 lines by a name-matching call graph).
+
+### 1.2 Per GHY sub-iteration (GHY.f:2389-2520, `process_vege` only), in the order the real code runs
+1. `ent_set_forcings` (ent_mod.f:2498): stores into the Ent cell: `TairC = ts - tfrz`, `TcanopyC = tp(0,2)`, `Qf`, `P_mbar = pres`,
+   `Ca = Ca*1e-6*pres*100.0/gasc/(tp(0,2)+tfrz)` (mol/m3; `100.0` real*4), `Ch = ch`, `U = vs`, `IPARdif = vis_rad - direct_vis_rad`,
+   `IPARdir = direct_vis_rad`, `CosZen = cosz1`, `fwet_canopy = fw`, `Soiltemp = tp(1:6,2)`, `Soilmoist = w/ws` (0 where ws = 0),
+   `Soilmp = h(1:6,2)`, `fice = fice(1:6,2)`.
+2. `ent_run(entcell, dts, end_of_day_flag .and. nit == 1)` -> `ent_integrate` (ent.f:75):
+   a. `clim_stats` (phenology.f): 10-day running means (`airtemp_10d`, `soiltemp_10d`, `par_10d`, per-cohort `betad_10d`, `turnover_amp`,
+      `llspan`), `daylength(2)` accumulation, daily `gdd/sgdd/ncd/fall`, and per cohort `Sacclim` (frost-hardening state; `photosyn_acclim`,
+      tau_inv a SINGLE precision literal 2.22222e-6) or `Sacclim = 25` for the other types.
+   b. `update_veg_structure` only on `update_day`; with `do_phenology_activegrowth = 0` it only re-summarizes and shifts `daylength`.
+   c. per patch: `photosynth_cond(dts, pp)` (canopyspitters.f) -> `water_stress3` (respauto_physio.f), `calc_Pspar`, `canopyfluxes` ->
+      `canopy_rad_setup`, `qsimp` -> `trapzd` -> `photosynth_sunshd` -> `canopy_rad` + 2x `pscondleaf` -> `Photosynth_analyticsoln` ->
+      `ci_cubic` (Newton/bisection `rtsafe`, `A_eqn`, `A_eqn_0`) + `BallBerry`; `Respauto_NPP_Clabile` (carbon); `canopy_transmittance`.
+   d. `soil_bgc` (soilbgc.f) because `do_soilresp = 1`: soil respiration and the CASA pools; `pp%CO2flux`, `pp%age`.
+   e. `summarize_entcell` -> `summarize_patch` per patch + `entcell_update_shc_mosaicveg`.
+3. `ent_get_exports`: `canopy_conductance = ecp%GCANOPY` (cnc), `beta_soil_layers = ecp%betadl(1:6)`, `shortwave_transmit = ecp%TRANS_SW`,
+   `leafinternal_CO2 = ecp%Ci`, `canopy_gpp = ecp%GPP`, `leaf_area_index = ecp%LAI`, `canopy_ipp = ecp%IPP`. (IPP is identically 0:
+   `PS_BVOC` is not defined, `isp = 0`.) These are the recorded `ffent(1:13, nit)` (cnc, betadl(6), TRANS_SW, Ci, GPP, lai, IPP, dts).
+4. After `apply_fluxes`/`accm`/`reth`/`retp`: `Qf = (evap_tot(2)/(rho/rhow*ch) + gusti*qprime)/vs + qs` (GHY.f:2621): the next Ent call sees it.
+
+### 1.3 Once per GHY call, before the loop (GHY.f:2338-2352)
+`ent_get_exports`: `ws_can = ecp%LAI*1e-4`, `shc_can = ecp%heat_capacity` (`GISS_shc` of the mean annual LAI), `fv = ecp%fv`, `height = ecp%h`,
+`albedo(6) = ecp%albedo` (recorded `ffent0`). `fv`, `fb` are then clamped at 1e-6 by GHY.
+
+### 1.4 Daily (GHY_DRV.f `daily_earth(end_of_day)` -> `ENT_DRV.f update_vegetation_data`), runs before the first step of a new day
+- `set_vegetation_data(..., reinitialize=.false.)` ONLY when `year != year_old`: `year_old = -1` at program start, so it runs once at the
+  first day end of EVERY run segment (and when `crops_yr` year changes): reads VEG (`V72x46_EntMM16_lc_max_trimmed_scaled_nocrops.ext.nc`) x
+  (1 - crops), `HITEent`, `LAIMAX`, the LAI stream, soil texture from `q_ij`, calls `ent_cell_set` -> `init_simple_entcell(reinitialize=false)`:
+  patch areas are reset to the VEG fractions, existing cohorts are kept, new patches get cohorts, patches with area 0 are deleted. Not
+  ported, not validated (needs the crop data source: the rundeck has no `CROPS` file line: unresolved).
+- `ent_prescribe_vegupdate(do_giss_phenology = true, do_giss_albedo = true, do_giss_lai = false, update_crops = false, laidata = stream)`:
+  `entcell_vegupdate` -> `entcell_update_lai_poolslitter` (cohort LAI := prescribed LAI of its PFT; `allom_plant_cpools`, `litter_cohort`,
+  `litter_patch` update the carbon pools) and `prescr_veg_albedo` (season interpolation of `ALBVND` for the tallest PFT of each patch and
+  hemisphere), then `summarize_entcell`. The height is NOT updated (no `hdata` is passed).
+- `daily_earth` also reads `ws_can` for the soil water capacity and calls `updsur` (albedo module); `set_roughness_length` reads
+  `vegetation_fractions` and `vegetation_heights` every day (`map_ent2giss`).
+- Other consumers of Ent in this build: `RADIA` (RAD_DRV.f:3384) reads `vegetation_fractions/heights` (PVT/HVT) for the land albedo; with the
+  radiation server these come from the real objects, in a chained model they must be passed. `init_land_surface`, `init_underwater_soil`,
+  `get_canopy_temperature_fw`, `get_fb_fv` read `heat_capacity`, `ws_can`, `fv` (state-derived, covered by `call_exports`).
+
+### 1.5 Inputs, outputs
+| Routine | Inputs | Outputs |
+|---|---|---|
+| set_forcings | GHY state: ts, tp(0:6,2), Qf, pres, Ca, ch, vs, w(1:6,2), ws(1:6,2), fice(1:6,2), fw, h(1:6,2); radiation: vis_rad, direct_vis_rad, cosz1 (from SRVISSURF*cosz1*.82, FSRDIR, cosz1 in GHY_DRV.f:1190-1193); Ca from CO2ppm/land_CO2_bc | Ent cell forcing fields |
+| clim_stats | dts, TairC, IPAR, CosZen, update_day, cell/cohort state | running means, Sacclim, gdd/ncd/fall, daylength |
+| photosynth_cond | Ent cell forcings, patch LAI/albedo(1), cohort pft, LAI, fracroot, Sacclim, PFT tables | cohort GCANOPY, Ci, GPP, IPP, stressH2O(l); patch TRANS_SW |
+| summarize_entcell | cohort/patch outputs, patch areas | cell GCANOPY, betadl, TRANS_SW, Ci, GPP, LAI, IPP, h, fv, albedo, heat_capacity |
+
+## 2. State
+Carried between sub-iterations and steps, inside Ent (the ffg record does not contain it; it lives in the restart `ent_state`, 1023 doubles
+per cell, layout `copy_cell_vars` 25 + per patch `copy_patch_vars` 52 + per cohort `copy_cohort_vars` 46, plus `np` and `nc(1:np)`):
+- cell: `airtemp_10d`, `par_10d`, `soiltemp_10d`, `paw_10d`, `gdd`, `ncd`, `sgdd`, `daylength(1:2)`, `fall`, `Qf`, `soil_Phi`, `soil_dry`, soil texture, `Soilmp`, `Tpool`;
+- patch: `area`, `albedo(6)`, `soil_type`, `Tpool`, `age`, `Reproduction(16)`, `Ci`, `GCANOPY`;
+- cohort: `pft`, `n`, `LAI`, `h`, `dbh`, `fracroot(6)`, carbon pools (`C_fol, C_sw, C_hw, C_lab, C_froot, C_croot`, N pools), `Sacclim`, `llspan`, `turnover_amp`,
+  `betad_10d`, `stressH2O`, `NPP`, `C_total`, phenology factors.
+Also hidden Fortran module state: `pspar` (photcondmod), the SAVEd `a1c, f1c` of `Photosynth_analyticsoln` and the SAVEd `Ra, b, K, gamol, x1, x2save,
+xacc` of `ci_cubic` (re-initialised per cohort by `calc_Pspar`, so they do not leak across cohorts: verified by reading the control flow).
+The restart of nov26 holds 1146 Ent cells, 4490 cohorts, one cohort per vegetated patch, at most 11 patches and 9 cohorts per cell, 1565 bare patches.
+
+State that the exports depend on (and therefore must be carried by a port): cohort `pft, LAI, fracroot, Sacclim` (frost-hardening PFTs), patch `area, albedo(1)`, cell
+`airtemp_10d` (drives Sacclim). State that does NOT influence the exports in this configuration (read from the code): all carbon/nitrogen pools,
+`soiltemp_10d`, `par_10d`, `paw_10d`, `gdd/ncd/sgdd/fall/daylength`, `llspan`, `turnover_amp`, `betad_10d`, `Tpool`, `Soil_resp`
+(`calc_Pspar` takes `llspan` but never uses it: `fparlimit = 1`). They matter for the carbon diagnostics (stage 2), not for cnc/betadl/lai.
+Across days: LAI and albedo are replaced daily by the prescribed values (stage 3a); the carbon pools follow LAI through allometry
+(stage 3b); `gdd/ncd/fall/daylength(1)` are updated at the day boundary inside `clim_stats`.
+
+File inputs: vegetation structure (patch areas, cohort density, height, dbh, fracroot, nm) are in the RESTART `ent_state`; they come from the
+VEG/HITEent/LAIMAX files only at cold start or at `set_vegetation_data` (section 1.4). Monthly LAI per PFT: `V72x46_EntMM16_lai_trimmed_scaled_ext.nc`
+(16 variables, 12 months, 46 x 72; present under `ModelE_Support/prod_input_files`). Soil/climate drivers: none from files (GHY state and the
+atmosphere); CO2 from the GHG routine (284.316 ppm in the dumps); PFT parameter tables and the albedo table are in the source (`pfpar`,
+`pftpar`, `ALBVND`, `alamax/alamin`) and are transcribed in the new modules.
+
+## 3. Line counts (non-comment, non-blank code lines, from the source)
+Counting routine bodies that the call graph reaches (an over-count for stage 1: e.g. `photosynth_cond` includes the carbon part):
+- **Stage 1** (per-iteration exports; ported): 1,395 Fortran lines (canopyspitters 443, FBBphotosynthesis 363, respauto water_stress3/Rdark 34,
+  clim_stats+running_mean+acclim 120, summarize_patch/entcell/shc/extract_pfts/zero_* 372, qsat/ent_integrate/GISS_shc 63). Python: `ent_ff.py` 894 lines (about 740 code lines).
+- **Stage 2** (soil_bgc and autotrophic respiration, carbon pools): 382 lines (soilbgc 277, Respauto_NPP_Clabile 48, respiration helpers 46, casa root fraction 11).
+- **Stage 3a** (prescribed LAI + albedo, ported): `prescr_veg_albedo` 35, the stream interpolation ~30 (timestream), `entcell_vegupdate` logic ~50.
+- **Stage 3b** (rest of the daily update: allometry C pools, litter, `litter_cohort`/`litter_cohort_fff`/`litter_patch`/`accumulate_clossacc`/`assign_closs` ~400 lines + allometry ~100
+  + `init_simple_entcell` 150 + `set_vegetation_data` 136, `update_vegetation_data` 85, crop reading): ~900 lines.
+- **Total live path** about 1,400 + 380 + 900 + 115 = 2,800 Fortran lines; the per-iteration path (stages 1 + 2) is ~1,780 lines, of which ~1,400 decide cnc/betadl/lai. The D164
+  figure (~2,800 per iteration + ~1,080 daily) over-counted the per-iteration path (it included `biophysics.f`, which is not compiled) and under-counted the daily part
+  (allometry, litter and `set_vegetation_data` were not counted); the sum happens to be similar.
+- `canopyradiation.f`/`canopygort.f` (1,460 lines): not compiled; stays excluded (confirmed).
+
+## 4. Stage 1 port and validation
+### 4.1 What was ported (`ent_ff.py`)
+Unpack of `ent_state` (`unpack_cell`), `set_forcings`, `clim_stats` (export-relevant part: `airtemp_10d`, `par_10d`, `daylength`, `gdd/ncd/fall`, `Sacclim`),
+`photosynth_cond` with `canopy_rad_setup, canopy_rad, canopy_transmittance, qsimp, trapzd, photosynth_sunshd, pscondleaf, Photosynth_analyticsoln, calc_Pspar,
+calc_CO2compp, Q10fn, frost_hardiness, BallBerry, ci_cubic (rtsafe), A_eqn, A_eqn_0, water_stress3, QSAT`, `summarize_patch`, `summarize_entcell` (incl. heat capacity),
+`get_exports`, `call_exports`. Fortran operation order, SAVE semantics and the real-literal traps are kept.
+Real-literal traps found (and confirmed in the object code `.rodata`, test included): `calc_CO2compp` multiplies by `0.21` (single precision, 0.20999999344348907) and
+`canopyspitters.f` has `O2frac = .20900` (single precision, 0.20900000631809235); `photosyn_acclim` has `tau_inv = 2.22222e-6` (single); `ALBVND` and `rhol/taul` tables have no d0.
+Missing the `.20900` trap gave 2.8e-9 relative errors in cnc/ci/gpp (the root finder stops at |dx| < 1e-4, so Gammastar enters the result at ~1e-9); with it the result is bitwise.
+Also found: `pfpar(pft)%pst` is 1 (C3) for all 16 PFTs in `ent_pfts_ENT.f`, so the C4 branch of `Photosynth_analyticsoln` (which tests `pfpar%pst`) is dead in this build
+even for the C4 grass and crops, while `pftpar%pst` (FBBpfts_ENT.f) says 2. The port copies the real behaviour.
+Not ported (no feedback to the exports): `Respauto_NPP_Clabile`, `soil_bgc`, the `llspan/turnover_amp/betad_10d/soiltemp_10d/sgdd` bookkeeping of `clim_stats`.
+Math library: exp/pow call the Intel libimf scalar functions (as `intel_libm_ff.py`), else glibc; with glibc the root finder can move results by ~1e-9 relative.
+
+### 4.2 How it is validated (`ent_ghy_compare.py`)
+For every land record of an ffg file, in file order (two GHY calls per cell and step, 753 land cells per call, Ent state carried per cell from the restart): the validated
+D158 GHY port (`ghy_ref`) is advanced sub-iteration by sub-iteration; at each one the Ent forcings are taken from the GHY-side state exactly as GHY.f does, `ent_ff` computes the
+exports and they are compared with the recorded `ffent` block (sub-iterations 1-11 only: the record holds 11). Mode `teacher`: GHY is driven by the recorded exports (the Ent port is
+isolated); mode `closed`: GHY is driven by the computed exports. Per-call exports (`ws_can, shc_can, fv, height, albedo(6)`) and the exit `Qf` are compared with the record too.
+Commands (from `fullfidelity/`, python = graphcast-env, `taskset -c 0`):
+```
+python ent_ghy_compare.py nov26 teacher ; python ent_ghy_compare.py dec01 teacher ; python ent_ghy_compare.py jan01 teacher
+python ent_ghy_compare.py nov26_day teacher        # 54 steps, daily LAI/albedo update (ent_daily_ff) applied at the 33360 day boundary
+python -c "import ent_ghy_compare as C; C.closed_report('nov26', files=3)"
+python -m pytest tests/test_ent_ff.py
+```
+
+### 4.3 Results (measured; libimf available)
+Per-iteration exports, `teacher` mode, bitwise = `==`, residuals relative to the recorded value unless stated:
+| Dataset | n iterations | cnc bitwise / max rel | betadl (6) bitwise / max abs | trans_sw, lai, ipp | ci bitwise / max rel | gpp bitwise / max rel |
+|---|---|---|---|---|---|---|
+| nov26 (6 steps) | 18,911 | 18,885 / 1.0e-15 | 113,003 of 113,466 / 2.2e-16 | all bitwise | 18,900 / 8.7e-16 | 18,902 / 6.8e-16 |
+| dec01 (6 steps) | 18,949 | 18,926 / 1.3e-15 | 113,227 of 113,694 / 3.3e-16 | all bitwise | 18,934 / 1.5e-15 | 18,940 / 9.7e-16 |
+| jan01 (6 steps) | 18,137 | 18,117 / 1.2e-15 | 108,220 of 108,822 / 3.3e-16 | all bitwise | 18,123 / 1.1e-15 | 18,128 / 1.1e-15 |
+| nov26_day (54 steps, 1 day boundary) | 189,698 | 189,597 / 1.5e-15 | 1,137,262 of 1,138,188 / 3.3e-16 (rel 1.1e-14 on tiny values) | all bitwise | 189,640 / 2.2e-15 | 189,650 / 1.3e-15 |
+
+Per-call exports: `ws_can, shc_can, fv, height, albedo(6)`: bitwise equal on all 9,024 records (6 steps x 2 substeps x 753 cells) of each of nov26, dec01 and jan01, and on all 81,216 records
+of nov26_day (including the 6 steps after the day boundary, which need the daily LAI/albedo update of stage 3a). Exit `Qf` (GHY.f:2621 formula): 8,992 of 9,024 bitwise (nov26), max 2.5e-17
+(three 6-step dates <= 3.5e-17 absolute); nov26_day 80,972 of 81,216 bitwise, max 7.4e-9, attained on stiff cells (ffnit 12-14, whose iterations beyond the 11th use the computed time
+step, the D158 level): the four largest differences (7.4e-9, 1.5e-9, 2.2e-10, 6.1e-11) are records of the stiff cells (5 cells re-run separately: their records with nit >= 12 give these values, those with
+nit <= 11 are <= 1.7e-18; the whole-day maximum over all other cells was not separated out); the exports of those cells in iterations 1-11 are bitwise.
+The residuals are not accumulating: in every date the non-bitwise iterations are the first sub-iterations of the first step after the restart (nov26 step 33312: 212 field values
+in 105+103 calls); steps 2-6 are bitwise except isolated 1-ulp cases (e.g. 33315: 1 of 3,170). The cause of the first-step residual is NOT established; it sits on the GHY-side
+inputs of the first step (the Ent port reproduces the 99.9 % of iterations that have the same inputs bit for bit, including night, ice-covered and frost-hardened cases
+(1,898 cohorts of nov26 have Sacclim < 4.07 so that `frost_hardiness` is below 1; 1,371 are below the -5.93 threshold)). Hypotheses not tested: restart-time rounding of `w/ht` read
+by GHY, or the first-call Qf. A dump of the GHY internal `tp(0,2), w, fice, h` at the first iteration would settle it.
+`closed` mode (GHY driven by the ported exports, nov26 files 33312-33314): GHY outputs vs the record, max |difference| over the scale of the record: tbcs 1.1e-15, ashg 6.5e-17, alhg 2.9e-16,
+aevap 2.9e-16, aruns 9e-18, aeruns 5e-17, ae0 3.7e-16, abetad 3.3e-16; w_out max abs 1.7e-16 (the same level as the teacher mode, i.e. the D158 level).
+Stage 3a, daily prescribed LAI and albedo (`ent_daily_ff.py`): at the real day boundary (ffg_33360 carries the end-of-day flag; the update runs before the step with jday = 331,
+the new day), applying LAI (timestream linm2m, JDmidOfM of MODEL_COM.f) and `prescr_veg_albedo` to the restart state reproduces the recorded `ws_can`, `albedo(6)` and the first-iteration
+`lai` of step 33361 with maximum difference 0.0 on 151 cells (every 5th land cell, run before the full day was available); without the update the difference is 4.7e-6 in ws_can,
+1.4e-3 in albedo, 0.047 in LAI; jday 330 and 332 do not match, so the day number (jday of the new day) is established. In the full day run (54 steps, row above) the update is applied before 33360 to all 1,146 Ent cells and the later steps stay bitwise in lai, trans_sw and in the per-call exports.
+
+### 4.4 What cannot be validated with the existing dumps
+- Carbon/soil state: `soil_bgc`, `Respauto_NPP_Clabile`, litter and the allometric pools are not exported anywhere in the dumps (`ffg` has only the six exports and `ffent0`).
+  Their validation needs a real restart AFTER the window: the real model run one day from `fort1_nov26_itime33312.nc` with a restart written at the end (no patch needed, run
+  configuration only) and compare the `ent_state` array cell by cell. For month scale: the production run has `1JAN1950.rsf...nc` and the ensemble runs; a second restart one
+  month later is needed.
+- The first-step residual of 4.3 (needs an extra dump at GHY.f:2395 of `tp(0,2), w(1:6,2), fice(1:6,2), h(1:6,2), Qf`: a ~10-line addition to `GHY.f.patch`, unit range 1470-1479;
+  `grep` of `instrumentation/*` (patches and build notes) and of the model sources `model/*.f, Ent/*.f, giss_LSM/*.f, *.F90, *.h` finds no use of 1470-1479; not applied).
+- Iterations beyond the 11th of stiff cells (ffnit up to 9 in the dumps of nov26; up to >= 12 exist in nov26_day, D158): the record does not hold them; they are run (they advance the
+  Ent state) but not compared.
+- Day/season structure: only one day boundary (nov26 -> nov27) is available; the end-of-day `gdd/ncd/fall` and the first-day `set_vegetation_data(reinitialize=false)` are not validated
+  (and the latter is not ported). The Sacclim evolution over a month (tau about 5 days) is only exercised for 54 steps.
+- Radiation inputs (`vis_rad, direct_vis_rad, cosz1`) and `Ca` are taken from the record; in the chained model they come from the radiation server output (SRVISSURF, FSRDIR) and the GHG routine.
+
+## 5. Speed (measured, CPU time of one process, libimf, 753 land calls of one step)
+GHY port alone 2.4 ms per call (night step 33313) and 2.9 ms (step 33324, daylight on part of the globe); GHY + Ent 4.1 and 6.0 ms; `ent_ff` alone 1.5 and 3.0 ms per call (0.75 ms per
+sub-iteration at night, ~1.2 ms in daylight where `qsimp`/`rtsafe` run). The 54-step day replay took about 18 min wall on the loaded node (load 7-10). For a model month (1,440 steps x 2 calls
+x 753 cells = 2.2 M calls) this is about 3 h for GHY + Ent on one core (Ent about 1-1.5 h): the scalar port is fast enough for the month-scale F3 run. A batched (cells x cohorts) numpy/JAX
+version (masked `qsimp`/`trapzd`/`rtsafe`: data-dependent iteration counts) is only needed for the GPU purpose of the project; it is not needed for the correctness work.
+
+## 6. Staged plan, remaining work and estimated hours (estimates, not measurements)
+| Stage | Content | Lines (real) | Validation data | Risk | Hours |
+|---|---|---|---|---|---|
+| 1 DONE | per-iteration exports | 1,395 | ffg ffent, 4 datasets (this entry) | first-step residual unexplained (1e-15) | done |
+| 3a DONE (partial) | prescribed LAI + albedo | ~115 | step 33361 bitwise on 151 cells + day run | only one boundary, LAI file orientation assumed south-to-north (verified by the match) | done |
+| 1b | wire into the chained land loop (`surface_loop`/`land_chain`): per substep GHY with Ent callback, Ent state in the chain, Ca/vis_rad/cosz from the chain; `closed` mode over nov26_day | glue ~300 | closed mode vs ffg outputs and the day-run land fields | the GHY port and Ent run per cell in Python | 6-8 |
+| 1c (optional, GPU purpose) | batched/JAX version (cells x cohorts, masked rtsafe/qsimp); bitwise vs the scalar port | ~600 | scalar port, ffg dumps | data-dependent iteration counts; libimf exp/pow in JAX is not available (bitwise only with numpy+libimf; JAX needs a tolerance decision) | 15-25 |
+| 3b-min | `set_vegetation_data(reinitialize=false)` at the first day end of a segment (patch areas from VEG x (1 - crops), new/deleted patches), gdd/ncd/fall check | ~300 | a real restart after the first day end (`ent_state` compare; run the real model one day, no patch) | crop data source unresolved | 5-8 |
+| 3b | the carbon half of the daily update: allometric pools, litter | ~600 | same restart compare | carbon bookkeeping | 8-12 |
+| 2 | `soil_bgc`, `Respauto_NPP_Clabile` (carbon, CO2 flux, GPP diagnostics) | 382 | same restart compare; no per-iteration dump | only needed if the F3 diagnostics include carbon fluxes; the water/energy exports do not depend on it | 8-12 |
+| 4 | month-scale: Ent state through 30 days (Sacclim, running means) against a real month restart and the monthly AIJ land fields | validation | a real 1-month restart with `ent_state` | chaos in the land state after days | 4-6 |
+Estimated remaining (estimates, not measurements): for the water/energy side of the one-month F3 (1b + 3b-min + 4, scalar speed is enough): about 15-22 h; adding the carbon half (stage 2 + 3b): about 30-45 h in total;
+the optional batched/JAX version for GPU use: +15-25 h. Not decided here: whether carbon outputs are part of the F3 acceptance (GOAL.md).
+
+## 7. Cautions
+- Bitwise requires the Intel libimf `exp/pow` (not on every host); with glibc the exports drift by up to ~1e-9 relative (the root-finder tolerance amplifies 1-ulp library differences). `test_glibc_fallback_close` bounds this at 1e-8 on a subset.
+- The validation inputs are the real-model GHY states (recorded `w, ht`) to the GHY port's own residual; the carried Ent state is ours. A bug in a state that only matters at longer times (Sacclim over weeks, daylength, gdd) cannot appear in 54 steps.
+- All results are from one run set (nov26, dec01, jan01 first 6 steps and nov26_day); one real trajectory; no ensemble statistics are needed for Ent (it is deterministic given the GHY inputs).
+- `closed` mode resets the GHY dynamic state from the record at every call, so it validates the Ent port inside the GHY loop, not drift over steps (that is stage 1b).
+
+**Parent-session check (2026-10-07 05:50):** `tests/test_ent_ff.py` re-run: 8 passed, 2.8 s (these assert on a small window only, so they do not cover the headline table). Own full run of `python ent_ghy_compare.py nov26 teacher` (2 cores, ~1 min): per-iteration exports over the 6 nov26 steps: cnc n=18,911, bitwise 18,885, max rel 1.006e-15; ci bitwise 18,900, max rel 8.66e-16; gpp bitwise 18,902, max rel 6.81e-16; betadl bitwise 113,003 of 113,466 (max abs 2.2e-16); trans_sw, lai, ipp all bitwise; per-call ws_can, shc_can, fv, height (9,024) and albedo (54,144) all bitwise; Qf at exit max abs 2.5e-17. The non-bitwise cases sit in the first file (ffg_33312, the restart step), as stated. Not re-run by the parent: dec01, jan01 and the 54-step nov26_day rows, closed mode, the daily LAI/albedo boundary check, and the hour estimates (the agent's estimates). The Ent port is NOT complete: carbon/soil state, the first-day set_vegetation_data and month-scale evolution are unported or unvalidated (see above); Ent exports remain recorded in every chained run until the wiring step.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
