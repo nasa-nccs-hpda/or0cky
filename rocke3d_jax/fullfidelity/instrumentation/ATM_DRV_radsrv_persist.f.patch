@@ -1,0 +1,439 @@
+--- ATM_DRV.f.pristine	2026-10-06 20:29:32.017484962 -0400
++++ ATM_DRV.f.new	2026-10-06 20:30:23.679697394 -0400
+@@ -271,6 +271,7 @@
+ 
+ C**** RADIATION, SOLAR AND THERMAL
+       MODRD=MOD(Itime-ItimeI,NRAD)
++      call radsrvp_hook
+       CALL RADIA
+          CALL CHECKT ('RADIA ')
+          CALL TIMER (NOW,MRAD)
+@@ -1963,3 +1964,428 @@
+       return
+       end subroutine accum_subdd_atm
+ #endif
++
++      subroutine radsrvp_hook
++!@sum D159 persistent radiation server hook (units 1500-1529 only).
++!@+   Called just before CALL RADIA.  Env RADSRVP unset: no-op
++!@+   (bitwise).  Set: at the first radiation step (itime=RADSRVP_ITIME,
++!@+   default first one with MODRD=0) the hook does not return: it
++!@+   serves requests read from the FIFO RADSRVP_REQ and answers on
++!@+   RADSRVP_RSP until STOP or EOF, then stops the model.
++!@+   Request lines (text):
++!@+     SERVE <itime> <seed|-> <packet_in> <packet_out>
++!@+     PING | STOP
++!@+   Replies: READY <itime> <seed> | OK <itime> <seed> <sec> |
++!@+            OK STOP | OK PING | ERR <text>
++!@+   SERVE: model clock and Itime are set to <itime> (stepped forward
++!@+   from the entry clock with nextTick; a day boundary crossed runs
++!@+   the daily updates listed in RADSRVP_DAILY: O=daily_orbit
++!@+   R=daily_RAD E=daily_earth), the RADIA inputs are overwritten from
++!@+   the packet (same 52-field format as radsrv_hook), AIJ is zeroed,
++!@+   the random seed IX is set (entry value for '-'), the REAL RADIA
++!@+   is called and the output packet written (AIJ = RADIA's own
++!@+   accumulation, exact).  Units: 1500 req, 1501 rsp, 1502 packet in,
++!@+   1503 packet out.
++      use model_com, only : itime,itimei,nday,modelEclock
++      use ModelClock_mod, only : ModelClock
++      use resolution, only : im,jm,lm
++      use atm_com, only : lm_req,t,q,pk,pmid,pdsig,ma,byma,pedn,ltropo
++      use rad_com, only : modrd,nrad,rqt,kliq,snoage,srhr,trhr,fsf,
++     &     trsurf,alb,fsrdir,srvissurf,fsrdif,dirvis,dirnir,difnir,
++     &     srdn,cfrac,cosz1
++      use clouds_com, only : tauss,taumc,cldss,cldmc,w_cloud,
++     &     frac_st_water,frac_st_ice,frac_cnv_water,frac_cnv_ice,
++     &     mix_ratio_st_water,mix_ratio_st_ice,mix_ratio_cnv_water,
++     &     mix_ratio_cnv_ice,dim_char_st_water,dim_char_st_ice,
++     &     dim_char_cnv_water,dim_char_cnv_ice,frac_area_st,
++     &     frac_area_cnv
++      use seaice_com, only : si_atm
++      use lakes_com, only : flake,dlake
++      use ghy_com, only : fearth,snowd
++      use fluxes, only : asflx4,atmsrf,atmgla,atmice,atmlnd,flice,fland
++      use diag_com, only : aij=>aij_loc,kaij
++      use random, only : ix
++      use soil_drv, only : daily_earth
++      implicit none
++      integer, save :: init=0, mode=0, it0=-1, itent=-1, dcur=0
++      integer, save :: ix0=0
++      character(len=256), save :: freq='', frsp='', fdaily='ORE'
++      character(len=1024) :: line
++      character(len=256) :: tok(6),fin,fout,msg
++      character(len=256) :: buf
++      character(len=16) :: ts
++      type(ModelClock), save :: clk0
++      integer :: st, fu, dir, ios, nt, it, sd, d, k, c1, c2, nn
++      integer :: cnt0, cnt1, crate, ixentry
++      logical :: bad
++      real*8 :: secs
++      real*8, allocatable :: ad(:,:,:)
++      if (init.eq.0) then
++        init=1
++        call get_environment_variable('RADSRVP',buf,status=st)
++        if (st.eq.0) then
++          if (len_trim(buf).gt.0) mode=1
++        endif
++        if (mode.eq.0) return
++        call get_environment_variable('RADSRVP_REQ',buf,status=st)
++        if (st.eq.0) freq=buf
++        call get_environment_variable('RADSRVP_RSP',buf,status=st)
++        if (st.eq.0) frsp=buf
++        call get_environment_variable('RADSRVP_DAILY',buf,status=st)
++        if (st.eq.0) fdaily=buf
++        call get_environment_variable('RADSRVP_ITIME',buf,status=st)
++        if (st.eq.0) read(buf,*) it0
++        if (len_trim(freq).eq.0 .or. len_trim(frsp).eq.0) then
++          write(6,*) 'RADSRVP: RADSRVP_REQ / RADSRVP_RSP not set'
++          call flush(6)
++          stop 'radsrvp env'
++        endif
++      endif
++      if (mode.eq.0) return
++      if (modrd.ne.0) return
++      if (it0.lt.0) it0=itime
++      if (itime.ne.it0) return
++C**** entry step reached: save clock/seed, open the FIFOs, serve
++      clk0=modelEclock
++      itent=itime
++      dcur=itime/nday
++      ix0=ix
++      open(1500,file=trim(freq),form='formatted',status='old',
++     &     action='read',iostat=ios)
++      if (ios.ne.0) stop 'radsrvp: cannot open request fifo'
++      open(1501,file=trim(frsp),form='formatted',status='old',
++     &     action='write',iostat=ios)
++      if (ios.ne.0) stop 'radsrvp: cannot open response fifo'
++      write(msg,'(a,i0,1x,i0)') 'READY ',itime,ix0
++      call reply(msg)
++      do
++        line=''
++        read(1500,'(a)',iostat=ios) line
++        if (ios.ne.0) then
++          write(6,*) 'RADSRVP: request pipe closed (ios',ios,') -> stop'
++          call flush(6)
++          stop
++        endif
++        call split(line,tok,nt)
++        if (nt.eq.0) cycle
++        if (trim(tok(1)).eq.'STOP') then
++          call reply('OK STOP')
++          write(6,*) 'RADSRVP: STOP received'
++          call flush(6)
++          stop
++        endif
++        if (trim(tok(1)).eq.'PING') then
++          call reply('OK PING')
++          cycle
++        endif
++        if (trim(tok(1)).ne.'SERVE' .or. nt.lt.5) then
++          call reply('ERR bad request: '//trim(line(1:200)))
++          cycle
++        endif
++        read(tok(2),*,iostat=ios) it
++        if (ios.ne.0) then
++          call reply('ERR bad itime')
++          cycle
++        endif
++        if (trim(tok(3)).eq.'-') then
++          sd=ix0
++        else
++          read(tok(3),*,iostat=ios) sd
++          if (ios.ne.0) then
++            call reply('ERR bad seed')
++            cycle
++          endif
++        endif
++        fin=tok(4)
++        fout=tok(5)
++        if (it.lt.itent) then
++          call reply('ERR itime before the entry step')
++          cycle
++        endif
++        if (mod(it-itimei,nrad).ne.0) then
++          call reply('ERR not a radiation step')
++          cycle
++        endif
++        d=it/nday
++        if (d.lt.dcur) then
++          call reply('ERR earlier day than the server day')
++          cycle
++        endif
++        call system_clock(cnt0,crate)
++C**** advance the model clock (from the entry clock) to the request
++        do k=dcur+1,d
++          modelEclock=clk0
++          do nn=1,k*nday-itent
++            call modelEclock%nextTick()
++          enddo
++          itime=k*nday
++          if (index(fdaily,'O').gt.0) call daily_orbit(.true.)
++          if (index(fdaily,'R').gt.0) call daily_RAD(.true.)
++          if (index(fdaily,'E').gt.0) call daily_earth(.true.)
++          dcur=k
++        enddo
++        modelEclock=clk0
++        do nn=1,it-itent
++          call modelEclock%nextTick()
++        enddo
++        itime=it
++        modrd=mod(itime-itimei,nrad)
++C**** inputs from the packet
++        open(1502,file=trim(fin),form='unformatted',access='stream',
++     &       status='old',iostat=ios)
++        if (ios.ne.0) then
++          call reply('ERR cannot open input packet')
++          cycle
++        endif
++        dir=2
++        fu=1502
++        bad=.false.
++        call inputs
++        close(1502)
++        if (bad) then
++          call reply('ERR input packet mismatch or short read')
++          cycle
++        endif
++        aij(:,:,:)=0.d0
++        ix=sd
++        ixentry=sd
++        call radia
++C**** outputs
++        fu=1503
++        dir=1
++        open(1503,file=trim(fout),form='unformatted',access='stream',
++     &       status='replace',iostat=ios)
++        if (ios.ne.0) then
++          call reply('ERR cannot open output packet')
++          cycle
++        endif
++        call outputs
++        close(1503)
++        call system_clock(cnt1)
++        secs=dble(cnt1-cnt0)/dble(crate)
++        write(msg,'(a,i0,1x,i0,1x,f10.3)') 'OK ',it,ixentry,secs
++        call reply(msg)
++      enddo
++      return
++      contains
++      subroutine reply(s)
++      character(len=*) :: s
++      write(1501,'(a)') trim(s)
++      call flush(1501)
++      end subroutine reply
++      subroutine split(s,tk,n)
++      character(len=*) :: s
++      character(len=256) :: tk(6)
++      integer :: n,p,q,l
++      n=0
++      p=1
++      l=len_trim(s)
++      do while (p.le.l .and. n.lt.6)
++        do while (p.le.l)
++          if (s(p:p).ne.' ' .and. s(p:p).ne.char(9)) exit
++          p=p+1
++        enddo
++        if (p.gt.l) exit
++        q=p
++        do while (q.le.l)
++          if (s(q:q).eq.' ' .or. s(q:q).eq.char(9)) exit
++          q=q+1
++        enddo
++        n=n+1
++        tk(n)=s(p:q-1)
++        p=q
++      enddo
++      end subroutine split
++      subroutine inputs
++      call x3('T',t(1:im,1:jm,1:lm),im,jm,lm)
++      call x3('Q',q(1:im,1:jm,1:lm),im,jm,lm)
++      call x3('PK',pk(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('PMID',pmid(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('PDSIG',pdsig(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('MA',ma(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('BYMA',byma(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('PEDN',pedn(1:lm+1,1:im,1:jm),lm+1,im,jm)
++      call x3('W_CLOUD',w_cloud(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('FRAC_ST_WATER',frac_st_water(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('FRAC_ST_ICE',frac_st_ice(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('FRAC_CNV_WATER',frac_cnv_water(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('FRAC_CNV_ICE',frac_cnv_ice(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('MIX_ST_WATER',mix_ratio_st_water(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('MIX_ST_ICE',mix_ratio_st_ice(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('MIX_CNV_WATER',mix_ratio_cnv_water(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('MIX_CNV_ICE',mix_ratio_cnv_ice(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('DIM_ST_WATER',dim_char_st_water(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('DIM_ST_ICE',dim_char_st_ice(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('DIM_CNV_WATER',dim_char_cnv_water(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('DIM_CNV_ICE',dim_char_cnv_ice(1:lm,1:im,1:jm),
++     &     lm,im,jm)
++      call x3('FRAC_AREA_ST',frac_area_st(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('FRAC_AREA_CNV',frac_area_cnv(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('TAUSS',tauss(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('TAUMC',taumc(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('CLDSS',cldss(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('CLDMC',cldmc(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('RQT',rqt(1:lm_req,1:im,1:jm),lm_req,im,jm)
++      call xi4('KLIQ',kliq(1:lm,1:4,1:im,1:jm),lm,4,im,jm)
++      call x3('SNOAGE',snoage(1:3,1:im,1:jm),3,im,jm)
++      call xi2('LTROPO',ltropo(1:im,1:jm),im,jm)
++      call x2('RSI',si_atm%rsi(1:im,1:jm),im,jm)
++      call x2('ZSI',si_atm%zsi(1:im,1:jm),im,jm)
++      call x2('SNOWI',si_atm%snowi(1:im,1:jm),im,jm)
++      call x2('POND_MELT',si_atm%pond_melt(1:im,1:jm),im,jm)
++      call xl2('FLAG_DSWS',si_atm%flag_dsws(1:im,1:jm),im,jm)
++      call x2('FLAKE',flake(1:im,1:jm),im,jm)
++      call x2('DLAKE',dlake(1:im,1:jm),im,jm)
++      call x2('FLICE',flice(1:im,1:jm),im,jm)
++      call x2('FLAND',fland(1:im,1:jm),im,jm)
++      call x2('FEARTH',fearth(1:im,1:jm),im,jm)
++      call x2('GTEMPR1',asflx4(1)%gtempr(1:im,1:jm),im,jm)
++      call x2('GTEMPR2',asflx4(2)%gtempr(1:im,1:jm),im,jm)
++      call x2('GTEMPR3',asflx4(3)%gtempr(1:im,1:jm),im,jm)
++      call x2('GTEMPR4',asflx4(4)%gtempr(1:im,1:jm),im,jm)
++      call x2('TSAVG',atmsrf%tsavg(1:im,1:jm),im,jm)
++      call x2('WSAVG',atmsrf%wsavg(1:im,1:jm),im,jm)
++      call x2('SNOWLI',atmgla%snow(1:im,1:jm),im,jm)
++      call x2('ZSNOWI',atmice%zsnowi(1:im,1:jm),im,jm)
++      call x2('BARESW',atmlnd%bare_soil_wetness(1:im,1:jm),im,jm)
++      call x3('FRSNOW',atmlnd%fr_snow_rad(1:2,1:im,1:jm),2,im,jm)
++      call x3('SNOWD',snowd(1:2,1:im,1:jm),2,im,jm)
++      end subroutine inputs
++      subroutine outputs
++      call x3('T',t(1:im,1:jm,1:lm),im,jm,lm)
++      call x3('Q',q(1:im,1:jm,1:lm),im,jm,lm)
++      call x3('SRHR',srhr(0:lm,1:im,1:jm),lm+1,im,jm)
++      call x3('TRHR',trhr(0:lm,1:im,1:jm),lm+1,im,jm)
++      call x3('RQT',rqt(1:lm_req,1:im,1:jm),lm_req,im,jm)
++      call xi4('KLIQ',kliq(1:lm,1:4,1:im,1:jm),lm,4,im,jm)
++      call x3('SNOAGE',snoage(1:3,1:im,1:jm),3,im,jm)
++      call x3('CLDSS',cldss(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('CLDMC',cldmc(1:lm,1:im,1:jm),lm,im,jm)
++      call x3('FSF',fsf(1:4,1:im,1:jm),4,im,jm)
++      call x3('TRSURF',trsurf(1:4,1:im,1:jm),4,im,jm)
++      call x3('ALB',alb(1:im,1:jm,1:9),im,jm,9)
++      call x2('FSRDIR',fsrdir(1:im,1:jm),im,jm)
++      call x2('SRVISSURF',srvissurf(1:im,1:jm),im,jm)
++      call x2('FSRDIF',fsrdif(1:im,1:jm),im,jm)
++      call x2('DIRVIS',dirvis(1:im,1:jm),im,jm)
++      call x2('DIRNIR',dirnir(1:im,1:jm),im,jm)
++      call x2('DIFNIR',difnir(1:im,1:jm),im,jm)
++      call x2('SRDN',srdn(1:im,1:jm),im,jm)
++      call x2('CFRAC',cfrac(1:im,1:jm),im,jm)
++      call x2('COSZ1',cosz1(1:im,1:jm),im,jm)
++      allocate(ad(im,jm,kaij))
++      ad(:,:,:)=aij(1:im,1:jm,1:kaij)
++      call x3('AIJ',ad,im,jm,kaij)
++      deallocate(ad)
++      end subroutine outputs
++      subroutine hdr(nm,rk,n1,n2,n3,n4)
++      character(len=*) :: nm
++      integer :: rk,n1,n2,n3,n4
++      character(len=16) :: nm16,r16
++      integer :: rk2,nn4(4)
++      nm16=nm
++      if (dir.eq.1) then
++        write(fu) nm16,rk,n1,n2,n3,n4
++      else
++        read(fu,iostat=ios) r16,rk2,nn4
++        if (ios.ne.0) then
++          bad=.true.
++        else if (r16.ne.nm16 .or. rk2.ne.rk .or. nn4(1).ne.n1 .or.
++     &      nn4(2).ne.n2 .or. nn4(3).ne.n3 .or. nn4(4).ne.n4) then
++          write(6,*) 'RADSRVP packet mismatch: want ',nm16,rk,n1,n2,
++     &         n3,n4,' got ',r16,rk2,nn4
++          call flush(6)
++          bad=.true.
++        endif
++      endif
++      end subroutine hdr
++      subroutine x2(nm,a,n1,n2)
++      character(len=*) :: nm
++      integer :: n1,n2
++      real*8 :: a(n1,n2)
++      real*8 :: b(n1,n2)
++      if (dir.eq.2 .and. bad) return
++      call hdr(nm,2,n1,n2,1,1)
++      if (dir.eq.1) then
++        write(fu) a
++      else
++        if (bad) return
++        read(fu,iostat=ios) b
++        if (ios.ne.0) then
++          bad=.true.
++        else
++          a=b
++        endif
++      endif
++      end subroutine x2
++      subroutine x3(nm,a,n1,n2,n3)
++      character(len=*) :: nm
++      integer :: n1,n2,n3
++      real*8 :: a(n1,n2,n3)
++      real*8, allocatable :: b(:,:,:)
++      if (dir.eq.2 .and. bad) return
++      call hdr(nm,3,n1,n2,n3,1)
++      if (dir.eq.1) then
++        write(fu) a
++      else
++        if (bad) return
++        allocate(b(n1,n2,n3))
++        read(fu,iostat=ios) b
++        if (ios.ne.0) then
++          bad=.true.
++        else
++          a=b
++        endif
++        deallocate(b)
++      endif
++      end subroutine x3
++      subroutine xi2(nm,a,n1,n2)
++      character(len=*) :: nm
++      integer :: n1,n2
++      integer :: a(n1,n2)
++      real*8 :: b(n1,n2)
++      b=dble(a)
++      call x2(nm,b,n1,n2)
++      if (dir.eq.2 .and. .not.bad) a=nint(b)
++      end subroutine xi2
++      subroutine xl2(nm,a,n1,n2)
++      character(len=*) :: nm
++      integer :: n1,n2
++      logical :: a(n1,n2)
++      real*8 :: b(n1,n2)
++      b=0.d0
++      where (a) b=1.d0
++      call x2(nm,b,n1,n2)
++      if (dir.eq.2 .and. .not.bad) a=(b.gt.0.5d0)
++      end subroutine xl2
++      subroutine xi4(nm,a,n1,n2,n3,n4)
++      character(len=*) :: nm
++      integer :: n1,n2,n3,n4
++      integer :: a(n1,n2,n3,n4)
++      real*8, allocatable :: b(:,:,:,:)
++      if (dir.eq.2 .and. bad) return
++      call hdr(nm,4,n1,n2,n3,n4)
++      allocate(b(n1,n2,n3,n4))
++      if (dir.eq.1) then
++        b=dble(a)
++        write(fu) b
++      else
++        if (.not.bad) then
++          read(fu,iostat=ios) b
++          if (ios.ne.0) then
++            bad=.true.
++          else
++            a=nint(b)
++          endif
++        endif
++      endif
++      deallocate(b)
++      end subroutine xi4
++      end subroutine radsrvp_hook
