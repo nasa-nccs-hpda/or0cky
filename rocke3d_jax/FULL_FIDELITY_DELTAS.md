@@ -4115,6 +4115,59 @@ Reproduce: `cd fullfidelity; python -m pytest tests/test_drv_state_cols.py -q`.
 
 **Parent-session check (2026-10-07 13:30):** `tests/test_drv_state_cols.py` re-run: 14 passed, 52 s; no tracked file modified. Assertions include COSZ1 max difference 0.0 on nov26_day (54 steps), nov26, dec01, jan01 (with the Intel libimf; 1 ulp in 5 elements with Python `math`), the orbital parameters of 1850 to 1e-17/1e-12/1e-11, 53 donor-initialised ocean PBL rows, ice thermal columns 0.0 and land leftovers array-equal. Not re-derived by the parent: the own-PBL-output chain over 54 steps (4.8e-10 at worst: the existing PBL port's error carried, bounded) and the claim that `land_substep_v2` equals `land_chain.land_substep` on step 33312 beyond what the test asserts. NOT wired into `surface_loop_v2`/`atm_step` (would need edits to existing files): no coupled run has used these modules yet, and the tile-row template builder (which rows exist) is still open. Bitwise results need the Intel libimf runtime.
 
+# D175: speed of the coupled step (profile, parallel drop-in variants), 2026-10-07
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file modified.
+New files: `land_ent_par.py`, `clouds_condse_par.py`, `dyn_jax_worker.py` (measured, NOT recommended, see 4), `speed_d175.py` (timed driver + bitwise comparer), `tests/test_speed_d175.py` (2 passed, 56 s; skip when data absent), this entry.
+Setup of every measurement: nov26, surface_loop_v2.Loop2 (all pieces computed) + land_chain_ent (Ent computed) + batched CONDSE + numpy dynamics with libimf, recorded radiation frozen (as run_coupled_v2), steps 0-5 from the real restart. Wall times are per step, process-pinned with taskset, on a node that was idle for the final runs (the first profile, 09:35, ran at node load ~6 with other agents' jobs; its numbers are higher).
+
+## 1. Profile (serial code, steady state, step 3; seconds)
+| stage | s (loaded node, 09:38) | s (idle node, 1 core) | kind |
+|---|---|---|---|
+| dynamics (dyn_step, numpy+libimf pow) | 5.6 | 4.6 | vectorised numpy, per-stage Python dispatch |
+| CONDSE batched (MSTCNV 9.4 of 11.1) | 11.1 | 8.6 | numpy, lock-step Python loops over layers/events with column masks |
+| land: PBL (JAX jit) + scalar GHY+Ent per cell, 1,506 calls | 10.0 (Ent+GHY 9.8) | 7.5 | pure Python loop per cell; of it 3.7 s was jax-array indexing `float(v[n])` in land_substep_ent |
+| tile chain (PBL/ATURB tiles, land ice) | 0.4 | ~0.4 | JAX jit |
+| post-tile surface (DYNSI, ground_*, RIVERF, ocean chain, ADVSI) | 9.7 (ocean dynamics 3.5, OCONV/HBL 2.4, straits 0.8, meso 0.55, GROUND_SI 0.84, ADVSI 0.53, FORM_SI 0.5) | ~7 | JAX eager (no outer jit; ~15,000 op-by-op dispatches) + numpy |
+| filter, misc (record reads 0.8 s) | ~3 | ~2.5 | numpy |
+| total per step | 38.7 | 29-31 | |
+First step: 217-230 s; step 1: 59-72 s; step 2 onward steady. The 409 s of D170 was the same effect on a loaded node (2 cores). Cause, measured with cProfile: JIT compilation. Step 0: 1,059 XLA compilations, 114 s in `backend_compile` plus ~70 s of tracing/lowering (pbl advanc_batch 30 s, tile chain run_chain 50 s, landice_chain 29 s, ocean stages ~60 s: dynamics 32, meso 14, straits 13); step 1: 104 more compilations (19 s; the tile chain meets new tile-set shapes, 30 s in run_chain); step 2: 51 (2 s); step 3: 1. File reads are ~1 s per step, not the cause. Earlier D170 numbers (43-100 s) are consistent with a loaded 2-core run, they are not the code's idle cost (29-31 s on one idle core).
+
+## 2. What was built (all drop-in, new modules)
+* `land_ent_par.py` (`ParEntLand`, `land_substep_ent_par`, `install_par`): the per-cell GHY+Ent loop of `land_chain_ent.land_substep_ent` in `nproc` persistent spawn workers; each worker owns a fixed set of cells (their Ent state and Qf carry); same function `ghy_ent_call` per cell. Also removes the jax-indexing cost. Cores: nproc workers (+ caller idle).
+* `clouds_condse_par.py` (`condse_step_batch_par`, `par_condse`): the unchanged `condse_step_batch`, with `mstcnv_batch` run on round-robin column slices in nproc workers. Cores: nproc workers.
+* `speed_d175.py`: timed coupled loop (mode ref = existing code, par = new modules), state dump per step, bitwise `cmp`.
+
+## 3. Validation (bitwise)
+* Land stage alone, 2 steps x 2 substeps, carried dyn and Ent/Qf state, 4 workers vs `land_substep_ent`: every GHY output and patch field identical (0 differences).
+* CONDSE alone, nov26 steps 0 and 1 (libimf), 4 workers vs `condse_step_batch`: all fields identical (0 differing arrays).
+* Whole coupled loop, 6 steps, 504 arrays (T,Q,U,V,P,QCL,QCI and the full surface state: ocean, ice, lake, land ice, atm): `par` with 3 workers pinned to ONE core vs `ref` on one core: 0 differing arrays. `par` 3 workers on 3 cores vs `ref` on 3 cores (2 steps, 168 arrays): 0 differing.
+* IMPORTANT existing property found, not caused by D175: the existing `ref` code is NOT reproducible across core counts. `ref` on 1 core vs `ref` on 3 cores differs already at step 0 (T 1.7e-13, U 8.3e-13, ocean g0m 3.9e6 absolute (field scale not checked), uo 1.4e-13, ...: 123 of 168 arrays differ after 2 steps). Same-core-count reruns are bitwise (ref vs ref, 1 core). Cause not isolated: the JAX/XLA CPU stages (ocean, PBL, tile chain) change reduction/thread partitioning with the number of available cores; the numpy stages do not. Consequence: bitwise comparisons must use the same core affinity for both sides (done above); the model month is a chaotic run anyway, but "bitwise" statements hold per core count.
+
+## 4. Things tried that are NOT usable (honest)
+* JAX dynamics (`dyn_step_jax2`) in a worker with the FMA-free flag (`dyn_jax_worker.py`): 1.7 s vs 3.5 s numpy at steady state (47 s first call), but NOT bitwise to the libimf numpy dynamics used by the coupled step: U max relative 3.5e-13 (127,480 of 132,480 cells differ), GZ 2e-14, T 1.1e-15, P 1.3e-15, from the pow function (JAX is bitwise only against numpy-pow, D139-D144). Per the D127-D129 finding that libimf matters for cloud thresholds it is not used. Not wired in.
+* JAX persistent compilation cache (`JAX_COMPILATION_CACHE_DIR`, min compile time 0): step 0 drops 137 s to 73 s and step 1 37 s to 27 s on a warm cache, and the cold run (cache write) is bitwise equal to the no-cache run (168 arrays), BUT the warm-cache run differs from the cold run: T by 0.067 K, U 0.55 m/s, P 1.1 hPa after step 0 (138 of 168 arrays). Cause not investigated (cached executables are not equivalent to fresh compiles here). DO NOT use the persistent cache for validated runs.
+
+## 5. Result: seconds per step, steady state (idle node; first step in brackets)
+| config | cores | dyn | CONDSE | land+tiles | post (ocean etc.) | total/step | (step 0) |
+|---|---|---|---|---|---|---|---|
+| existing | 1 | 4.6 | 8.6 | 7.5 | ~7 | 29.0-31.0 | (217) |
+| par | 2 | 4.8 | 6.5 | 4.6 | ~7-8 | 25.1-26.5 (28.7 at step 2) | (167) |
+| par | 3 | 4.6 | 5.7 | 3.2 | ~6.3 | 21.5-23.1 | (143) |
+| par | 4 | 4.9-5.4 | 5.5 | 2.5-2.8 | ~6 | 20.6-21.5 | (137) |
+(existing code at the loaded-node profile: 38.7 s; D170 quote 43-100 s.)
+Projected 1,488 steps (steady state only, plus ~4-5 min start-up): 1 core 12.2 h (existing code, idle node), 2 cores 10.5 h, 4 cores 8.6 h; at the loaded-node rate the existing code would be 16 h. Not included: free-running radiation through the persistent server (~11 s per call, every 5th step, about 55 min per month, it runs as its own process), F3 accumulators, restart I/O. The 4th core buys only 0.8 s: what is left is serial.
+
+## 6. What still dominates and next speed-ups (estimates, not measurements)
+1. Post-tile surface/ocean, ~6-7 s (30%): eager JAX with ~15,000 dispatches. (a) `jax.jit` the ocean stage bodies (est. -3 to -4 s) but the XLA fusion/FMA changes rounding unless the D139 flags are set, so it has to be re-validated against the real ocean dumps (not bitwise guaranteed); (b) run it in a worker while the next step's dynamics (4.6 s, independent of the surface) executes: the ocean chain does not feed the atmosphere of the same step; only next step's CONDSE (via MELT_SI/RSI) needs it. Pipeline gain est. 4-5 s per step for 1 more core; needs the surface state to live in the worker.
+2. Dynamics 4.6 s: libimf `pow` ctypes calls are per element; a vectorised/batched libimf call or a C helper (est. -1 to -2 s). The JAX version is not bitwise (4).
+3. CONDSE 5.5 s: MSTCNV does not scale beyond ~2x (fixed Python lock-step cost per chunk, 3.7 s wall on 4 workers vs ~7 s serial); a compiled (numba/C) event block would cut it to ~1-2 s but must be re-validated bitwise (libimf exp/pow).
+4. Land 2.5 s on 4 cores: cell imbalance (Ent iterations differ); dynamic load balancing needs state migration, est. -0.5 s.
+5. First steps (compile 140-217 s): irrelevant for a month; the persistent cache would help but is not safe (4).
+Rough achievable: ~12-14 s per step on 5 cores with (1b)+(2) if (1b) is kept bitwise = 5-6 h per month. Not done here.
+
+**Parent-session check (2026-10-07 13:40):** `tests/test_speed_d175.py` re-run: 2 passed, 57 s (pinned to 3 cores, 1 thread each); no tracked file modified. The assertions are bitwise (`np.array_equal`) between the parallel variants and the existing stages. Timings (e.g. 20.6-21.5 s per coupled step on 4 cores vs 29-31 s on one idle core; month 8.6 h on 4 cores) are the agent's measurements on a shared node and were not re-measured by the parent. TWO HAZARDS reported by the agent that affect every bitwise claim in this repository: (1) the EXISTING code gives different results on 1 core and on 3 cores (step 0: T 1.7e-13, U 8.3e-13; 123 of 168 arrays differ after 2 steps), cause not isolated (likely the JAX/XLA CPU stages); reruns on the same core count are bitwise equal, so bitwise comparisons must use the same core affinity on both sides (the sharded regression pins its jobs and uses one thread each); (2) a warm persistent JAX compile cache changes results (T by 0.067 K, U by 0.55 m/s after one step) versus no cache or a cold cache: do NOT use the compile cache for validated runs. Also not usable: the JAX dynamics worker (1.7 s vs 3.5 s numpy) is not bitwise to the libimf numpy dynamics (U up to 3.5e-13 relative).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
