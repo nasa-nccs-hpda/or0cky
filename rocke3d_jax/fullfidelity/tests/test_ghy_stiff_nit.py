@@ -42,7 +42,11 @@ def test_stiff_cell_matches_real_with_full_time_loop(itime, i):
 
 @pytest.mark.parametrize("itime,i", STIFF[:4])
 def test_old_path_fails_non_vacuous(itime, i):
-    col, refs = GC.run_cell(_rec(itime, i))        # the 11-record path: dt = sum(recorded dts) < 900
+    # the pre-D158 path (GhyColumn.advnc over the <= 11 recorded sub-iterations, dt = sum(recorded dts) < 900); GC.run_cell now runs the real loop
+    static, dynamic, forcing, ent_iters, refs, snowm = GC.unpack(_rec(itime, i))
+    col = N.G.GhyColumn(static, dynamic, forcing)
+    col.fb, col.fv = forcing['fb'], forcing['fv']
+    col.advnc(ent_iters, sum(it['dts'] for it in ent_iters), snowm)
     assert _rel(col.ashg, refs['ashg']) > 1e-2 or abs(col.tbcs - refs['tbcs']) > 1e-2
 
 

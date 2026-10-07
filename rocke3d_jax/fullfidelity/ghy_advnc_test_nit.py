@@ -15,7 +15,7 @@ DT = 900.0
 
 
 def build_batch_nit(rec):
-    out = list(AT.build_batch(rec))
+    out = list(AT.build_batch_recorded(rec))
     (static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt_total, snowm, ws_can, shc_can, refs) = out
     ffnit = np.round(np.asarray(rec)[:, 289]).astype(int)
     width = max(ent_dts.shape[1], int(ffnit.max()))

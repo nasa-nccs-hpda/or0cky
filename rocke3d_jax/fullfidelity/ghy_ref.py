@@ -889,6 +889,8 @@ class GhyColumn:
         epbs = rho3 * self.ch * (self.vs * (qbs - self.qs) - v_qprime)
         epv = rho3 * self.ch * (self.vs * (qv - self.qs) - v_qprime)
         epvs = rho3 * self.ch * (self.vs * (qvs - self.qs) - v_qprime)
+        # GHY.f:905,907 keep the potential evaporations in module variables that gdtm reads in the next iteration (D158).
+        self.epb = epb; self.epv = epv
         epv1 = epv * (1.0 - self.fw) / (self.fd + 1e-12)
         f_clump = 1.0; lai_ = self.lai; sai = 0.0
         ch_dense_veg = 0.01 * cna

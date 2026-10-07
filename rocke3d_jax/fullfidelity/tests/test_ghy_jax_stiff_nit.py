@@ -63,5 +63,5 @@ def test_jax_matches_real_incl_stiff_cells(itime):
 def test_old_build_batch_fails_on_stiff_cell():
     rec = GC.load(f"{FF}/nov26_day/ffg_33337.bin")
     sel = np.where(np.round(rec[:, 289]) >= 12)[0]
-    out, refs = _run(AT.build_batch, rec[sel])
+    out, refs = _run(AT.build_batch_recorded, rec[sel])
     assert _relerr(out["ashg"], refs["ashg"]).max() > 1e-2

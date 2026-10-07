@@ -49,12 +49,7 @@ def advnc_full(col, ent_iters, dt, snowm, ffnit=None, use_recorded_dts=True, reu
         col.betadl = np.asarray(rec['betadl']) if col.process_vege else np.zeros(col.n)
         col.lai = rec['lai'] if col.process_vege else 0.0
         col.evap_limits(True)
-        # GHY.f:905,907 store the potential evaporations epb, epv in MODULE variables that gdtm (GHY.f:3102-3110) reads in the next
-        # iteration; ghy_ref.evap_limits keeps them local, so self.epb/self.epv stay at the pre-loop value 1.0 (second finding of D158).
-        _rho3 = col.rho / G.RHOW
-        _vq = col.gusti * col.qprime
-        col.epb = _rho3 * col.ch * (col.vs * (G.qsat(col.tp[1, 0] + G.TFRZ, G.LHE, col.pres) - col.qs) - _vq)
-        col.epv = _rho3 * col.ch * (col.vs * (G.qsat(col.tp[0, 1] + G.TFRZ, G.LHE, col.pres) - col.qs) - _vq)
+        # ghy_ref.evap_limits stores epb/epv (GHY.f:905,907) for gdtm of the next iteration (applied to ghy_ref.py, D158)
         col.drip_from_canopy()
         col.sensible_heat()
         col.snow()

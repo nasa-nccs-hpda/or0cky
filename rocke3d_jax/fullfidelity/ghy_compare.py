@@ -85,8 +85,12 @@ def run_cell(rec):
     static, dynamic, forcing, ent_iters, refs, snowm = unpack(rec)
     col = G.GhyColumn(static, dynamic, forcing)
     col.fb, col.fv = forcing['fb'], forcing['fv']
-    dt = sum(it['dts'] for it in ent_iters) if ent_iters else 1800.0 / 2
-    col.advnc(ent_iters, dt, snowm)
+    if ent_iters:
+        # D158: the ffg record keeps <= 11 sub-iterations, so sum(recorded dts) < 900 s for ffnit >= 12; run the real dtr loop (gdtm) over dt = 900 s
+        import ghy_ref_nit as N
+        N.advnc_full(col, ent_iters, 900.0, snowm, ffnit=refs['ffnit'], use_recorded_dts=False)
+    else:
+        col.advnc(ent_iters, 1800.0 / 2, snowm)
     return col, refs
 
 

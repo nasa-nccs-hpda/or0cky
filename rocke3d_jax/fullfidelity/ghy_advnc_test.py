@@ -20,7 +20,7 @@ MAX_SUBSTEPS = 11
 FF = os.environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 
 
-def build_batch(rec):
+def build_batch_recorded(rec):
     unpacked = [GC.unpack(r) for r in rec]
     N = len(unpacked)
     dz = np.stack([u[0]["dz"] for u in unpacked])
@@ -83,6 +83,13 @@ def build_batch(rec):
         ws_can, shc_can, refs
 
 
+def build_batch(rec):
+    """D158: build_batch_recorded (<= 11 recorded sub-iterations per cell) plus the reconstructed sub-iterations of ffnit >= 12 cells; arrays are padded
+    to the widest cell, so pass max_substeps=ent_dts.shape[1] to ghy_jax.advnc."""
+    import ghy_advnc_test_nit as N
+    return N.build_batch_nit(rec)
+
+
 def run(n_cells=None, file_idx=0, verbose=True):
     files = sorted(glob.glob(f"{FF}/*/ffg_*.bin"))
     rec = GC.load(files[file_idx])
@@ -104,7 +111,7 @@ def run(n_cells=None, file_idx=0, verbose=True):
 
     out = J.advnc(static, dynamic0_j, forcing_j, jnp.asarray(ent_dts), jnp.asarray(ent_cnc),
                   jnp.asarray(ent_betadl), jnp.asarray(ent_lai), jnp.asarray(n_substeps),
-                  jnp.asarray(dt_total), jnp.asarray(snowm))
+                  jnp.asarray(dt_total), jnp.asarray(snowm), max_substeps=ent_dts.shape[1])
 
     n = static0["dz"].shape[0]
     def relerr(mine, ref):

@@ -64,7 +64,7 @@ def _build_run(file_idx, n_cells):
     args = (static, dynamic0_j, forcing_j, jnp.asarray(ent_dts), jnp.asarray(ent_cnc),
            jnp.asarray(ent_betadl), jnp.asarray(ent_lai), jnp.asarray(n_substeps), jnp.asarray(dt_total),
            jnp.asarray(snowm))
-    out = J.advnc(*args)
+    out = J.advnc(*args, max_substeps=ent_dts.shape[1])
     return {k: np.asarray(v) for k, v in out.items()}, refs, args
 
 
@@ -76,21 +76,22 @@ def per_file(request):
     return out, refs
 
 
-# Known limitation (D158, 2026-10-06), cause found: the ffg dump keeps the Ent exports and dts for at most 11 GHY sub-iterations, so for cells with
-# ffnit >= 12 (15 cells in the day-long nov26_day dumps, 1 per file in these four files) both ports advance the cell over less than the 900 s
-# step and ashg is off by 4-40% (tbcs <=3e-2 K). With the missing iterations reconstructed (ghy_advnc_test_nit.py / ghy_ref_nit.py) all 15 match the real
-# record (tests/test_ghy_jax_stiff_nit.py). These four files stay marked xfail (non-strict) here because build_batch has not yet been replaced by the
-# reconstructing builder; the tolerance is NOT loosened.
-KNOWN_STIFF_CELL_FILES = ("nov26_day/ffg_33321.bin", "nov26_day/ffg_33329.bin", "nov26_day/ffg_33336.bin", "nov26_day/ffg_33337.bin")
+# D158 (2026-10-06): these four day-long files each hold one ffnit >= 12 cell. build_batch now reconstructs the missing sub-iterations (gdtm loop), so every
+# field passes at its ORIGINAL tolerance except abetad: it is the mean over sub-iterations of betad, and the Ent exports (betadl) of iterations > 11 are not in the
+# ffg record (the reconstruction reuses iteration 11's). Measured residual 4.4e-7 .. 2.2e-6 relative in these files only; the explicit per-file bound below is
+# 5e-6, not a silent relaxation of the general 1e-10 (all other files and fields unchanged).
+STIFF_CELL_FILES = ("nov26_day/ffg_33321.bin", "nov26_day/ffg_33329.bin", "nov26_day/ffg_33336.bin", "nov26_day/ffg_33337.bin")
+STIFF_ABETAD_TOL = 5e-6
 
 
 def test_matches_real_fortran(per_file, request):
     out, refs = per_file
-    if FILES[request.node.callspec.params["per_file"]].endswith(KNOWN_STIFF_CELL_FILES):
-        request.applymarker(pytest.mark.xfail(reason="D158: ffg record truncated at 11 sub-iterations; fixed in ghy_advnc_test_nit.py", strict=False))
+    stiff = FILES[request.node.callspec.params["per_file"]].endswith(STIFF_CELL_FILES)
     def relerr(mine, ref):
         return np.max(np.abs(mine - ref) / np.maximum(np.abs(ref), 1e-6))
     for k, tol in TOLERANCES.items():
+        if stiff and k == "abetad":
+            tol = STIFF_ABETAD_TOL
         if k == "w_out":
             v = relerr(out["w"][:, :7, :], refs["w_out"])
         elif k == "ht_out":
@@ -141,21 +142,21 @@ def test_substep_count_distribution_is_realistic():
 
 def test_jit_compiles_and_matches_eager():
     out_eager, refs, args = _build_run(0, 100)
-    jitted = jax.jit(lambda *a: J.advnc(*a))(*args)
+    jitted = jax.jit(lambda *a: J.advnc(*a, max_substeps=args[3].shape[1]))(*args)
     for k in ("tbcs", "tsns", "ashg", "aevap"):
         assert float(jnp.max(jnp.abs(jnp.asarray(out_eager[k]) - jitted[k]))) < 1e-8, k
 
 
 def test_mutations_are_detected():
     _, _, args = _build_run(0, 100)
-    base = J.advnc(*args)
+    base = J.advnc(*args, max_substeps=args[3].shape[1])
     # NB: LHM itself has no direct effect here -- its only influence is through the derived
     # constant FSN=LHM*RHOW, cached at module-import time (same pitfall as ATURB/PBL/seaice's
     # derived-constant caching elsewhere in this project); mutate FSN directly instead.
     old = J.FSN
     try:
         J.FSN = old * 1.3
-        mutated = J.advnc(*args)
+        mutated = J.advnc(*args, max_substeps=args[3].shape[1])
         d = float(jnp.max(jnp.abs(mutated["ht"] - base["ht"])))
         assert d > 1e-3
     finally:

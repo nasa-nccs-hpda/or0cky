@@ -28,7 +28,7 @@ TF = 273.15
 XDELT = 0.0
 C001 = float(np.float32(0.001))     # `0.001` in GHY_DRV.f is a REAL*4 literal (0.0010000000474974513)
 DYN_KEYS = ("w", "ht", "nsn", "dzsn", "wsn", "hsn", "fr_snow")
-_advnc_jit = jax.jit(J.advnc)   # un-jitted, the lax.scan inside is re-traced and re-compiled on every call (~30 s)
+_advnc_jit = jax.jit(J.advnc, static_argnames=('max_substeps',))   # un-jitted, the lax.scan inside is re-traced and re-compiled on every call (~30 s)
 
 
 def infer_trup(g, patch_dth1, dtsurf):
@@ -69,7 +69,7 @@ def run_ghy(g, forcing_over=None, dyn_over=None):
     st["sl"] = jnp.asarray(s0["sl"])
     out = _advnc_jit(st, {k: jnp.asarray(v) for k, v in d0.items()}, {k: jnp.asarray(v) for k, v in f.items()},
                   jnp.asarray(edts), jnp.asarray(ecnc), jnp.asarray(ebet), jnp.asarray(elai), jnp.asarray(ns),
-                  jnp.asarray(dt), jnp.asarray(snowm))
+                  jnp.asarray(dt), jnp.asarray(snowm), max_substeps=edts.shape[1])
     return {k: np.asarray(v) for k, v in out.items()}, refs
 
 
