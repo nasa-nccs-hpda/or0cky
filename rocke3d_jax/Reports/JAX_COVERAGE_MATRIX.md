@@ -242,6 +242,8 @@ Q3. Is "jit boundaries: J1/J2/J3 plus a host callback" acceptable for "JAX-drive
 Q4. GPU host for the performance report (RECONCILIATION_PLAN A6b).
 Q5. Whether the untracked D176/D178 files are to be taken over as the host-side provider layer (they have no ledger entry and no verification yet).
 
+**Answers of the owner, 2026-10-07 (also recorded in `ACCEPTANCE_CRITERIA.md` section 8):** Q1: headline C2 with a labelled libimf host callback, plus a libm-mode report; speed measured without the callback. Q2: computed where verified (D176), recorded and listed otherwise. Q3: yes, three jit units plus host calls count as JAX-driven. Q4: GPU host still unnamed. Q5: D176 files adopted; D178 files after verification.
+
 ## 9. Limits of this document
 
 - Costs are D175's, measured by another agent on a shared node and not re-measured here; category shares in section 2 are rough (the "land+tiles" and "post-tile" splits are estimated from the loaded-node profile).

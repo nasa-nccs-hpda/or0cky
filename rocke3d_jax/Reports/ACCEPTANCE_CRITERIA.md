@@ -63,3 +63,11 @@ Reported with every correctness result: wall time per step (first step with comp
 2. Approve section 4's use of the D151/D157 convention for the day and the D172 scoring rule for longer windows.
 3. State whether the first coupled-step gate may use recorded Ent exports and the other recorded inputs listed in the D174 inventory (they must be listed, section 1.5), or whether specific ones must be computed first.
 4. Name the GPU host for the performance report (A6b).
+
+## 8. Decisions added by the owner on 2026-10-07 (after the approval of sections 1 to 6; additions, nothing in sections 3 and 4 is loosened)
+
+1. **libimf and the fidelity comparison (C2):** the headline C2 uses libimf semantics through a **labelled host callback** (the Intel libm `pow`/`exp` of the real build), because without libimf cloud thresholds flip in 3 to 5 percent of columns and the gate cannot reach category A or B. The callback is another hybrid item: every result using it says so, next to the radiation sentence of section 1.4 ("libimf math functions provided by a host callback to the original build's runtime"), with its call count and time. C2 is ALSO reported in libm mode (rounding level, expected category C or worse at the threshold columns), labelled as such. Speed is measured separately WITHOUT the libimf callback, and is not described as the fidelity configuration.
+2. **Radiation-packet surface side:** computed where verified (D176 `drv_radpacket.py`: bitwise at step 33312 of nov26), recorded and listed (section 1.5) where it is not.
+3. **"JAX-driven" with several jit units:** three jit units (atmosphere phase 1, surface and ocean, atmosphere phase 2) plus the host calls for radiation and libimf SATISFY section 1, provided the state stays device-resident between stages and the boundaries, transfers and every non-JAX stage are reported.
+4. **Host layer:** the D176 files are verified and adopted as the host-side provider layer; the D178 files (`model_driver.py`, `drv_daily.py`) are adopted after the parent session has verified them.
+5. **Still open:** the GPU host (section 7 point 4).
