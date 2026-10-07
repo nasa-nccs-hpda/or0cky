@@ -8,8 +8,8 @@ next for the one-page version.
 
 ## Handoff (refreshed 2026-10-06, about 20:30 EDT; the newest first-hand state of the port)
 
-**Branch `full-fidelity-port`, HEAD `7bd7a14`.** The remote has everything through `264283d`; 8 commits since then are local until the
-regression below passes (push non-force: `git push`). No agents or schedulers are running; the 30-minute heartbeat was cancelled.
+**Branch `full-fidelity-port`, HEAD = the commit that added this section (on top of `7bd7a14`).** The remote has everything through `264283d`; the 9 commits since then
+(`git log origin/full-fidelity-port..HEAD`) are local until the regression below passes (push non-force: `git push`). No agents or schedulers are running; the 30-minute heartbeat was cancelled.
 
 ### What exists and how well it is validated
 
