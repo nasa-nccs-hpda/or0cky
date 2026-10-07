@@ -4402,6 +4402,96 @@ Owner: Glenn Tamkin. Sources: D159-D162 (`radiation_server_persist.py`, `atm_day
 
 **Parent-session check (2026-10-07 17:58):** `tests/test_jax_radiation.py` re-run with the persistent server (`RADSRVP_SCRATCH` = the session's `mE_persist`), cores 8-9: 9 passed, 93 s; no tracked file modified; the number of model processes was the same before and after (no orphan server). Assertions include the 52-field packet equal to both the NumPy path and the live recorded packet at 33312 and 33317, seed chain equal to the record, the server outputs equal to the recorded `rsv_n26_*_out.bin` (21 fields bitwise, AIJ within 1e-9), call-order independence and a call log with `SOCRATES_modified: False`. CAUTIONS kept from the agent: only 28 of the 52 packet fields come from independent records (T, Q, PK, PMID, PDSIG, PEDN, MA, BYMA, 19 cloud arrays, SNOAGE); RQT, KLIQ, LTROPO and the 21 surface fields were copied from the live packet, so their equality proves nothing (the surface side is covered separately by D176, bitwise at step 33312); a free run that carries the server's SNOAGE differs from the live 33317 packet there (3,132 elements, max 20.48); the toy loop DEADLOCKS on a single core unless a `block_until_ready` precedes the hand-off (works on 2+ cores); GPU behaviour, GPU transfer cost, a later model day and the 54-step day through the JAX hand-off are NOT tested; writing the held CLDSS/CLDMC/SNOAGE back into the CONDSE carry is left to the driver. Callback uses `io_callback(ordered=True)` (stateful server, side effects). Accounting per call: 33.7 MB device to host in 54 arrays, 11.6 MB back in 22 arrays, one sync point, callback overhead about 0.1 s on top of the ~11 s server call.
 
+# D182: why the first JAX atmosphere step needs ~3,000 s, and the fix (2026-10-07)
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file modified. jax = jaxlib = 0.5.3, CPU, float64.
+New files: `d182_cold_compile.py` (per-jit cold-compile harness), `d182b_micro.py` (micro-tests of the pathology), `d182b_dyn_digest.py` (cold run of
+dyn_step_jax2, saves all workspace arrays, for the bitwise old/new comparison), `clouds_jax_env_fast.py` (the fix), `tests/test_d182_env.py` (1 passed, 2 s), this entry.
+NOTE: another agent worked on D182 in the same tree at the same time (d182_stage_profile.py, d182_unit.py, d182_variants.py, dyn_jax_fast.py are not mine and not
+used for any number here). Cores: taskset -c 2 / 3 / 4 for the 1-core runs (one process per core, several at the same time) and `-c 2-4` for the 3-core runs; the
+node was shared (load average 3.6-7), so absolute seconds carry load noise (the same configuration varied 85-100 s). No compile cache anywhere (asserted in the
+harnesses). XLA flags are set before jax is imported. OMP_NUM_THREADS=1.
+
+## 1. Result in one paragraph
+CAUSE: `--xla_disable_hlo_passes=algsimp` (clouds_jax_env, D145). With the algebraic simplifier off, an XLA:CPU fixpoint pipeline (`post_scatter_expansion_simplification`,
+which iterates the `reshape-mover` pass) adds a reshape pair per iteration to every gather, scatter and reduce, and nothing cancels them any more (algsimp normally
+does). Every gather/scatter/reduce therefore carries ~150-160 extra reshape (later bitcast) instructions in a chain; the optimized HLO grows 10-20x and the
+compile 30-100x for the units that have many scatters (`.at[].set`) and FFT code. FIX: also disable `reshape-mover` (`--xla_disable_hlo_passes=algsimp,reshape-mover`;
+pure data-movement pass, no arithmetic). Cold dyn_step_jax2, 1 core: 2,563 s -> 96 s; results BYTE-IDENTICAL (120 arrays, 2 steps). The whole JAX atmosphere
+step, first step, 1 core: ~3,135 s (D180) -> 390 s, 105/105 fields bitwise equal to the NumPy chain at 2 steps (as in D180). No source change in any existing module is needed,
+only the flag string (`clouds_jax_env_fast.py` is a drop-in).
+
+## 2. Measurements
+### 2.1 Cold compile of the dynamics step alone (dyn_step_jax2, nov26 33312, step 0 from the real state; 21 XLA compiles; `d182_cold_compile.py`, `d182b_dyn_digest.py`)
+| flags | cores | wall step 0 (s) | sum XLA compile (s) | step 1 (s) | log |
+|---|---|---|---|---|---|
+| clouds_jax_env: AVX + algsimp off (current) | 1 | **2563.5** | 2552.7 | 1.6 | dig_old_1c |
+| AVX only (dyn_jax_env, algsimp ON; the D144b configuration) | 1 | 84.7 | 73.0 | - | dynenv_1c |
+| AVX + algsimp off + reshape-mover off (new) | 1 | **96.1** (also 99.9 in a second run) | 85.2 (88.6) | 1.7 | dig_new_1c, newflags_1c |
+| default ISA (no AVX flag, FMA allowed; algsimp on) | 1 | 88.5 | 77.6 | - | noisa_1c |
+| AVX + algsimp off + reshape-mover off (new) | 3 (-c 2-4) | 59.1 | 49.7 | - | newflags_3c |
+| AVX only (algsimp on) | 3 (-c 2-4) | 52.0 | 42.8 | - | dynenv_3c |
+Per unit, 1 core, seconds of XLA compile (old flags -> new flags; AVX-only in brackets): aflux_jax 750 -> 25.5 [21.8]; _iso 1124 -> 22.1 [18.3]; pgf_jax 624 -> 11.0 [9.6];
+sdrag_jax 24 -> 4.1 [3.4]; advecv_jax 8.0 -> 3.1 [1.8]; all_cycles 7.0 -> 7.0 [5.2]; prep 3.8 -> 3.8 [3.4]; filter_chain 3.0 -> 3.2 [3.0]; aadvty 2.9 -> 3.1 [1.7];
+aadvtx 1.7 -> 2.0 [1.8]; advecm 1.2 -> ~1 [..]; aadvtz 1.3. MLIR lowering is 3.2-3.6 s in total in every configuration (the lowering is not the problem). Top 10 by XLA time under the old
+flags: _iso 1124, aflux 750, pgf 624, sdrag 24, advecv 8.0, all_cycles 7.0, prep 3.8, aadvty 2.9, filter_chain 3.0, aadvtx 1.7. The tracing time is small (the "Finished tracing" lines
+sum to about 5-6 s per process; the harness regex catches only pjit-level lines, so this figure is a lower bound).
+### 2.2 HLO size (xla_dump_to, 1 core)
+Instructions before optimization (same in all flag settings): aflux 5,849; _iso 5,209; all_cycles 3,075; pgf 2,999; sdrag 2,032; prep 1,276; advecv 1,188; filter_chain 995; aadvty 892. After optimization with algsimp ON:
+aflux 83.7k lines of text, _iso 78.8k, pgf 40.7k (text lines), sdrag 4,449 instructions. With algsimp OFF, sdrag_jax 79,294 instructions of which 74,355 are `bitcast`, arranged as chains alternating pred[3240] <-> pred[3240,1]
+(and f64[3240,40] <-> f64[3240,1,1,40]); the same unit with algsimp on: 4,449. Scatter counts (before optimization): aflux 177, all_cycles 82, advecv 40, aadvty 44, sdrag 37, pgf 17; gathers: advecv 32, aflux 7, pgf 7.
+### 2.3 Where the growth comes from (micro-tests `d182b_micro.py`, optimized-HLO instruction counts; compile s)
+| pattern | algsimp on | algsimp off (current) | algsimp off + reshape-mover off (new) |
+|---|---|---|---|
+| `u[I,J,:]*2.0` (gather) | 10 instr | 185 | 10 |
+| `jnp.any(...)` over 40 columns | 805 instr, 7.6 s | 16,685, 10.8 s | 805, 4.1 s |
+| 40 x `uc.at[:,l].set(...)` | 1,142, 1.29 s | 8,676, 3.63 s | 2,676, 1.40 s |
+| 40 x `s + uc[:,l]*uc[:,l]` | 129, 0.13 s | 7,678, 2.79 s | 168, 0.08 s |
+Pass-by-pass dump (`--xla_dump_hlo_pass_re=.*`, gather micro-test): the instruction count rises by 3 per iteration (142 -> 157) over ~25 iterations of `post_scatter_expansion_simplification`
+(each iteration ends in `reshape-mover`), then the layout/`reshape-decomposer` step turns the 177 reshapes into bitcasts. The pipeline is a fixpoint with an iteration cap; with algsimp on it converges at once.
+
+## 3. Hypotheses
+| hypothesis | verdict | number |
+|---|---|---|
+| `--xla_disable_hlo_passes=algsimp` blows up compile time | CONFIRMED (the cause, via reshape-mover; section 2.3) | 2563 s vs 85 s (30x); HLO 79k vs 4.4k instr (sdrag) |
+| `--xla_cpu_max_isa=AVX` (no FMA) is costly | REFUTED | 84.7 s (AVX) vs 88.5 s (default ISA), 1 core |
+| unrolled Python loops inside jit (layers/cells) | PARTLY: they set the baseline (2-5k HLO ops in aflux/_iso/pgf/all_cycles from FFT72 straight-line code and 40-layer loops; 21-25 s each even with the fix) but are NOT the 30x | AVX-only 85 s total |
+| float64 | not the cause, not tested separately (x64 is required for the port); the 85 s baseline with x64 is all that is left | - |
+| many tiny jits | REFUTED for the dynamics: only 21 XLA compiles, 12 of them >1 s | - |
+| jax/jaxlib version | not testable (only 0.5.3 installed here); D144b was measured with the same version family (D145 states jax 0.5.3) | - |
+| D144b's 40 s measured with a warm cache | REFUTED: D144b states "cold (compile) 40.5 s per process" and "no persistent cache enabled" (D141); it was measured with dyn_jax_env only (algsimp ON), i.e. before D145 introduced clouds_jax_env. My reproduction of that configuration: 84.7 s (1 core, loaded node); 52 s with 3 cores. Same order, load-dependent. | 84.7 / 52.0 s |
+| thread count | small effect: 1 core 96 s vs 3 cores 59 s (new flags); 85 vs 52 s (AVX only). XLA compiles each module on one thread; the 3-core gain comes from LLVM codegen threads | - |
+| D180's "60x vs D144b" | the 60x (2,500 s vs 40 s) = the algsimp-off flags (D145), not load and not code growth | 2563 / 85 = 30x measured on one node state |
+
+## 4. The change and its bitwise validation
+Change: `--xla_disable_hlo_passes=algsimp,reshape-mover` (file `clouds_jax_env_fast.py`; `D182_KEEP_RESHAPE_MOVER=1` restores the old list). No structural change of the jitted code was needed or made
+(lax.scan / stacked layers would not be bitwise-trivial and would not be needed now).
+Validation (same cores both sides, flags before jax, no cache):
+1. dyn_step_jax2 cold, 1 core, 2 steps (nov26 33312 and 33313 from their real states), old flags vs new flags: all 120 saved workspace arrays (both steps, every float array and scalar in the workspace) are byte-identical (`tobytes()` equal), 0 unequal.
+2. Full JAX atmosphere step (`jax_atm_step_run.py jax`, new flags, 1 core, 2 steps, recorded land, libm) vs the NumPy chain (`jax_atm_step_run.py ref`, existing flags, 1 core): `jax_atm_step_cmp.py` reports 105 of 105 saved fields bitwise equal at step 0 and at step 1 (same result as D180 with the old flags). Against the real end state the verdict is identical to D180 (libm mode, NOT MET, 12 D / 1 B / 1 A at step 0). Note: the NumPy ref ran with the old flags (its jitted surface parts), so this also compares new-flags JAX with old-flags JAX code paths.
+3. tests/test_d182_env.py: flags set, `a/35.0` and `a*b+c` identical to numpy, scatter-loop HLO < 4,000 instructions (measured 2,676; old flags 8,676).
+Not covered: CONDSE and surface kernels were validated only through (2) (the whole step), steps 0-1 of nov26; no other dates; no 3-core full-step bitwise rerun (D180 already showed JAX==NumPy at 3 cores with the old flags; not repeated with the new flags); 6-step chain not rerun.
+
+## 5. Cost of a cold first step after the change, and what remains
+Full JAX atmosphere step, 1 core, new flags (jax_atm_step_run.py, 2 steps): step 0 **390.3 s** (dyn 98.3, CONDSE 184.0, surface 107.4; 191 compiles), step 1 44.6 s (dyn 1.9, CONDSE 7.6, surface 34.8; 46 more compiles). Reference NumPy chain on the same core: step 0 447.6 s (its JAX surface parts compile under the old flags), step 1 65.2 s. D180 for comparison (1 core, old flags): 3,135 s and 63.9 s. The dynamics part fell from 2,475-2,586 s to 98 s;
+surface fell from 265-389 s to 107 s; CONDSE did not change (163-270 s before, 184 s now): its compile time is intrinsic, not this pathology. What remains: (a) CONDSE kernels ~184 s (LSCOND/MSTCNV, large), (b) dynamics 85-100 s on 1 core (aflux 25, _iso 22, pgf 11, all_cycles 7, FFT72 straight-line code is the base cost, same with algsimp on), (c) surface ~107 s plus 35 s more at step 1 (new tile-set shapes, D175), (d) 3-core numbers for the whole step were not measured (dyn alone 59 s). A cold process is still ~6.5 min for the first step and ~7.5 min for the first two; not seconds.
+Possible further reductions (NOT done, would each need the same bitwise validation): replace the `.at[].set` scatter chains of aflux (177 scatters) by static slices/concatenate or dynamic_update_slice (data movement only); express the FFT72 by a loop over a stacked axis; batch pad-shape variants in the surface chain to avoid the 46 second-step compiles. Not attempted here; another agent's `dyn_jax_fast.py` explores the scatter replacement and is unvalidated by me.
+
+## 6. Proposed diffs for the existing modules (not applied)
+```
+clouds_jax_env.py:      add 'reshape-mover' to the disabled list:
+-        add.append('--xla_disable_hlo_passes=algsimp')
++        add.append('--xla_disable_hlo_passes=algsimp,reshape-mover')
+jax_atm_step.py:20 / jax_atm_step_run.py:6 / every `import clouds_jax_env`: import clouds_jax_env_fast instead (or apply the one-line change above and drop the new file).
+dyn_jax_env.py: unchanged (algsimp is on there; results of the dynamics are byte-identical either way for the 120 arrays tested).
+```
+Side result: because the dynamics results are byte-identical with algsimp on and off (nov26, 2 steps), the dynamics do not need the algsimp-off flag; that flag is only needed by the cloud kernels (D145 micro-tests). This was not exploited (flags are process-wide; per-jit overrides of `xla_disable_hlo_passes` fail in jax 0.5.3: `compiler_options` raises a protobuf error because the field is repeated).
+
+## 7. Limits
+Timings were taken on a shared node with other agents' jobs (load 3.6-7); single runs, no repeats except the new-flags 1-core dyn run (96.1 and 99.9 s). The mechanism (reshape-mover plus the pass-iteration cap) is inferred from pass dumps of a micro-test and from the fact that disabling it removes the growth; XLA source was not read. The result applies to jaxlib 0.5.3 only. Bitwise statements hold for this host's CPU, nov26 steps 33312-33313, 1 core. A persistent compile cache remains forbidden for validated runs (D175: a warm cache changed T by 0.067 K); none was used.
+
+**Parent-session check (2026-10-07 18:05):** `tests/test_d182_env.py` re-run: 1 passed, 2 s; no tracked file modified. Independently re-compared the saved snapshots of D180's old-flag 1-core run (`c1`) with the agent's new-flag run (`atm_new`): 210 (step, field) pairs over steps 0-1, 0 not bitwise equal, max abs difference 0.0. Step wall times from the saved timing files: old flags 3,135 s (step 0) and 64 s (step 1); new flags 390 s and 45 s. Mechanism (agent's inference, not re-derived by the parent): with the algebraic simplifier off, the XLA:CPU `post_scatter_expansion_simplification` loop adds about 150 reshape/bitcast instructions per gather, scatter or reduce; also disabling `reshape-mover` (pure data movement) stops it. The fix is a flag: `--xla_disable_hlo_passes=algsimp,reshape-mover`, provided by the new `clouds_jax_env_fast.py`. The existing `clouds_jax_env.py` is NOT changed by this commit. NOT covered by the bitwise checks: other dates, the 6-step chain, a 3-core full-step rerun, the existing flag-sensitive test files under the new flags (to be run before the existing module is changed). Remaining cold-start cost: ~390 s for step 0 (CONDSE compile ~184 s untouched; dynamics and surface ~100 s each). `dyn_jax_fast.py`, `d182_stage_profile.py`, `d182_unit.py`, `d182_variants.py` belong to the other session's duplicate D182 agent, are untracked and unreviewed, and are not part of this commit.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
