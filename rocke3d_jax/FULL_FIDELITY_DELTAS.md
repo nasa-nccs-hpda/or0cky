@@ -3724,6 +3724,88 @@ the optional batched/JAX version for GPU use: +15-25 h. Not decided here: whethe
 
 **Parent-session check (2026-10-07 05:50):** `tests/test_ent_ff.py` re-run: 8 passed, 2.8 s (these assert on a small window only, so they do not cover the headline table). Own full run of `python ent_ghy_compare.py nov26 teacher` (2 cores, ~1 min): per-iteration exports over the 6 nov26 steps: cnc n=18,911, bitwise 18,885, max rel 1.006e-15; ci bitwise 18,900, max rel 8.66e-16; gpp bitwise 18,902, max rel 6.81e-16; betadl bitwise 113,003 of 113,466 (max abs 2.2e-16); trans_sw, lai, ipp all bitwise; per-call ws_can, shc_can, fv, height (9,024) and albedo (54,144) all bitwise; Qf at exit max abs 2.5e-17. The non-bitwise cases sit in the first file (ffg_33312, the restart step), as stated. Not re-run by the parent: dec01, jan01 and the 54-step nov26_day rows, closed mode, the daily LAI/albedo boundary check, and the hour estimates (the agent's estimates). The Ent port is NOT complete: carbon/soil state, the first-day set_vegetation_data and month-scale evolution are unported or unvalidated (see above); Ent exports remain recorded in every chained run until the wiring step.
 
+# D173: REAL*16 in the sea-ice code, float64 shortcuts measured against the real dumps, 2026-10-07
+
+Owner: project owner (Glenn Tamkin); written by a Claude Code session. Project-local. Review: when seaice_core_ff/jax are next touched, or when libimf `exp` is available.
+Sources (read-only): modelE2_planet_2.0 `model/SEAICE.f` (2363-2440 Ti/Ti2b under `SEAICE_FIXES_2022`, which SEAICE.f:6-7 defines by default), LAKES*.f, ICEDYN*.f; real dumps `ff_data/{nov26,dec01,jan01}/ff{i,n,m}_*.bin`, `ffz_s2ag_*.bin`, `advsi_dumps/nov26/ffadv_in_33312.bin`.
+New files (no existing file modified, nothing committed): `fullfidelity/seaice_quad_ff.py`, `seaice_quad_compare.py`, `seaice_quad_loop_compare.py`, `tests/test_seaice_quad_ff.py` (3 passed, 15 s).
+
+## 1. Inventory of REAL*16 in the real source
+Grep of `model/*.f` for `real*16`/`*16`/`NNq0`/`_16`: the only sea-ice hits are SEAICE.f `Ti` (real*16 `b,c,det,tm`, quad literals 0q0, 1q0, 1q-3, 4q0, 5q-1, 1q-10) and `Ti2b` (same). ICEDYN.f, ICEDYN_DRV.f, ICEDYN_DUM.f, ICE*.f, OCNDYN* have none (other REAL*16 hits are FFT*/exact-regrid/MPI, not ice). The non-FIXES_2022 `#else` copies are real*8 and not compiled. Only the BP branch (default `seaice_thermo="BP"`) is used; the "SI" branch also has quad literals but is not run. Real callers of Ti/Ti2b: SEAICE.f get_snow_ice_layer (needtemp, Ti1), TICE (2348-2356), SIMELT (1113 `Ti(0d0,1d3*SSI0)`), ICEDYN_DRV ADVSI via get_snow_ice_layer, SEAICE_DRV seaice_to_atmgrid, UNDERICE-side glue, and LAKES*.f CHECKI (diagnostic print only, not ported).
+Fortran typing details reproduced: `mu*Si`, `shw-shi`, `Eit+lhm`, `MICE/(MICE+SNOWL)`, `frac*lhm` are REAL*8 before widening; the tests are `Si.gt.0q0` (our float64 port uses Si > 1e-10) and `abs(Ei+lhm).LT.1q-10` (quad 1e-10).
+
+| our routine | calls Ti/Ti2b | precision before | note |
+|---|---|---|---|
+| seaice_core_ff.Ti, Ti2b | definition | float64 | the shortcut |
+| seaice_core_ff.get_snow_ice_layer, tice, sea_ice, ssidec, snowice, addice, simelt (line 739), ground_si_* | yes | float64 | inherit |
+| seaice_to_atmgrid_ff (`from seaice_core_ff import Ti, Ti2b`) | yes | float64 | |
+| seaice_core_jax.Ti/Ti2b and its sea_ice/addice/simelt/tice | definition + users | float64 | used by surface_loop |
+| surface_loop.py (SI.Ti lines 267/271, SI.Ti2b 317/318), seaice_to_atmgrid_jax | yes | float64 | |
+| advsi_ff.ti2b_quad (D166) | own | binary128 (mpmath 113 bit) | already correct; `seaice_quad_ff.ti2b_quad` agrees with it on 20000 random inputs (0 differences) |
+| lakes_ff / lakes_core_jax | none (CHECKI diagnostic only) | n/a | |
+| ICEDYN ports (icedyn_*, dynsi_ff) | none in the real source | n/a | |
+
+## 2. Emulation used
+`np.longdouble` on this host is x87 80-bit (`np.finfo`: precision 18, eps 1.08e-19), NOT binary128, so mpmath at 113 bits is used (correctly rounded, results narrowed to double by round-to-nearest). Not verified against a compiled ifort real*16 test (the ifort quad sqrt/multiply rounding is assumed correct rounding); verified bitwise against the real dumps instead (below).
+
+## 3. Measurements (`seaice_quad_compare.py`; nov26+dec01+jan01 dumps; bitwise-equal elements before -> after)
+Ti/Ti2b results where float64 != quad: GROUND_SI 22802 of 87525 Ti and 11949 of 41433 Ti2b calls (max |d| 1.2e-5); ADDICE 4340/33601 and 4925/35468 (max 4.7e-10); SIMELT 0/376 (no Ti2b, Ti never differs); s2ag 0/15279 Ti, 48175/479241 Ti2b (max 1.2e-8).
+| port | field (n elements) | bitwise f64 -> quad | max abs f64 -> quad |
+|---|---|---|---|
+| seaice_to_atmgrid (ffz_s2ag, 18 files) | gtemp (247260) | 225480 -> 247260 | 1.2e-8 -> 0 |
+| | gtemp2 | 220865 -> 247260 | 8.5e-10 -> 0 |
+| | gtempr | 246278 -> 247260 | 1.2e-8 -> 0 |
+| | zsnowi, zsi, fwsim | all bitwise both | 0 |
+| ADDICE (ffn, 16214 rows) | hsil (64856) | 64669 -> 64856 | 2.0e-6 -> 0 |
+| | all other fields | all bitwise both | 0 |
+| SIMELT (ffm) | all | unchanged (enrgused 4666/4668 both, 5.7e-14) | unchanged |
+| SEA_ICE stage (ffi, 4524 rows) | hsil (18096) | 17545 -> 17795 | 6.0e-6 -> 3.0e-8 |
+| | erun, srox2 | 4391 -> 4391 | 2.9e-11 unchanged |
+| GROUND_SI final (ffi) | snow | 4499 -> 4524 | 5.0e-14 -> 0 |
+| | msi2 | 4477 -> 4520 | 5.1e-6 -> 5.1e-6 (unchanged) |
+| | runosi | 3949 -> 4421 | 5.1e-6 -> 5.1e-6 |
+| | erunosi | 4377 -> 4466 | 1.087 -> 0.089 |
+| | srunosi | 3868 -> 4415 | 4.0e-7 -> 4.0e-7 |
+| | hsil (18096) | 16836 -> 17318 | 1.087 -> 0.058 |
+| | ssil | 17918 -> 18078 | 2.6e-7 -> 2.6e-7 |
+Conclusions: s2ag and ADDICE become fully bitwise; SIMELT never depended on it. GROUND_SI improves a lot (max hsil 1.09 -> 0.058 J/kg-scale) but is NOT bitwise: 732 of 4524 rows still differ after quad. Where it comes from (measured, not Ti): sea_ice-stage mismatches occur only in rows with solar (srox0 > 0): 401 of 1209 such rows, versus 0 of 3315 rows without solar; those rows use `math.exp` in solar_ice_frac_full. Hypothesis, UNTESTED: ifort libimf `exp` differs from Python's libm by 1 ulp (intel_libm_ff.py provides only `pow`, no `exp`); the SSIDEC/snowice stage (413 more ocean rows that are bitwise after sea_ice) is not attributed.
+
+## 4. Main question: the D166 step-0 ice difference (`seaice_quad_loop_compare.py 1`, nov26 it 33312, ice handed to ADVSI vs real ffadv_in, ocean cells, pole rows i>1 excluded; the loop uses seaice_core_jax, whose Ti/Ti2b were swapped for binary128 callbacks)
+| field | float64 (reproduces D166) | binary128 Ti/Ti2b |
+|---|---|---|
+| rsi | 3 cells, 1.1e-16 | 0 cells |
+| msi | 19 cells, max 1.431e-6 (scale 3.5e3) | 13 cells, max 1.431e-6 |
+| snowi | 12 cells, 5.0e-14 | 8 cells, 3.6e-15 |
+| hsi | 194 cells, max 1.620e-2 (scale 6.5e8) | 147 cells, max 1.620e-2 |
+| ssi | 37 cells, 7.17e-8 | 25 cells, 7.17e-8 |
+Answer: the quad Ti/Ti2b REDUCES the number of differing cells by about 25-35% (and removes rsi), but does NOT explain the largest residuals: the maxima (msi 1.431e-6, hsi 1.62e-2, ssi 7.17e-8) are identical to all printed digits, so the dominant error comes from elsewhere (candidates, none tested here: libimf exp as in section 3, the D17/D20 loose GROUND_SI/ADDICE diagnostics, the jax-vs-ff port differences). D166's "not rounding of ADVSI" remains true. Only step 0 (nov26, 1 step) was measured; later steps start from our own carried state and were not run with quad (the callback costs ~2 min per step on 2 cores). Note: the cell counts here (19/194/37) differ from D166's quoted 19/284/67 for hsi and ssi; same maxima, so the count there probably used another mask or definition; not reconciled.
+
+## 5. Proposed diffs (NOT applied)
+(a) `seaice_core_ff.py`: make Ti/Ti2b binary128 (keeps the public names so every port inherits it; mpmath is already a dependency via advsi_ff). Move the implementations of `ti_quad/ti2b_quad` from seaice_quad_ff.py into seaice_core_ff.py (seaice_quad_ff imports seaice_core_ff, so a plain import would be circular), then:
+```
+--- a/fullfidelity/seaice_core_ff.py
++++ b/fullfidelity/seaice_core_ff.py
+-def Ti(Eit, Si):
+-    if Si > 1e-10:
+-        ...(float64 body)...
++def Ti(Eit, Si):
++    """SEAICE.f:2363, REAL*16 b,c,det,tm (binary128 via mpmath, 113 bit); see seaice_quad_ff.py (D173)."""
++    <body of seaice_quad_ff.ti_quad, with S.X replaced by the module constants>
+-def Ti2b(Eit, Si, snowl, mice):
+-    ...(float64 body)...
++def Ti2b(Eit, Si, snowl, mice):
++    <body of seaice_quad_ff.ti2b_quad>
+```
+and update the module docstring ("Known, documented approximation ... float64") to say the quad emulation is used. Expected effect from section 3: s2ag and ADDICE bitwise, GROUND_SI improved; tests with float64-calibrated bounds keep passing (quad is closer to the real values). `advsi_ff.ti2b_quad` can then be deleted in favour of S.Ti2b (identical results measured).
+(b) `seaice_to_atmgrid_ff.py`: no change needed if (a) is applied (it binds the names at import).
+(c) `seaice_core_jax.py` / `surface_loop.py`: not a drop-in. The jax Ti/Ti2b are traced; a pure_callback works (used here) but costs minutes per step. Options for the owner: keep jax float64 and accept the section 4 residual, or compute Ti/Ti2b with a numpy float128-free double-double (not done), or run the ice cells through the ff port. Not decided here.
+(d) Optional: `tests/test_addice_simelt_ff.py` could tighten the ADDICE hsil bound to bitwise once (a) is applied.
+
+## 6. Limits and failures
+No failures. Not done: runs of dec01/jan01 through the loop (no DYNSI/ffy dumps beyond nov26), multi-step quad loop, libimf exp test, SI-branch of Ti. The emulation was verified against the real dumps (s2ag gtemp/gtemp2 bitwise on 247260 elements), and against advsi_ff's emulation, not against a standalone ifort real*16 program.
+
+**Parent-session check (2026-10-07 07:55):** `tests/test_seaice_quad_ff.py` re-run: 3 passed, 6 s. No tracked file modified. Own re-run of `python seaice_quad_compare.py` (2 cores, ~1 min) reproduces the per-port table above: seaice_to_atmgrid gtemp 225,480 -> 247,260 bitwise of 247,260 (max 1.17e-8 -> 0), gtemp2 220,865 -> 247,260, gtempr 246,278 -> 247,260; ADDICE hsil 64,669 -> 64,856 of 64,856 (2.0e-6 -> 0); SIMELT unchanged; GROUND_SI hsil 16,836 -> 17,318 of 18,096 (1.087 -> 0.058), erunosi 4,377 -> 4,466 of 4,524 (1.087 -> 0.089). Not re-run by the parent: the step-0 loop experiment for the D166 question (agent: quad cuts differing cells by 25-35% but the maxima stay msi 1.431e-6, hsi 1.62e-2, ssi 7.17e-8, so it is a partial contributor, not the main explanation; its cell counts for hsi/ssi differ from D166's 284/67 while the maxima match - not reconciled), and the libimf-exp hypothesis for the remaining GROUND_SI mismatches (untested). The proposed diffs (move binary128 Ti/Ti2b into `seaice_core_ff`, then drop `advsi_ff.ti2b_quad`) are NOT applied: a performance and ownership decision (mpmath at 113 bits is slow; `np.longdouble` here is x87 80-bit, not binary128).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
