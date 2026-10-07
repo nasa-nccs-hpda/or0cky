@@ -4168,6 +4168,42 @@ Rough achievable: ~12-14 s per step on 5 cores with (1b)+(2) if (1b) is kept bit
 
 **Parent-session check (2026-10-07 13:40):** `tests/test_speed_d175.py` re-run: 2 passed, 57 s (pinned to 3 cores, 1 thread each); no tracked file modified. The assertions are bitwise (`np.array_equal`) between the parallel variants and the existing stages. Timings (e.g. 20.6-21.5 s per coupled step on 4 cores vs 29-31 s on one idle core; month 8.6 h on 4 cores) are the agent's measurements on a shared node and were not re-measured by the parent. TWO HAZARDS reported by the agent that affect every bitwise claim in this repository: (1) the EXISTING code gives different results on 1 core and on 3 cores (step 0: T 1.7e-13, U 8.3e-13; 123 of 168 arrays differ after 2 steps), cause not isolated (likely the JAX/XLA CPU stages); reruns on the same core count are bitwise equal, so bitwise comparisons must use the same core affinity on both sides (the sharded regression pins its jobs and uses one thread each); (2) a warm persistent JAX compile cache changes results (T by 0.067 K, U by 0.55 m/s after one step) versus no cache or a cold cache: do NOT use the compile cache for validated runs. Also not usable: the JAX dynamics worker (1.7 s vs 3.5 s numpy) is not bitwise to the libimf numpy dynamics (U up to 3.5e-13 relative).
 
+# D176: radiation-derived tile columns, Ent radiation inputs, packet surface side (2026-10-08)
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file modified.
+New files: drv_radcols.py, drv_radcols_day.py, drv_radcols_couple.py, drv_radpacket.py, drv_radpacket_check.py, tests/test_drv_radcols.py (7 passed, ~25 s),
+ff_data/nov26_day/ours_d176/lake_legs_replay6.npz (lake ice-fraction legs of OUR 6-step replay surface loop).
+
+## 1. How each column is computed (sources read: RAD_DRV.f 4437-4451 and 5497-5535, ATM_DRV.f 336-350, SURFACE.f 508/575, SURFACE_LANDICE.f 278, PBL_DRV.f 160/192, GHY_DRV.f 1061/1151/1191-1193/1422, GHGMOD.f)
+FSF(4), TRSURF(4), TRHR(0), SRVISSURF, FSRDIR are model arrays set from the RADIA outputs on radiation steps (server returns them) and FROZEN in between,
+EXCEPT that RESET_SURF_FLUXES rescales FSF/TRSURF whenever the ice fraction (or lake fraction) of a cell changes. srheat = FSF(type)*COSZ1; trhr0/flong/trheat = TRHR(0);
+qsol = FSF*COSZ1; TRUP = TRSURF(type); vis_rad = SRVISSURF*COSZ1*0.82 (REAL*4 literal), dvis = vis_rad*FSRDIR; Ca = GHG table CO2 at year 1850, day 182 (GTREND).
+Reset legs (found by measurement, then confirmed in source): ocean cells (a) after MELT_SI at step head, (b) after ocean FORM_SI, (c) after ADVSI; lake cells inline at MELT_SI and FORM_SI.
+Day boundary: daily_LAKE FLAKE changes -> RESET(4,1)/(1,4)/(2,4) (implemented, RadSurf.daily_lake).
+
+## 2. Result per column, nov26_day, 54 steps, max |computed - record| (both substeps)
+- ffs srheat, trhr0, trup_in_rad, ocean-domain tiles: 0 (bitwise), all 54 steps (ice legs from the real ADVSI dumps). Lake-cell trhr0: 0.
+- ffp trhr0: 0. ffp qsol, ocean domain + land: 0 except steps 33360/33361: 4.6e-8 / 1.4e-9 (day boundary).
+- ffl srheat, flong, trup_in_rad: 0. ffg Ca, cosz1, vis_rad, dvis, trheat: 0. ffg srheat: 0 except 33360/61 (4.6e-8).
+- Ca: ghg_ca() == recorded 284.31639920765025 bitwise (ghg_day=182 reproduces it; where the default 182 is declared was not found).
+- Land TRUP: now TRSURF(4). The record has no land TRUP column; reference = old inferred value: |diff| <= 2.3e-13 (inversion rounding noise), 1.3e-7 at the day boundary.
+- COSZ1: radiation steps = server output, equal to the record (0). Non-radiation steps: NOT computed (input; D177).
+## 3. Not closed / honest limits
+- Lake cells (FLAKE>0, FOCEAN=0) srheat/trup: bitwise on the radiation-step windows only when exact legs are supplied. With OUR replay legs (6 steps): srheat/qsol 0, trup 4 values at 1 ulp (5.7e-14).
+  Over 54 steps no exact lake legs exist (the replay needs ffo/ffy dumps of 6 steps only); with one composite leg between record entries the error is 4.7e-4 relative (not bitwise).
+- Ocean legs in OUR closed loop depend on OUR ice state (ADVSI/DYNSI); the dumps' legs were used for the bitwise result.
+- Day boundary: FLAKE/FEARTH/RSI after daily_LAKE are inputs (daily_LAKE not ported); RSI_old approximated -> the 4.6e-8 above. CoupledRad records itime%48==0 steps in day_boundary_calls.
+- A 6-step closed coupled run with CoupledRad installed vs without: 22 legs applied; end states differ 2e-13 at step 0 and up to 2e-2 (T max) from step 1, same size as the
+  run-vs-real divergence of both runs (rms T 1.4e-3 vs 1.41e-3 at step 5). This is not distinguishable from chaotic growth of ulp perturbations (one realization); not attributed.
+## 4. Packet surface side (21 arrays) vs live rsv_n26_*_in.bin, non-pole cells (drv_radpacket.py; state at RADIA time = end of previous step + MELT_SI, before precipitation)
+- Step 33312, restart state: all fields bitwise except GTEMPR2 (2 cells, 5.7e-14 K).
+- Land group GTEMPR4 (tbcs+TF), BARESW, SNOWD, TSAVG (composite), WSAVG (sum ftype*ws): bitwise at all 11 radiation steps, using the previous step's GHY outputs as stand-in for our GHY state.
+  FRSNOW: <= 2.2e-16 (1-2 ulp, <=30 cells); needs persistent snowbv (restart variable) for fb=0/fv=0 cells.
+- Ice/lake/land-ice/ocean-water group at 33317 from OUR replay state: RSI 9.8e-10, SNOWI 2.8e-10, ZSI 5e-8, GTEMPR1 2.4e-8, GTEMPR2 3.4e-8: state differences, not formula errors. Later radiation steps not checked (no carried state beyond 6 steps).
+- Not wired into atm_day_free_rad (that module is unchanged); the functions are ready for it.
+
+**Parent-session check (2026-10-07 14:25):** `tests/test_drv_radcols.py` re-run: 7 passed, 27 s; no tracked file modified. Assertions: bitwise (0.0) for the ocean-domain `srheat`/`trhr0`/`trup_in_rad`, lake `trhr0`, `ffl` and `ffg` radiation columns over the nov26_day records, 4.6e-8 and 1.4e-9 only at the day-boundary steps 33360-33361, land TRUP within 2.3e-13 of the old inferred value (1.3e-7 at the boundary), and the radiation-packet surface side bitwise at step 33312 except one 5.7e-14 K value pair. Not re-run by the parent: the 6-step closed coupled comparison. CAUTIONS from the agent, kept: (1) over 54 steps no exact lake legs exist (the replay needs ocean dumps that cover only 6 steps), so lake `srheat`/`trup` are not bitwise there (4.7e-4 relative with one composite leg per step); (2) at the day boundary the lake fraction after `daily_LAKE` is still an input (not ported; `CoupledRad` logs every `itime % 48 == 0` step in `day_boundary_calls`); (3) in the closed coupled run the new columns change the end state by 2e-13 at step 0 and by up to 2e-2 in T from step 1, the same size as each run's divergence from the real run (rms T 1.4e-3 at step 5 in both): not attributed, indistinguishable from chaotic growth of a last-bit perturbation; (4) `COSZ1` on non-radiation steps is computed by D177 (`drv_zenith.py`), not here; (5) the radiation-packet surface side beyond step 33317 cannot be checked (no carried state beyond 6 steps); `atm_day_free_rad` is unchanged (the functions are ready for it). Effect on the coupled-step gate: the recorded-input list of `ACCEPTANCE_CRITERIA.md` section 1.5 shrinks by the radiation-derived tile columns, the land TRUP and the Ent radiation inputs Ca/cosz1/vis_rad/dvis (on nov26_day).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
