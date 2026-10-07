@@ -1,3 +1,72 @@
+# Start here: where the work is recorded
+
+This is the `full-fidelity-port` branch's index. It exists because the branch's own three
+tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
+`fullfidelity/PHASE0_LOG.md`) are exhaustive working records, not a fast way to answer "what is
+the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
+next for the one-page version.
+
+## Handoff (refreshed 2026-10-06, about 20:30 EDT; the newest first-hand state of the port)
+
+**Branch `full-fidelity-port`, HEAD `7bd7a14`.** The remote has everything through `264283d`; 8 commits since then are local until the
+regression below passes (push non-force: `git push`). No agents or schedulers are running; the 30-minute heartbeat was cancelled.
+
+### What exists and how well it is validated
+
+| Area | State | Evidence (ledger `FULL_FIDELITY_DELTAS.md`) |
+|---|---|---|
+| Ocean core | All live pieces ported and batched/JAX; a **chained whole-ocean step** (4.05 s/step CPU) matches the real dumps on 3 dates x 12 steps (exit error <= 1e-10 on tracers/moments, 2e-9 on velocities, pressure bitwise). ODIFF and the OPFIL2 coefficient setup are ported (D137-D138) | D33-D88, D118-D120, D137-D138 |
+| Sea-ice dynamics | VPICEDYN batched (55x) and in JAX | D87-D88 |
+| Atmosphere dynamics | Every live piece ported; a **chained dynamics step is bit-for-bit with the real model on 18 steps** when the Intel libimf `pow` is used; JAX version of the whole step 2.7x faster on CPU (bitwise vs numpy-pow) | D90-D123, D139-D144 |
+| Clouds / convection | `get_dq_*`, helpers, MASS_FLUX, LSCOND, MSTCNV, the CONDSE column chain; batched across columns (~5 s/step instead of ~111 s); JAX versions are bit-identical to the numpy batch but not faster on CPU | D89-D132, D145-D147 |
+| Land / surface | Ported earlier (D4-D32); **two real porting errors found and fixed on 2026-10-06** (precipitation conditioning D135, vegetated-tile irrigation D136; every output of 753 cells now matches the real record to 2e-13 of scale); D158 explained the last mismatches (ffg dump truncated at 11 sub-iterations) | D135, D136, D158 |
+| Chained atmosphere step, F1 gate | libimf, step 0: **MET on all 3 dates with the recorded land patch; with our ported land code MET on nov26, PARTLY MET on dec01/jan01** (worst field 9.9e-9 of scale). Without libimf not met (cloud threshold flips in 3-5% of columns) | D127-D129, D136b |
+| One model day (nov26, 54 steps) | Open loop with recorded radiation (D149-D151) and **free-running radiation through the radiation server** (D155-D157): T, U, V within the real model's own chaos level at all 54 steps, Q/P within or near, cloud condensates near the top of the level (<= 1.95x), never beyond 2x; global-mean radiative flux differences < 1 W/m2. Surface replayed from the real run; one start state; 5 real one-ulp members | D149-D151, D155-D157 |
+| Radiation | **Never ported (SOCRATES is third-party).** A "radiation server" (scratch build of the real ModelE objects running the unmodified RADIA from a packet file) reproduces the recorded radiation bit for bit on nov26 steps 0 and 5; 27-190 s per call (file exchange, re-runs the model up to the radiation step) | D148, D152-D154 |
+
+### Caveats that matter when reading any result
+- **Bitwise results need the Intel libimf `pow`/`exp`** (`intel_libm_ff.py`, a ctypes bridge to the real build's runtime; only on hosts that have it). With numpy/glibc the dynamics differ at ~1e-13 and cloud columns near thresholds flip (3-5% of columns), so multi-step comparison against one real trajectory cannot be bitwise beyond step 1: acceptance is statistical (the noise-floor method of D151/D157).
+- **JAX tests are flag-sensitive.** XLA:CPU fuses `a*b+c` into FMAs and rewrites `x/c`; bitwise agreement needs `--xla_cpu_max_isa=AVX` and `--xla_disable_hlo_passes=algsimp` set before JAX is imported (`dyn_jax_env.py`, `clouds_jax_env.py`). Those test files cannot share a process with the rest: run the whole suite with **`fullfidelity/run_all_tests.sh`** (the three files sit behind `tests/conftest.py` and run each in a fresh process with `RUN_XLA_FLAG_TESTS=1`).
+- **Recorded (not ported) inputs in every chained result:** radiation (except via the server), Ent vegetation exports, the surface/ocean/ice/lake state in the day runs, the AG2OG/IG2OG fluxes and the straits start state in the ocean chain.
+- **No GPU on this node** (12 CPU cores, JAX sees only `CpuDevice`); GPU speed-ups, the project's stated purpose, cannot be measured here.
+- **One start state (nov26) for every one-day result**; the radiation server was exercised on nov26 only.
+- Open-loop or surface-replayed runs validate dynamics, clouds, land code and the day boundary, not radiation-surface feedback.
+
+### In flight and uncommitted (check before doing anything else)
+1. **Full regression `fullfidelity/run_all_tests.sh`** started 19:55 EDT 2026-10-06 (main suite, then `test_dyn_jax`, `test_dyn_jax2`, `test_clouds_jax` each in a fresh process); log
+   `/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/ac69365f-34cd-40d2-965e-805e4c93b52b/scratchpad/regression_full5.log`
+   (about 75 min; if the session that started it is gone the job may still finish, otherwise rerun it). The previous combined run (2,769 passed, 22 failed) had two explained causes: 18 flag-sensitive JAX tests in a shared process (now isolated) and 4 `ghy_jax` stiff-cell cases (D158, marked non-strict xfail). Expect 4 xfails. **Push `full-fidelity-port` only after this run is clean.**
+2. **Stopped, unverified work (untracked):** `fullfidelity/radiation_server_persist.py`, `radiation_server_persist_oracle.py` and `tests/test_radiation_server_persist.py` are the Python side of a *persistent* radiation server (D159-D161); no Fortran patch exists yet and nothing was verified. Units 1500-1529 were reserved for it and are unused. Either finish or delete them.
+3. **D158 diffs not yet applied to the existing modules** (they are in the ledger entry D158): `ghy_ref.evap_limits` must store `epb`/`epv` where GHY.f:905,907 keeps them in module state; `ghy_compare.run_cell` should use dt = 900 and the reconstructed sub-iteration loop; `ghy_advnc_test.build_batch` should be replaced by the reconstructing builder (`ghy_advnc_test_nit.py`); every `ghy_jax.advnc` caller must then pass `max_substeps=ent_dts.shape[1]`; then the xfail in `tests/test_ghy_jax.py` can go. A free-running land (no record) would need `gdtm` in JAX.
+4. **Your files:** `Reports/GOAL.md` (plain-language status for management, kept current through 20:00 EDT; its "intended science use" line is deliberately blank for you to fill in) and `projects/imvi/AGENTS.md` (committed `66c80a5`; revert it if the duplicated rules are unwanted).
+
+### Next steps, in priority order
+1. Read the regression log; if clean, `git push`.
+2. Persistent radiation server (D159-D161): remove the 27-190 s per call, prove call-order independence, add the dec01/jan01 oracles, re-run the free-radiation day (should equal D155-D157 bitwise).
+3. Apply the D158 diffs; remove the xfail.
+4. Close the surface loop (ocean/ice/lake/land/Ent state computed, not replayed; AG2OG/IG2OG fluxes; init_STRAITS; Ent has no port and its size is unknown).
+5. The minimal AIJ-style diagnostics needed for the F3 monthly comparison (about 25-30 fields), then the chaos-aware multi-day/month validation (`scoping/RADIATION_AND_F2_PLAN.md` section 3).
+6. A GPU host to measure what the port is for; the remaining numpy stages in JAX (trop, MAtoPMB, efix/pgrad/glue, QDYNAM extra-column branch).
+
+### Remaining effort (estimates, not measurements; the basis is in `scoping/RADIATION_AND_F2_PLAN.md`)
+- One model day with recorded radiation and one with free-running radiation: **done**.
+- A persistent radiation server and the other two dates: ~10-20 h.
+- One-month F3 comparison against the real run's monthly diagnostics: **~100-170 h more**, including ~45 h to close the surface/ocean/ice/Ent loop. Earlier figures in this repo (30-65 h, 150-280 h) were for narrower or earlier scopes; this is the current one.
+
+### Environment and conventions
+- Python: `/home/gtamkin/.conda/envs/graphcast-env/bin/python` (has jax 0.5.3 and omegaconf; the default python lacks omegaconf). Run tests from `fullfidelity/`.
+- Real-model dumps: `/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/` (about 79 GB: dates `nov26`, `dec01`, `jan01`, the 54-step `nov26_day`, `_pristine_restarts`). The original ModelE tree is `/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0` (read-only; instrumented builds are scratch copies per `fullfidelity/instrumentation/build_and_run.md`).
+- Instrumentation units used so far: 1050-1440 (see the build notes per delta). `cp` is aliased to `cp -i` here: use `\cp`.
+- Scratch builds (`mE_*`) live under the session scratchpad (`.nccstmp/...`), which is temporary; everything needed to rebuild is in `instrumentation/*.patch` and `build_and_run.md`.
+- The `claude` binary is not on PATH; it is bundled in the VS Code extension directory (symlink it into `~/bin`), `screen` is installed, `tmux` is not.
+- Standing conditions (below) still apply: SOCRATES is never ported or modified; no reduced ocean without surfacing it as a decision; record, do not hide, cut corners; do not pause for confirmation mid-port.
+
+## Detailed log (accumulated, historical)
+
+Everything below is the accumulated per-delta log, kept for the record. Where it differs from the Handoff above (stale statuses such as "uncommitted at handoff", "next step", older estimates and test counts), **the Handoff above is current.** Newest entries are lower in the section "Current state"; the entries before it were written first.
+
+### Entries written before the 2026-10-05 handoff (D54-D58 and earlier notes)
+
 **D58 (2026-10-03, ready to commit): `KVINIT` ported — exact copy on all 198 real snapshot checks.**
 `KVINIT` (OCNKPP.f:1315-1359) saves the pre-source surface snapshot the KPP step reads. A pure copy
 with no arithmetic, validated by exact equality against 18 real per-step dumps (3 dates x 6 steps).
@@ -225,15 +294,7 @@ reduced/mixed-layer approximation. This supersedes an earlier (2026-09-23, Track
 recorded in `STATUS.md` *against* a full-fidelity port — that document is now superseded for
 everything after D25; see "Document map" below.
 
-# Start here: where the work is recorded
-
-This is the `full-fidelity-port` branch's index. It exists because the branch's own three
-tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
-`fullfidelity/PHASE0_LOG.md`) are exhaustive working records, not a fast way to answer "what is
-the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
-next for the one-page version.
-
-## Current state (refreshed 2026-10-05, handoff)
+### Current state (refreshed 2026-10-05, handoff)
 
 **Committed through D77 (`db561d7`, pushed).** Ocean core numerics:
 - D54-D61: bitwise-exact numpy ports (KPPMIX, OVDIFF/OVDIFFS, REDUCE_FIG, KVINIT, OCONV setup block,
@@ -493,34 +554,6 @@ nov26_day files stay marked xfail in `tests/test_ghy_jax.py`. A free-running lan
 imported and cannot work in a full run where jax is already imported; they now sit behind `tests/conftest.py` and run each in its own process via `fullfidelity/run_all_tests.sh`
 (`RUN_XLA_FLAG_TESTS=1`). **Run `./run_all_tests.sh` for the full regression.**
 
-**Next step for a new session:** batch the X pre-pass, then chain the whole-ocean step; start the atmosphere
-side from the scoping documents in `fullfidelity/scoping/`.
-
-**Still recorded or not ported (cut corners, listed in FULL_FIDELITY_DELTAS.md):** `calc_opfil2_coeffs`
-(OPFIL2 coefficients read from `ffz_opcoef.bin`), `init_STRAITS` (start-up straits state read as input),
-`GLMELT` (daily cadence, never exercised), `IRRIG_LK` (Stage 1, external dataset not in this environment),
-PO for the OCONV loop (read from the setup record), and a chained whole-ocean JAX step.
-
-**Remaining effort, revised again 2026-10-06 evening (focused hours incl. validation; estimates, not measurements):** the 30-65 h figure given earlier today
-covered speed work and the remaining chain items but not the plan's top rung (F3, a one-month comparison); the radiation scoping (D148) shows the
-larger picture. By target:
-- One-model-day open-loop run with recorded radiation (F2 start): **done 2026-10-06 (D149-D151)** in about 1 hour of agent time, against the 8-14 h estimated.
-- Free-running atmosphere day with black-box SOCRATES radiation (radiation server): **done 2026-10-06 (D152-D157)**, surface replayed, nov26 only; a persistent server and other dates remain.
-- One-month F3 comparison against the real run's monthly diagnostics: ~110 h (90-150) including ~45 h to close the surface/ocean/ice/Ent loop.
-- Still needed for any of them: the remaining recorded inputs (AG2OG/IG2OG fluxes, straits start state, Ent), the remaining numpy stages in JAX,
-  and a GPU host to measure what the project is for (none on this node).
-- **Honest summary: a validated single step exists today; a free-running day needs roughly 40 more hours; the one-month F3 target roughly 100-170 hours more.**
-
-**Environment notes for the next session:** use `/home/gtamkin/.conda/envs/graphcast-env/bin/python`
-(has jax and omegaconf); the default python lacks omegaconf. Run regression with
-`python -m pytest tests` from `fullfidelity/` (about 12 minutes). The instrumented build is
-`$SP/mE3`; build/run scripts are `$SP/build_run_d75.sh` (latest). `cp` is aliased to `cp -i`: use `\cp`.
-
-**Test count: 2471 passed, 1 skipped, 0 failed** (full regression `python -m pytest tests` from `fullfidelity/`, 2026-10-06, 43 min, on the tree at
-`1194aed` minus the D136 irrigation edits), plus 206 passed / 1 skipped on the affected land and atmosphere-step tests after the D136 edits
-(`test_atm_step*`, `test_land_chain*`, `test_ghy_*`), plus 6 `test_dyn_jax.py` tests (D139-D141). Many dump-based tests skip on hosts without
-`ff_data`, and the bitwise `pow` tests skip without the Intel libimf runtime.
-
 ## Standing conditions
 
 - **SOCRATES is off-limits** (see the top-of-file note) — always.
@@ -559,6 +592,14 @@ work started 2026-09-28):**
   operational lesson (binary naming, restart double-buffering, `cp -i`, patch-application order)
   recorded as a standing warning, not just a one-time fix.
 
+**Added 2026-10-05/06 (atmosphere, chains, radiation):**
+- `GOAL.md` (this directory): the plain-language goal, status and realistic-path summary for management (project owner's file; the "intended science use" line is blank on purpose).
+- `Reports/one_day_open_loop_overlay.md`: per-step table of our one-day drift against the real model's own noise floor (D150-D151).
+- `../fullfidelity/scoping/`: `ATM_CLOUDS_SCOPE.md`, `ATM_DYNAMICS_SCOPE.md`, `ATM_DYNAMICS_CHAIN_PLAN.md`, `CLOUDS_CONDSE_PLAN.md`, `OCEAN_CHAIN_PLAN.md`,
+  `ATM_STEP_PLAN.md` (the chained atmosphere step and its F1-gate protocol), `RADIATION_AND_F2_PLAN.md` (radiation options, chaos-aware F2/F3 protocol, hours) and
+  `RADIATION_SERVER_PLAN.md` (the 52-field RADIA packet table and its oracle). Each states its sources and what was not read.
+- `../fullfidelity/run_all_tests.sh`: the full regression (main suite in one process, the three XLA-flag-sensitive JAX test files each in a fresh process).
+
 **Earlier work (branch history before the Stage 1/Stage 2 full-fidelity push):**
 - `../STATUS.md`: **partially superseded.** Accurate for "Track A" (the earlier, deliberately-
   reduced representative driver — GHY/ATURB/SEAICE/LAKES/PBL/SURFACE chained and JAX-vectorized,
@@ -572,7 +613,7 @@ work started 2026-09-28):**
 - `../status_slides/`: an HQ-audience slide deck snapshot (Track A only; predates the full-fidelity
   push). Live/editable version linked from `status_slides/README.md`.
 
-## Open items
+## Open items (historical list from 2026-10-04; most are closed, the current list is "Next steps" in the Handoff above)
 
 1. **`ODHORZ`'s JAX vectorization** is deliberately deferred as its own follow-up (D42's
    plain-Python port is validated; batching this large multi-physics routine deserves dedicated
@@ -624,7 +665,6 @@ work started 2026-09-28):**
 
 ## Suggested wording for a new session
 
-"Read `Reports/README_START_HERE.md` and `Reports/Project_Summary_and_Conclusions.md`, then
-continue the full-fidelity port from the open items list — dump-hook-and-validate methodology,
-never pause for confirmation, SOCRATES stays untouched, full faithful ocean/ice-dynamics port
-(no simplification)."
+"Read `Reports/README_START_HERE.md` (the Handoff section first) and `Reports/GOAL.md`. Check the regression log named in 'In flight and uncommitted', push if it is clean, then
+continue with 'Next steps': dump-hook-and-validate methodology, verify every agent's result yourself before committing, report differences honestly (no silent tolerance loosening),
+SOCRATES stays untouched (radiation only through the radiation server or as recorded input), keep the docs current."
