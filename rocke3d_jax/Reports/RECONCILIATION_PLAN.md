@@ -1,8 +1,28 @@
 # Plan to reconcile the independent review with the current state of the port
 
 Owner: project owner of `rocke3d_jax` (G. Tamkin). Drafted by a Claude Code session on 2026-10-07 in response to an independent review written by a second (monitoring) session.
-Status: DRAFT for owner approval. Nothing in section 3 has been started except where marked.
+Status: Phase 0 answered (2026-10-07); Phase 1 A1-A3 done; Phase 2 in progress; the plan is kept current in the table below (updated 2026-10-07 14:15).
 Review by: after the Phase 0 decisions are made.
+
+## 0. Status of the gates (updated 2026-10-07 14:15)
+
+| Gate | State | Evidence / what is open |
+|---|---|---|
+| Phase 0: the four decisions | **answered** by the owner 2026-10-07 | `GOAL.md` |
+| A1-A3 provenance manifest | **done** | `PROVENANCE_MANIFEST.md` (open: mechanical include expansion, SOCRATES data directories, location of the loose `ANN4099` file) |
+| A8 acceptance criteria | **DRAFT written; needs the owner's approval BEFORE any coupled step is compared** (moved ahead of A6, see below) | `ACCEPTANCE_CRITERIA.md` |
+| A5 JAX coverage matrix and design (agent D179) | **not done**: the agent was cut off by the usage limit; resumes after the reset (17:50) | none on disk yet |
+| A6 JAX-driven coupled step (agent D180, stage 1 = atmosphere) | **not started in effect**: cut off by the usage limit | none on disk yet |
+| `model_driver.py` (D178) | **partial, uncommitted, unverified**: a driver skeleton with a record-backed boundary provider (replayed, not computed, boundaries); the agent was cut off. It does not satisfy any gate. | untracked files `model_driver.py`, `drv_daily.py`, `tests/test_model_driver.py` |
+| D176 radiation-derived columns | **partial, uncommitted, unverified** (cut off) | untracked `drv_radcols*.py`, `drv_radpacket*.py` |
+| D177 closures (zenith, PBL carry, ice and land columns) | done and committed; **not wired** into the coupled path | `e2ae908` |
+| Branch state | 7 commits ahead of `origin/full-fidelity-port`, all verified; the full regression last passed on a clean export of `bd8dd2e` (2,925 passed, 1 skipped, 0 failed) | push waits for the next regression |
+
+Refinements adopted after a second independent review of this plan (2026-10-07):
+1. **Acceptance criteria before the comparison:** A8 is now a prerequisite of A6 (`ACCEPTANCE_CRITERIA.md`), and every result must say which comparison it supports: C1 against our NumPy reference (port consistency) or C2 against the real Fortran (fidelity).
+2. **"JAX-driven" is defined precisely** (`ACCEPTANCE_CRITERIA.md` section 1): the prognostic state updates must execute through JAX on the device, not merely call JAX kernels from a Python/NumPy driver; one `jit` is not required, but boundaries, host-device transfers and every non-JAX stage are reported, and the Fortran radiation callback is a bounded, reported exception.
+3. **Status is refreshed as work proceeds** (this table), and states for each item whether boundaries are replayed or computed.
+4. **Scope note:** matching the `P2SAoM40` configuration first does not imply reproducing the published 100-year equilibrated climate; no result may say so (`ACCEPTANCE_CRITERIA.md` section 5).
 
 ## 1. The observations, checked against the repository
 
@@ -51,7 +71,7 @@ Summary of the results: source 361 of 362 files identical to the Zenodo release 
 
 ### Phase 3: written acceptance criteria
 - **A7.** Refresh the README Handoff (stale items: D172 status, the plan criteria found too strict).
-- **A8.** Draft `Reports/ACCEPTANCE_CRITERIA.md` for the lead's approval: fields and budgets for a coupled step; the statistical test for multi-day and month cases (the calibrated D172 scoring tool, with criteria that pass the leave-one-out test); what counts as a recorded or Fortran-served input; the radiation boundary decided in Phase 0.
+- **A8 (now BEFORE A6; draft written, awaiting approval).** `Reports/ACCEPTANCE_CRITERIA.md` for the lead's approval: fields and budgets for a coupled step; the statistical test for multi-day and month cases (the calibrated D172 scoring tool, with criteria that pass the leave-one-out test); what counts as a recorded or Fortran-served input; the radiation boundary decided in Phase 0.
 
 ### Phase 4: resume month-scale work only after Phase 0 and A5, A6 report
 The model-month driver (D174, D176-D178) continues as the bridge between the validated components and any longer comparison, but new expansion of the month-scale diagnostics (more AIJ columns, more ensemble members, month-long runs) waits for the answers to questions 1 and 3.
