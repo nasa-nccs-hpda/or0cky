@@ -35,7 +35,8 @@ Put these four questions to the person who assigned the project (draft wording b
 3. **Acceptance rung:** which of these counts: one coupled step vs the Fortran; a multi-day case with a noise-floor test; a one-month F3 comparison; the 100-year published climatology (infeasible on CPU: about 1.75 million steps)?
 4. **Reference identity:** is `P2SAoM40_003` the run that all our references should correspond to, and is the repository rundeck meant to be identical to it?
 
-### Phase 1: provenance manifest (about 0.5 to 1 day; can start now)
+### Phase 1: provenance manifest (about 0.5 to 1 day) - STARTED 2026-10-07, A1 to A3 DONE; results in `PROVENANCE_MANIFEST.md`
+Summary of the results: source 361 of 362 files identical to the Zenodo release (the one difference is SOCRATES data-directory paths); the rundeck template is identical; the local deck is the expanded template; the published P2SAoM40 output (8.5 MB) holds the 100-year mean maps and a 100-year series of global means (a 100-sample noise floor for annual global means); the local reference run is a cold start from observed conditions, so it is NOT shown to be the supplement run, and a climate-level match cannot be tested. A4 (location of the loose `ANN4099` file) still needs the owner's approval.
 - **A1.** Record the existing evidence (the O4 row) in a new `Reports/PROVENANCE_MANIFEST.md`: file, label, period, variable count, checksums.
 - **A2.** Compare the repository rundeck `decks/P2SAoM40.R` and the source version with the rundeck and code in the Zenodo record (10.5281/zenodo.14721184): download only those small files, not the 5 GB archive. Report differences line by line.
 - **A3.** Map the 1,073 variables of `ANN4099.aijP2SAoM40.nc` to our AIJ/AIJL columns (`f3_diagnostics.py`), so annual-mean comparison is possible later.
