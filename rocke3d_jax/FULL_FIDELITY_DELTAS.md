@@ -3369,6 +3369,41 @@ Reading: a one-ulp perturbation produces a pointwise monthly-mean spread that is
 
 **Parent-session check (2026-10-07 05:20):** (1) reproducibility re-done with my own script on the stored files: ctrl `JAN1950.accP2SAoM40.nc` vs `prod_runs/P2SAoM40/JAN1950.accP2SAoM40.nc`: 143 variables, 14,078,759 values, only `itimee` (end-time setting, differs by construction) and `cputime` differ; every physical array is equal. (2) spread table recomputed from `ens_jan1950_summary.npz` (8 members, area weight ~cos(lat), my own pole weighting): t_500 global-mean sd 0.0427 K / grid rms 0.556 K, tsurf 0.0215 / 0.721, slp 0.0108 / 1.256, prec 0.0105 / 0.885, evap 0.0135 / 0.251, srnf_toa 0.179 / 7.13, trnf_toa 0.132 / 4.81: agrees with the table above to rounding. Not re-checked by the parent: the 8 model runs themselves (logs show rc=0, 85 min each), the perturbation specs, and `ens_jan1950_summary.py` has no test. Eight members give a noisy spread estimate (about +-25% on a std).
 
+# D168: DYNSI input assembly and post-processing (ported), 2026-10-07
+
+Owner: project owner (Glenn Tamkin); written by a Claude Code session. Project-local. Review: when ADVSI is ported (re-run `dynsi_loop_ff.py`), or when a date other than nov26 is validated.
+Sources: pristine ModelE (read-only) ICEDYN_DRV.f:328-877 (DYNSI), 2125-2205 (GET_UISURF), ICEDYN.f:985-1112 (DXP, DYV, DXYP, DXYN, DXYS, DXYV, SINIU/COSIU), OCN_Interp.f:1605-1690 (IG2OG_oceans), :653-670 and 1722 (OG2AG UOSURF, OG2IG_uvsurf), OCNDYN.f:5577-5683 (TOC2SST, get_exports_layer1), SEAICE_DRV.f:313 (ustar), OCEAN_COM.f:22 (IVNP = IM/4), OGEOM.f:157, GEOM_B.f:312; dumps ffy_<it>_{in,out}.bin (D29), ffz_undocn_<it>.bin (D32), ffo_state tag 0/1, restart fort1_nov26_itime33312.nc.
+New files: `fullfidelity/dynsi_ff.py`, `fullfidelity/dynsi_loop_ff.py`, `fullfidelity/tests/test_dynsi_assembly_ff.py` (4 passed, 2.4 s). No existing file was modified (surface_loop.py, advsi_ff.py untouched). Nothing committed.
+
+## 1. What was ported (the "~550 lines of glue")
+Non-cubed-sphere branch (ice grid = atmosphere grid = ocean grid, 72 x 46; OCEAN_IMPORTEXPORT_ON_BGRID undefined). Around the existing VPICEDYN (icedyn_vec.vpicedyn; scalar one selectable):
+- before: polar replication and FOCEAN*RSI masking of DMUA/DMVA, GAIRX/GAIRY (4-point average / DTS), aPtmp = OGEOZA + ice load, PGFU/PGFV, HEFF, AREA, AMASS, COR, GWATX/GWATY (4-point average of UOSURF/VOSURF), PGFUB/PGFVB, ghost columns, north-pole rows;
+- after: DMU/DMV (all rows incl. the polar row), USI/VSI (rows 2..JM-1 updated, row JM zero, row 1 carried), DMUI/DMVI (+ north-pole mean), UI2rho (4-point B to A average of the stress, / DTS), ustar = max(5e-4, sqrt(UI2rho/RHOWS)), GET_UISURF (computed, not validated: no dump of the atmosphere uisurf; the tile record's uocean column was not compared), IG2OG (identity, polar row zero) giving ODMUI/ODMVI;
+- ocean exports: UOSURF/VOSURF from UO,VO layer 1 (get_exports_layer1 + OG2AG identity + latlon polar vector).
+Libm/arithmetic: numpy/glibc; expression order copied from the Fortran. Constants: RHOI 916.6, RHOWS 1030, GRAV 9.80665, OMEGA = 2*pi/(86400*365/366), OIPHI 25 deg, DTS 1800, RADIUS 6371000.
+A fact found by measurement (not from the source): the real restart's atmosphere UOSURF/VOSURF polar row is constant along i and equals the polar vector (UNP, VNP); a first version that kept the ocean polar row gave 0.03 error in GWATX/GWATY; fixed (the filling of the polar row is therefore empirical, validated on the nov26 restart row only).
+
+## 2. Validation (nov26, six steps 33312-33317; inputs = real ice state of ffy_in, real ice-tile DMUA of ffs, ocean exports from ffo tag 0/restart; USI/VSI carried from OUR output)
+- Assembled inputs vs ffy_in: gairx, gairy, pgfub, pgfvb, heff, area, amass, cor: BITWISE (0.0) in all 6 steps; gwatx/gwaty <= 6.9e-18 absolute (scale 0.24; polar-vector summation order).
+- uosurf/vosurf vs restart exports: 0.0 / 6.9e-18; ogeoza: 0.0 (step 0).
+- Carried USI/VSI vs the recorded uice0 of the next step: 0.0 at step 0, then <= 1.8e-12 absolute (scale 0.23).
+- Outputs vs ffy_out: dmui <= 1.4e-10 (scale 160), dmvi <= 3e-11 (scale 176), dmu/dmv (incl. polar row) <= 1e-11 at step 0, usi/vsi <= 1e-12. The residual is the existing VPICEDYN (D29/D87: not bitwise, convergence loop kki = 2 in all steps), not the glue.
+- ODMUI/ODMVI vs ffo tag 1: <= 1.6e-10 / 7.3e-11 absolute (scale 150-160).
+- ustar vs ffz_undocn on the 482 recorded cells: relative <= 1.3e-11 (bitwise on 150-175 of 482). Limitation: our UI2rho is nonzero on 553 cells; the recorded UNDERICE file holds 482, the other 71 were not compared.
+
+## 3. Effect on the free 6-step surface loop (dynsi_loop_ff.py; replay mode R1: real SURFACE tile outputs as flux input, no ADVSI, RIVERF recorded, 2 cores, ~100 s per variant)
+Recorded-DYNSI baseline reproduces D164 (uo 2.25e-3, vo 5.44e-3 relative after step 1). Computed DYNSI (odmui, odmvi, ustar from our own state):
+| step | ocean uo rec / comp | vo rec / comp | ice msi2 abs rec / comp (scale 3.54e3) | ice tg1 rec / comp |
+|---|---|---|---|---|
+| 0 | 1.07e-9 / 1.07e-9 | 6.08e-9 / 6.08e-9 | 0 / 0 | 2.5e-14 / 2.5e-14 |
+| 1 | 2.2515e-3 / 2.2516e-3 | 5.4375e-3 / 5.4375e-3 | 3.3751 / 3.3751 | 8.80e-2 / 8.80e-2 |
+| 3 | 7.3757e-3 / 7.3754e-3 | 2.8752e-2 / 2.8752e-2 | 10.070 / 10.067 | 0.26443 / 0.26443 |
+| 5 | 1.0711e-2 / 1.0710e-2 | 2.2827e-2 / 2.2827e-2 | 16.742 / 16.730 | 0.44225 / 0.44225 |
+Our DYNSI result differs from the recorded one in this free run by up to 1.3 (odmui, scale 150, step 5) and 8e-5 in ustar (scale 0.0136) because the free state has drifted; this is the consequence of the state error, not a glue error (the glue is exact on the real state, section 2). Conclusion: replacing the recorded DYNSI boundary by the computed one changes the ice and ocean differences by <= 1e-3 relative of the error itself (e.g. uo 2.2515e-3 -> 2.2516e-3), so the DYNSI boundary is NOT the source of the ~1e-3 first-step ice error and the 2e-3..5e-3 ocean error. This is consistent with, but does not by itself prove, D164's attribution to ADVSI (not ported; another agent). Tile-set mismatch (14 ocean tiles from step 1) is identical in both variants.
+Not done: the coupled atmosphere run (run_coupled) with computed DYNSI (needs the tile uocean = uisurf wiring inside the closed tile chain, which would require editing surface_loop.py); other dates; the unvalidated GET_UISURF. How to reproduce: `python fullfidelity/dynsi_loop_ff.py both` (set D168_OUT=<json> to save).
+
+**Parent-session check (2026-10-07 05:30):** `tests/test_dynsi_assembly_ff.py` re-run: 4 passed, 2.3 s (bounds are the measured values rounded up; asserts include bitwise equality of the assembled inputs). No existing file was modified (`git status`: only new files). Re-ran `python dynsi_loop_ff.py both` (3 cores, pinned): the recorded-DYNSI and computed-DYNSI free 6-step loops give the same ice/ocean errors as the table above (e.g. ocean exit uo 2.25e-3 / vo 5.44e-3 at step 1 and uo 1.07e-2 / vo 2.28e-2 at step 5 in both variants; ice tg1 0.0880 -> 0.442); so the DYNSI boundary is not the source of the first-step drift (consistent with the ADVSI attribution of D164, which this does not prove). Not re-derived by the parent: the per-field residuals vs the ffy/ffo/ffz dumps beyond what the tests assert. Only nov26; GET_UISURF unvalidated.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
