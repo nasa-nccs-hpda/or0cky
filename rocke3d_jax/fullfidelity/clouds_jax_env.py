@@ -16,7 +16,10 @@ if 'jax' not in sys.modules:
     if 'xla_cpu_max_isa' not in fl and os.environ.get('DYN_JAX_ALLOW_FMA', '0') != '1':
         add.append('--xla_cpu_max_isa=AVX')
     if 'xla_disable_hlo_passes' not in fl and os.environ.get('CLOUDS_JAX_KEEP_ALGSIMP', '0') != '1':
-        add.append('--xla_disable_hlo_passes=algsimp')
+        # D182 (2026-10-07): 'reshape-mover' is disabled as well. With algsimp off, XLA:CPU's post_scatter_expansion_simplification loop grows ~150 reshape/bitcast
+        # pairs per gather/scatter/reduce; the cold compile of the dynamics step took ~2,500 s instead of ~90 s. Results are bitwise identical (D182; test_dyn_jax,
+        # test_dyn_jax2, test_clouds_jax pass under these flags). CLOUDS_JAX_OLD_PASSES=1 restores the old flag.
+        add.append('--xla_disable_hlo_passes=' + ('algsimp' if os.environ.get('CLOUDS_JAX_OLD_PASSES', '0') == '1' else 'algsimp,reshape-mover'))
     os.environ['XLA_FLAGS'] = (fl + ' ' + ' '.join(add)).strip()
 
 
