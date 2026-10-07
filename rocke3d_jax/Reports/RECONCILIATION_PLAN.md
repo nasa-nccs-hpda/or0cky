@@ -10,7 +10,7 @@ Review by: after the Phase 0 decisions are made.
 |---|---|---|
 | Phase 0: the four decisions | **answered** by the owner 2026-10-07 | `GOAL.md` |
 | A1-A3 provenance manifest | **done** | `PROVENANCE_MANIFEST.md` (open: mechanical include expansion, SOCRATES data directories, location of the loose `ANN4099` file) |
-| A8 acceptance criteria | **DRAFT written; needs the owner's approval BEFORE any coupled step is compared** (moved ahead of A6, see below) | `ACCEPTANCE_CRITERIA.md` |
+| A8 acceptance criteria | **APPROVED by the owner 2026-10-07** (before any coupled step is compared); open: the GPU host (section 7 point 4) | `ACCEPTANCE_CRITERIA.md` |
 | A5 JAX coverage matrix and design (agent D179) | **not done**: the agent was cut off by the usage limit; resumes after the reset (17:50) | none on disk yet |
 | A6 JAX-driven coupled step (agent D180, stage 1 = atmosphere) | **not started in effect**: cut off by the usage limit | none on disk yet |
 | `model_driver.py` (D178) | **partial, uncommitted, unverified**: a driver skeleton with a record-backed boundary provider (replayed, not computed, boundaries); the agent was cut off. It does not satisfy any gate. | untracked files `model_driver.py`, `drv_daily.py`, `tests/test_model_driver.py` |

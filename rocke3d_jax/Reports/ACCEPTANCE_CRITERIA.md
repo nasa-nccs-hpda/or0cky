@@ -1,8 +1,8 @@
 # Acceptance criteria for the first JAX-driven coupled step and the multi-day run
 
 Owner: project owner of `rocke3d_jax` (G. Tamkin). Drafted by a Claude Code session on 2026-10-07.
-Status: **DRAFT for the owner's approval; must be approved BEFORE the first coupled step is compared** (this was a point of the independent review: criteria are set before the run, not after).
-Review by: before the first Phase 2 comparison is run.
+Status: **APPROVED by the project owner on 2026-10-07** as drafted (sections 1 to 6). It was approved BEFORE any coupled step was compared, as required (a point of the independent review: criteria are set before the run, not after). Open points of section 7 at approval: points 1 and 2 are approved as proposed; for point 3 the draft's rule stands (recorded inputs are allowed in the first coupled step if every one is listed, section 1.5) and no specific input is required to be computed first unless the owner says so later; point 4 (the GPU host) is still to be named. Any later change to these criteria must be dated and recorded here, never applied silently after a result is known.
+Review by: when the GPU host is named, or when the owner changes a criterion.
 
 Direction fixed by the owner on 2026-10-07 (see `GOAL.md`): end-to-end JAX first, validated components second; success is one coupled step first, then a multi-day run; a Fortran radiation callback is acceptable but must be noted in every result that uses it; match `P2SAoM40` first.
 

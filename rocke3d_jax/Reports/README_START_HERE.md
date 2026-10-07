@@ -62,7 +62,7 @@ Owner: G. Tamkin. Recorded 2026-10-07; findings and limits of the review are in 
 
 ### Next steps, in priority order (re-ordered 2026-10-07 after the owner's decisions)
 1. **JAX coverage matrix** (`RECONCILIATION_PLAN.md` A5): for every stage of one coupled step, which implementation runs (Fortran radiation callback, recorded input, NumPy, JAX) and what each costs.
-2. **One JAX-driven coupled step** (A6): compose the existing validated JAX stages under as few `jit` boundaries as practical, list every recorded or Fortran-served input, compare with the NumPy chained step and with the real Fortran on the criteria written in `Reports/ACCEPTANCE_CRITERIA.md` (to be drafted for approval, A8). Radiation through the persistent server, noted as a hybrid component.
+2. **One JAX-driven coupled step** (A6): compose the existing validated JAX stages under as few `jit` boundaries as practical, list every recorded or Fortran-served input, compare with the NumPy chained step (C1) and with the real Fortran (C2) on the criteria in `Reports/ACCEPTANCE_CRITERIA.md` (APPROVED by the owner 2026-10-07; open: name the GPU host). Radiation through the persistent server, noted as a hybrid component.
 3. **A short multi-day JAX-driven run** from the same start, with the same notes.
 4. Finish and wire the closures of recorded inputs that the coupled step still takes from records (D176 radiation-derived columns; D177 wiring into the coupled path; D178 driver skeleton), because each removed record shortens the list the step must declare.
 5. Speed on the intended hardware (needs a GPU host; this node has none); the D175 parallel variants are CPU-only.
