@@ -6,10 +6,9 @@ tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
 next for the one-page version.
 
-## Handoff (refreshed 2026-10-06, about 20:30 EDT; the newest first-hand state of the port)
+## Handoff (refreshed 2026-10-07, about 04:40 EDT; the newest first-hand state of the port)
 
-**Branch `full-fidelity-port`, HEAD = the commit that added this section (on top of `7bd7a14`).** The remote has everything through `264283d`; the commits since then
-(`git log origin/full-fidelity-port..HEAD`, about 10) are local until the regression below passes (push non-force: `git push`). No agents or schedulers are running; the 30-minute heartbeat was cancelled.
+**Branch `full-fidelity-port`; everything through `fdec3c1` is pushed** (full regression on that tree: 2,848 passed, 1 skipped, 0 failed, 0 xfailed; the three flag-sensitive JAX files run in fresh processes: 6, 8, 8 passed). No agents or schedulers are running except the session's 15-minute heartbeat (session-only cron). Four agents were cut off by the usage limit at about 23:30 and have NOT been resumed (see 'In flight').
 
 ### What exists and how well it is validated
 
@@ -19,10 +18,13 @@ next for the one-page version.
 | Sea-ice dynamics | VPICEDYN batched (55x) and in JAX | D87-D88 |
 | Atmosphere dynamics | Every live piece ported; a **chained dynamics step is bit-for-bit with the real model on 18 steps** when the Intel libimf `pow` is used; JAX version of the whole step 2.7x faster on CPU (bitwise vs numpy-pow) | D90-D123, D139-D144 |
 | Clouds / convection | `get_dq_*`, helpers, MASS_FLUX, LSCOND, MSTCNV, the CONDSE column chain; batched across columns (~5 s/step instead of ~111 s); JAX versions are bit-identical to the numpy batch but not faster on CPU | D89-D132, D145-D147 |
-| Land / surface | Ported earlier (D4-D32); **two real porting errors found and fixed on 2026-10-06** (precipitation conditioning D135, vegetated-tile irrigation D136; every output of 753 cells now matches the real record to 2e-13 of scale); D158 explained the last mismatches (ffg dump truncated at 11 sub-iterations) | D135, D136, D158 |
+| Land / surface | Ported earlier (D4-D32); **two real porting errors found and fixed on 2026-10-06** (precipitation conditioning D135, vegetated-tile irrigation D136; every output of 753 cells now matches the real record to 2e-13 of scale); D158 explained and fixed the last mismatches (ffg dump truncated at 11 sub-iterations; applied 2026-10-06, abetad bounded at 5e-6 in the 4 stiff-cell files only, other tolerances unchanged) | D135, D136, D158 |
 | Chained atmosphere step, F1 gate | libimf, step 0: **MET on all 3 dates with the recorded land patch; with our ported land code MET on nov26, PARTLY MET on dec01/jan01** (worst field 9.9e-9 of scale). Without libimf not met (cloud threshold flips in 3-5% of columns) | D127-D129, D136b |
 | One model day (nov26, 54 steps) | Open loop with recorded radiation (D149-D151) and **free-running radiation through the radiation server** (D155-D157): T, U, V within the real model's own chaos level at all 54 steps, Q/P within or near, cloud condensates near the top of the level (<= 1.95x), never beyond 2x; global-mean radiative flux differences < 1 W/m2. Surface replayed from the real run; one start state; 5 real one-ulp members | D149-D151, D155-D157 |
 | Radiation | **Never ported (SOCRATES is third-party).** A "radiation server" (scratch build of the real ModelE objects running the unmodified RADIA from a packet file) reproduces the recorded radiation bit for bit on nov26 steps 0 and 5; 27-190 s per call (file exchange, re-runs the model up to the radiation step) | D148, D152-D154 |
+| Persistent radiation server | Real RADIA, SOCRATES untouched. 21 of 22 output fields bitwise vs recorded real radiation (nov26 5 steps incl. a day boundary; dec01, jan01 first radiation step), ~11 s per call (was 27-190 s), call-order independent on nov26; the free-radiation nov26 day through it equals the one-shot day bitwise (1,192 arrays); radiation time 158 s vs 1,194 s. AIJ needs the real trajectory's seed | D159-D162 |
+| F3 diagnostics (AIJ-style) | 257 AIJ + 4 AIJL columns match the real model's own 54-step accumulation to <= 5.3e-14 (tolerance 1e-12, not loosened); ~226 of 483 changed columns NOT accumulated (surface winds/state, cloud columns, budgets); reference `ff_data/nov26_day/real_acc54_nov26.npz` made with the real binary | D163 |
+| Surface loop (6 steps, nov26) | Ocean/ice/lake state computed from our own code from the restart: step 0 exact or D120 level. Free run drifts ~1e-3 (ice) to 5e-3 (ocean uo/vo) after one step (attributed to ADVSI by inference only). Coupled atmosphere + closed surface: T/Q/U/V/P within or near the real members' spread (never beyond 2x) on 6 steps, one start state | D164 |
 
 ### Caveats that matter when reading any result
 - **Bitwise results need the Intel libimf `pow`/`exp`** (`intel_libm_ff.py`, a ctypes bridge to the real build's runtime; only on hosts that have it). With numpy/glibc the dynamics differ at ~1e-13 and cloud columns near thresholds flip (3-5% of columns), so multi-step comparison against one real trajectory cannot be bitwise beyond step 1: acceptance is statistical (the noise-floor method of D151/D157).
@@ -33,20 +35,18 @@ next for the one-page version.
 - Open-loop or surface-replayed runs validate dynamics, clouds, land code and the day boundary, not radiation-surface feedback.
 
 ### In flight and uncommitted (check before doing anything else)
-1. **Full regression `fullfidelity/run_all_tests.sh`** started 19:55 EDT 2026-10-06 (main suite, then `test_dyn_jax`, `test_dyn_jax2`, `test_clouds_jax` each in a fresh process); log
-   `/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/ac69365f-34cd-40d2-965e-805e4c93b52b/scratchpad/regression_full5.log`
-   (about 75 min; if the session that started it is gone the job may still finish, otherwise rerun it). The previous combined run (2,769 passed, 22 failed) had two explained causes: 18 flag-sensitive JAX tests in a shared process (now isolated) and 4 `ghy_jax` stiff-cell cases (D158, marked non-strict xfail). Expect 4 xfails. **Push `full-fidelity-port` only after this run is clean.**
-2. **Stopped, unverified work (untracked):** `fullfidelity/radiation_server_persist.py`, `radiation_server_persist_oracle.py` and `tests/test_radiation_server_persist.py` are the Python side of a *persistent* radiation server (D159-D161); no Fortran patch exists yet and nothing was verified. Units 1500-1529 were reserved for it and are unused. Either finish or delete them.
-3. **D158 diffs not yet applied to the existing modules** (they are in the ledger entry D158): `ghy_ref.evap_limits` must store `epb`/`epv` where GHY.f:905,907 keeps them in module state; `ghy_compare.run_cell` should use dt = 900 and the reconstructed sub-iteration loop; `ghy_advnc_test.build_batch` should be replaced by the reconstructing builder (`ghy_advnc_test_nit.py`); every `ghy_jax.advnc` caller must then pass `max_substeps=ent_dts.shape[1]`; then the xfail in `tests/test_ghy_jax.py` can go. A free-running land (no record) would need `gdtm` in JAX.
-4. **Your files:** `Reports/GOAL.md` (plain-language status for management, kept current through 20:00 EDT; its "intended science use" line is deliberately blank for you to fill in) and `projects/imvi/AGENTS.md` (committed `66c80a5`; revert it if the duplicated rules are unwanted).
+1. **Cut off by the usage limit, partial and UNVERIFIED (resume or discard):** ADVSI port (D166, `fullfidelity/advsi_ff.py` not yet present), RIVERF port (D167), DYNSI input assembly (D168, partial `fullfidelity/dynsi_ff.py` untracked), real JAN1950 ensemble for the month-scale noise floor (D165, partial `fullfidelity/ens_jan1950_summary.py` untracked; the real-model runs did not survive, check `ff_data/ens_jan1950/`). Each task's brief is in the session transcript; the D164 entry lists the sizes (ADVSI ~756 lines, DYNSI glue ~550, RIVERF ~508).
+2. **Two runaway `bfs` filesystem searches** (pids 3235481, 3233165, started by subagents) were loading the node (load ~15 on 12 cores); a kill was denied by the permission classifier and left to the owner.
+3. **Owner decisions pending:** (a) Ent vegetation exports: keep recorded for runs up to one day, or start the port now (D164 sizing: ~2,800 per-iteration lines + ~1,080 daily-update lines + data; agent recommends recorded now, port before F3); (b) the 'intended science use' line of `Reports/GOAL.md`.
+4. **`../full-fidelity-port-new/`** is an untracked sibling directory of unknown origin; not touched.
 
 ### Next steps, in priority order
-1. Read the regression log; if clean, `git push`.
-2. Persistent radiation server (D159-D161): remove the 27-190 s per call, prove call-order independence, add the dec01/jan01 oracles, re-run the free-radiation day (should equal D155-D157 bitwise).
-3. Apply the D158 diffs; remove the xfail.
-4. Close the surface loop (ocean/ice/lake/land/Ent state computed, not replayed; AG2OG/IG2OG fluxes; init_STRAITS; Ent has no port and its size is unknown).
-5. The minimal AIJ-style diagnostics needed for the F3 monthly comparison (about 25-30 fields), then the chaos-aware multi-day/month validation (`scoping/RADIATION_AND_F2_PLAN.md` section 3).
-6. A GPU host to measure what the port is for; the remaining numpy stages in JAX (trop, MAtoPMB, efix/pgrad/glue, QDYNAM extra-column branch).
+1. Resume/verify ADVSI, RIVERF, DYNSI (each validated against the recorded boundary dumps), then re-run the free surface loop to confirm or refute the ADVSI/RIVERF attributions of D164.
+2. Real JAN1950 ensemble (>= 4 one-ulp members + an unperturbed run reproducing `JAN1950.acc`) for the month-scale noise floor; ~80 min per member on 1 core.
+3. Close the rest of the surface loop on longer windows (the 54-step day lacks DYNSI/RIVERF boundary dumps; they would need instrumentation), Ent decision, Ent port or monthly recorded exports.
+4. Accumulate the remaining ~226 diagnostic columns and wire the accumulators into the chained model (called ~110x per month at DIAGA and per SURFACE substep).
+5. Chaos-aware multi-day/month validation (`scoping/RADIATION_AND_F2_PLAN.md` section 3); a month with free-running radiation costs ~55 min of server time.
+6. A GPU host to measure what the port is for; remaining numpy stages in JAX.
 
 ### Remaining effort (estimates, not measurements; the basis is in `scoping/RADIATION_AND_F2_PLAN.md`)
 - One model day with recorded radiation and one with free-running radiation: **done**.
