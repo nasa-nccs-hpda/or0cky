@@ -3264,6 +3264,31 @@ Radiation (never ported); Ent exports and the ffg land forcing columns (section 
 
 **Parent-session check (2026-10-06 23:24):** `tests/test_surface_loop.py` re-run independently: 4 passed, 66 s (assertions: exact equality at step 0, ice tg < 1e-13, ocean exit g0m < 1e-10, uo/vo < 1e-7). No existing file was modified (`git status` shows only new files). NOT re-derived by the parent: the free-run and coupled-run comparison numbers (6 steps, nov26 only, 5 real members), the Ent call-graph size, and the attributions to ADVSI and RIVERF (the agent marks both as inference). **Open decision for the project owner (G. Tamkin): Ent vegetation exports - keep recorded for runs up to one day, or start the Ent port now; the agent recommends recorded now and a port before F3, because a month-long F3 run needs a month of Ent exports that does not exist.**
 
+## D162 (2026-10-07): free-radiation day through the PERSISTENT radiation server; equals the one-shot day bitwise
+
+Owner: Glenn Tamkin. Sources: D155-D157 (`atm_day_free_rad.py`), D159-D161 (`radiation_server_persist.py`). SOCRATES/RADIA untouched (the real RADIA runs inside the persistent server).
+
+**Built.** `fullfidelity/atm_day_free_rad_persist.py` (new; `atm_day_free_rad.py` unchanged): `PersistentRadiation`, a callable plugged into the existing `run_day_free(server=...)` hook; it lazily starts one `PersistentServer("nov26")` (start-up once) and requests each radiation step in order with the real seed of that step (`ffc_cse_out_<it>.bin` SEEDS[1], nov26_day). `run_day_persist` also stores `persist` (start wall, seeds, per-call server/wall seconds) in run.json. `compare(tag, ref)` compares the two days bitwise (step_<it>.npz, rad_in, rad_out). Test: `fullfidelity/tests/test_atm_day_free_rad_persist.py` (2 tests; skipped when server binary/restart/dumps are absent; the day-equality test also skips without both saved days).
+
+**Commands.**
+```
+cd fullfidelity
+export RADSRVP_SCRATCH=<session scratchpad>/mE_persist OMP_NUM_THREADS=3   # binary mE2/model/P2SAoM40.bin
+taskset -c 0-2 python atm_day_free_rad_persist.py run --tag free_persist     # 54 steps, 11 server calls, one server
+python atm_day_free_rad_persist.py compare --tag free_persist --ref free_np   # vs the D155 one-shot day (ours_free_np)
+python -m pytest tests/test_atm_day_free_rad_persist.py tests/test_atm_day_free_rad.py   # 8 passed, 97 s
+```
+Outputs: `ff_data/nov26_day/ours_free_persist/`.
+
+**Results (measured).**
+- Bitwise comparison against `ours_free_np`: state `step_<it>.npz` (T Q U V QCL QCI P; 54 steps, 378 arrays): 0 unequal; assembled radiation packets `rad_in` (11 steps, 572 arrays): 0 unequal; server outputs `rad_out` (11 steps, 242 arrays incl. TOA AIJ columns): 0 unequal. Per-step statistics in the run log equal D155 (e.g. step 0 rms T 7.21e-14; step 53 rms T 7.95e-02, U 2.05e-01, V 2.21e-01). Per call, `radia_apply` T equals the server's own T update (0.0 on all 11 calls).
+- Radiation wall time: persistent 158.3 s in total for 11 calls (start-up 19.9 s inside the first call; per call 11.1-13.6 s server time, 11.7-14.6 s wall after the first; first call 31.7 s) vs one-shot 1193.9 s (32.6 ... 191.8 s per call, growing with the step). The one-shot total is 1194 s, not ~30 min: D155 recorded 1194 s of server time in a 2250 s day. Day total 1312 s (persistent) vs 2250 s (one-shot); the chain itself (non-radiation) took ~1153 s here vs ~1056 s there (shared node, 3 cores).
+- Server time is a single-thread number on a shared node.
+
+**Limitations.** One date (nov26), one boundary (33360); the first attempt of the run was killed by my own `pkill` during polling at step 15 and was simply restarted from scratch (no partial results used). The comparison only proves persistent == one-shot for this trajectory; both share the replayed surface and stale carried SNOAGE caveats of D155-D157 (unchanged). Per-call cost is dominated by RADIA itself (~11 s), not by file I/O.
+
+**Parent-session check (2026-10-06 23:35):** own array-by-array comparison of `ff_data/nov26_day/ours_free_persist` vs `ours_free_np` (76 npz files, 1,192 arrays = 378 state + 572 rad_in + 242 rad_out): 0 not bitwise equal; the only key present in one side only is `_server_s` (timing metadata, excluded). Note: the .npz files differ at BYTE level (zip timestamps and that extra key), so a byte/hash comparison is the wrong test. `tests/test_atm_day_free_rad_persist.py` re-run: 2 passed, 62 s. Timings (radiation 158 s vs 1,194 s; day 1,312 s vs 2,250 s) are the agent's single-thread measurements on a shared node, not re-measured. The agent reports its first launch was killed by its own `pkill`; the ensemble processes of the other track were confirmed still running afterwards (7 `P2SAoM40`).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
