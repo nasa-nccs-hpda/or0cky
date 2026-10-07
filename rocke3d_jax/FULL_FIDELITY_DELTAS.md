@@ -4003,6 +4003,66 @@ a multi-year port run can be scored by its multi-year mean with sd/sqrt(n_years)
 
 **Parent-session check (2026-10-07 13:10):** `tests/test_f3_diagnostics2.py` + `tests/test_f3_score.py` re-run: 9 passed, 1 skipped in 339 s; the skipped test is gated on the env var `F3_CHAINED_NPZ` and passes (1 passed) when pointed at `ff_data/nov26_day/d172_chained54.npz`. No tracked file modified. Headline chained-run numbers recomputed from `d172_chained54_vs_real.json`: 284 columns compared, 105 within the D163 tolerance; relative to column scale prsurf 4.8e-4, slp 1.36e-2, t_850 1.39e-2, t_500 6.99e-3, tsurf 6.69e-3, prec 5.3e-2, evap 3.9e-2; global-mean relative differences from 6e-9 (prsurf) to 3e-3 (prec); srnf_toa/trnf_toa exact only because radiation is recorded. Leave-one-out calibration of the scoring method re-done independently by the parent (global-mean t per field, each JAN1950 member against the other 7, 8 members, 161 valid fields): 60 of 1,288 tests beyond the 5% two-sided critical value (4.7%; the agent reports 4.4% on 204 fields; expected about 5%), so the members look like draws from one distribution. Not re-run by the parent: the 54-step chained run itself (about 2 h on one core), the negative controls, the zonal-bin statistics. NOT achieved (agent): about 195 of the 483 changed columns are still not accumulated, and no AIJ noise floor exists for the 54-step window (the five D151 members exist only as per-step states). The month-scale criteria proposed in the plan (>= 95% of zonal bins within 2 sigma) are too strict for 7-8 reference members by the agent's leave-one-out result.
 
+# D174: model-month driver, stage 1 (inventory) and the first closure; driver and runs NOT built
+
+Owner: Glenn Tamkin; written by a Claude Code agent, 2026-10-07. Project-local. Nothing committed; no existing file modified.
+STATE: stages 3 (driver) and 4 (runs) were NOT started. No model_driver.py exists. Stage 2 has one finished item (RNG). Everything below is
+either read from code/dumps (stated with the source) or measured; nothing here is a result of a model run.
+New files: `fullfidelity/drv_rng.py`, `fullfidelity/tests/test_drv_rng.py` (3 passed, 8 s). Scratch: session scratchpad `inv/col_variation.json`.
+
+## 1. Inventory: what the coupled path still takes from real dumps (surface_loop_v2.Loop2 + land_chain_ent + atm_step)
+Key fact: every step reads the real SURFACE records of THAT step (`atm_step.surface_records(R)`: ffp 154 cols, ffs 90, ffl 60, ffg 450, fft 40) as
+templates; the pipeline overwrites a subset of columns. A column is "recorded" when the port reads it and nothing overwrites it. Evidence: code reading
+of `apply_state_to_records`, `override_pbl/override_tiles`, `next_land_pbl_columns`, `land_substep_ent`, `predict_ns2`, record layouts in the
+instrumentation patches, and a measurement of which columns vary over the 54 real steps (`inv/col_variation.json`; rowsets change on 10 distinct sizes
+because ice tiles appear/vanish; ffg/ffl/fft rowsets are fixed).
+
+| Recorded input | Real routine | Inputs in our own state? | Blocks computing it | Dump for dec01/jan01 |
+|---|---|---|---|---|
+| Tile templates themselves (which rows exist, static columns: coriol, hemi, ihc, focean, axyp, soil data q/qk/dz/top_index, ...) | grid constants | yes (constants) | needs a template builder (clone prototype row per cell/type; new ice tiles have no row) | step-0 records only (6 steps) |
+| Radiation columns: ffs srheat(15), trhr0(24), trup_in_rad(80); ffl srheat(8), flong(12), trup(14); ffp trhr0(17), qsol(20); ffg srheat(149), trheat(150) | SURFACE.f:508,575 SRHEAT=FSF(it)*COSZ1; ATM_DRV.f:336,349-350 flong=TRHR(0), fshort=FSF, trup=TRSURF | yes, from radiation-server outputs FSF, TRHR(0), TRSURF (frozen between radiation steps) and COSZ1 | only wiring; land TRUP is currently INFERRED from the recorded land patch (`LC.infer_trup`) | yes (6 steps) |
+| Ent radiation inputs ffg 3-6: Ca, cosz1, vis_rad, dvis | GHY_DRV.f ~1191 (SRVISSURF, FSRDIR, COSZ1); Ca from GHG | vis/dvis/cosz from server outputs; Ca is a GHG-table value | Ca source (GHG file by year) not ported | yes |
+| COSZ1 on non-radiation steps | Zenith.F90 calc_zenith_angle (orbit hour angle, coszt) | yes (clock, orbital parameters) | port of `useOrbit%getHourAngle` + `coszt` not done (source located: Zenith.F90, RAD_DRV.f:6434) | yes |
+| PBL persistent state at substep 1: profiles u,v,t,q,e (ffp 50-88), cm/ch/cq (33-35), z0m input (49) | PBL_DRV.f (uabl.. cmgs.. restart arrays `*_ocn01/ice01/gla01/lnd01`) | yes: substep-2 outputs of the previous step, and the restart holds the initial value | carry as per-(type,i,j) grid arrays (tiles that vanish keep stale values); not wired | restart yes |
+| ffs ice properties dF1dTG, hcg1, hcg2, fsri1, fsri2 (10-14) | SEAICE.f ice thermal functions (`ice_props_ff` exists) | yes (ice msi, snow, ssi) | not recomputed per step: recorded values go stale over a long run | yes |
+| Lake fraction FLAKE (ffs 26) varies at the day boundary | daily_LAKE / UPDTYPE | partly | daily_LAKE not ported, never exercised | no |
+| Land ffg: pres, vs0, gusti, ma1 (col 165) | atmosphere layer-1 mass, PBL ws0/gusti | yes | only wiring (`land_substep` takes ts,qs,rho,ch,vs,tprime,qprime,qm1 from PBL; the rest stay recorded) | yes |
+| Land elhx (ffp col 19, type 4 varies) | GHY_DRV (LHE/LHS by ground state) | yes | rule not yet read | yes |
+| GHY prognostic state at the start of each step (open loop) | GHY | yes (`Loop` carries it) | open-loop `atm_day_open_loop` resets from the record; `Loop2` carries it | restart yes |
+| irrigation demand (ffg 147,148) | IRRIGMOD.irrigate_extract (460 lines + demand file) | no (data file) | reconstructed from the recorded ACTUAL flux; not computable without the demand file | yes |
+| ffg Ent per-iteration exports | Ent | yes | computed (D171), first-step ulp residual open | yes |
+| TRUP_in_rad of land, MMST (init_STRAITS), 5 static ADVSI geometry vectors | RAD / init_STRAITS / ICEDYN geometry | MMST, geometry: static | one dump per date | MMST/ADVSI geometry: yes |
+| CONDSE entry RNDSS, SEEDS | RANDU stream | yes | CLOSED here (section 2) except the first seed | yes |
+| CONDSE entry non-state fields (FEARTH.. static, RSI overridden, GZ/MWS/PMIDOLD, UKM rebuilt, DDM1.. outputs) | - | yes | which of them CONDSE really reads before writing was not tested | yes |
+| Radiation packet surface side (20 fields: GTEMPR1-4, WSAVG, ZSI, SNOWI, POND_MELT, FLAG_DSWS, DLAKE, SNOWLI, ZSNOWI, BARESW, FRSNOW, SNOWD, ...) | RAD_DRV.f 3310-3391 inputs | yes (ours: atm gtempr, ice, lake MWL, land-ice, GHY snow) | formulas (ZSI, DLAKE, ZSNOWI, SNOWD, FRSNOW, BARESW) not yet derived; `atm_day_free_rad` still takes the 'live' values | live packets: nov26 11 steps only |
+| Day boundary: DAILY_ATMDYN MDRYA constant; ch4ox water mass DM(j,l) (recorded from a step pair); SNOAGE aging (needs TDIURN); daily_LAKE, daily_LI, daily_OCEAN, UPDTYPE | RAD_DRV.f:1414,1600-1698; daily_* | ch4ox needs the dH2O file; SNOAGE needs TDIURN accumulation | ported pieces: DAILY_ATMDYN, Ent LAI update only | MDRYA recorded per date |
+| First-step atmosphere state: MUS, MVS, MWS, GZ, hidden ATURB fields | dynamics | not in the restart | taken from `ffd_state_s1`/`ffa_step_a` of step 0 (exists for all 3 dates) | yes |
+| Radiation itself | SOCRATES via persistent real-RADIA server | - | server only exists for the date's restart and runs forward; seeds for non-dumped steps are now computable (section 2); jan01 server first radiation step 17522 | n/a |
+
+Minimum extra instrumentation (unused units: 1470-1479, re-grep before use; nothing found at D171): (a) first-step Ent forcing dump (D171 proposal);
+(b) `dH2O`/GHG Ca values and MDRYA are small constants per date and can be read once; (c) a per-step dump of TDIURN at the day boundary (one array) to close SNOAGE aging;
+(d) one 54-step ocean/ice boundary set is NOT needed for the v2 coupled path.
+
+## 2. Closed: random-number chain (`drv_rng.py`)
+Measured on 63 consecutive steps (nov26_day 53 steps, dec01 5, jan01 5; 0 mismatches): with the ModelE LCG ix->ix*69069+1 (mod 2^32),
+SEEDS[1] = LCG^275790(SEEDS[0]) and SEEDS[0](k+1) = LCG^275790(SEEDS[0](k)) on non-radiation steps, LCG^405760 on radiation steps (RADIA adds 129970 draws).
+RNDSS(3,40,72,46) follows from SEEDS[0] with the existing `clouds_condse_ff.randu_stream`. Only the first seed of a run is recorded (dump). The persistent
+server's seed argument for later radiation steps is `radia_seed(s0)` (its effect is on cloud-overlap diagnostics only, D159).
+Tests: `tests/test_drv_rng.py` (3 passed).
+
+## 3. Not done (honest)
+- Stage 2 closures other than RNG (orbit/COSZ1, radiation columns, PBL carry, ice props, radiation-packet surface side, template builder): analysed above, not coded or validated.
+- Stage 3 `model_driver.py` (checkpoint/restart, timing log, F3 calls) and stage 4 runs (nov26 54-step all-computed day; jan01 multi-day): not started. No per-step cost of a combined driver was measured.
+- The usage-limit pause interrupted the work; the remaining budget was used for this inventory and the RNG closure only.
+
+## 4. What blocks a full month and realistic path
+Blockers in order: (1) template builder + the closures in section 1 (everything in the table marked 'wiring' is mechanical; day-boundary daily_LAKE/UPDTYPE/SNOAGE/ch4ox and a first-day Ent set_vegetation_data are real porting work);
+(2) cost: GHY+Ent about 6.5-9.6 s/step, CONDSE about 5 s, coupled surface step 43-100 s on 2 cores in D170 (being profiled by another agent), radiation about 11 s per call; at 60 s/step a month (1488 steps) is about 25 h per member, a model year (17,520 steps) about 12 days;
+(3) the published reference (100-year annual-mean ANN4000-ANN4099, Reports/DOCUMENTATION_REVIEW.md) cannot score one month; the JAN1950 ensemble (D165) remains the only month-scale floor; annual-mean scoring needs a model year.
+Path: build the record builder and validate column by column in teacher mode on nov26_day (54 steps), then dec01/jan01 6 steps; run nov26 54 steps closed; then jan01 from step 0 with checkpoints, one core for the radiation server, as many days as time allows; compare with a short real window produced from the same restart (allowed, 1 core).
+
+**Parent-session status (2026-10-07 13:15): D174 is PARTIAL.** Done: stage 1 (the inventory table above) and one closure, the CONDSE/RADIA random-seed chain (`drv_rng.py`; `tests/test_drv_rng.py` re-run: 3 passed, 15 s; the 63-consecutive-step seed check on nov26_day, dec01 and jan01 with 0 mismatches is the agent's measurement, not re-derived by the parent). NOT done: the other closures (analysed above, not coded), the driver `model_driver.py`, checkpoint/restart, the all-computed nov26 54-step run, any jan01 run, any F3 comparison. The model-month driver does not exist yet. The remaining work was split into D176 (radiation-derived tile columns and Ent radiation inputs), D177 (COSZ1, persistent PBL state, ice thermal columns, land forcing leftovers) and D178 (day-boundary items and the driver skeleton with checkpointing).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
