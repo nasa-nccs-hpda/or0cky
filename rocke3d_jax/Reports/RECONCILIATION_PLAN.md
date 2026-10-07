@@ -28,12 +28,13 @@ The validation work is sound but the sequencing is open to challenge. Three ques
 
 ## 3. Plan
 
-### Phase 0: decisions from the project lead (no compute; start now)
-Put these four questions to the person who assigned the project (draft wording below; the answers go into `GOAL.md`):
-1. **Meaning of "port":** is the deliverable (a) an end-to-end JAX model that runs a coupled step on an accelerator, (b) a Fortran-referenced set of validated JAX components, or (c) both, in what order?
-2. **Radiation:** is a hybrid acceptable, with the real Fortran SOCRATES called from the JAX run (CPU callback), or must radiation also be JAX or emulated? (Our standing rule is that SOCRATES is never ported or modified.)
-3. **Acceptance rung:** which of these counts: one coupled step vs the Fortran; a multi-day case with a noise-floor test; a one-month F3 comparison; the 100-year published climatology (infeasible on CPU: about 1.75 million steps)?
-4. **Reference identity:** is `P2SAoM40_003` the run that all our references should correspond to, and is the repository rundeck meant to be identical to it?
+### Phase 0: decisions from the project lead - ANSWERED by the project owner on 2026-10-07
+1. **Meaning of "port":** an end-to-end JAX model FIRST; validated components SECOND.
+2. **Success:** one coupled step FIRST (JAX-driven, compared with the real Fortran); then a multi-day run. (The one-month comparison and the 100-year climatology are no longer the next gates.)
+3. **Radiation:** a Fortran radiation callback (the real SOCRATES/RADIA through the radiation server) is ACCEPTABLE, and it MUST BE NOTED in every result that uses it (a hybrid component, listed explicitly with its inputs and outputs).
+4. **Reference:** match `P2SAoM40` first (the configuration of the paper; the run behind the supplement is `P2SAoM40_003`). The identity of our reference run with the supplement run is still not established (see `PROVENANCE_MANIFEST.md`).
+
+Consequences (this plan): Phase 2 becomes the top priority; month-scale F3 work is paused; "validated components" work (D159-D177) continues only where it feeds the JAX-driven coupled step.
 
 ### Phase 1: provenance manifest (about 0.5 to 1 day) - STARTED 2026-10-07, A1 to A3 DONE; results in `PROVENANCE_MANIFEST.md`
 Summary of the results: source 361 of 362 files identical to the Zenodo release (the one difference is SOCRATES data-directory paths); the rundeck template is identical; the local deck is the expanded template; the published P2SAoM40 output (8.5 MB) holds the 100-year mean maps and a 100-year series of global means (a 100-sample noise floor for annual global means); the local reference run is a cold start from observed conditions, so it is NOT shown to be the supplement run, and a climate-level match cannot be tested. A4 (location of the loose `ANN4099` file) still needs the owner's approval.

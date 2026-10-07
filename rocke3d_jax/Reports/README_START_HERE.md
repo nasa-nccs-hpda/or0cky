@@ -20,6 +20,8 @@ Owner: G. Tamkin. Recorded 2026-10-07; findings and limits of the review are in 
 **Three commits are local and not yet pushed:** `35a06c0` (D173), `ecd0a1a` (D170), `bd8dd2e` (D171). A sharded regression on a clean export of `bd8dd2e` was started 09:07 (log and totals in the session scratchpad `shard_final2*`); push (non-force) only if it shows 0 failures.
 **One agent is still working:** D172 (remaining F3 diagnostic columns, accumulators wired into a chained run, and the scoring tool tested leave-one-out on the real JAN1950 members); its files `f3_diagnostics2.py`, `f3_chained_compare.py`, `f3_score.py` and tests are untracked and UNVERIFIED. The 15-minute heartbeat (session-only cron) is running; it dies with the session.
 
+**DIRECTION (decided by the project owner 2026-10-07):** (1) end-to-end JAX first, validated components second; (2) success = one JAX-driven coupled step compared with the real Fortran, then a multi-day run; (3) a Fortran radiation callback is acceptable but must be noted in every result that uses it; (4) match `P2SAoM40` first. Month-scale F3 work is paused. Reproducibility hazards that apply to every bitwise comparison (D175): the existing code gives different results on 1 and 3 cores (use the same core affinity and thread count on both sides); do not use a warm JAX compile cache for validated runs. See `RECONCILIATION_PLAN.md` and `PROVENANCE_MANIFEST.md`.
+
 ### What exists and how well it is validated
 
 | Area | State | Evidence (ledger `FULL_FIDELITY_DELTAS.md`) |
@@ -58,13 +60,13 @@ Owner: G. Tamkin. Recorded 2026-10-07; findings and limits of the review are in 
 5. **Open observation, not a validated result:** in the chained 54-step day against the 5 real members the Ent-computed run has QCI at worst ratio 1.62 (level 21: 2.14x) versus 1.06/1.11 for recorded-Ent runs; one realisation cannot separate Ent from chaos (D171).
 6. **Owner decisions:** (a) DECIDED 2026-10-07: Ent exports stay recorded for runs up to one day and the Ent port starts now (done: stage 1 and its wiring); whether carbon outputs are part of the F3 acceptance is NOT decided. (b) Still pending: the 'intended science use' line of `Reports/GOAL.md`. (c) Whether to apply the binary128 `Ti/Ti2b` diff to `seaice_core_ff` (speed vs bitwise).
 
-### Next steps, in priority order
-1. Verify D172 and push the three local commits after a clean regression.
-2. Ent: the first-day `set_vegetation_data` with a real one-day restart as reference, month-scale validation of `Sacclim`/running means, the first-step residual (build the 147x dump only if cheap); carbon half only if F3 needs it (decision 6a).
-3. Extend the surface loop to longer windows and other dates (the 54-step day lacks the DYNSI/RIVERF/ADVSI boundary dumps: ADVSI has new dumps for nov26 54 steps, dec01 48, jan01 48; DYNSI/RIVERF need instrumentation); resolve the cell (65,38) step-0 ice difference; AG2OG/IG2OG and `init_STRAITS`.
-4. A model month: chain surface loop v2 + Ent + radiation server + F3 accumulators for one January window from the jan01 restart and score it against the real JAN1950 ensemble (scoring tool from D172). Cost drivers measured so far: free-running radiation ~11 s per call (~55 min per month), Ent plus GHY ~6.5-9.6 s per step on one core, cloud ~5 s per step batched.
-5. Chaos-aware multi-day/month validation (`scoping/RADIATION_AND_F2_PLAN.md` section 3).
-6. A GPU host to measure what the port is for; remaining numpy stages in JAX; a batched or JAX Ent (the Ent agent estimates 15-25 h, optional).
+### Next steps, in priority order (re-ordered 2026-10-07 after the owner's decisions)
+1. **JAX coverage matrix** (`RECONCILIATION_PLAN.md` A5): for every stage of one coupled step, which implementation runs (Fortran radiation callback, recorded input, NumPy, JAX) and what each costs.
+2. **One JAX-driven coupled step** (A6): compose the existing validated JAX stages under as few `jit` boundaries as practical, list every recorded or Fortran-served input, compare with the NumPy chained step and with the real Fortran on the criteria written in `Reports/ACCEPTANCE_CRITERIA.md` (to be drafted for approval, A8). Radiation through the persistent server, noted as a hybrid component.
+3. **A short multi-day JAX-driven run** from the same start, with the same notes.
+4. Finish and wire the closures of recorded inputs that the coupled step still takes from records (D176 radiation-derived columns; D177 wiring into the coupled path; D178 driver skeleton), because each removed record shortens the list the step must declare.
+5. Speed on the intended hardware (needs a GPU host; this node has none); the D175 parallel variants are CPU-only.
+6. Paused until the above: more F3 columns, month-scale runs and ensembles, the Ent carbon half, the 100-year climatology comparison.
 
 ### Remaining effort (estimates, not measurements)
 - The 2026-10-06 figure of ~100-170 h to the one-month F3 comparison included items now done (persistent radiation server, real ensemble, ADVSI/RIVERF/DYNSI, Ent stage 1 and its wiring, the F3 accumulator core). It is therefore too high, but no new total has been derived.

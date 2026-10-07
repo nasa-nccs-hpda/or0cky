@@ -6,6 +6,13 @@ ROCKE-3D Update - 20261006 (status as of 20:00 EDT; detailed evidence in README_
 
 **Intended science use of the finished port:** The finished port is intended to reproduce the published ROCKE-3D 2.0 P2SAoM40 climatology (Tsigaridis et al., 2025) at far lower cost on GPU hardware, so that parameter exploration of rocky-planet climates, which needs many long equilibration runs, becomes practical. (Wording chosen by the project owner on 2026-10-07 from three candidates, based on the two links the project lead supplied; see `DOCUMENTATION_REVIEW.md`, including its limits: section 13 of the paper was not read, and the final comparison target, the published 100-year annual-mean climatology versus a shorter run, is still to be confirmed with the project lead.)
 
+**Decisions by the project owner, 2026-10-07 (sequencing and acceptance):**
+- "Port" means an end-to-end JAX model first, then validated components.
+- Success is one coupled step first (JAX-driven, compared with the real Fortran), then a multi-day run.
+- A Fortran radiation callback is acceptable; every result that uses it must say so (it is a hybrid component).
+- Match the `P2SAoM40` configuration first.
+- The one-month comparison and the 100-year climatology are later milestones, not the next gate.
+
 **What the finished run does:** steps a 3-D planet forward in 30-minute increments (winds, temperature, humidity, clouds and rain, ocean currents and temperature, sea ice, all interacting). The configuration being ported is the rundeck `P2SAoM40`: a Sun-like star, a dynamic ocean and a 40-layer atmosphere on a 72x46 grid, with Earth's radius, gravity and rotation.
 
 **Where we are:**
