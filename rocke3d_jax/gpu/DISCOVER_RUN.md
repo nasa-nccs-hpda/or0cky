@@ -55,3 +55,8 @@ Paste the printed table to me, or commit `gpu_runs/<jobid>/results.json`. Every 
 - Results depend on the CPU core count and on any warm JAX compile cache (D175). The job script unsets the cache variables; do not set them.
 - Bitwise equality with the Fortran needs libimf (not in the container). On the GPU expect category C or D against the real model until the libimf host callback exists.
 - The XLA flags in `clouds_jax_env.py` are CPU flags; if step 3 says the GPU build rejects them, the atmosphere runner needs a GPU-specific flags path (a small change I can make).
+
+## Result log
+
+**2026-10-07 17:11, job 58776063, node warpa009, `MODE=smoke`** (repository commit `c7c42c8` cloned to `/discover/nobackup/gtamkin/dev/or0cky_port/rocke3d_jax`): **27 pass, 2 warn, 0 fail**, wall 52 s. GPU: NVIDIA A100-SXM4-40GB (driver 535.104.12), JAX 0.6.1 / jaxlib 0.6.1 with the CUDA backend ACTIVE, Python 3.11.11, numpy 1.26.4, 8 of 48 CPUs usable by the job, 29.5 GiB device memory limit. float64 works; jit+scan on the model-sized state compiled in 0.6 s; a host callback inside jit costs 1.6 ms for a 1 MiB round trip; the CPU-only XLA flags (`--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp`) do not break the GPU build; netCDF4, scipy and mpmath import; all nine project modules import (including `jax_atm_step` and `model_driver`). Warnings (expected): `pytest` is not installed in the container; the Intel libimf runtime is not present, so GPU results are libm-mode unless the libimf host callback is used. NOT yet measured: probe (`MODE=probe`), any real model step on the GPU, the data tarball.
+

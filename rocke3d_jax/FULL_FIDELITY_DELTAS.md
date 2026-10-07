@@ -4279,6 +4279,100 @@ First-step JAX time is dominated by compilation: 191 backend compiles, dyn alone
 
 **Parent-session check (2026-10-07 16:30):** `tests/test_jax_atm_step.py`: 3 passed with `RUN_XLA_FLAG_TESTS=1` and `JAX_ATM_STEP_DIR` set, 2 passed + 1 skipped in a plain run (the flag-sensitive tests skip themselves when the XLA flags are not in effect, so the serial and sharded regression runs are not disturbed); no tracked file modified. Independently recomputed from the saved runs: the JAX and NumPy chains are bitwise equal at all 6 steps on both the 1-core and the 3-core run (630 step-field pairs each, 0 unequal, max difference 0.0); against the real end state at step 0 (libm mode) 20 of 30 end fields are category D (QCL 2.3e-2, EGCM 1.3e-2, W2GCM 1.0e-2, QMOM 1.0e-2, Q 8.6e-3 of scale), same as the NumPy chain, so the deviation comes from libm versus the real build's libimf (threshold flips), not from JAX (the attribution itself was not re-tested). Honest status against `ACCEPTANCE_CRITERIA.md` section 1: this stage is NOT yet JAX-driven (state is NumPy on the host between every stage; several glue stages are NumPy; no radiation is computed or called, SRHR/TRHR/COSZ1 are recorded). Practical problem found: the first JAX step needs about 3,000 s of compilation per cold process (191 backend compiles; dynamics alone 2,475-2,586 s versus about 40 s recorded in D144b), and the compile cache must not be used for validated runs; the cause of the 60x difference is not investigated. Timings (steady 8.2-8.7 s per step on 3 cores, no faster than NumPy on 1 core) are the agent's.
 
+# D181: build stage S1 of JAX_COVERAGE_MATRIX section 6 -- JAX state pytree, round-trip converters, fixed-shape tile layout (2026-10-07)
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file modified.
+New files: `fullfidelity/jax_state_d181.py` (module), `fullfidelity/jax_state_d181_masks_report.py` (report script), `fullfidelity/tests/test_jax_state_d181.py`, this entry.
+FILE-NAME NOTE: the task named the module `jax_state.py`. While this unit was being built, ANOTHER agent wrote a different `fullfidelity/jax_state.py`
+(434 lines: generic `to_device`/`to_host`, `driver_to_pytree`, `records_to_layout`, `land_prev_to_grid`, ...) into the same directory at 17:02. The two files are
+independent; to avoid destroying that work this unit lives under the name `jax_state_d181`. Which one becomes `jax_state.py` is for the owner/parent to decide; this
+entry covers only `jax_state_d181`. The other file was not read in detail, run or tested here.
+Conditions of every number below: `taskset -c 0-1`, `OMP_NUM_THREADS=1`, XLA flags `--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp` set before jax by
+`clouds_jax_env` (imported first by the module), no persistent compile cache, libm mode (nothing here runs a model stage; only state conversion and set comparisons, so
+no libimf is involved), shared node (other agents were running; timings are indicative only). SOCRATES/RADIA not touched.
+
+## 1. What the pytree contains (explicit dtypes and shapes)
+`build_state(driver_state_dict, date)` returns `(state, static, meta)`. All leaves are jax arrays, x64; dtypes used: float64, int64, bool, uint32 (the RNG seed) and nothing
+else (`check_dtypes`). Axis order of the dict-side arrays is KEPT per field (the existing stage code relies on it); `describe_tree(tree)` prints every path, shape, dtype and
+byte count. Groups (nov26, state at step 0 = 124 leaves, 83,515,604 bytes = 83.5 MB; static = 13 leaves, 255,024 bytes):
+
+| group | content (dict source) | leaves | bytes (nov26 step 0) | shapes (all float64 unless noted) |
+|---|---|---|---|---|
+| atm | `S` of atm_step / D180 (T,U,V,Q,QCL,QCI,GZ,MUS,MVS,MWS (IM,JM,LM); MA,PK,PMID,PDSIG,EGCM,W2GCM,UALIJ,VALIJ (LM,IM,JM); PEDN,PEK,SRHR,TRHR (LM+1,IM,JM); TMOM,QMOM (9,IM,JM,LM); P,MASUM,PBLHT,DCLEV,PBLPTOP,T1AA,U1AA,V1AA,USTARPBL,LMONINPBL,TSAVG,QSAVG,USAVG,VSAVG,TGVAVG,QGAVG,DDM1,COSZ1 (IM,JM)) | 42 | 42,976,512 | as listed |
+| atm_carry | `S['_carry']`: CONDSE/RADIA carry (CLDSS, CLDMC, CLDSAV, TAUSS, W_CLOUD, FRAC_*, MIX_*, DIM_*, SNOAGE, ...); absent at step 0, 40 leaves / 37.3 MB after a step | 0 / 40 | 0 / 37,306,368 | (LM,IM,JM) mostly |
+| atm_ms | LSCOND module arrays `ms['S']` (lists of per-level numbers become arrays: (40,), (41,), (40,9), (40,72), ...) | 0 / 167 | 0 / 67,224 | float64 |
+| ocean | surface_loop ocean state: g0m,s0m,mo,uo,vo,uod,vod,gxmo,gymo,gzmo,sxmo,symo,szmo,mmi,smu,smv,smw (IM,JM,13); ogeoz,ogeoz_sv,opbot,opress (IM,JM); kpl (IM,JM) int64; straits must,g0mst,gxmst,gzmst,s0mst,sxmst,szmst,mmst (13,12); vonp (13,) | 31 | 5,998,184 | as listed |
+| ice | rsi,snowi,msi,pond_melt (IM,JM); hsi,ssi (IM,JM,4); flag_dsws (IM,JM) bool | 7 | 321,264 | |
+| ice_dyn | usi,vsi,rsix,rsiy (IM,JM) (+ uisurf,visurf after a step) | 4 (6) | 105,984 | |
+| lake / landice / exch | lake mwl,gml,tlake,mldlk (IM,JM); landice snowli (IM,JM), tlandi (IM,JM,2); exch gtemp,gtemp2,gtempr,sss,mlhc (IM,JM) | 4 / 2 / 5 | 105,984 / 79,488 / 132,480 | |
+| land | `ghy`: w,ht (IM,JM,3,7); nsn,fr_snow (IM,JM,2); dzsn,wsn,hsn (IM,JM,2,3). `carry` (after a step): the `land_prev` tree of the closed surface loop, 68 leaves, ROW arrays over the 753 land cells ((753,), (753,7), (753,8), (753,7,2), ...) | 7 / 75 | 1,695,744 / 3,015,000 (3.02 MB) | |
+| f3 | F3 accumulators: `aij`/`aijl` dicts keyed by column (284 columns after a step, keys stored as strings, original integer keys restored), `idacc` (4 ints), `s0` | 4 / 293 | 32 / 11.76 MB | |
+| rad_frozen | provider's frozen SRHR/TRHR (41,IM,JM) (after a step) | 0 / 2 | 0 / 2.17 MB | |
+| rng | `seed0` as uint32 scalar (asserted to fit 32 bits) | 1 | 4 | uint32 () |
+| clock | itime, k, ss_itime as int64 scalars | 3 | 24 | int64 () |
+| tile (DERIVED) | fixed layout `ptype` (4,IM,JM) float64 and `mask` (4,IM,JM) bool, recomputed from `ice/rsi` and the static fields by `refresh_tile` (pure, jit-able) | 2 | 119,232 | |
+| tile_pbl (NEW, from the restart) | per-type PBL carry in the fixed layout: u,v,t,q,e (4,IM,JM,8); cm,ch,cq,ustar,lmonin (4,IM,JM); ipbl (4,IM,JM) int64 (types: ocean/lake, ice, land ice, land) | 11 | 4,875,264 | |
+| ent_state (NEW, from the restart) | padded Ent state (IM,JM,1023) | 1 | 27,105,408 | |
+| static (separate constant pytree) | focean, flake, fland, flice, fearth, fwater, axyp, coriol, hlake (IM,JM) float64; valid, is_ocean, is_lake (IM,JM) bool; tile_static (2,IM,JM) bool | 13 | 255,024 | |
+
+A mid-run driver state (nov26, 6 closed steps, `ent=record`, F3 on; the D178 checkpoint `final_x1.pkl` in the session scratchpad, 112.3 MB pickle) converts to
+717 leaves / 112,630,156 bytes in the groups above (atm 48.59 MB, atm_carry 37.31 MB, f3 11.76 MB, ocean 8.91 MB, land 3.02 MB, rad_frozen 2.17 MB, ...).
+Groups tile, tile_pbl, ent_state and static have no dict counterpart (they are new / derived); the others map one-to-one by the routing table `ROUTES`; any unrouted
+numeric leaf would go to `extra/` (none occurs in the tested states).
+
+## 2. Fixed-shape tile layout and the static-field builder (replaces the per-step template rowsets)
+Layout (type, IM, JM) = (4, 72, 46) plus a bool mask: type 0 ocean/lake water exists where (1 - RSI)*FWATER > 0; type 1 sea/lake ice where RSI*FWATER > 0; type 2 land ice
+where FLICE > 0; type 3 land where FEARTH > 0; only inside the IMAXJ domain (poles: i = 0). FWATER = FOCEAN + FLAKE. The rule is `ptype > 0`, the one that
+`surface_loop.apply_state_to_records` already uses for the PTYPE columns; here it defines the layout. Shapes never change: `tile_masks`/`tile_ptype`/`refresh_tile` take numpy or
+jax.numpy (numpy and jitted jnp results are equal in the test). RSI must be the ice fraction AFTER MELT_SI of the step (PRECIP_SI does not change RSI, read in `surface_loop.precip_si`).
+`rows_in_record_order(mask, kind)` gives the 1-based (i, j, type) rows a record file would hold, in the order of the real files (ffp: types 1-2 sorted by (j,i,type), then all
+type 3, then all type 4, each by (j,i); ffs: types 1-2; ffl, ffg, fft by (j,i)); `gather_rows`/`scatter_rows` move between the layout and record rows (host side, only for comparison and I/O).
+`build_static(date)` sources (all printed by the function): FLAKE from the real restart; FOCEAN from the ocean geometry (`ffo_geom`); FLICE from the step-0 `ffc_cse_in` dump
+(static topography, not in the restart: RECORDED); FLAND = 1 - FOCEAN - FLAKE and FEARTH = FLAND - FLICE DERIVED and equal to the recorded FLAND/FEARTH bitwise on all three dates
+(`verify_static`: max differences 0.0, 0.0, and 0.0 for restart FLAKE vs the dump FLAKE); AXYP, CORIOL, HLAKE as in `surface_loop.load_statics` (CORIOL and HLAKE are RECORDED static
+columns of the step-0 ffp / ffl2 dumps; not replaced here). So the builder still reads three static items from step-0 dumps (FLICE, CORIOL, HLAKE).
+
+## 3. Results
+### 3.1 Round trip dict <-> pytree (gate: bitwise, category A)
+`pytree_to_driver_state(driver_state_to_pytree(sd))` against `sd` with `model_driver.trees_equal` (bytes, dtype, shape; Python scalar types, None, containers, big-endian dtype restored):
+- Initial ModelDriver state (`ModelDriver(...).state_dict()` with `S` = `atm_step.init_state` of the first step, closed surface, ent=record, F3 on), **nov26, dec01, jan01: 0 differing paths on each date** (test `test_initial_driver_state_roundtrip_bitwise_and_tile_state`).
+- Real mid-run driver checkpoint (nov26, 6 steps): **0 differing paths**, 717 leaves; to-pytree 0.8-2.4 s, back 0.13-0.18 s on the loaded node.
+- Synthetic tree (no data): bitwise, including big-endian arrays, Python int/float/bool vs numpy scalars, tuples, empty containers, None, int-keyed dicts, lists of floats; a 1-ulp change of one leaf is detected (non-vacuity); values pass through a jit unchanged.
+### 3.2 Masks against the real row sets (gate: equal at step 0; first differing step)
+All five SURFACE records (ffp, ffs, ffl, ffg, fft; both substeps pa/pb, ta/tb, la/lb, g1/g2, blk1/blk2) compared as cell sets per type AND as ordered (i,j,type) columns; no duplicate rows.
+Step 0 (real counts ffp rows = ocean+ice+landice+land tiles):
+| date | ocean | ice | land ice | land | ffp rows | (a) raw restart RSI | (b) restart + OUR MELT_SI | (c) real post-MELT_SI RSI (ffc_cse_in) |
+|---|---|---|---|---|---|---|---|---|
+| nov26 | 2709 | 783 | 346 | 753 | 4591 | NOT equal (140 cells) | **equal, order identical** | **equal, order identical** |
+| dec01 | 2707 | 783 | 346 | 753 | 4589 | NOT equal (113 cells) | **equal** | **equal** |
+| jan01 | 2644 | 696 | 346 | 753 | 4439 | NOT equal (156 cells) | **equal** | **equal** |
+(b): RSI from `surface_loop.melt_si` on the restart ice is bitwise equal to the dump RSI on all three dates (max difference 0.0); (a) differs from the dump RSI by up to 4.1e-4 / 6.5e-4 / 9.0e-4, which changes the tile set in 140 / 113 / 156 cells (examples: a cell with restart RSI 3.2e-4 melts to 0.0 and loses its ice tile; cells with RSI 1.0 become 0.9999999993 and gain an ocean tile). So the mask is only correct from the RSI after MELT_SI; `refresh_tile` must be called after the melt stage, not on the restart ice. The pytree built at step 0 by `build_state` uses the restart RSI (case a) and is therefore only a placeholder until `refresh_tile` runs after MELT_SI.
+Over the 54-step nov26 day (mask from the real `ffc_cse_in` RSI of each step, 54 steps, `jax_state_d181_masks_report.py`): **54 of 54 steps equal; no step where the mask differs.** The real row counts do change: 10 distinct ffp and 10 distinct ffs row counts (D174's 10 confirmed), 1 distinct count for ffl (346), ffg (753), fft (3170). The mask has a fixed shape (4,72,46) at every step. ffp rows range 4536 (steps 33347-33349) to 4593 (33360); the tile sets change in 22 of the 53 step transitions:
+- 33312 -> 33313: 50 lake cells lose the ocean tile (RSI 0.99985 ... 0.99999 -> exactly 1.0); cause not investigated.
+- 33321, 33330, 33340, 33344, 33349, 33351, 33359, 33365 and others: single cells gain an ice tile (lake cells: RSI 0 -> 0.001-0.005) or lose/gain an ocean tile at RSI within 1e-6 of 1.
+- Day boundary 33359 -> 33360: **+54 ocean tiles, all lake cells** (RSI 1.0 -> 0.99990 ... ), and 33360 -> 33361: **-51** (RSI back to 1.0). The RSI of lake cells is changed at the boundary (D178: daily_LAKE not ported, RSI differs in 834 cells there), so a closed run WITHOUT daily_LAKE is expected to leave the mask matching the real sets only if the same RSI results; NOT tested (no closed run across the boundary exists).
+Sensitivity: 41-60 water cells per step have RSI within 1e-6 of 0 or of 1; a rounding-level change of RSI in those cells flips a tile. Our own closed-loop ice (D178 checkpoint, 6 steps) gives, after our MELT_SI, a tile mask for step 33318 that EQUALS the real row sets of ffp_33318 (all records), although our RSI differs from the real one by up to 1.5e-7 in 756 cells (bitwise unequal) -- the flips did not occur there, which is one step, not a guarantee. Where our own evolved ice would stop matching over the full 54 steps was NOT measured (a 54-step closed run was not made; steps 1-5 of our own run are not available as states).
+### 3.3 Side measurement (not in the tests): restart PBL carry vs record columns at step 0 (nov26)
+Using the D174 column assignment (cm/ch/cq = ffp cols 33-35; u,v,t,q profiles = cols 50-81 as eight-wide blocks; e = assumed cols 82-89): for tile types ice, land ice, land the restart values equal the ffp columns bitwise (u,v,t,q,cm,ch,cq: max |difference| 0.0); for type 1 (ocean/lake) they differ (cm 2.5e-4, u 0.79, v 1.0, t 0.24); the e block never matched (max 5-18) -- the column assumption for e is unverified, so nothing is concluded about e. Not explained; flagged only because it bears on the "PBL persistent state" item of the D174 inventory.
+
+## 4. What does not round-trip / is not converted
+- `timing_log` (host bookkeeping: list of dicts with strings) stays in the metadata skeleton (reported by `unconverted`), not in the pytree.
+- Ent state: with `ent='record'` the driver holds no Ent state; with `ent='computed'` it holds Python objects (`cells`), which are NOT converted (not tested). The pytree carries the restart's padded `ent_state` (IM,JM,1023) as a separate, unlinked group.
+- The `land_prev` carry is converted as the row arrays it is (753 land cells, in the order of the ffg record; its `p4_ij` equals `rows_in_record_order(mask, 'ffg')`, checked in the mid-run test); it was NOT moved to a masked (IM,JM) layout. 753 = number of FEARTH > 0 cells, so the row count is fixed, but the representation is rows.
+- Tested driver configuration: surface='closed', ent='record', rng='chain', F3 on, RecordProvider. NOT exercised: surface='replay', ent='computed', ServerRadiationProvider state, the D180 `RecordBoundary` object (it is a provider, not state; the D180 step uses the same `S` dict as `atm_step`, by code reading of `run_chain_jax`, not by running it).
+- The step-0 atmosphere `S` is the real start state (`atm_step.init_state`) with no `_carry` (the driver has `S = None` before the first step); `_carry` is exercised only through the mid-run checkpoint.
+- Lists of Python floats / ints / numpy float64 scalars (e.g. `ms`) become arrays and are restored as lists with the same element type; lists containing NaN or ragged lists stay element-wise (still bitwise).
+- The tile/tile_pbl/ent_state groups are built, not round-tripped (no dict counterpart); only shapes, dtypes and, for tile, the equality with the real row sets are checked.
+
+## 5. Limits
+Only conversion and set comparisons were done; no model stage was run on the pytree, no jit of a model stage, no device-residency or transfer measurement, nothing about JAX-driven stepping (ACCEPTANCE_CRITERIA 1). Mask results rest on the real post-MELT_SI RSI (rule check) at 54 steps and on our own MELT_SI at step 0 (3 dates) and at step 6 (nov26); our own evolution over the full day is untested. Three static columns (FLICE, CORIOL, HLAKE) still come from step-0 dumps. One node, shared, 2 cores; timings indicative.
+
+## 6. Tests
+`tests/test_jax_state_d181.py`: 11 passed in 24 s on cores 0-1 (with `JS_MID_STATE` pointing to the 6-step checkpoint; without it the mid-run test skips). Includes non-vacuity checks (raw restart RSI mask must differ from the real sets; a flipped ice tile must be detected; a 1-ulp change in a leaf must be detected). Data tests skip when the dumps are absent.
+Report regeneration: `OMP_NUM_THREADS=1 taskset -c 0-1 python fullfidelity/jax_state_d181_masks_report.py OUT.json [--ckpt driver_checkpoint.pkl]` (23 s; per-step table and change lists are in the JSON; a copy is `d181/masks.json` in the session scratchpad).
+
+**Parent-session check (2026-10-07 17:16):** `tests/test_jax_state_d181.py` re-run: 10 passed, 1 skipped (the skipped test needs `JS_MID_STATE`, the 6-step checkpoint, which is in the agent's scratchpad), 25 s on cores 0-1; no tracked file modified. Not re-run by the parent: the 54-step mask comparison (`d181/masks.json` is the agent's output) and the round trip on the real 6-step checkpoint. NAME COLLISION / DUPLICATE WORK: a second session working on the same conversation (peer `rocke3d-jax-4c`) launched its own agents for D181, D182 and D183 in the same tree. Its D181 files `jax_state.py`, `jax_static.py`, `jax_state_capture.py`, `tests/test_jax_state.py` are UNTRACKED, UNREVIEWED and NOT part of this commit; this entry covers only `jax_state_d181.py`, `jax_state_d181_masks_report.py`, `tests/test_jax_state_d181.py`. The owner decides which D181 implementation is kept. Findings kept from the agent: the tile masks built from the restart plus our own MELT_SI equal the real row sets at step 0 on all three dates and on all 54 steps of nov26 when the real post-MELT_SI ice fraction is used (raw restart RSI fails in 140/113/156 cells); the tile sets change in 22 of 53 transitions (lake cells at 33312->33313 and at the day boundary); 41-60 water cells per step have RSI within 1e-6 of 0 or 1, so a rounding-level change can flip a tile; `daily_LAKE` is not ported, so a closed run across 33360 may not reproduce the boundary jump (untested). Nothing here runs a model stage: no JAX-driven claim.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
