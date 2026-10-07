@@ -20,7 +20,7 @@
 #SBATCH --mem=32G
 #SBATCH --time=2:00:00
 #SBATCH --constraint=rome
-#SBATCH --output=gpu_runs/%j/slurm.out
+#SBATCH --output=gpu_slurm_%j.out      # a flat file: Slurm does not create directories for --output; the per-job results go to gpu_runs/<jobid>/
 
 set -uo pipefail
 PROJ="${SLURM_SUBMIT_DIR:?run with sbatch from the project directory}"
@@ -62,9 +62,11 @@ esac
 } > "$OUT/metadata.txt"
 
 # same call as the manual session; stdout and stderr kept separately (the manual run mixed warnings into the .out file)
-/usr/bin/time -v -o "$OUT/time.txt" \
-  singularity exec --nv -B "$PROJ" "$CONTAINER" bash -c "$CMD" > "$OUT/stdout.txt" 2> "$OUT/stderr.txt"
+t0=$(date +%s)
+if [ -x /usr/bin/time ]; then TIMER="/usr/bin/time -v -o $OUT/time.txt"; else TIMER=""; fi
+$TIMER singularity exec --nv -B "$PROJ" "$CONTAINER" bash -c "$CMD" > "$OUT/stdout.txt" 2> "$OUT/stderr.txt"
 rc=$?
+echo "wall_seconds: $(( $(date +%s) - t0 ))" >> "$OUT/metadata.txt"
 echo "exit_code: $rc" >> "$OUT/metadata.txt"
 echo "date_end: $(date -Is)" >> "$OUT/metadata.txt"
 exit $rc
