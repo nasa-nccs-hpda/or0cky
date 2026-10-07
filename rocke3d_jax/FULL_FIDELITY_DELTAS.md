@@ -3404,6 +3404,64 @@ Not done: the coupled atmosphere run (run_coupled) with computed DYNSI (needs th
 
 **Parent-session check (2026-10-07 05:30):** `tests/test_dynsi_assembly_ff.py` re-run: 4 passed, 2.3 s (bounds are the measured values rounded up; asserts include bitwise equality of the assembled inputs). No existing file was modified (`git status`: only new files). Re-ran `python dynsi_loop_ff.py both` (3 cores, pinned): the recorded-DYNSI and computed-DYNSI free 6-step loops give the same ice/ocean errors as the table above (e.g. ocean exit uo 2.25e-3 / vo 5.44e-3 at step 1 and uo 1.07e-2 / vo 2.28e-2 at step 5 in both variants; ice tg1 0.0880 -> 0.442); so the DYNSI boundary is not the source of the first-step drift (consistent with the ADVSI attribution of D164, which this does not prove). Not re-derived by the parent: the per-field residuals vs the ffy/ffo/ffz dumps beyond what the tests assert. Only nov26; GET_UISURF unvalidated.
 
+# D167: RIVERF (river routing / lake outflow) ported; oflowo/oeflowo computed; D164 lake errors explained, 2026-10-07
+
+Owner: project owner (Glenn Tamkin); written by a Claude Code session. Project-local. Review: when ADVSI/DYNSI are ported or when the surface loop is extended past 6 steps.
+Sources: pristine ModelE (read-only) `model/LAKES.f` (RIVERF original version 1708-2212, init_LAKES river part 889-1050, get_dir, horzdist_2pts), `GEOM_B.f` (lonlat_to_ij, lat/lon definitions), `ATM_COM.f:212` (ZATMO = zatmo x GRAV), `SURFACE.f:1229-1236` (call order), `decks/P2SAoM40.R` (preprocessor options, RVR/TOPO files); input files `ModelE_Support/prod_input_files/RD_modelE_M.nc` (river directions) and `Z72X46N_gas.1_nocasp.nc` (focean, flake, zatmo, hlake); dumps `ff_data/nov26/ffo_state_*.bin` tag 1 and the tile records ffs_*.bin.
+New code: `fullfidelity/riverf_ff.py`, `fullfidelity/riverf_loop.py`, `fullfidelity/tests/test_riverf.py`. No existing file modified; nothing committed.
+
+## 1. What was ported
+- Version: the ORIGINAL RIVERF (neither RVR_ELEV nor TOPO_DIRECTED_RIVER_FLOW is defined in P2SAoM40.R; no tracers/SCM). `river_fac` = 1 (not set in the rundeck), `lake_rise_max` = 100 m, URATE = 1e-6, `variable_lk=1` only acts in GHY/daily code, FLAKE is constant within the window.
+- Initialisation as the model does it: RVR file read for down_lat/down_lon/down_lat_911/down_lon_911, lonlat_to_ij (NINT rounding), get_dir (incl. pole special cases), DHORZ (great-circle via sin/cos/acos, `sqrt(AXYP)` for local flow), RATE (speed from the topographic slope, clipped to 0.15-5 m/s), the KDIREC=9 internal-sea branch (no cell in this RVR file has KDIREC=9, so that branch is ported but NOT exercised), emergency-direction branch (ported; `n_emergency` = 0 in all steps, NOT exercised), backwash branch (exercised: 1 cell per step), 95 % mixed-layer clip (ported; never triggered). NAMERVR (named river mouths) feeds diagnostics only and is not read.
+- All diagnostics (AIJ, AJ, AREG) are omitted; only state and exports are computed: MWL, GML, MLDLK, TLAKE, DLAKE, GLAKE, GTEMP/GTEMPR/MLHC of lake cells, FLOWO/EFLOWO (per unit ocean area, the byoarea scaling at the end of RIVERF).
+- libm mode: sin/cos/acos (only used for DHORZ, hence RATE) are the Intel libimf scalar functions from the same library as the real build (via ctypes, as in `intel_libm_ff.py`); falls back to glibc `math` when libimf is absent (then tests use a relative bound, not bitwise). Arithmetic is python floats in Fortran evaluation order, no FMA.
+- Finding: the literal `DZDH1 = .00005` in init_LAKES is a REAL*4 literal (NOT promoted by -r8 as one might assume): using the double 5e-5 gives a 2.5e-8 relative error in nearly every river cell; using float32(5e-5) matches the real outflow bitwise. Both values are in the module (`DZDH1`, `DZDH1_R8`).
+
+## 2. Data actually available for validation (stated honestly)
+- There is NO RIVERF entry or exit dump (no real MWL/GML/TLAKE before or after RIVERF). The "RIVERF boundary" of D164 is only the ocean flux input `oflowo`, `oeflowo` in ffo tag 1 (the OCEANS entry), recorded for 12 steps (33312-33323). In addition the real lake state after RIVERF of step n is visible as the lake tile columns (tg1, mwl, gml) of the step n+1 tile records ffs (substep 1), for steps 33312-33317 only (6 steps).
+- The inputs that RIVERF needs (land runoff, tile fluxes, GHY forcing) exist for the 6 steps 33312-33317 only; so the 12-step ffo record can be used for 6 steps, not 12. Steps 33318-33323 were NOT validated (no inputs to chain the lake state).
+- Validation therefore goes through OUR chain: restart state -> D164 surface_pre -> ground_li/ground_si/GROUND_LK (replay mode R1: real tile outputs as flux input) -> RIVERF, state carried from step to step.
+
+## 3. Results (nov26, 6 steps, R1 replay, no ADVSI; `riverf_loop.run_free`)
+Flows against ffo tag 1 (3312 cells each, 159 non-zero river-mouth cells in the real record, 159 in ours at every step):
+
+| step (itime) | oflowo bitwise cells | oeflowo bitwise cells | max abs oflowo | max abs oeflowo | scale (max abs) |
+|---|---|---|---|---|---|
+| 33312 | 3312 | 3312 | 0 | 0 | 0.592 / 6.4e4 |
+| 33313 | 3312 | 3311 | 0 | 6.9e-18 | 0.592 / 6.4e4 |
+| 33314 | 3312 | 3311 | 0 | 6.5e-19 | |
+| 33315 | 3310 | 3309 | 1.1e-16 | 6.8e-13 | |
+| 33316 | 3312 | 3310 | 0 | 4.5e-13 | |
+| 33317 | 3311 | 3309 | 1.1e-16 | 4.5e-13 | |
+
+So: bitwise at step 0 (restart state, no accumulated difference); rounding level (1-2 ulp in a few cells, maximum relative 1e-17 of the field scale) in steps 1-5, where the lake/land MWL and GML are our carried values.
+
+Lake state at the entry of the next step against the real tile records (lake tiles, 614 at step 0 and 564 afterwards; max abs difference; scales tg1 31.9 K, MWL 6.1e16 kg, GML 2.1e21 J):
+- step 33313 entry (after RIVERF of step 33312): tg1 0, MWL 0, GML 0 (bitwise).
+- steps 33314-33317 entry: tg1 <= 3.6e-15 K, MWL <= 2.0e-3 kg (6e-20 relative), GML <= 1.0e3 J (5e-19 relative). Rounding level; grows slowly.
+
+## 4. D164 lake errors: attribution tested (2-step isolation runs plus the 6-step runs; lake tile comparison at the entry of step 33313)
+| variant | tg1 max abs (K) | MWL max abs (kg) | GML max abs (J) |
+|---|---|---|---|
+| D164 loop (`surface_post`: recorded flows, no RIVERF state update, runoff added to lake cells only) | 0.0634 | 8.66e10 (1.4e-6 relative) | 7.9e15 |
+| all-land runoff, NO RIVERF state update | 0.0634 | 8.66e10 | 7.9e15 |
+| RIVERF applied, runoff to lake cells only (as in D164) | 6.2e-5 | 3.0e7 | 2.9e12 |
+| RIVERF applied + runoff for every FLAND>0 cell (real GROUND_LK) | 0 | 0 | 0 |
+
+D164 numbers (tg1 0.063 K in one cell, MWL 1.4e-6 relative) are reproduced by the baseline here (0.0634 K, 1.43e-6). The RIVERF attribution is CONFIRMED by measurement: switching RIVERF off leaves the 0.0634 K error unchanged, switching it on removes 99.9 % of it. The remainder (6.2e-5 K) was a second, previously unnoticed omission of D164's loop: `surface_post` passed the lake-only geo to `ground_lk`, so the land runoff of GROUND_LK (LAKES.f:3380-3390) was added to the lake cells but not to the non-lake land cells whose MWL RIVERF routes (river water arriving at the lake). `riverf_loop.surface_post_riverf` passes the full geo; `ground_lk` itself was not changed. Every lake and land cell has an MWL that RIVERF routes, so the two corrections are needed together for bitwise lake state.
+Also changed by RIVERF in the real model and applied here: GTEMP/GTEMPR/MLHC of lake cells are reset from TLAKE/MLDLK after RIVERF (D164's loop did not update MLHC of lake cells).
+Ocean effect of the flows was not separately measured against the ocean exit (ffo tag 14); 'riverf_recflows' (computed RIVERF on the lake state, recorded flows into the ocean) gives identical lake results, as it must (the flows do not feed back to the lakes within the step).
+
+## 5. Limits and cautions
+- Only nov26 was run (dec01/jan01 not run); 6 steps, not 12; replay mode R1 (real tile outputs), not the closed coupled loop (`riverf_loop.surface_post_riverf` is a drop-in for `surface_post` but `stage_surface_closed`/`run_coupled` were not rewired; they would need the same two changes).
+- Branches not exercised by this data: KDIREC=9 internal seas (none in the RVR file), emergency directions, 95 % clip, pole FLFAC adjustment (`FLFAC` ported; whether any pole cell receives river flow in these steps was not checked).
+- Pole-row cells i > 1 receive FLOW in the real code but are never applied (IMAXJ = 1); ported as in the source (arrays indexed [i, j]); not verified separately.
+- Single-PE assumption (no MPI halos) because the reference run used one PE.
+- Tests: `tests/test_riverf.py` (skip when data absent). Statics: no land box without a river direction; 1075 cells with RATE > 0.
+- Open: RIVERF at steps 33318+ needs the land runoff and tile inputs of those steps (D149-style dumps); the 54-step day has none.
+
+**Parent-session check (2026-10-07 05:30):** `tests/test_riverf.py` re-run in full (the agent had not re-run its two slow tests after fixing a unit-test expectation): 4 passed, 80 s. Assertions include bitwise `oflowo` at steps 0-1, `oeflowo` <= 1e-17 at step 1 and <= 1e-12 of scale later, 159 non-zero river-mouth cells, the REAL*4 `DZDH1` finding (rel 1e-8..1e-7 if double is used). No existing file modified by this track. Not re-derived by the parent: the lake-error attribution table (baseline 0.0634 K / 8.7e10 kg -> 0 with RIVERF plus land runoff for every land cell); it comes from the agent's runs and rests on the agent's reading that D164's `surface_post` passed lake-only geo to `ground_lk` (a second D164 omission, affecting only the replay-mode free loop). Validated only for 6 steps (33312-33317, nov26, replay mode); `run_coupled`/`stage_surface_closed` not yet rewired.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
