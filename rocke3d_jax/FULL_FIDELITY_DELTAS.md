@@ -4063,6 +4063,58 @@ Path: build the record builder and validate column by column in teacher mode on 
 
 **Parent-session status (2026-10-07 13:15): D174 is PARTIAL.** Done: stage 1 (the inventory table above) and one closure, the CONDSE/RADIA random-seed chain (`drv_rng.py`; `tests/test_drv_rng.py` re-run: 3 passed, 15 s; the 63-consecutive-step seed check on nov26_day, dec01 and jan01 with 0 mismatches is the agent's measurement, not re-derived by the parent). NOT done: the other closures (analysed above, not coded), the driver `model_driver.py`, checkpoint/restart, the all-computed nov26 54-step run, any jan01 run, any F3 comparison. The model-month driver does not exist yet. The remaining work was split into D176 (radiation-derived tile columns and Ent radiation inputs), D177 (COSZ1, persistent PBL state, ice thermal columns, land forcing leftovers) and D178 (day-boundary items and the driver skeleton with checkpointing).
 
+# D177: state-derived columns of the coupled path (COSZ1, persistent PBL state, sea-ice thermal columns, land leftovers), 2026-10-07
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file modified.
+New files: `fullfidelity/drv_zenith.py`, `drv_state_cols.py`, `drv_ice_cols.py`, `drv_land_cols.py`, `tests/test_drv_state_cols.py` (14 passed, 67 s on one core; skip when dumps are absent), this entry.
+Sources: real code (read-only) Zenith.F90, ATM_DRV.f:220, RAD_DRV.f:1542-1597 (DAILY_orbit), GEOM_B.f:481-880 (RAD_COSZ0), shared/AbstractOrbit.F90, Earth365DayOrbit.F90, OrbitUtilities.F90,
+orbpar.f, Rational.F90, MODEL_COM.f:130-260, MODELE.f:1295-1330, PBL_DRV.f:150-345 and 1098-1260 (loadbl, setbl), SURFACE.f:560-598, GHY_DRV.f:1037-1280; dumps nov26_day (54 steps), dec01 and jan01 (6 steps).
+Closes items of the D174 inventory (section 1) for these four rows. Radiation-derived columns (SRHEAT = FSF*COSZ1 etc.) are D176.
+
+## 1. COSZ1 on every step (`drv_zenith.py`)
+Method: port of CALC_ZENITH_ANGLE: the Earth365DayOrbit for orbpar(1850) (planetName Earth; master_yr=1850 gives variable_orb_par=0, orb_par_year_bp=100), time of periapsis from the
+vernal equinox (year 1 Mar 21 12:00 of the 365-day calendar) with the Rational continued-fraction constructor (tolerance 1e-3 s), DAILY_orbit sinD/cosD at NOON of the model day,
+hour angle 2*pi*fraction(t/Prot - t/Porb) (= time of day / 86400 for Prot = 86400*365/366, Porb = 365 d; EOT off for Earth), rot1/rot2 over DTsrc, then GEOM_B COSZT with SINJ/COSJ of cosz_init.
+Clock: t = (IYEAR1-1)*365 d + 1800*itime with IYEAR1 = 1949 (restart itime 33312 = 694 d = 1950 Nov 26). The record label itime is the clock value AT the CALC_ZENITH_ANGLE call (offset +1 fails by 0.12).
+orbpar(1850) reproduces the real PRT print (1.676429465128236E-002, 23.4592765450604, 280.326871404745) in all printed digits.
+Result (COSZ1 (72,46) vs the recorded `ffa_step_<it>_r.bin` COSZ1): nov26_day 54 steps (incl. the day boundary at 33360 where DAILY_orbit changes), nov26 6, dec01 6, jan01 6: **max difference 0.0, 0 unequal elements**
+with the Intel libimf sin/cos/tan/atan/acos/sqrt (the real build's library, loaded as in intel_libm_ff). With Python `math` instead: 1.7e-16 in 5 elements at step 33350 (1 ulp), 0 elsewhere. Only the three dates above were tested (one start year of the calendar; year 1850 orbit).
+Not covered: other orbits/calendars (leap years are not in this calendar), a run started at another IYEAR1 (a parameter), the radiation steps' COSZ1 equals the same function (verified on the records of those steps).
+Instrumentation needed: none.
+
+## 2. Persistent PBL state at SURFACE substep 1 (`drv_state_cols.py`, class `PBLCarry`)
+What persists (PBL_DRV.f): per (type, patch, i, j) `atm%uabl/vabl/tabl/qabl(1:8)`, `eabl(1:7)`, `cmgs/chgs/cqgs`, `ipbl`, `ustar_pbl`, `lmonin_pbl` (read at :255-259, :282-284, written back :341-348, :397-400). The restart stores them as `*_ocn01/ice01/gla01/lnd01`.
+`loadbl` (called once per step, SURFACE.f:409): a tile with ipbl == 0 (no PBL call in the previous step) takes the whole state from a donor of the same cell with ipbl == 1 (ocean <- ice else land; ice <- ocean; land ice <- land; land <- land ice else ocean); then all ipbl are reset to 0.
+z0m (record input col 49) is a local that DFLUX overwrites for itype 1,2 before use (ROUGHL constant for 3,4); `dskin` (col 28) is an output of the port, not an input: neither carries information (they differ from the previous output by up to 7.9e-4 and 0.9 and the PBL port reproduces its outputs regardless).
+Implementation: `PBLCarry.from_restart(date)` -> per step `begin_step()` (loadbl), `fill(rows)` (substep-1 input columns u,v,t,q,e, cm, ch, cq from the carry), `update(rows, out)` after each substep with that substep's PBL outputs.
+Results (rows = every (i,j,itype) of the record, columns 50-88 and 33-35):
+ (a) carry from the RECORDED previous outputs (the carry logic alone), both substeps: nov26_day 54 steps, dec01 6, jan01 6: **0 differing elements** (max 0.0), including the 53 ocean rows of nov26 step 0 that the restart has with ipbl == 0 and that are donor-initialised (test `test_pbl_carry_donor_rule_exercised`: without loadbl the stale restart values differ), and the rowset changes (4591 -> 4541 rows at step 33312->33313: new tiles from donors, vanished tiles keep stale values unused).
+ (b) carry from OUR OWN PBL outputs (`pbl_compare.run`, the existing port, with all other columns recorded), nov26_day 54 steps, substep 2 built from our substep-1 output, step k+1 from our step-k output: start-column difference vs record max 4.8e-10 (u), 3.9e-10 (v), 3.8e-10 (t, K), 4.3e-10 (e), 1.2e-12 (q), 4.8e-12 / 8.2e-12 (cm, ch=cq); per-step max over all quantities 2e-11 at step 0, 1e-10 around step 18, 2e-10 around step 36, not monotone (bounded over the 54 steps). This is the accuracy of the existing PBL port (D-series PBL entries) accumulated through the carry, NOT an error of the carry. It is not bitwise.
+Cannot be closed here: (i) the SET OF TILES that exist (which rows; new ice tiles have no row) is the template-builder problem of D174 section 1; PBLCarry handles any rowset it is given; (ii) `ustar_pbl`/`lmonin_pbl` per type are carried by the real code but our path uses the composite S['USTARPBL'], S['LMONINPBL'] (unchanged here).
+Instrumentation needed: none (the restart supplies step 0, the previous outputs supply the rest).
+
+## 3. Sea-ice thermal columns (`drv_ice_cols.py`)
+dF1dTG, HCG1, HCG2, FSRI(1:2) (ffs cols 10-14) from the tile's own state columns (tg1, tg2, snow, ssi1, ssi2, flag_dsws) and SRHEAT (> 0 test; radiation-derived, taken from the row) as SURFACE.f:560-598, using the existing `ice_props_ff.ice_tile_props`, with `solar_ice_frac` re-done in numpy using the Intel libimf `exp`.
+Result on the ice rows of both substeps: nov26_day 54 steps 84,766 rows, dec01 9,396, jan01 8,352: **all five columns max difference 0.0**. With `jnp.exp` (the existing function alone) dF1dTG/HCG1/HCG2 are also 0.0 but FSRI1/FSRI2 differ by 5.6e-17 (1 ulp) in 152/112 of 84,766 rows (nov26_day), 12/6 (dec01), 18/18 (jan01).
+`ice_thermal_columns(tile_rows)` overwrites the five columns of itype-2 rows; to be applied after apply_state_to_records and after predict_ns2 (substep 2: tg1/tg2 from substep 1).
+Cannot be closed: none of the five; SRHEAT itself is D176. Instrumentation: none.
+
+## 4. Land ffg leftovers and land elhx (`drv_land_cols.py`)
+Measured identities on 99,396 land rows (all 54 steps nov26_day + dec01 + jan01 windows, both substeps), all with max difference 0:
+pres (ffg 154) = PBL psurf (ffp 16) (GHY_DRV.f:1261 `ps - dmCO2cond*grav*0.01`; dmCO2cond = 0 in this Earth build); vs0 (159) = PBL output ws0 (ffp 98); gusti (160) = PBL gusti input (ffp 24 == 113);
+vs (158) = PBL ws (91); ma1 (165) = MA(1) of the atmosphere at SURFACE entry (equal to the 'r'/'d' site MA(1) in four dumps; sub1 and sub2); land elhx (ffp 19) = lhs if tg1 < 0 else lhe (GHY_DRV.f:1071-1075) with tg1 := tg - tf: 0 mismatches of 99,396.
+`land_substep_v2(p4, g, q1, trup, ma1_ij, set_elhx=True)` = `land_chain.land_substep` with pres/vs0/gusti/ma1/elhx computed (not edited in place): on nov26 step 33312 substep 1 every patch output and tbcs, ashg, aevap, tsns are identical (max 0.0) to the recorded-column call.
+Limits: tg1 in the real code is tsns_ij (carried GHY output), the check uses tg - tf; a cell with tsns within one rounding step of 0 C could differ (none in the records). dmCO2cond is assumed 0 (not exercised); for the coupled path pass our PEDN(1) through `override_pbl` as now and ma1 from our S['MA'][0].T.
+Instrumentation needed: none.
+
+## 5. Not done / honest limits
+- Wiring into `surface_loop_v2.Loop2` / `atm_step.stage_surface` was NOT done (that would edit existing files); the four modules are drop-in functions with the tests above. No coupled run was repeated with them, so no statement is made about the effect on the coupled 6-step or 54-step results.
+- Tested only on nov26_day (54 steps), dec01 and jan01 (6 steps each); the PBL own-output chain (b) only on nov26_day.
+- Libimf-based bitwise results hold only on hosts with the Intel runtime.
+Reproduce: `cd fullfidelity; python -m pytest tests/test_drv_state_cols.py -q`.
+
+**Parent-session check (2026-10-07 13:30):** `tests/test_drv_state_cols.py` re-run: 14 passed, 52 s; no tracked file modified. Assertions include COSZ1 max difference 0.0 on nov26_day (54 steps), nov26, dec01, jan01 (with the Intel libimf; 1 ulp in 5 elements with Python `math`), the orbital parameters of 1850 to 1e-17/1e-12/1e-11, 53 donor-initialised ocean PBL rows, ice thermal columns 0.0 and land leftovers array-equal. Not re-derived by the parent: the own-PBL-output chain over 54 steps (4.8e-10 at worst: the existing PBL port's error carried, bounded) and the claim that `land_substep_v2` equals `land_chain.land_substep` on step 33312 beyond what the test asserts. NOT wired into `surface_loop_v2`/`atm_step` (would need edits to existing files): no coupled run has used these modules yet, and the tile-row template builder (which rows exist) is still open. Bitwise results need the Intel libimf runtime.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
