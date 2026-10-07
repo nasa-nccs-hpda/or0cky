@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ent_ff as E
 import ent_tables_ff as T
 
-PROD = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files"
+PROD = os.environ.get("MODELE_PROD_INPUT", "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files")
 LAI_FILE = f"{PROD}/V72x46_EntMM16_lai_trimmed_scaled_ext.nc"
 ENT_COVER_NAMES = ["ever_br_early", "ever_br_late", "ever_nd_early", "ever_nd_late", "cold_br_early", "cold_br_late",
                    "drought_br", "decid_nd", "cold_shrub", "arid_shrub", "c3_grass_per", "c4_grass", "c3_grass_ann",

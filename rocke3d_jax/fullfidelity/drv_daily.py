@@ -27,7 +27,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-PROD = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files"
+PROD = os.environ.get("MODELE_PROD_INPUT", "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files")
 DH2O_FILE = f"{PROD}/dH2O_by_CH4_monthly"
 GHG_FILE = f"{PROD}/GHG.CMIP6.1-2014.txt"
 GRAV = 9.80665

@@ -36,7 +36,7 @@ HLAKE_MIN = 1.0
 DZDH1_R8 = 5e-5
 DZDH1_REAL4 = float(np.float32(5e-5))
 DZDH1 = DZDH1_REAL4
-PROD = '/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files'
+PROD = os.environ.get("MODELE_PROD_INPUT", "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files")
 TOPO_FILE = PROD + '/Z72X46N_gas.1_nocasp.nc'
 RVR_FILE = PROD + '/RD_modelE_M.nc'
 

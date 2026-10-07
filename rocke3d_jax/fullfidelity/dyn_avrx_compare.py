@@ -12,12 +12,13 @@ Dumps (instrumentation/ATMDYN_dynA.f.patch + ATM_DRV_dynA.f.patch), per date in 
 
 Usage: python3 dyn_avrx_compare.py
 """
+import os
 import numpy as np
 
 import dyn_avrx_ff as fa
 import dyn_geom_ff as gm
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = os.environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 NSTEP = 6
 JM = 46

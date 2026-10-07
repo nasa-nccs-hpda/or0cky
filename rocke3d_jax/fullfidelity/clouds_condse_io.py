@@ -25,7 +25,7 @@ import numpy as np
 
 import ffdump_reader as fr
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = os.environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 IM, JM, LM = 72, 46, 40
 NSTEP = 6

@@ -49,7 +49,7 @@ sys.path.insert(0, HERE)
 IM, JM = 72, 46
 STBO = 5.67037320999999984e-8
 F82 = float(np.float32(0.82))                  # the REAL*4 literal .82 of GHY_DRV.f:1191
-GHG_FILE = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files/GHG.CMIP6.1-2014.txt"
+GHG_FILE = os.environ.get("MODELE_PROD_INPUT", "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files") + "/GHG.CMIP6.1-2014.txt"
 
 # ---- record column maps (0-based), from surface_tile_ff.IN, landice_tile_ff.IN, pbl_ff.unpack_records (1-based there), ghy_compare.py
 FFS = dict(i=0, j=1, itype=2, srheat=15, trhr0=24, trup=80)

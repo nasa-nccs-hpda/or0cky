@@ -6,12 +6,12 @@ arithmetic (INT truncation, clamps) follows the Fortran exactly. Used by the str
 of recorded EOS values.
 """
 import numpy as np
+import os
 import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 
-OFTAB = ('/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/'
-         'ModelE_Support/prod_input_files/OFTABLE_NEW')
+OFTAB = os.path.join(os.environ.get("MODELE_PROD_INPUT", "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/prod_input_files"), "OFTABLE_NEW")
 NI, NJ, NK = 43, 41, 40       # VGSP(-2:40, 0:40, 0:39)
 
 
