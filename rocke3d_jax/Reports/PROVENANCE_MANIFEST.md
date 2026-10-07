@@ -27,7 +27,7 @@ The record lists 79 files (about 5.0 GB), one archive per configuration plus the
 
 ### 3.2 Rundeck (A2)
 - `templates/P2SAoM40.R` in the release and in the local tree: **identical** (0 differing lines); the whole local `templates/` directory is identical to the release.
-- The local `decks/P2SAoM40.R` is the template with the `#include` lines expanded in place (module list, input-file lists, parameter blocks) and local edits: the run window `YEARE=1950,MONTHE=12,DATEE=1` (one year from `YEARI=1949,MONTHI=12`) where the template says `YEARE=1949,MONTHE=12,DATEE=2`. The start is `ISTART=2`: a cold start from observed initial conditions (the `AIC`, `GIC` and `OIC` files named in the expanded deck); the restart option (`ISTART=8`) appears only in a comment. The expanded parameters (for example `master_yr=1850`, `MADVOL=2`, the CMIP6 aerosol and ozone input names, the SOCRATES spectral files) are consistent with the release's include files by inspection; a mechanical expansion of the release templates and a line-by-line comparison was **not** done.
+- The local `decks/P2SAoM40.R` is the template with the `#include` lines expanded in place (module list, input-file lists, parameter blocks) and local edits: the run window `YEARE=1950,MONTHE=12,DATEE=1` (one year from `YEARI=1949,MONTHI=12`) where the template says `YEARE=1949,MONTHE=12,DATEE=2`. The start is `ISTART=2`: a cold start from observed initial conditions (the `AIC`, `GIC` and `OIC` files named in the expanded deck); the restart option (`ISTART=8`) appears only in a comment. **Mechanical check (2026-10-07, done):** every `#include` of the release's `templates/P2SAoM40.R` was expanded recursively (no missing include; 193 significant lines after removing comments and blank lines) and compared, as a set of lines, with the local `decks/P2SAoM40.R` (192 significant lines). They differ in exactly two settings: (a) the run end `YEARE=1950,MONTHE=12,DATEE=1,HOURE=0` (local) versus `YEARE=1949,MONTHE=12,DATEE=2,HOURE=0` (release); (b) the release's build option `OPTS_dd2d = NC_IO=PNETCDF`, which the local deck drops (comment in the deck: "no PNETCDFHOME - removing NC_IO=PNETCDF"; parallel NetCDF I/O, not physics). Everything else, including the input files (CMIP6 aerosol and ozone, `master_yr=1850`, `MADVOL=2`, the SOCRATES spectral files, the diagnostic and drag parameters), is line-for-line the release template. Limits: line sets, so ordering and duplicate lines were not compared; the contents of the include files themselves are the release's own.
 
 ### 3.3 The published output (A3)
 `P2SAoM40.tar.gz` contains four NetCDF files:
@@ -71,7 +71,7 @@ The supplement is an equilibrated run (years 4000 to 4099). Our reference run st
 
 ## 6. Open items (for the project lead and the next session)
 
-1. Mechanically expand the release's `#include` files and compare with the local expanded rundeck (closes 3.2).
+1. ~~Mechanically expand the release's `#include` files and compare with the local expanded rundeck~~ DONE 2026-10-07 (section 3.2): two differing settings, both explained.
 2. Compare the SOCRATES spectral data directories with the release (closes 4).
 3. Decide where `ANN4099.aijP2SAoM40.nc` lives (untracked 7 MB file in the repository root). Suggested: keep the small published product under `ff_data/` with this manifest; needs the owner's approval.
 4. Phase 0 question 4 of `RECONCILIATION_PLAN.md` (is `P2SAoM40_003` the run our references must match?).
