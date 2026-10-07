@@ -3917,6 +3917,92 @@ Instrumentation proposal (not built; a rebuild of the instrumented model chain p
 
 **Parent-session check (2026-10-07 08:58):** `tests/test_land_chain_ent.py` re-run: 4 passed, 50 s. No tracked file modified. The closed-mode table was recomputed by the parent from `scoping/D171_closed_nov26_day.json` (54 steps, 81,324 calls): 0 iteration-count mismatches; worst scaled differences tbcs 1.09e-15, tsns 1.05e-15, ashg 2.95e-15, alhg 2.76e-15, aevap 2.76e-15, ae0 1.45e-14 (itime 33315), abetad 3.3e-16, w_out 2.1e-16, tp_out 3.5e-16; max Qf carry deviation 2.5e-17: consistent with the report. This confirms the JSON and the tests, not a re-run of the full-day closed computation or of the chained 54-step open-loop day. CAUTION kept from the agent: in the chained 54-step day against the 5 real members the Ent-computed run has QCI worst ratio 1.62 (QCI level 21 reaches 2.14x) versus 1.06/1.11 for the recorded-Ent runs; the agent did NOT attribute this to Ent (one realisation, chaos), so it is an open observation, not a validated result; the first-step ulp residual of D169 (212 values in 172 of 3,012 calls, all in step 1) is still unexplained (refuted: input or state 1-ulp moves; untested: pairs, summation order, first-call-after-restart initialisation). Ent state exports remain 'recorded' for every earlier result; `land_chain_ent.install(A, ent)` is the opt-in. Day outputs in `ff_data/nov26_day/ours_d171_ent` and `ours_d171_ghyrec` (outside git).
 
+# D172: second F3 diagnostics set, chained wiring, and the F3 scoring tool (2026-10-07/08)
+
+Not committed. Owner: Glenn Tamkin. Review: when the first model month exists.
+Code (new files only): `fullfidelity/f3_diagnostics2.py` (accumulators + window drivers), `f3_chained_compare.py`, `f3_score.py`;
+tests `tests/test_f3_diagnostics2.py` (3 passed, 1 skipped, 296 s), `tests/test_f3_score.py` (6 passed, 30 s).
+Data: `ff_data/nov26_day/d172_chained54.npz` (our chained accumulation), `d172_chained54_vs_real.json` (column table). SOCRATES/RADIA never touched.
+
+## 1. Ranking of the 226 not-yet-accumulated columns, and what was added
+Ranking by use for F3 (plan section 3.4 items 1,2,4,5): (a) near-surface state/winds/PBL/ground temperature, (b) moisture and cloud budget,
+(c) heat/water budget terms and tropopause, (d) ocean/ice/land/lake state, land-model diagnostics, ISCCP, aj/ajl/consrv. The columns used for the
+D165 key fields (prsurf, slp, t_850, t_500, prec, evap, tsurf, srnf_toa, trnf_toa) were already covered by D163.
+
+Added and validated with REAL inputs against `real_acc54_nov26.npz` (same method and 1e-12 tolerance as D163; nothing loosened), 27 columns, worst relative residual 3.2e-14:
+- surface site (1 substep in 3): usurf 286, vsurf 287, wsurf 288, gusti 289, pblht 237, tausmag 293, RHsurf 98, tgrnd 184, mccon 142
+  (ftype-weighted sums of the PBL outputs of the four tile types; tgrnd from the tile TG1 / land TSNS). Inputs: ffp/ffs/ffl/ffg/fft records of both substeps.
+- surface fluxes (every step, two substeps summed): sensht 356, sensht_lndice 357, sh_oice 358, evap_ocn 325, evap_oice 326, evap_lndice 324,
+  lwd_oice 400, lwu_oice 401, trht_lndice 399, latht_lndice 360.
+- CONDSE: prec_mc 321 (=PREC-PRECSS), snowfall 333 (=-EPREC/LHM), cldw 101, cnvfrq 468, mccvbs 54, mccldbs 150.
+- dynamics: ptrop 157, ttrop 158.
+Total with D163: 284 columns accumulated.
+
+Tried and NOT matching (not included): dSE_Dyn 352 / dKE_Dyn 353 / dTE_Dyn 354 (5.5 %, 6.3 %, 98 % of scale off with SEFINAL-SEINIT, KEFINAL-KEINIT, DSEPKE*MASUM
+from the workspace; the definition/units are not resolved); srtrnf_grnd 403 (solar+trheat composite, 1.49 relative); cldi 102 (17 % off: ice precip WMPR term not dumped);
+mccvtp 53 and mccldtp 149 (LMCMAX index convention not found, relative 1.0); pscld/pdcld (need CLDREF, internal).
+Not attempted (inputs not dumped, or require unported state): sst/sss/ssh/sivol/simass/ts_oice and all ocean/ice/lake/land state columns (replayed state), netht_* and e0 terms
+(precipitation energy of ice/landice tiles not dumped), runoff, pr_*, land-model diagnostics (soil/snow/canopy, gpp, ...), clwp 99 (writer not located), puq/pvq/fmu/fmv/fgz*/nt_dse
+(GCDIAGb/ATMDYN fluxes), ujet/vjet, ISCCP, aj/ajl/agc/consrv. Roughly 195 of the 483 window columns remain unaccumulated.
+No instrumentation dump was needed for the added groups (the existing ffp/ffs/ffl/ffg/fft records contain the per-substep values). A new dump would be needed for: ice and land-ice
+tile `e0` (incl. precipitation energy), the CONDSE LMCMAX/WMPR/CLDREF internals, and CONSERV_SE/KE internals; I did not specify unit numbers or build one.
+
+## 2. Wiring and chained comparison (54 steps, nov26)
+`F3Acc2` (extends `F3Acc`) is called at DIAGA (through the dyn_step stage hook), accum_ma, CONDSE exit, per SURFACE substep and once per step for the flux sums.
+`run_chained_window` chains `atm_step.run_step` from OUR previous end state (dynamics, CONDSE, PBL+tiles+GHY from our code; Ent exports and land forcing recorded;
+radiation RECORDED: the real RADIA packets, so the 80 RADIA columns are the real output). It installs wrappers around `atm_step.stage_dyn/_substep` at run time (atm_step.py not edited).
+Cost: ~235 s start-up + ~145 s/step on one core; 54 steps = 7,788 s (2.2 h). Counters equal the real ones (54/11/36/4).
+
+Result (our chained accumulation vs real, max|diff| / max|real increment| per column; 284 columns):
+| group | columns | within 1e-12 | < 1e-6 | < 1e-3 | < 1e-2 | worst |
+|---|---|---|---|---|---|---|
+| RADIA (recorded) | 80 | 80 | 80 | 80 | 80 | 1.2e-16 |
+| D163 base set | 177 | 24 | 24 | 50 | 106 | 0.34 (omega_1) |
+| D172 new set | 27 | 1 (lwd_oice) | 1 | 3 | 8 | 0.61 (mccon) |
+Total within the D163 tolerance: 105 of 284. The others differ at chaos/threshold-flip level, as expected for a free atmosphere over a replayed surface:
+- Key fields: prsurf 4.8e-4, slp 1.35e-2, t_850 1.4e-2, t_500 7.0e-3, tsurf 6.7e-3, prec 5.3e-2, evap 3.9e-2 of the column scale (global-mean relative differences 6e-9, 7e-7, 1.9e-4, 2.6e-5, 5e-5, 3.0e-3, 2.1e-3); srnf_toa, trnf_toa exact (recorded RADIA).
+- Worst columns are the noisy ones: omega at upper levels (0.2-0.34 of scale), q/rh at 200-1000 hPa (0.1-0.23), cnvfrq 0.56, mccon 0.61 (counts that flip), gusti 0.26, snowfall 0.16, mccvbs/mccldbs 0.16/0.22, cldw 0.13.
+- Smoother new columns: lwd_oice 1.9e-14, lwu_oice 1.4e-5, trht_lndice 1.8e-4, tgrnd 3.2e-3, sh_oice 4.7e-3, vsurf 9e-3, usurf 1.2e-2, wsurf 2.2e-2, sensht 2.0e-2, pblht 4.6e-2, prec_mc 8e-2.
+Chaos quantification: NOT done. The only nov26 members (5 one-ulp members, D151) were dumped as per-step states, not as AIJ accumulations, and the surface records needed to accumulate
+them do not exist for those members; so no AIJ-level noise floor for the 54-step window exists. Two-step check (steps 0-1, chained vs the real-input accumulators): surface-flux and CONDSE precip
+columns agree to <= 1e-9 .. 1e-3, cldw 1.6e-2, pblht 1.2e-2 (these already differ after 2 steps: PBL height/cloud water are predicted from our atmosphere, not recorded).
+Interpretation limits: one start state, one 27-h window, radiation recorded, surface (ocean/ice/lake state, Ent, land forcing) replayed. A column-level difference of a few percent over 54 steps
+is not, by itself, a defect or evidence of agreement: the month-scale statistic (section 3) is the criterion.
+
+## 3. F3 scoring tool (`f3_score.py`) and its validation on the real ensemble
+Input: a model month as {AIJ column: accumulated (46,72) map} + idacc (`ModelMonth.from_f3acc`, or an acc file). Reference: the 8 JAN1950 members (D165). Monthly means by the ij_mapk rule.
+Per field: global mean t_gm = (x - mean_ref)/(sd_ref sqrt(1+1/M)) (Student t, M-1 dof under the null) with p; 46 zonal-bin t values (fraction within 2, max, count beyond 4); pooled rms
+ratios R_zon and R_grid (rms difference / (sqrt(1+1/M) * rms of the reference sd), expectation 1); `flagged_fields`, `summarize`, `compare_to_loo` (position of a model month's aggregate statistics
+relative to the leave-one-out members, no invented threshold), and the plan's criteria evaluated separately in `verdict`.
+Leave-one-out (each member vs the other 7; 204 fields = the 177 D165 fields + the 27 new ones):
+| member | frac fields |t_gm|>t_crit(2.447) | max |t_gm| | median R_grid | median R_zon | zonal bins within 2 | fields with a bin beyond 4 |
+|---|---|---|---|---|---|---|---|
+| ctrl | 0.025 | 3.78 | 1.13 | 1.00 | 0.904 | 60 |
+| p1 | 0.054 | 6.12 | 1.10 | 1.07 | 0.901 | 35 |
+| p2 | 0.059 | 3.83 | 0.97 | 0.87 | 0.923 | 36 |
+| p3 | 0.000 | 2.04 | 0.84 | 0.85 | 0.940 | 21 |
+| p4 | 0.093 | 6.06 | 1.02 | 0.98 | 0.881 | 72 |
+| p5 | 0.049 | 3.69 | 1.02 | 0.73 | 0.936 | 25 |
+| p6 | 0.020 | 3.25 | 0.86 | 0.80 | 0.949 | 19 |
+| p7 | 0.054 | 3.98 | 0.91 | 0.86 | 0.925 | 28 |
+Mean over members: 0.044 of fields beyond the 5 % critical value (expected 0.05), 0.920 of zonal bins within 2 (expected P(|t6|<2) = 0.908), median R ~ 1. So the members look within noise and the scoring
+method is calibrated. Consequence for the plan's proposals (RADIATION_AND_F2_PLAN 3.2): with 7-8 reference members the rule ">= 95 % of zonal bins within 2 sigma" is failed by true members (mean 0.92) and
+"no bin beyond 4 sigma" is failed in 10-40 % of fields by true members; these proposals need t-calibration or the leave-one-out range (as `compare_to_loo` does).
+Negative controls (tests): the stored month vs members p1-p7 sits inside the LOO range on all 8 aggregate statistics; +0.2 K added to t_500 is flagged per field (aggregates stay inside the LOO range: little power for a single
+deviating field, hence the per-field list is the primary output); FEB1950 against the JAN ensemble: 65 % of fields beyond t_crit, median R_grid 3.8.
+Limits: 8 members (sd uncertain by ~25 %), January only, perturbations at step 0 only. Fields with zero ensemble spread (incsw_toa) give t = 0 for zero difference and inf otherwise.
+Annual means against the 100-year ANN4000-ANN4099 climatology (owner's reference, Reports/DOCUMENTATION_REVIEW.md): not built. The same functions apply unchanged if the reference array X (N,fields,46,72) is filled
+from the 100 annual aij files (column meta from those files; N=100 gives a precise sd, t -> normal, and the interannual spread replaces the perturbed-ensemble spread), and the model year is scored as one more sample;
+a multi-year port run can be scored by its multi-year mean with sd/sqrt(n_years). Needs: the aij files' column numbering (this build's names are read from the file), and a port run of >= 1 year, which is currently out of reach.
+
+## 4. What blocks a one-month comparison (unchanged items plus new facts)
+1. No port-side month: surface/ocean/ice/land/Ent loop is replayed, not closed; chained cost here is ~145 s/step on one core (a month = 1,488 steps = ~60 h per member) plus radiation-server time.
+2. ~195 of the 483 changed columns are still unaccumulated (list above), several needing new dumps (ice/land-ice e0, CONDSE LMCMAX/WMPR, SE/KE internals).
+3. The chained accumulation is only exercised on one 54-step window from one start state with recorded radiation.
+4. Ensemble-based criteria thresholds remain proposals (section 3).
+
+**Parent-session check (2026-10-07 13:10):** `tests/test_f3_diagnostics2.py` + `tests/test_f3_score.py` re-run: 9 passed, 1 skipped in 339 s; the skipped test is gated on the env var `F3_CHAINED_NPZ` and passes (1 passed) when pointed at `ff_data/nov26_day/d172_chained54.npz`. No tracked file modified. Headline chained-run numbers recomputed from `d172_chained54_vs_real.json`: 284 columns compared, 105 within the D163 tolerance; relative to column scale prsurf 4.8e-4, slp 1.36e-2, t_850 1.39e-2, t_500 6.99e-3, tsurf 6.69e-3, prec 5.3e-2, evap 3.9e-2; global-mean relative differences from 6e-9 (prsurf) to 3e-3 (prec); srnf_toa/trnf_toa exact only because radiation is recorded. Leave-one-out calibration of the scoring method re-done independently by the parent (global-mean t per field, each JAN1950 member against the other 7, 8 members, 161 valid fields): 60 of 1,288 tests beyond the 5% two-sided critical value (4.7%; the agent reports 4.4% on 204 fields; expected about 5%), so the members look like draws from one distribution. Not re-run by the parent: the 54-step chained run itself (about 2 h on one core), the negative controls, the zonal-bin statistics. NOT achieved (agent): about 195 of the 483 changed columns are still not accumulated, and no AIJ noise floor exists for the 54-step window (the five D151 members exist only as per-step states). The month-scale criteria proposed in the plan (>= 95% of zonal bins within 2 sigma) are too strict for 7-8 reference members by the agent's leave-one-out result.
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
