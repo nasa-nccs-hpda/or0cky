@@ -3289,6 +3289,86 @@ Outputs: `ff_data/nov26_day/ours_free_persist/`.
 
 **Parent-session check (2026-10-06 23:35):** own array-by-array comparison of `ff_data/nov26_day/ours_free_persist` vs `ours_free_np` (76 npz files, 1,192 arrays = 378 state + 572 rad_in + 242 rad_out): 0 not bitwise equal; the only key present in one side only is `_server_s` (timing metadata, excluded). Note: the .npz files differ at BYTE level (zip timestamps and that extra key), so a byte/hash comparison is the wrong test. `tests/test_atm_day_free_rad_persist.py` re-run: 2 passed, 62 s. Timings (radiation 158 s vs 1,194 s; day 1,312 s vs 2,250 s) are the agent's single-thread measurements on a shared node, not re-measured. The agent reports its first launch was killed by its own `pkill`; the ensemble processes of the other track were confirmed still running afterwards (7 `P2SAoM40`).
 
+# D165: real JAN1950 one-month reference ensemble (8 members) and reproducibility of the stored JAN1950 acc
+
+Date 2026-10-06/07. Owner: Glenn Tamkin. Not committed. Sources: real model binary of the D149-D151 build (`<scratch>/ac69365f.../mE_day1/mE2/model/P2SAoM40.bin`:
+pristine physics + the D128/D125/... dump hooks + `ATM_DRV_pert.f.patch`; with `FFD_*` unset the hooks write nothing; D149 showed `ffpt_ctrl == ffa_step_e` bitwise,
+and the unperturbed member below reproduces the stored real acc bitwise, which is the stronger evidence that the build is a physics no-op); restart
+`ff_data/_pristine_restarts/fort1_jan01_itime17520.nc`; stored reference `ModelE_Support/prod_runs/P2SAoM40/JAN1950.accP2SAoM40.nc`. SOCRATES untouched; real source tree not written.
+Review: when the F3 comparison is run.
+
+## 1. Commands
+Script `<scratch>/ens_jan/one.sh <name> "<pert>"` (copy of the D149 run recipe with the January window); launcher `runall.sh` (`xargs -P5`, 5 concurrent single-thread runs, 8 jobs).
+Per run: run dir with `I P2SAoM40ln P2SAoM40uln runtime_opts` from `huge_space/P2SAoM40`, binary copied to `P2SAoM40.bin` and `P2SAoM40`; line 109 of `I` edited to
+`YEARE=1950,MONTHE=2,DATEE=1,HOURE=0,` (only edit); jan01 restart copied to BOTH `fort.1.nc` and `fort.2.nc`; `sh P2SAoM40ln`;
+`OMP_NUM_THREADS=1 FFPT_START=17520 FFPT_NSTEP=0 FFPT_TAG=<name> FFPT_PERT='<spec>' ./P2SAoM40 -i I` (FFPT_NSTEP=0: no dump files; FFPT_PERT unset for ctrl; FFD_* unset).
+Outputs copied (`\cp`) to `ff_data/ens_jan1950/<member>/{fort.2.nc, JAN1950.accP2SAoM40.nc, run.time, pert.txt}` (2.3 GB, outside git).
+Analysis: `fullfidelity/ens_jan1950_summary.py` (`repro`, `summary`); products `ff_data/ens_jan1950/{repro_ctrl.json, ens_jan1950_summary.json, ens_jan1950_summary.npz}`.
+
+## 2. Members (all rc=0, 1488 steps, idacc[0]=1488, one core each, 5 concurrent; wall 82-87 min = 3.3-3.5 s/step)
+The perturbation method is the D151 one (`ffpt_perturb`: +-1 ulp via `nearest()` of T or Q in the model state at atm_phase1 entry of the first step), same cells/signs as the 5 D151 members, applied at itime 17520:
+| member | spec (FFPT_PERT) | wall |
+|---|---|---|
+| ctrl | none | 85m42s |
+| p1 | T 36 23 10 +1 | 85m03s |
+| p2 | T 20 12 20 -1 | 84m29s |
+| p3 | Q 50 30 5 +1 | 83m13s |
+| p4 | T 10 30 1 +1 | 86m46s |
+| p5 | T whole field, +-1 ulp checkerboard (`T 0 0 0 1`) | 82m18s |
+| p6 | T 60 40 15 -1 (new cell, same method; not a D151 member) | 85m07s |
+| p7 | T 5 20 8 +1 (new cell, same method; not a D151 member) | 83m29s |
+Month ends at itime 19008 (1 Feb 1950 00:00); the model writes `JAN1950.accP2SAoM40.nc` itself.
+
+## 3. Reproducibility of the stored JAN1950 acc (unperturbed run, jan01 restart)
+Result: **bitwise identical.** Every array of the model-written `ctrl/JAN1950.accP2SAoM40.nc` equals the stored file with 0 unequal elements (np.array_equal on all variables):
+aij (5,497,920), aijl, aijk, aj, ajl, consrv, agc, areg, tdiurn, asjl, aisccp, adiurn, energy, ijhc, oij, oijl, icij, idacc (1488), and all name/scale/index metadata.
+Only two scalars differ: `cputime` (wall-clock bookkeeping) and `itimee` (the stored run was configured to end at 1 Dec 1950, ours at 1 Feb 1950; run-end setting, not physics).
+The jan01 restart carries no acc block, so the whole month is accumulated from zero in both; that is why the full-month acc is reproduced. The end-of-run `fort.2.nc` acc (float64, unrounded)
+agrees with the stored float32 file to float32 rounding for aij/aijl/aijk/ajl/consrv etc. (0 unequal after casting to float32; max 3e-8 of scale before casting); agc/areg/oijl differ and `aj` has a different shape in fort.2 (6 vs 9 rows); not investigated (the model-written monthly acc file, which is what F3 uses, is bitwise).
+Hence: the real model is deterministic over a month with this binary, thread count (OMP_NUM_THREADS=1; the thread count of the original production run is not known to me) and node; and the stored JAN1950 file is the unperturbed member.
+
+## 4. Ensemble spread (noise floor), monthly means of AIJ columns (ij_mapk formula via `f3_diagnostics.field_from_aij`; 8 members including ctrl, ddof=1)
+Definitions: gm = area-weighted global mean per member (area = axyp; cells where the ratio denominator is zero, i.e. below-ground pressure levels, excluded: t_850/q_850 use the 2962 defined cells);
+gm sd = std over members of gm; grid sd rms = area-weighted rms over cells of the member std at each cell (pointwise noise floor); zonal sd rms = rms over the 46 latitudes of the member std of the zonal mean;
+spatial std = spatial std of the ensemble-mean field (for scale). Units as in the acc/DIAG_PRT scaling (as stored, not re-converted: e.g. prsurf, slp in mb, prec/evap mm/day, temperatures degC, fluxes W/m2).
+| field | gm mean | gm sd | gm min..max | grid sd rms | zonal sd rms | spatial std |
+|---|---|---|---|---|---|---|
+| prsurf | 984 | 2.63e-07 | 984 .. 984 | 1.21 | 0.98 | 64.8 |
+| slp | 11.042 | 0.01 | 11.031 .. 11.065 | 1.25 | 1.01 | 8.15 |
+| t_850 | 6.0601 | 0.0178 | 6.0292 .. 6.084 | 0.681 | 0.533 | 12.8 |
+| t_500 | -18.549 | 0.0427 | -18.602 .. -18.48 | 0.556 | 0.303 | 12.1 |
+| t_200 | -53.786 | 0.031 | -53.812 .. -53.724 | 0.439 | 0.276 | 4.38 |
+| z_500 | 5583 | 0.54 | 5582.1 .. 5583.8 | 15.2 | 9.09 | 264 |
+| u_200 | 17.085 | 0.0927 | 16.965 .. 17.211 | 1.79 | 0.712 | 13.9 |
+| q_850 | 6.2401 | 0.0117 | 6.2197 .. 6.2557 | 0.265 | 0.0574 | 3.92 |
+| omega_500 | -8.9433e-06 | 3.19e-05 | -5.9892e-05 .. 3.787e-05 | 0.014 | 0.00244 | 0.059 |
+| qatm | 24.457 | 0.0457 | 24.373 .. 24.502 | 1.06 | 0.227 | 16.4 |
+| prec | 2.8255 | 0.0105 | 2.809 .. 2.8438 | 0.885 | 0.124 | 3.53 |
+| evap | 2.8457 | 0.0135 | 2.8259 .. 2.8606 | 0.251 | 0.0493 | 2.25 |
+| tsurf | 11.859 | 0.0216 | 11.829 .. 11.886 | 0.719 | 0.701 | 16.9 |
+| srnf_toa | 242.79 | 0.179 | 242.5 .. 243.14 | 7.14 | 1.4 | 120 |
+| trnf_toa | -233.88 | 0.132 | -234.1 .. -233.66 | 4.81 | 1.25 | 33.8 |
+| incsw_toa | 351.34 | 0 | 351.34 .. 351.34 | 4.72e-14 | 5.4e-14 | 156 |
+| srnf_grnd | 171.47 | 0.2 | 171.18 .. 171.88 | 7.76 | 1.6 | 89.8 |
+| trdn_surf | 332.16 | 0.137 | 331.98 .. 332.35 | 4.65 | 3.67 | 77.1 |
+| tauus | -2.5803 | 0.98 | -3.8288 .. -1.211 | 23.1 | 8.58 | 115 |
+| tauvs | -11.3 | 0.665 | -12.381 .. -10.145 | 20 | 5 | 83.1 |
+| rh_layer1 | 78.298 | 0.0496 | 78.216 .. 78.381 | 1.72 | 0.715 | 15 |
+All 177 computed fields (all pressure-level t,z,u,v,q,rh,omega,p_freq plus the above) are in `ens_jan1950_summary.json`; per-member monthly-mean maps in the npz (`monthly_mean[member, field, 46, 72]`, `stored`).
+Pointwise members-vs-ctrl rms (examples): t_500 0.88-1.02 K, prec 1.00-1.24 mm/day, srnf_toa 8.9-10.4 W/m2, slp 2.0-3.1 mb. The ensemble-mean global means differ per member by e.g. 0.04 K (t_500), 0.18 W/m2 (srnf_toa).
+Reading: a one-ulp perturbation produces a pointwise monthly-mean spread that is about 5 percent of the spatial std for t_500 and srnf_toa, about 25 percent for prec and tauus (not 'decorrelated': no correlation was computed), while global means are stable to a few 1e-3 of their spatial std.
+`incsw_toa` has zero spread (prescribed solar input), a useful sanity check.
+
+## 5. Limitations
+- 8 members (7 perturbed + ctrl) give a noisy sd estimate (about +-25 percent on a std from n=8); p1-p5 repeat the D151 positions, p6-p7 are new cells; all perturbations are at the very first step, one realisation of a month, one season (January, from a spin-up state: the stored run started cold on 1 Dec 1949).
+- The ensemble gives the floor for a monthly mean of the model that starts from the jan01 restart; it says nothing about what a port that differs by more than rounding (e.g. a different radiation/land path) would produce; the F3 acceptance thresholds remain proposals.
+- Only AIJ-derived fields (the ones `f3_diagnostics.PORTED_NAMES` lists) are summarised; AIJL zonal profiles, aj/consrv are in the saved acc files but not summarised.
+- The below-ground pressure-level fields are averaged over the defined cells only.
+- Wall time/core-count: 5 concurrent single-thread runs on a 12-core node; run speed 3.3-3.5 s/step. The coordinator's later 4-core limit was not violated by this work (all runs had already finished).
+- The D149 pitfall (a T ulp is not local after one step) applies: members are effectively independent weather realisations from day 1.
+
+**Parent-session check (2026-10-07 05:20):** (1) reproducibility re-done with my own script on the stored files: ctrl `JAN1950.accP2SAoM40.nc` vs `prod_runs/P2SAoM40/JAN1950.accP2SAoM40.nc`: 143 variables, 14,078,759 values, only `itimee` (end-time setting, differs by construction) and `cputime` differ; every physical array is equal. (2) spread table recomputed from `ens_jan1950_summary.npz` (8 members, area weight ~cos(lat), my own pole weighting): t_500 global-mean sd 0.0427 K / grid rms 0.556 K, tsurf 0.0215 / 0.721, slp 0.0108 / 1.256, prec 0.0105 / 0.885, evap 0.0135 / 0.251, srnf_toa 0.179 / 7.13, trnf_toa 0.132 / 4.81: agrees with the table above to rounding. Not re-checked by the parent: the 8 model runs themselves (logs show rc=0, 85 min each), the perturbation specs, and `ens_jan1950_summary.py` has no test. Eight members give a noisy spread estimate (about +-25% on a std).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
