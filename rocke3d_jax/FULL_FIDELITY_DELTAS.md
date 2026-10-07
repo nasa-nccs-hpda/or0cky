@@ -4583,6 +4583,99 @@ Only two steps; step 1 is chaotic-divergence territory by D129. Flag effect on t
 
 **Parent-session check (2026-10-07 18:30):** no tracked file modified by this track. Independently recomputed from the saved run (`scratchpad/run`: `jax_step*.npz` = JAX with the libimf callback, `ref_step*.npz` = the NumPy imf chain, steps 33312-33313): 210 (step, field) pairs, 0 not bitwise equal (C1 category A). Against the real end state at step 0 (all 30 end fields recomputed by the parent): 2 in A, 27 in B, 1 in C (`LMONINPBL` 5.4e-10, outside the 14-field gate set), none in D; worst W2GCM 8.6e-13, EGCM 8.3e-13, USTARPBL 4.6e-13. The gate-field verdict reported by the agent (13 B + 1 A = MET, as in D129) is consistent. At step 1 22 of 30 fields are in D (DCLEV 8.3e-2, QCL 2.1e-2, EGCM 1.6e-2, PBLHT 7.6e-3), identical to the NumPy imf chain: expected, because from step 1 the chain starts from OUR end state and acceptance beyond one step is statistical (ACCEPTANCE section 4), not bitwise. Unit test `tests/test_libimf_ops.py` re-run by the parent on two cores: 1 passed, 1.2 s (my first attempt, pinned to ONE core, hung at 0.1% CPU for 23 minutes: callbacks inside jit deadlock on a single core, as D185 found). CAUTIONS kept: the libimf work is a HOST callback (ctypes scalar loop): per step about 36,000 callbacks, 15.7 M elements, 225 MB in and 140 MB out, 14.5 s, most from MSTCNV loops: it is not device-resident and is the dominant cost to remove for a GPU run; only 2 steps and one run per side; the dynamics/CONDSE stage tests used the old XLA flags (the whole-step run used the new ones); recorded GHY land patch (`land_mode='recorded'`), as in D129. THIS IS THE FIRST C2 RESULT FOR THE JAX ATMOSPHERE: step 0 MET against the real dumps on nov26 (libimf callback, radiation recorded, land recorded); dec01 and jan01 not yet run.
 
+# D186: build stage S2 of JAX_COVERAGE_MATRIX section 6 -- atmosphere phase 1 as a device-resident JAX program (2026-10-07)
+
+Owner: Glenn Tamkin; written by a Claude Code agent. Project-local. Nothing committed; no existing file edited; new files only.
+Review by: when stage S4/S5 (surface) starts, or when a category definition in ACCEPTANCE section 3 changes.
+
+## 0. What this is and is not
+Phase 1 of the step = MELT_SI -> DYNAM (+QDYNAM, energy fix, TROP, PGRAD_PBL, KEA) -> CONDSE -> RADIA apply (ATM_DRV.f:88-274), state kept in DEVICE arrays between
+stages. It is the ATMOSPHERE ONLY. It does NOT claim the coupled step: SURFACE, dissip, filter, ocean, ice dynamics, lakes, land stay on the record boundary
+(declared) and are not run in the device program. Comparison type: **C1** (port consistency) only; nothing here says anything about ROCKE-3D (no C2).
+Libm mode (XLA numpy-pow/glibc semantics); the Intel libimf is NOT used. SOCRATES/RADIA never ported or modified.
+Conditions of every number: `taskset -c 0-1`, `OMP_NUM_THREADS=1`, flags `--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover`
+(`clouds_jax_env_fast`), no compile cache (checked by the harness header), jax 0.5.3, shared node (timings indicative), reference =
+NumPy libm chain (`atm_step_fast`, ctx imf=False, land recorded) run with the same pinning (`jax_p1_ref.py`; run 1 vs run 2 byte-identical on all 3 dates, 240/240/238 arrays).
+The files of the other session (`jax_state.py`, `jax_static.py`, `jax_state_capture.py`, `tests/test_jax_state.py`, `dyn_jax_fast.py`, `d182_*`) were not read, used or touched.
+
+## 1. Files (all new, untracked)
+| file | content |
+|---|---|
+| `jax_p1_glue.py` | jnp ports of the D180 NumPy glue: MAtoPMB, PEK, CONSERV_SE, CONSERV_KE, energy fix, CALC_TROP (data-dependent scans as vmapped while-loops), PGRAD_PBL, QCL/QCI rescale, DIAGA pole fix, RADIA cloud masking, CONDSE A-grid replication of U,V, momentum back-transfer, recalc_agrid_uv |
+| `jax_p1_dyn.py` | the dyn_step plan (~130 stages, real order) executed on a device workspace; kernels of dyn_step_jax2 unchanged; stop-model checks as device flags; eager mode and `make_fused` (whole block in ONE jit) |
+| `jax_p1_condse.py` | CONDSE (clouds_condse_batch translated statement by statement to jnp), pole columns as pure_callback, LMIN host loop, LSCOND core, hand-off arrays, momentum |
+| `jax_p1_melt.py` | MELT_SI on the full grid with selects (seaice_core_jax.simelt) |
+| `jax_atm_phase1.py` | driver: registry-guarded record loading, stage registry, units, RADIA through the D185 hand-off (`ReplayServer` stand-in or the real server) |
+| `jax_p1_count.py` | execution counters: wraps `jax.jit` (counts executions made outside a trace) + eager-primitive dispatch count |
+| `jax_p1_ref.py`, `jax_p1_ref_chain.py` | NumPy libm reference for phase 1 (stage snapshots dyn/condse/radia, X, cloud masking), 1 step and 6-step chain |
+| `jax_atm_phase1_run.py`, `_server.py`, `_chain.py` | runners: 3-date C1 + mutations; real-server variant; 6-step hybrid chain |
+| `tests/test_jax_atm_phase1.py` | 8 quick unit tests (8 passed, 8 s; glue bitwise vs NumPy, MELT_SI, pole slices, counter, replay server, mutation) |
+
+## 2. What is JAX, what is NumPy, what is a callback (the non-JAX list; generated from `Phase1.stages`, plus the callbacks)
+JAX on the device (jitted kernels, no host copy between them): MELT_SI; the whole dynamics block incl. TROP, MAtoPMB, SE/KE bookkeeping, energy fix, PGRAD_PBL, z-extra
+check (flag), PEK; CONDSE entry set (replication of U,V); CONDSE column set-up, MSTCNV kernels, post-processing, DDML search, LSCOND, hand-off arrays, merges, snow-age exp,
+momentum back-transfer, recalc_agrid_uv; RADIA T update and RADIA cloud masking.
+Declared NON-JAX items (names as in `DECLARED_HOST` of `jax_atm_phase1.py`):
+1. `record_load`: host file reads (recorded inputs, through the registry) + device_put at step start. Kind REC.
+2. CONDSE pole columns, south and north: two `jax.pure_callback`s to the NumPy per-column port `condse_column` (KMAX=72; not ported). ~0.09 s and ~230 KB per call.
+3. MSTCNV LMIN loop: HOST loop (22 iterations at LMCM=23), one device->host read of a 3,168-element mask per iteration (counted), bucketed jit calls (D146 design unchanged); this loop is the largest single piece of the step time (70%).
+4. MSTCNV QUS ADV1D subsidence: NumPy callback inside the jitted event block: 176 calls/step, 0.66 s/step, ~250 MB/step moved (measured on nov26).
+5. `flag_read`: one device->host read of the stop-model flags per step (36 B).
+6. Radiation: in replay mode a stand-in server serves the RECORDED SRHR/TRHR/COSZ1 (ffa_step_<it>_r) through the D185 interface (REC); with the real server FORT (section 5).
+7. QDYNAM extra-column z branch: NOT executed; the device program raises the flag `qdynam_do_z_extra` (0 in all runs; the real windows never reach it). If it fires the step is invalid.
+8. Python dispatch: eager-mode dyn issues ~75 jit calls from Python (section 4).
+Not part of this stage (record boundary): SURFACE (PBL, tiles, GHY, land ice), PRECIP_*/GROUND_*/RIVERF, ocean, DYNSI/ADVSI, FORM_SI, dissip, filter. In the 6-step chain they run as the existing NumPy code on the host.
+Recorded inputs of the device program (registry, no undeclared read): sitea 39.8 MB, siter 16.1 MB, s1 34.0 MB, ci (CONDSE entry) 85.8 MB, co (seed only) 77.9 MB, restart/ocean items for MELT_SI 0.5 MB, ctx_static (not sized). Radiation: replayed from the real record, NOT computed.
+
+## 3. C1 result: category A on every atmosphere field, 3 dates, step 0 (the S2 gate)
+Compared with the NumPy libm phase-1 reference with `jax_harness.field_category` (A bitwise / B <=1e-12 of scale / C <=1e-6 / D). Fields: the state dict after each stage (dyn / condse / radia) and the CONDSE output X:
+| date | step | RADIA | dyn | condse | radia | X (CONDSE outputs) | cloud masking CLDSS/CLDMC | MELT_SI RSI vs recorded CONDSE-entry RSI |
+|---|---|---|---|---|---|---|---|---|
+| nov26 | 33312 | radiation step (replay) | 52/52 A | 59/59 A | 59/59 A | 68/68 A | A / A | equal |
+| dec01 | 33552 | radiation step (replay) | 52/52 A | 59/59 A | 59/59 A | 68/68 A | A / A | equal |
+| jan01 | 17520 | held SRHR/TRHR (no radiation step) | 52/52 A | 59/59 A | 59/59 A | 68/68 A | n/a | equal |
+Nothing is not-A. (MELT_SI is also bitwise equal to `surface_loop.melt_si` on all outputs: ice dict and melti/emelti/smelti.) Stop-model flags: all 0 (aadvt, advecm, sdrag, qdynam err/z-extra, subsid, handoff, lscond vmp, mstcnv negative cloud).
+Not compared here: anything after RADIA (the reference of D184 holds only the end-of-step state; the surface half is not part of this stage). This is C1: the device program reproduces our NumPy chain; the NumPy chain itself is NOT MET against the real model in libm mode (D180).
+Mutation tests (a perturbed constant must be detected; nov26, eager mode): dyn glue constant kg2mb +1 ulp -> detected (18 dyn fields not A); LSCOND constant RGAS x(1+1e-12) -> detected; radiation record COSZ1 x(1+1e-12) -> detected. In the FUSED variant (section 4) the constants are baked into the single jit at trace time, so the mutation of kg2mb is NOT detected there (nothing to perturb after tracing); the fused variant is validated by the A result itself, not by that mutation.
+
+## 4. Compile time, step time, jit units, transfers (this node, 2 cores, cold = first call in the process with all compilation)
+| run | cold step (s) | of which XLA compile (s, n) | steady step (s) | jit executions / step | eager primitive dispatches / step |
+|---|---|---|---|---|---|
+| nov26 eager | 185.7 | 141.9 (63) | 6.6 | 127 | 532 |
+| dec01 eager | 179.5 | 139.7 (61) | 6.2 | 125 | 532 |
+| jan01 eager | 187.1 | 142.6 (61) | 6.4 | 124 | 532 |
+| nov26 dyn FUSED in one jit | 531.1 | 486.6 (21) | 7.1 | 53 | 400 |
+(Other nov26 runs of the same program gave 218-221 s cold and 7.4-7.7 s steady: the node was shared; read the cold times as +-20%.) NumPy chain on the same cores for the same stages: dyn 2.6 s + condse 5.5 s + radia 0.02 s = 8.1 s (nov26, `jax_p1_ref`).
+Per-stage time of a steady step (nov26, timed run with block_until_ready after every stage = extra host syncs): melt_si 0.001 s, dyn 0.9-1.1 s (NumPy: 2.6 s), condse_entry 0.02, condse_setup 0.14-0.19 (incl. south pole 0.09), condse_mstcnv 4.8-5.5 (70% of the step), condse_post 0.44-0.61 (incl. north pole), radia 0.04-0.05.
+Jit units per step (eager dyn): melt_si 1, dyn 75 (a dispatched sequence of ~15 kernel types), condse_entry 1, condse_setup 1, condse_mstcnv 46 (22 mask tests + bucketed event calls + set-up/post), condse_post 1, radia 1 (+1 cloud masking). **The target J1 (one jit) is NOT reached**: 125-127 executions (53 with the dynamics fused). Fusing the dynamics into one jit works and is bitwise A but costs 7x the compile time (standalone dyn: 460 s cold vs 64 s eager; steady 1.47 s vs 1.05 s). The MSTCNV host loop cannot be fused without redesign (data-dependent compaction), nor can the callbacks without leaving the jit.
+Transfers per step (counted by `instrument_transfers`, `jax.device_get`, callback accounting): record load once 147 arrays / 131 MB host->device (+340 MB of device_put in the process incl. start state); inside the step host->device by `jnp.asarray`/`device_put` ~518 calls / ~2.9 MB (small constants, bucket index arrays); device->host: flags 36 B (1 call), 22 mask reads x 3,168 B; pole callbacks 2 x ~230 KB; QUS callback ~250 MB/step in 176 calls; radiation interface (replay): 33.7 MB device->host and 11.6 MB host->device per call, 1 sync point per radiation step. LIMIT (documented in the harness): on the CPU backend `np.asarray(jax_array)` is not counted, so callback traffic is taken from the callbacks' own accounting. No GPU on this node: nothing here is an accelerator claim; the callbacks and the LMIN loop would be synchronisation points on a GPU.
+
+## 5. Variant through the REAL persistent radiation server (nov26 step 33312) -- radiation computed by the original Fortran (hybrid component)
+Packet from OUR device state (T,Q after our CONDSE, PK..MA, LTROPO from our TROP, 19 cloud arrays and SNOAGE from our CONDSE); RQT, KLIQ and the 21 surface fields COPIED from the live packet `rsv_n26_33312_in.bin` (declared recorded input, D185 practice). One call: 33,676,432 B device->host, 11,605,248 B host->device, 11.3 s in the call (11.1 s RADIA+IO in the server), 1 host sync point, seed -588724193 (recorded SEEDS[1]), SOCRATES/RADIA modified: no, server stopped (no process left). Whole program 197 s incl. compile.
+Result vs the recorded server output (`rsv_n26_33312_out.bin`): COSZ1 A; SRHR D (max 14.8, rel 1.3e-2) and TRHR D (max 8.6, rel 2e-2); T after RADIA vs the replay-mode result D (max 4.7e-3 K, rel 1e-5); Q equal; the server's masked CLDSS/CLDMC equal our device masking (A). Where: 44 columns have SRHR/TRHR differences above 1e-6 of scale, ALL 44 inside the 2,491 columns where our (libm-mode) CONDSE cloud arrays differ from the real CONDSE exit record; outside them all differences are below 1e-6 of scale. This is the known libm-mode sensitivity (D127-D129, D180), not a new defect, and it is NOT a C1 result (C1 uses the replay).
+
+## 6. Six steps of nov26 (33312..33317), C1, hybrid chain
+Phase 1 on the device at every step; between steps the state goes to the host, the EXISTING NumPy code runs SURFACE (land recorded), dissip and filter, and the result goes back to the device (so this is NOT a device-resident multi-step run). CONDSE carry (CLDSAV.. SNOAGE, RADIA-masked CLDSS/CLDMC on radiation steps) and the LSCOND module vectors are device state between steps; MELT_SI only at step 0 (ice state afterwards is the record boundary). Reference: the NumPy libm chain (`jax_p1_ref_chain.py`, same pinning), whose surface half is the same code, so any difference can only come from phase 1.
+Result: steps 0..5, each stage (dyn 52-60, condse 59-60, radia 59-60 fields) and X (68): **all fields category A at every step**; RADIA cloud masking A at the radiation steps 33312 and 33317; flags all 0. Device phase 1 per step 6.7-7.2 s after the first (189 s with compile); the host surface half 0.8-0.9 s per step after the first two. Limits: one start state, 6 steps, replayed radiation (recorded SRHR/TRHR/COSZ1 of each step), surface on the record boundary, libm mode; the chaos-limited multi-step claims of ACCEPTANCE section 4 are not made.
+
+## 7. Honest limits against ACCEPTANCE section 1 (this stage only)
+1. State updates: the phase-1 prognostics (T,U,V,Q,QCL,QCI,TMOM,QMOM,P,MA,..., MELT_SI ice) are updated by JAX functions and stay on the device between stages: MET for phase 1. Ocean, ice dynamics, lake, land state are NOT updated by this stage.
+2. Boundaries/transfers: measured and reported (section 4); 125-127 jit executions per step, not one.
+3. Non-JAX stages: listed with shares in section 2/4 (MSTCNV host loop and QUS callback 70% of the step; pole callbacks ~3%; dyn 14%).
+4. Radiation: replay (recorded) in the C1 results, labelled "radiation replayed from the real record (not computed)"; the one real-server run carries the Fortran sentence.
+5. Recorded inputs: listed with sizes (section 2); the CONDSE entry set `ci` (85.8 MB) is the largest and is an input in every step.
+Also: libm mode only; the QDYNAM z-extra branch is flagged not executed; stop-model checks are flags read once per step (not raised in the device program).
+
+## 8. Blockers / next for the surface stage (S4/S5)
+- Phase 2 needs SURFACE tiles in the fixed layout (jax_state_d181) and a JAX PBL/ATURB/tile/GHY chain; nothing of that is here. The hand-off arrays the surface stage needs from phase 1 are in X (PREC, EPREC, PRECSS, DDM1, DDMS, TDN1, QDN1, DDML) and S (UALIJ, VALIJ, DPDX..): produced on the device.
+- The MSTCNV LMIN loop (70% of the step) and the QUS callback prevent a single jit; a fixed-bucket device compaction is the obvious redesign, not attempted (cost estimate: event block on 3,168 columns x 22 iterations).
+- Pole columns: callback to NumPy; a JAX port needs the KMAX=72 variants of MSTCNV/LSCOND.
+- Fusing the dynamics into one jit multiplies the cold compile by 7 (460-530 s); on GPU the compile and dispatch trade-off is untested.
+- Replay server returns zeros for the surface-facing radiation outputs (FSF, TRSURF, ALB, FSRDIR, ...) and AIJ; the surface stage needs them from the real server or from records.
+- The 3 dates and step 0 only for the gate; the six-step chain is nov26 only.
+
+**Parent-session check (2026-10-07 19:50):** `tests/test_jax_atm_phase1.py` re-run: 8 passed, 8 s; no tracked file modified. Independent bitwise check with my own comparison code (`np.array_equal`, not the harness categories): the device phase 1 of nov26 step 0 (run with the agent's entry points under `taskset -c 0-1`, `clouds_jax_env_fast`, no cache) against the saved NumPy libm phase-1 reference `ff_data`-side scratch file `ref/nov26_p1_1.npz`: 170 fields (dyn, condse, radia stage snapshots) all bitwise equal, none missing on either side. Not re-run by the parent: dec01 and jan01 (agent: 52/52, 59/59, 59/59 category A each), the fused-dynamics variant, the 6-step chain, the real-server variant and the mutation tests. CAUTIONS kept: this is C1 ONLY, in libm mode, with REPLAYED radiation (recorded SRHR/TRHR/COSZ1 served through the D185 interface), so it says nothing about the real model; a step still takes about 125 jit executions (53 with fused dynamics, which costs ~7x the compile time), 532 eager dispatches; host work remains: pole columns (two pure_callbacks), the MSTCNV cloud-base loop (22 mask reads per step, ~70% of step time) and the QUS subsidence callback (176 calls, ~250 MB per step); the QDYNAM extra-column branch is not executed (flag 0 in all runs); the real-server variant at step 33312 gives SRHR/TRHR in category D (rel 1.3e-2 and 2e-2) which the agent attributes to libm-mode cloud differences (not verified) and which is not a C1 result; the steps 0-5 chain ran phase 1 on the device and the NumPy surface, dissip and filter on the host between steps; only nov26 for the chain. The surface half is NOT in the device program. libimf is not used here (C2 needs the D183 ops wired into these modules).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
