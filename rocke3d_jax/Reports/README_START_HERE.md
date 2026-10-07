@@ -6,6 +6,14 @@ tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 the state of the port right now" — that is this file's job. Read `Project_Summary_and_Conclusions.md`
 next for the one-page version.
 
+## Project sources (the only starting information given by the project lead)
+
+Owner: G. Tamkin. Recorded 2026-10-07; findings and limits of the review are in `DOCUMENTATION_REVIEW.md` (section 13 of the paper was not readable; read it before relying on it).
+
+- ROCKE-3D 2.0 paper (Tsigaridis et al. 2025, GMD 18, 5825), anchored at its section 13: <https://gmd.copernicus.org/articles/18/5825/2025/#section13>
+- NCCS publication supplement, run P2SAoM40_003 (100 annual `aij`/`aijl` files, `ANN4000`-`ANN4099`): <https://portal.nccs.nasa.gov/GISS_modelE/ROCKE-3D/publication-supplements/Tsigaridis2025GMD-planet_2.0/P2SAoM40_003/>
+- Cited by the paper for code and data (found via search, not read in the paper): Zenodo "ROCKE-3D v2", DOI 10.5281/zenodo.14721184: <https://zenodo.org/records/14721184>
+
 ## Handoff (refreshed 2026-10-07, about 09:30 EDT; the newest first-hand state of the port)
 
 **Branch `full-fidelity-port`; the remote has everything through `fc5ef38`** (D158-D169 and the sharded runner; full regression on a clean export of that commit: 2,916 passed, 1 skipped, 0 failed, 0 xfailed, 33 min on 4 cores).
