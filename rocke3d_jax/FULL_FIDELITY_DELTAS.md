@@ -3196,6 +3196,74 @@ accumulation at <= 5.3e-14 relative; plus 4 AIJL columns. 226 of the 483 real co
 
 **Parent-session check (2026-10-06 22:50):** `tests/test_f3_diagnostics.py` re-run independently: 31 passed, 0 skipped, 30 s, tolerance 1e-12 relative to each column's own maximum increment (unchanged). The reference (`ff_data/nov26_day/real_acc54_nov26.npz`, 33 MB, outside git) is the real binary's own accumulated diagnostics, independent of our module; the test requires >= 250 non-zero columns to match. Not re-derived by the parent: the real-binary 54-step run that produced the reference, and the monthly-mean/global-mean formula (transcribed by the agent, `ij_avg` weighting not read line by line).
 
+# D164: surface loop (ocean / sea ice / lake / land ice / land state computed, not replayed), 2026-10-06/07
+
+Owner: project owner (Glenn Tamkin); written by a Claude Code session. Project-local. Review: when ADVSI or RIVERF is ported, or when the Ent decision is made.
+Sources: pristine ModelE (read-only) MODELE.f, ATM_DRV.f, SURFACE.f, SEAICE_DRV.f, ICEDYN_DRV.f, LAKES.f, LANDICE_DRV.f/LANDICE.f, IRRIGMOD.f, OCN_DRV.f, OCNDYN.f, OCNDYN2.f, OCN_Interp.f, GHY.f, Ent/*.f; ledger D1-D161.
+New code: `fullfidelity/surface_loop.py`, `tests/test_surface_loop.py` (4 passed, 62 s). No existing file was modified. Nothing committed.
+
+## 1. Scope: every replayed/recorded surface quantity of the day loop
+
+Real step order (MODELE.f:316-339, ATM_DRV.f:257, SURFACE.f, OCN_DRV.f): MELT_SI -> CONDSE -> RADIA -> PRECIP_SI, PRECIP_OC(+TOC2SST) -> SURFACE [IRRIG_LK, PRECIP_LI, PRECIP_LK, 2 substeps, GROUND_LI, UNDERICE/GROUND_SI/GROUND_LK/RIVERF/FORM_SI (lakes)] -> ocean_driver [DYNSI, UNDERICE, GROUND_SI, CALC_APRESS, OCEANS, FORM_SI, ADVSI].
+
+| Quantity (replayed in the day loop) | Real routine | Validated port before D164 | Status after D164 |
+|---|---|---|---|
+| Ocean state (G0M, S0M, MO, UO, VO, moments, straits) | OCEANS | ocean_step (D119-D138) | carried from our computation |
+| AG2OG fluxes: oprec, oeprec, orsi, orunpsi, oerunpsi, osrunpsi, oe0, oevapor, osolarw, odmua, odmva, omelti, oemelti, osmelti | AG2OG_precip/AG2OG_oceans (identity regrid, same grid) + tile accumulations + MELT_SI | none (only the cores) | computed; bitwise equal to ffo (0.0) at step 0 |
+| orunosi, oerunosi, osrunosi, osolari (GROUND_SI) | GROUND_SI | seaice_core_jax | computed; 1.4e-6 / 2.5e-2 / 1.1e-7 / 3e-14 abs (scales 2.2 / 6.9e5 / 6.6e-3 / 2.2e4): the known loosest D17/D20 diagnostics |
+| oapress | CALC_APRESS (srfp = PEDN(1), bitwise) | apress_jax | computed |
+| odmui, odmvi, UI2rho (UNDERICE ustar) | DYNSI | VPICEDYN core only; input assembly and post-processing NOT ported | RECORDED (ffo tag 1, ffz_undocn) |
+| oflowo, oeflowo (river outflow) | RIVERF (LAKES.f:1708-2216, 508 lines, original version; RVR_ELEV undefined; needs the river-direction file) | none | RECORDED (ffo tag 1) |
+| init_STRAITS | init_STRAITS | straits step | state (MUST, G0MST ...) from the restart; MMST (static strait mass) RECORDED from ffo tag 0 (constant over steps) |
+| OPFIL2 coefficients, ODIFF | | D137, D138 | computed (no recorded read) |
+| Atmosphere SST export GTEMP, GTEMP2, SSS, MLHC | TOC2SST (OCNDYN.f:5577) | none | NEW (TEMGS from the OFTAB table), bitwise equal to the restart exports |
+| Sea-ice state (RSI, SNOWI, MSI, HSI, SSI, flag_dsws, pond_melt) | MELT_SI, PRECIP_SI, GROUND_SI, FORM_SI, seaice_to_atmgrid | cores D10-D14, D26, D31, D32 | drivers wired; computed. ADVSI is NOT ported (ICEDYN_DRV.f:880-1636, about 756 lines with GOTO flux logic, RSIX/RSIY moments, EXPEL_COASTAL_ICEXS `connect` array): the one-step ice error is its signature |
+| Sea-ice/ocean tile ground state (ffs/ffp ground columns, fft ftype) | SURFACE.f:430-700, seaice_to_atmgrid | tile fluxes D5-D6 | built from our state (`apply_state_to_records`); identity on the real step-0 records to rounding |
+| Lake state (MWL, GML, TLAKE, MLDLK) | PRECIP_LK, GROUND_LK | D13/D16/D27 | computed (land runoff from our GHY in the coupled run) |
+| IRRIG_LK withdrawal | IRRIG_LK + IRRIGMOD.irrigate_extract (460 lines, irrigation-demand data file) | none | RECONSTRUCTED from the recorded actual irrigation flux (ffg `irrig` x FEARTH): mass = min(irrig*rho*A*dt, available), equal to the Fortran in the full/partial/none branches; the demand file is not read; the recorded GHY forcing is the boundary. Bitwise match of all 614 lake tiles at step 0 |
+| Land-ice state (SNOWLI, TLANDI) | PRECIP_LI, GROUND_LI (LNDICE) | PRECIP_LI D28; tile D7 | GROUND_LI/LNDICE ported here (NEW, 80 lines, small); bitwise at step 0 |
+| Land GHY state (w, ht, snow layers) and runoff | GHY | ghy_jax, land_chain (D9, D22, D25, D135, D136, D158) | carried from our GHY across steps in the coupled run; GHY precipitation forcing = our CONDSE PREC/EPREC/PRECSS (identity pr=PREC/(dtsrc*rhow) checked, 0.0) |
+| Ent exports (cnc, betadl, lai, TRANS_SW, Ci, GPP, IPP, dts, ws_can, shc_can, fv, height, albedo) | Ent (see 3) | none | RECORDED |
+| Radiation (SRHR/TRHR/COSZ1, tile SRHEAT, TRHR0, ALB) | SOCRATES | never ported | RECORDED (frozen as in D150) |
+| TRUP_in_rad, PBL profile columns, Ca/COSZ/vis_rad in ffg | | | RECORDED |
+| GLMELT, daily_LAKE, daily_LI, daily_OCEAN, daily_SEAICE | day boundary | none | not exercised (window < day boundary) |
+
+## 2. Implementation (surface_loop.py) and results (nov26, from the real restart `fort1_nov26_itime33312.nc`)
+
+Wiring: surface state is loaded from the restart (checked: ocean equal to ffo tag 0 bitwise; TOC2SST exports equal to the restart's asst/sss/mlhc/ogeoza bitwise). `surface_pre` = MELT_SI, PRECIP_SI, AG2OG_precip, PRECIP_OC, TOC2SST, IRRIG_LK, PRECIP_LI, PRECIP_LK, seaice_to_atmgrid. `surface_post` = GROUND_LI, lake chain, ocean_driver (ocean_step without its PRECIP stage, ported ODIFF, computed OPFIL2). `apply_state_to_records` + `stage_surface_closed` (copy of atm_step.stage_surface with three stated differences) + `Loop`/`run_coupled` couple it to the atmosphere chain.
+
+Measured, step 0 (from the restart, replay mode R1 = real tile outputs as flux input):
+- MELT_SI reproduces the real CONDSE-entry RSI bitwise (0 of 3312 cells differ, both domains; 827 ffm records equal). PRECIP_SI vs ffw: exact except HSIL 1.2e-6 abs on 8.5e8. AG2OG_precip + PRECIP_OC vs ffo tag 1: 0.0 (G0M, S0M, MO).
+- State columns of the real substep-1 tile records (ffs ocean 2095, lake 614, ice 783; ffl 346): ocean/lake/landice/ice snow, msi2, ssi, flag exactly 0.0; ice tg1/tg2 2.5e-14 (scale 46); tr4 <= 3.8e-6 on 5.6e9; tile sets identical.
+- Fluxes into the ocean vs ffo tag 1: 0.0 for 14 of 18 fields (see table); ocean exit state vs tag 14: g0m 1.2e-12, s0m 2.5e-13, mo 2.2e-13, uo 1.1e-9, vo 6.1e-9, opress 2.4e-10, ogeoz 2.0e-10 (same level as D120 with recorded fluxes).
+- Records built from our state versus the real records: identity to rounding (<= 6e-14 on 300 K).
+
+Measured, free run 6 steps (R1, no ADVSI, RIVERF recorded; relative to field scale): step 1 ice snow 9.7e-4, msi2 9.5e-4, ptype 1.1e-3, tg 1.9e-3; ocean exit uo 2.3e-3, vo 5.4e-3 (g0m 1.4e-5); step 5 ice snow 4.8e-3, ocean uo 1.1e-2, vo 2.3e-2; tile-set mismatch 14 ocean tiles (all RSI near 1) from step 1; lake tg1 2e-3 -> 9.6e-3, lake MWL 1.4e-6 -> 7.2e-6. Land-ice error 0 for steps 1-4, 0.16 of scale at tg1 from step 4 (not investigated). The ice error appears at the first step and matches the size of an advective change (ice speed x 1800 s / grid) but is NOT shown to be caused by ADVSI by any isolation test other than the next item; the lake attribution to RIVERF is an inference (lakes are bitwise at step 0).
+Isolation test (step 33313 with the ice state taken from the real ffm_33313 inputs = real post-ADVSI, ocean from ffo): ice columns at rounding level (tg 5e-14, msi2 1.4e-13), tile sets identical, ocean exit g0m 3.9e-12, uo 4.6e-9, vo 3.0e-8. So with the real ice entry the rest of the chain is accurate at the D120 level; only lakes remain off (tg1 0.063 K in one cell, MWL 1.4e-6).
+
+Coupled run (atmosphere chain + closed surface, 6 steps, `run_coupled`, 3 cores, 22-45 s per step after a 155-195 s first step): atmosphere rms difference from the real run: T 7.4e-14 / 2.0e-4 / 5.2e-4 / 1.1e-3 / 1.3e-3 / 1.7e-3 K at steps 0-5 (open loop D150: 7.2e-14 ... 1.3e-3 at step 5). Against the 5 real one-ulp members (rms metric, steps 0-5): T within 4, near 2 (max ratio 1.44 at step 3); Q within 3, near 3 (1.07); U within 6 (0.72); V within 3, near 3 (1.30); QCL within 5, near 1; QCI within 6; P within 4, near 2 (1.45). Never beyond 2x. The open loop on the same steps: all within except Q near at 3 steps and P near at 1. The members' own spread at step 3 is 4.5e-5 .. 7.9e-4 K, so the coupled-vs-open-loop difference (1.1e-3 vs 6.8e-4) is not shown to come from the surface. Necessary, not sufficient evidence (5 members, one start, 6 steps). The surface state of the coupled run was not compared separately from the R1 numbers above. The carried land (GHY) state of the coupled run was not compared with the real record in this session (D25 validated the carry for 4 substeps).
+
+Limit of the window: 6 steps, because the DYNSI boundary (ffy, ffz_undocn) exists for 6 steps and the RIVERF boundary (ffo tag 1) for 12; the 54-step day has neither (D149 did not build the ocean hooks). Longer runs need DYNSI ported and RIVERF recorded or ported.
+
+## 3. Ent: size and the decision for the owner (not decided here)
+
+What Ent exports to GHY (GHY.f:2338-2520, per sub-iteration and per call): cnc (canopy conductance), betadl(6), TRANS_SW, Ci, GPP, lai, IPP, dts; per call ws_can, shc_can, fv, canopy height, albedo(6). Ent also runs per sub-iteration (`ent_run` -> `ent_integrate` -> photosynth_cond, soil_bgc, summaries) with inputs Qf, pressure, CO2, ch, wind, vis_rad, direct_vis_rad, cosz, wet fraction, soil T/moisture/matric potential/ice fraction, and daily `update_vegetation_data` (prescribed LAI/height from data files; `do_phenology_activegrowth` default 0, `do_soilresp` 1; the rundeck does not override them). State: `ent_state` 1023 doubles per cell in the restart.
+Size (my measurement, a name-matching call-graph over `model/Ent/*.f` + ENT_DRV.f; an over-approximation): per-iteration path about 4,260 code lines, of which 1,460 are in canopyradiation.f/canopygort.f, which the executable's symbol table (`nm`) does not contain, so about 2,800 lines (biophysics.f 594, FBBphotosynthesis.f 546, canopyspitters.f 501, patches.f 327, soilbgc.f 257, entcells.f 236, respauto_physio.f 145, cohorts/allometry smaller); daily prescribed update about 1,080 lines (ent_prescribed_drv.f, ENT_DRV.f, allometryfn.f, ent_prescr_veg.f) plus the LAI/height/vegetation data files. Whole Ent directory 26,500 lines (mostly unused variants). Excluded from the count: derived-type plumbing in ent_mod.f (4,122 lines) beyond the routines reached.
+Assessment: a recorded-Ent boundary is reasonable and documentable for windows up to one day (exports from the real run at 1,500 values per cell-step; the D158 record already holds the iterations), but it cannot represent soil-moisture-dependent conductance feedback and a month-long run (F3) would need a month of recorded exports (not available), so F3 needs either a port of the per-iteration path (about 3 k lines, with validation against the ffg `ffent` records, which already exist per iteration) or an explicit surrogate. DECISION FOR THE OWNER: (a) keep Ent recorded for all runs up to one day, or (b) start the Ent port now. I recommend (a) for now and (b) before F3; this is a recommendation, not a decision taken.
+
+## 4. Remaining recorded inputs and why
+
+Radiation (never ported); Ent exports and the ffg land forcing columns (section 3); TRUP_in_rad, PBL profile columns, SRHEAT/TRHR0 tile columns; DYNSI result (odmui, odmvi, UI2rho/ustar): DYNSI input assembly (ICEDYN_DRV.f:328-877, about 550 lines, glue only; VPICEDYN already validated) is the smallest next piece; RIVERF outflow (508 lines + river-direction data); MMST; IRRIG demand (reconstructed from the recorded actual flux); ADVSI (largest gap: no dump brackets it except ffn_<it> (pre) -> ffm_<it+1> (post) for 33312 and 33313, so it could be validated for one or two steps only); tile templates (the real ffs/ffp/ffg/fft rows supply every static, atmospheric and radiative column and fix which tiles exist: tiles absent from the template are dropped, count reported per step, ptype 0 in the 6-step run).
+
+## 5. Failures and cautions
+- First pass of the lake tiles at step 0 differed (MWL 5e8 on 6e16) until IRRIG_LK was reconstructed; fixed, then exact.
+- Free-running beyond step 0 is not accurate without ADVSI (1e-3 per step in the ice, growing); this is reported, not hidden.
+- `ag2og_precip` weight-zero branch (RSI = 1) is unverified: no cell in the dumps has RSI = 1.
+- Unmeasured: land-ice tg1 jump (0.16 of scale from step 4 in R1), the coupled-run surface state against the records, any date other than nov26.
+- CPU: the first exploratory runs were not pinned; later runs used `taskset -c 0-2`.
+
+**Parent-session check (2026-10-06 23:24):** `tests/test_surface_loop.py` re-run independently: 4 passed, 66 s (assertions: exact equality at step 0, ice tg < 1e-13, ocean exit g0m < 1e-10, uo/vo < 1e-7). No existing file was modified (`git status` shows only new files). NOT re-derived by the parent: the free-run and coupled-run comparison numbers (6 steps, nov26 only, 5 real members), the Ent call-graph size, and the attributions to ADVSI and RIVERF (the agent marks both as inference). **Open decision for the project owner (G. Tamkin): Ent vegetation exports - keep recorded for runs up to one day, or start the Ent port now; the agent recommends recorded now and a port before F3, because a month-long F3 run needs a month of Ent exports that does not exist.**
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
