@@ -3088,6 +3088,114 @@ Build (own scratch tree `<scratch>/mE_persist/mE2`, script `<scratch>/mE_persist
 
 **D158 diffs applied (2026-10-06 22:30).** `ghy_ref.evap_limits` stores `epb`/`epv`; `ghy_compare.run_cell` runs `ghy_ref_nit.advnc_full` over dt = 900 s with computed dts (lazy import; old path kept when there are no Ent records); `ghy_advnc_test.build_batch` now reconstructs ffnit >= 12 cells (old builder kept as `build_batch_recorded`); `land_chain` and the tests pass `max_substeps=ent_dts.shape[1]` (jit with `static_argnames`). `tests/test_ghy_jax.py` xfail removed: 72 passed. One explicit exception, not a global relaxation: for the four files with reconstructed stiff cells `abetad` is bounded at 5e-6 (measured 4.4e-7..2.2e-6; the Ent exports of iterations > 11 are unrecorded, see Residual above); every other file/field keeps its original tolerance. The four `test_old_path_fails_non_vacuous` checks now call the pre-D158 route directly, because `run_cell` itself became exact (difference 0.0 on those cells). Tests: ghy_ref 5, stiff_nit 20 passed; ghy_jax 72 passed; land_chain group passed in the earlier run (337 passed, 7 failed, all 7 explained and fixed above); full regression on the final tree still to be run.
 
+# D163: minimal AIJ-style diagnostics for the F3 monthly comparison (scope, port, validation)
+
+Date 2026-10-06. Code `fullfidelity/f3_diagnostics.py`, tests `fullfidelity/tests/test_f3_diagnostics.py` (31 passed, ~32 s, nothing skipped on this host).
+Not committed. Sources: the real model tree (read-only) `/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/model`, the real monthly acc files, the
+ff_data dumps. SOCRATES/RADIA is not ported or modified; the RADIA columns below are the real RADIA's own output as returned by the radiation server.
+
+## 1. Scope: what F3 compares, how the real model accumulates it, what exists on disk
+
+**What F3 compares** (RADIATION_AND_F2_PLAN.md section 3.2-3.4, FULL_FIDELITY_PLAN/GOAL: proposals, not an existing project decision): monthly means of about 25-30 `aij` fields plus
+4 `aijl` fields and zonal means, port vs the real ensemble, per field global mean and 46-point zonal mean. The set is a *proposal* in the plan ("none verified yet"); this entry
+reads the real code for each field. No set of F3 fields was fixed by the project beyond that proposal.
+
+**How the real model accumulates** (all read in the source, not assumed):
+- `AIJ` (here `aij_loc`, 1660 columns in this build, 46 x 72) and `AIJL` are *sums* over the accumulation period, written to `<MON><YEAR>.acc*.nc` and to the restart (`fort.1/2.nc`,
+  float64 in the restart, float32 in the acc files). A monthly mean is formed at print time (`DIAG_PRT.f:3119-3131`, `ij_mapk`): numerator `aij*scale/(idacc(ia)+teeny)`; if
+  `denom_aij(k)>0` the denominator is `aij(denom)/(idacc(ia(denom))+teeny)` and the map is the ratio. `scale_aij`, `ia_aij`, `denom_aij`, `sname_aij` are stored in the acc file.
+- Each column is incremented at its own call site with its own sampling counter (`DIAG_COM.f:901-904`: `ia_src=1` every step, `ia_rad=2` radiation steps (every 5th), `ia_srf=3`
+  surface samples, `ia_dga=4` DIAGA calls, ...). The sites that matter here:
+  - `DIAGA` (`DIAG.f:98-856`), called from `DYNAM` (`ATMDYN.f:352-356`) in the even leap-frog pass when `MODDA<2`, `MODDA = Mod(NSTEP+4-NS+NDAA*NIdyn, NDAA*NIdyn+2)`; the rundeck has
+    `NDAA=13` (DIAG_COM default 7), NIdyn=4, so once per 54 dynamics steps of 450 s = 13.5 source steps: **4 calls in the 54-step window** (real `idacc(ia_dga)` 88 -> 92). It does
+    pressure-level interpolation of T, Q, Z, RH, U, V (`DIAG.f:392-470`), omega (`:472-496`), surface/sea-level pressure (`:276-296`), the column water `qatm` and the AIJL
+    `TempL/SpHuL/z` (`:488-496`). It reads the *mid-dynamics* state plus the previous step's `atmsrf%TSAVG/QSAVG`.
+  - `accum_ma_ia_src` (`DIAG.f:1408`, `ATM_DRV.f:504`): AIJL `airmass` += MA every step.
+  - `RADIA` (`RAD_DRV.f:4750-4790` inside the radiation block that `RAD_DRV.f:2502` skips when `MODRD/=0`; `RAD_DRV.f:5479` adds `S0*COSZ1` to `IJ_SRINCP0` on *every* step with the last radiation step's `S0`).
+  - `CONDSE` (`CLOUDS2_DRV.F90:1474`) `IJ_PREC += PRCP`, every step (also `IJ_PRECMC` :1137, `IJ_SNWF` :1135/1463 and ~25 cloud columns).
+  - `SURFACE` (`SURFACE.f:386-387, 1745-1830`): `evap` every substep (`-dtsurf*qflux1`); `tsurf, qsurf, usurf, vsurf, wsurf, tauus/tauvs, trdn_surf, pblht, tgrnd(IJ_TG1)...` only on the
+    substeps with `MODDSF=MOD(NIsurf*ITime+NS-1, NDASF*NIsurf+1)==0`, i.e. **one substep in three** (36 of 108 in the window; pattern by itime mod 3: substep 1, substep 2, none).
+  - Others not ported here: `SOATM_DRV.f:2149` (sst), `SEAICE_DRV.f:1336` (sivol), GHY/LAKES/LANDICE columns, `conserv`/`consrv` (DIAGCA), ISCCP, AJ/AJL/AGC budgets.
+
+**What real-model output exists on disk (looked, not assumed):**
+| item | content | use |
+|---|---|---|
+| `ModelE_Support/prod_runs/P2SAoM40/{DEC1949, JAN..NOV1950}.accP2SAoM40.nc` | 12 monthly acc files of ONE unperturbed run (cold start 1 Dec 1949), full AIJ/AIJL/...; JAN1950: idacc[0]=1488 (itime 17520 -> 19008), NOV1950: 1440 | the only real **one-month** reference |
+| `PARTIAL.accP2SAoM40.nc` | acc of a 1-step partial run (itime 16033, idacc 1) | not useful |
+| `ff_data/_pristine_restarts/fort1_{nov26,dec01,jan01}_*.nc` | restarts; **nov26 and dec01 contain the running acc** (idacc[0]=1200 / 1440, aij float64; dec01 acc equals NOV1950.acc to float32 rounding); **jan01 has no acc block** (month start) | window differences |
+| `ff_data/nov26_day/rsv_n26_*_out.bin`, field `AIJD` | the real RADIA's AIJ *increment* of 11 radiation calls (33312..33362) in all 1660 columns | RADIA-site validation only |
+| `ff_data/nov26_day/ffa_*`, `ffd_*`, `ffc_*` ... | per-step real states (54 steps) | inputs for the accumulators |
+| **no per-step AIJ and no 54-step acc of the window existed** | | produced here, below |
+
+**The real one-day reference did not exist; it was produced here.** The real binary of the radiation-server build (`<scratch>/mE_persist/mE2/model/P2SAoM40.bin`, no RADSRV env, so the unmodified
+RADIA/physics) was run from `fort1_nov26_itime33312.nc` for 54 steps (YEARE=1950,MONTHE=11,DATEE=27,HOURE=3 replacing the first YEARE line of `I`, as `radiation_server._prepare` does; 3 min; rc 0).
+Its end-of-run `fort.2.nc` acc minus the acc stored in the restart is the real 54-step accumulation of all columns (idacc increments: ia_src 54, ia_rad 11, ia_srf 36, ia_dga 4, 483 of 1660 AIJ
+columns non-zero). Saved as `ff_data/nov26_day/real_acc54_nov26.npz` (diff, before, after, idacc). That the same trajectory as the 54-step dumps was run is evidenced by every DIAGA/RADIA/CONDSE
+field below agreeing to 1e-14 with accumulators fed by the *dumps* (a different trajectory could not).
+
+**One real month does exist (single unperturbed member); what does NOT exist** (so it blocks or qualifies an F3 verdict): (i) the real perturbed ensemble (the plan's 8 members of January) and thus the
+real monthly-mean noise floor sigma per field (only the 5-day D3 floor is measured); (ii) a demonstration that a re-run from `fort1_jan01_itime17520.nc` reproduces `JAN1950.acc` (bitwise reproducibility of a restarted
+segment was shown for 5 days only); (iii) any port-side month. What would produce (i)/(ii): the real binary above started from the jan01 restart for 1488 steps (the 54 steps took 3 min, ~3.3 s/step, i.e.
+~80 min per month per member by that measurement, ~10-12 core-hours for 8 members, 3 cores max here) with +-1 ulp perturbations (the existing `ffpt` perturbation patch) and the acc file taken from `fort.2.nc`/the monthly acc.
+
+## 2. What was implemented (`f3_diagnostics.py`)
+
+`F3Acc` re-implements the accumulation at the same call site and sampling rule as the Fortran, from the model state at that site (arrays in model layout; `to_nc_layout()` gives the acc-file layout):
+`diaga` (pressure levels of T,Q,Z,RH,U,V,omega, p_freq counters, prsurf/prsurfq/slp/slpq, rh_layer1, qatm, AIJL TempL/SpHuL/z), `airmass`, `prec`, `radia`, `surface` (+ `surface_samples`, the 1-in-3 rule),
+`field_from_aij`/`global_mean` (the monthly-mean rule above), and a window driver `run_window` that feeds the accumulators from the real per-step states. `diaga_state` gets the DIAGA-time workspace from the
+existing bitwise chained dynamics (`dyn_step.dyn_step(..., itime=it, hook=...)`, stage `diaga`, started from the real step-start state); `PHI`, `MW`, `PK`, `PEDN`... are that workspace's values. Recorded inputs of the
+window run: `atmsrf TSAVG/QSAVG` (ffa dumps), `COSZ1`, `TRHR(0)`, CONDSE exit `PREC`, end-of-step `MA`, RADIA's AIJ increment (radiation server dump packet).
+
+## 3. Validation (measured, all vs the real model's own accumulation over the 54-step nov26 window)
+
+Method: accumulators fed with real per-step states; compare `ported - real` per column over the whole (46 x 72) map; residual = max|diff| / max|real increment of that column| (a tolerance of 1e-12 of that scale
+is in the test; nothing was loosened). Counters: ported idacc increments `{ia_src 54, ia_rad 11, ia_srf 36, ia_dga 4}` = real, exactly.
+
+| field (AIJ column) | source in the real code | ported | validated against | residual (relative to column scale) |
+|---|---|---|---|---|
+| t_/q_/z_/u_/v_/rh_/omega_ x 20 pressure levels (cols 56-75 q, 77-96 rh, 162-181 t, 217-236 z, 246-265 u, 266-285 v, 294-313 omega; incl. the F3 set t_850, t_500, t_200, z_500, u_200) | DIAG.f:392-496 (DIAGA) | yes | real 54-step acc increment, 4 DIAGA calls | worst per family: t 8.2e-15, q 7.7e-15, rh 5.4e-15, z 8.3e-15, u 5.2e-15, v 9.7e-15, omega 4.0e-15 |
+| p_freq_<level> (cols 13-32, count of calls with the level above ground) | DIAG.f:392-470 | yes | same | 0 (exact) |
+| prsurf (151), prsurfq (152), slp (153), slpq (154) | DIAG.f:276-296 (`SLP` of Utilities, TS_SLP = atmsrf TSAVG; `SLP_FROM_T1` not defined in this build, as the match shows) | yes | same | 6.4e-15, 6.1e-15, 1.0e-14, 8.5e-15 |
+| rh_layer1 (97), qatm (100) | DIAG.f:296, 493 | yes | same | 5.6e-15, 5.3e-14 |
+| AIJL TempL (19), SpHuL (20), z (21) | DIAG.f:488-496 | yes | same (aijl diff) | 5.6e-15, 5.5e-15, 6.7e-15 |
+| AIJL airmass (22) | DIAG.f:1408-1423 | yes | same (aijl diff) | 3.2e-14 |
+| prec (315) | CLOUDS2_DRV.F90:1474 | yes | same | 4.4e-15 |
+| incsw_toa (376) | RAD_DRV.f:5479 every step with persistent S0 (+ the radiation-step value inside the RADIA increment) | yes (S0 recovered from the server's SRINCP0 / COSZ1, a derived value) | same | 2.4e-14 |
+| srnf_toa (377), trnf_toa (391), srnf_grnd (385) and the other 80 columns RADIA increments in the window (pcldt 49, pmccld, pcldl/m/h, LWPrad, IWPrad, FRMP, btemp_window, TOA/surface SW-LW budget, clear-sky and CRF terms, band fluxes 503-523, aerosol band-6 columns 406-429, ...: 83 columns total + 376) | RAD_DRV.f:4750-4790 in the radiation block | yes, **as the real RADIA output** (server AIJ increment, not computed here) | same | 0 (exact) to 1.2e-16 |
+| evap (322) | SURFACE.f:1749 (every substep, `-dtsurf*qflux1`, dtsurf=900) | yes | same | 9.6e-15 |
+| tsurf (182), qsurf (76), trdn_surf (395), tauus (291), tauvs (292) | SURFACE.f:1759-1810 (sampled 1 substep in 3: `surface_samples`) | yes (TSAVG/QSAVG/UFLUX1/VFLUX1 from the per-substep ATURB-exit dumps `ffa_<it>_c1/c2_out`, TRHR(0) from `ffa_step_r`) | same | 1.9e-14, 2.1e-14, 3.6e-14, 5.9e-15, 5.0e-15 |
+| usurf (286), vsurf (287), wsurf (288), pblht (237), tgrnd (184; IJ_TG1 `SURFACE.f:1760`), gusti (289), RHsurf (98) | SURFACE.f:1759-1819 | **no** (need atmsrf USAVG/VSAVG/WSAVG/DBLAVG/GTEMPS after *each* substep; the dumps have USAVG/VSAVG only at step end, no WSAVG/DBLAVG/GTEMPS) | - | - |
+| sst (204), sss, ssh, sivol (243), simass (242), ts_oice, ocean/ice/lake/land state columns (fractions 1-12, soil/snow/canopy/lake 36-48, 107-143, 187-203, ...) | SOATM_DRV.f:2149, SEAICE_DRV.f:1336, GHY/LAKES/LANDICE | **no** (surface/ocean/ice/land state is replayed, not computed, in every chained day) | - | - |
+| prec_mc (321), snowfall (333), clwp (99), cldw/cldi (101/102), pscld/pdcld, mc cloud columns (53,54,149,150), cnv/scnv frequency | CLOUDS2_DRV.F90:937-965, 1135-1137, 1463, 1537 | **no** (inside CONDSE columns; dumps carry only the exit PREC/PRECSS, not PRCPMC separately) | - | - |
+| sensht (356) and the other heat/water budget columns (dSE_Dyn 352, dKE_Dyn, runoff_soil 335, netht_*, ...) | SURFACE.f:1987, ATM_DRV conservation, GHY/LAKES | **no** | - | - |
+| ISCCP, `aijk`, `aj`, `ajl`, `agc`, `consrv`, `adiurn`, `tdiurn`, `aijmm` (tsurf min/max) | DIAG*.f, DIAGCA | **no** | - | - |
+| monthly-mean rule `field_from_aij` / `global_mean` | DIAG_PRT.f:3119-3131 | yes (rule transcribed) | sanity only: applied to JAN1950.acc it gives tsurf 11.87 C, slp 1011.0 hPa, prec 2.83 and evap 2.85 mm/day, t_500 -18.5 C, z_500 5583 m, u_200 17.1 m/s, srnf_toa 242.5 and trnf_toa -233.9 W/m2, pcldt 54.5 %. Not compared with a printed real map; the global-mean weighting (`ij_avg`) was not read line by line | - |
+
+Totals: 257 AIJ columns accumulated (80 of them straight from the RADIA output, ~160 pressure-level/DIAGA, the rest as listed), all with non-zero real increments in the window and all equal to the real
+accumulation at <= 5.3e-14 relative; plus 4 AIJL columns. 226 of the 483 real columns that changed in the window are not accumulated by this module (list above).
+
+## 4. Limits and caveats (what this does and does not show)
+
+- The accumulators are validated **given the real inputs at the call site** (DIAGA state from the bitwise real-state dynamics, recorded TSAVG/QSAVG, recorded PREC, recorded/server RADIA output). That validates the
+  accumulation logic, sampling rules, interpolation and counters. It does **not** validate a chained *free-running* state: there, the inputs differ from the real ones by chaos and the monthly comparison is statistical (the
+  plan's protocol); the accumulators are agnostic (they take any state dict), but the chained atmosphere (`atm_step.py:208` calls `dyn_step` with `itime`, so the `diaga` stage exists) was **not wired** to call them here, and
+  the surface-site fields need per-substep composites that the chained SURFACE (`atm_step.stage_surface`, `r1/r2`) computes but does not export in the dump layout used here.
+- Bitwise/near-bitwise DIAGA needs the Intel libimf `pow` for SLP (`dyn_filter_ff.slp`); the test skips without the bridge. The 1e-12 tolerance is far looser than the observed 5e-14; the ledger's residuals are the measured ones.
+- One window, one start state (nov26, 54 steps = 27 h, includes the 00 UTC day boundary of 27 Nov), one real member. Seasonal/other-state coverage (dec01, jan01) was not checked: only nov26 has 54-step dumps and packets.
+- The real reference was produced with a scratch copy of the model (radiation-server build, no env switches); its first `YEARE` line replaced as the existing helper does (that line also held `KDIAG=12*0,9`, which the replacement drops, as it does for the existing dump runs; whether KDIAG affects the accumulation was not tested separately, but the accumulated fields agree with the dump-fed accumulators to 1e-14).
+- S0 on non-radiation steps is recovered from the server increment, not recomputed from `S0X*S00WM2*RATLS0/RSDIST`; for a free-running month RADIA's own S0 would have to be exported or reconstructed.
+- The 83-column RADIA coverage is "columns non-zero in this window"; columns that only become non-zero elsewhere (other seasons) pass through the generic all-column loop but are unvalidated.
+
+## 5. What blocks a one-month F3 comparison (status of this entry's part and the rest)
+
+1. The port cannot produce a month: the surface/ocean/ice/land/Ent loop is replayed, not closed (~45 h estimated in the plan), 31 daily updates are unexercised, and the free-radiation server costs ~11 s per call (~298 calls/month, about 55 min).
+2. Diagnostics still missing from the minimal set: the SURFACE-site fields (usurf/vsurf/wsurf, pblht, tgrnd, gusti), the surface-state fields (sst, sivol, runoff, ...), the CONDSE columns (prec_mc, snowfall, clwp), sensht and the energy-budget columns, the zonal `ajl/aj` and `consrv` families. Each needs a real-window check like the one above (the 54-step real acc diff makes that cheap now).
+3. The chained model must call `F3Acc` at the sites (DIAGA via the `dyn_step` stage hook at ~110 calls/month, SURFACE per substep).
+4. The real noise floor: the 1-month ensemble (and the jan01 re-run reproducibility check) is not produced; only the single JAN1950 member exists.
+5. Only nov26 has been exercised for these diagnostics; no dec01/jan01 acc windows were validated (dec01 and nov26 restarts do carry acc, so a real 5-day diff nov26 -> dec01 exists for 240 steps, but the port has dumps for 54 steps only).
+
+**Parent-session check (2026-10-06 22:50):** `tests/test_f3_diagnostics.py` re-run independently: 31 passed, 0 skipped, 30 s, tolerance 1e-12 relative to each column's own maximum increment (unchanged). The reference (`ff_data/nov26_day/real_acc54_nov26.npz`, 33 MB, outside git) is the real binary's own accumulated diagnostics, independent of our module; the test requires >= 250 non-zero columns to match. Not re-derived by the parent: the real-binary 54-step run that produced the reference, and the monthly-mean/global-mean formula (transcribed by the agent, `ij_avg` weighting not read line by line).
+
 ## Pending rows
 - S0ML0(1) inside the OCONV iteration: the glue takes it as an input (S0M(I,J,1), not yet dumped).
   BYMML(1) is now supplied by `oconv_mml_ff.mass_bookkeeping` (D61).
