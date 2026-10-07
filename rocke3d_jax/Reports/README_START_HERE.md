@@ -56,6 +56,7 @@ next for the one-page version.
 
 ### Environment and conventions
 - Python: `/home/gtamkin/.conda/envs/graphcast-env/bin/python` (has jax 0.5.3 and omegaconf; the default python lacks omegaconf). Run tests from `fullfidelity/`.
+- Full regression, faster: `fullfidelity/run_all_tests_sharded.sh` (4 concurrent jobs by default; `CPUS=8-11` pins it; one job per test file, the radiation-server files serial, the three XLA-flag JAX files in fresh processes). Measured 2026-10-07: 2,878 passed, 1 skipped, 0 failed in 34 min on 4 cores vs about 83 min for the serial `run_all_tests.sh`; the aggregate totals must equal the serial counts. `pytest-xdist` is not installed.
 - Real-model dumps: `/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/` (about 79 GB: dates `nov26`, `dec01`, `jan01`, the 54-step `nov26_day`, `_pristine_restarts`). The original ModelE tree is `/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0` (read-only; instrumented builds are scratch copies per `fullfidelity/instrumentation/build_and_run.md`).
 - Instrumentation units used so far: 1050-1440 (see the build notes per delta). `cp` is aliased to `cp -i` here: use `\cp`.
 - Scratch builds (`mE_*`) live under the session scratchpad (`.nccstmp/...`), which is temporary; everything needed to rebuild is in `instrumentation/*.patch` and `build_and_run.md`.
