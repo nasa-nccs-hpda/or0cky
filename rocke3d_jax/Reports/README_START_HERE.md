@@ -37,7 +37,8 @@ next for the one-page version.
 ### In flight and uncommitted (check before doing anything else)
 1. **Cut off by the usage limit, partial and UNVERIFIED (resume or discard):** ADVSI port (D166, `fullfidelity/advsi_ff.py` not yet present), RIVERF port (D167), DYNSI input assembly (D168, partial `fullfidelity/dynsi_ff.py` untracked), real JAN1950 ensemble for the month-scale noise floor (D165, partial `fullfidelity/ens_jan1950_summary.py` untracked; the real-model runs did not survive, check `ff_data/ens_jan1950/`). Each task's brief is in the session transcript; the D164 entry lists the sizes (ADVSI ~756 lines, DYNSI glue ~550, RIVERF ~508).
 2. **Two runaway `bfs` filesystem searches** (pids 3235481, 3233165, started by subagents) were loading the node (load ~15 on 12 cores); a kill was denied by the permission classifier and left to the owner.
-3. **Owner decisions pending:** (a) Ent vegetation exports: keep recorded for runs up to one day, or start the port now (D164 sizing: ~2,800 per-iteration lines + ~1,080 daily-update lines + data; agent recommends recorded now, port before F3); (b) the 'intended science use' line of `Reports/GOAL.md`.
+3. **Owner decisions:** (a) DECIDED 2026-10-07 by the owner: Ent vegetation exports stay RECORDED for runs up to one day, and the Ent port starts now because the one-month F3 run needs it (D164 sizing: ~2,800 per-iteration lines + ~1,080 daily-update lines + data); scoping and the first stage run under D169. (b) Still pending: the 'intended science use' line of `Reports/GOAL.md`.
+   The four cut-off agents (D165-D168) were resumed 2026-10-07 ~05:10 after the two runaway `bfs` searches were killed at the owner's instruction; D169 (Ent) started the same time.
 4. **`../full-fidelity-port-new/`** is an untracked sibling directory of unknown origin; not touched.
 
 ### Next steps, in priority order
