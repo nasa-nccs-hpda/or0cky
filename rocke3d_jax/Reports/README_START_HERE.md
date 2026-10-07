@@ -80,6 +80,8 @@ Owner: G. Tamkin. Recorded 2026-10-07; findings and limits of the review are in 
 - Instrumentation units used so far: 1050-1440, 1500-1503 (persistent radiation server) and 1600-1601 (ADVSI dumps); 1470-1479 are proposed but unused (see the build notes per delta). `cp` is aliased to `cp -i` here: use `\cp`.
 - Scratch builds (`mE_*`) live under the session scratchpad (`.nccstmp/...`), which is temporary; everything needed to rebuild is in `instrumentation/*.patch` and `build_and_run.md`.
 - The `claude` binary is not on PATH; it is bundled in the VS Code extension directory (symlink it into `~/bin`), `screen` is installed, `tmux` is not.
+- **Push rule (owner, 2026-10-07):** do NOT re-run the full test suite before pushing. Run the targeted tests of the code you changed and its direct neighbours, push non-force, and state in the report that the full suite was not re-run for that push. Run the full sharded suite (`run_all_tests_sharded.sh`) only when the owner asks or at the end of a large batch of changes. (This replaces the earlier practice of a clean full regression before every push.)
+- **Heartbeat:** hourly (session cron, :17 past the hour); agent hand-backs arrive as notifications, so the heartbeat is only a backstop.
 - Standing conditions (below) still apply: SOCRATES is never ported or modified; no reduced ocean without surfacing it as a decision; record, do not hide, cut corners; do not pause for confirmation mid-port.
 
 ## Detailed log (accumulated, historical)
