@@ -1,0 +1,273 @@
+{
+ "date": "nov26",
+ "cold_s": 61.623986043035984,
+ "cold_counts": {
+  "jit_calls": 123,
+  "by_name": {
+   "(outside)": 123
+  },
+  "eager_primitive_calls": 14703
+ },
+ "steady_s": [
+  8.302002194104716,
+  8.23436791705899,
+  7.79035207699053
+ ],
+ "steady_counts": {
+  "jit_calls": 123,
+  "by_name": {
+   "(outside)": 123
+  },
+  "eager_primitive_calls": 58788
+ },
+ "transfer_counters": {
+  "(outside)": {
+   "entries": 0,
+   "jit_calls": 0,
+   "h2d_calls": 0,
+   "h2d_bytes": 0,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 56,
+   "compile_seconds": 0.9181094169616699,
+   "wall_seconds": 0.0,
+   "self_seconds": 0.0
+  },
+  "cold": {
+   "entries": 1,
+   "jit_calls": 0,
+   "h2d_calls": 851,
+   "h2d_bytes": 390068485,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 880,
+   "compile_seconds": 35.365824460983276,
+   "wall_seconds": 61.62387515301816,
+   "self_seconds": 61.62387515301816
+  },
+  "steady0": {
+   "entries": 1,
+   "jit_calls": 0,
+   "h2d_calls": 821,
+   "h2d_bytes": 389974293,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 1,
+   "compile_seconds": 0.8857033252716064,
+   "wall_seconds": 8.301863381871954,
+   "self_seconds": 8.301863381871954
+  },
+  "steady1": {
+   "entries": 1,
+   "jit_calls": 0,
+   "h2d_calls": 821,
+   "h2d_bytes": 389974293,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 1,
+   "compile_seconds": 0.9318370819091797,
+   "wall_seconds": 8.234248076798394,
+   "self_seconds": 8.234248076798394
+  },
+  "steady2": {
+   "entries": 1,
+   "jit_calls": 0,
+   "h2d_calls": 821,
+   "h2d_bytes": 389974293,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 1,
+   "compile_seconds": 0.8924694061279297,
+   "wall_seconds": 7.790229222970083,
+   "self_seconds": 7.790229222970083
+  }
+ },
+ "profile_steady_per_step": {
+  "L.melt_si": {
+   "seconds": 0.01632732432335615,
+   "jit": 0.0,
+   "eager": 44.0,
+   "calls": 1.0
+  },
+  "L.precip_si": {
+   "seconds": 0.07116167262817423,
+   "jit": 0.0,
+   "eager": 298.0,
+   "calls": 1.0
+  },
+  "L.toc2sst": {
+   "seconds": 0.004402960107351343,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 3.0
+  },
+  "L.precip_li": {
+   "seconds": 0.0090781693191578,
+   "jit": 0.0,
+   "eager": 26.0,
+   "calls": 1.0
+  },
+  "L.irrig_lk": {
+   "seconds": 0.0008550283964723349,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "L.precip_lk": {
+   "seconds": 0.007768356706947088,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "L.seaice_to_atmgrid": {
+   "seconds": 0.00820085972857972,
+   "jit": 0.0,
+   "eager": 8.0,
+   "calls": 1.0
+  },
+  "dynsi": {
+   "seconds": 0.0500805590612193,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "L.ground_li": {
+   "seconds": 0.00042187926980356377,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "L.underice": {
+   "seconds": 0.06976989509227376,
+   "jit": 0.0,
+   "eager": 68.0,
+   "calls": 2.0
+  },
+  "L.ground_si": {
+   "seconds": 0.5365429488786807,
+   "jit": 0.0,
+   "eager": 2180.0,
+   "calls": 2.0
+  },
+  "L.ground_lk": {
+   "seconds": 0.015276767934362093,
+   "jit": 0.0,
+   "eager": 4.0,
+   "calls": 1.0
+  },
+  "riverf": {
+   "seconds": 0.019557193309689563,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "L.form_si": {
+   "seconds": 0.32909033144824207,
+   "jit": 0.0,
+   "eager": 1478.0,
+   "calls": 2.0
+  },
+  "L.calc_apress": {
+   "seconds": 0.001568860374391079,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "ocean.ground": {
+   "seconds": 0.11901644337922335,
+   "jit": 0.0,
+   "eager": 326.0,
+   "calls": 1.0
+  },
+  "ocean.ostres": {
+   "seconds": 0.0027818939027686915,
+   "jit": 1.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "ocean.oconv": {
+   "seconds": 3.033922374403725,
+   "jit": 21.0,
+   "eager": 3479.0,
+   "calls": 1.0
+  },
+  "ocean.drag": {
+   "seconds": 0.0036039387341588736,
+   "jit": 2.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "ocean.polar": {
+   "seconds": 0.002457909674073259,
+   "jit": 1.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "ocean.dynamics": {
+   "seconds": 2.70384713774547,
+   "jit": 75.0,
+   "eager": 2899.0,
+   "calls": 1.0
+  },
+  "ocean.straits": {
+   "seconds": 0.49066578899510205,
+   "jit": 16.0,
+   "eager": 2655.0,
+   "calls": 1.0
+  },
+  "ocean.post": {
+   "seconds": 0.05890250904485583,
+   "jit": 1.0,
+   "eager": 246.0,
+   "calls": 1.0
+  },
+  "ocean.odiff": {
+   "seconds": 0.06281138770282269,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  },
+  "ocean.meso": {
+   "seconds": 0.2262530274068316,
+   "jit": 6.0,
+   "eager": 984.0,
+   "calls": 1.0
+  },
+  "advsi_on_state": {
+   "seconds": 0.2754103580955416,
+   "jit": 0.0,
+   "eager": 0.0,
+   "calls": 1.0
+  }
+ },
+ "compiles_total": {
+  "entries": 4,
+  "jit_calls": 0,
+  "h2d_calls": 3314,
+  "h2d_bytes": 1559991364,
+  "d2h_calls": 0,
+  "d2h_bytes": 0,
+  "cb_calls": 0,
+  "cb_bytes": 0,
+  "cb_seconds": 0.0,
+  "compiles": 939,
+  "compile_seconds": 38.99394369125366,
+  "wall_seconds": 85.9502158346586,
+  "self_seconds": 85.9502158346586
+ }
+}
