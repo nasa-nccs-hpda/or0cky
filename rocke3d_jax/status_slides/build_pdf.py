@@ -68,6 +68,67 @@ def s_glance(n):
     return p
 
 
+# ------------------------------------------------------------------ 1b
+RED_, VIOLET = "#EF4444", "#A78BFA"
+
+
+def _dot(p, x, y, color, d=14):
+    p.rect(x, y, d, d, color, r=d / 2)
+
+
+@slide
+def s_stoplight(n):
+    p = P("stoplight")
+    y = header(p, "OVERVIEW | PROJECT STATUS AT A GLANCE", "Status by area, and what is still outstanding",
+               "Green = verified success, yellow = in progress or partial, red = broken or not met, grey = not started. Violet marks outstanding items and their next action.", 22)
+    colw = (W - 2 * MARGIN - 16) / 2
+    # left: status lights
+    card(p, MARGIN, y, colw, 352, GREEN)
+    p.text(MARGIN + 14, y + 8, colw - 24, "Status by area (2026-10-08)", 11, INK, True)
+    rows = [
+        (GREEN, "Component ports vs the Fortran (Track B)", "validated rung by rung, D4-D145"),
+        (GREEN, "One coupled step vs the real Fortran (C2)", "step 0 MET on nov26, dec01, jan01 (D199); hybrid"),
+        (GREEN, "JAX step equals the NumPy chain (C1)", "bitwise: 559/559 arrays at step 0; nov26 steps 0-22"),
+        (GREEN, "Regression suite", "3,059 passed, 6 skipped, 0 failed"),
+        (AMBER, "Device-resident assembled step", "99 jit executions, 18.8 s/step; hybrid, not end-to-end JAX"),
+        (AMBER, "Radiation (SOCRATES)", "replayed or Fortran callback; accepted exception, not ported"),
+        (AMBER, "GPU", "smoke and probe passed on A100; assembled step not yet run"),
+        (RED_, "One model day vs 5 real members (ACCEPTANCE s9)", "NOT MET: QCL step 1 = 2.84x (D195, old land code); rerun in progress"),
+        (RED_, "Daily lake update at the day boundary", "missing (D196): lake-tile mismatches at step 48"),
+        (MUTED, "Months-long run and its criterion", "not started; criterion not defined"),
+    ]
+    yy = y + 32
+    for col, title, note in rows:
+        _dot(p, MARGIN + 16, yy + 3, col)
+        p.text(MARGIN + 38, yy, colw - 50, title, 9.6, INK, True, maxh=14)
+        p.text(MARGIN + 38, yy + 12, colw - 50, note, 8.4, MUTED, maxh=14)
+        yy += 31
+    # right: outstanding items in the complementary colour
+    x2 = MARGIN + colw + 16
+    card(p, x2, y, colw, 352, VIOLET)
+    p.text(x2 + 14, y + 8, colw - 24, "Outstanding items and their next action", 11, VIOLET, True)
+    items = [
+        ("Rerun the 54-step day on the D199 land code", "D200 running; verify the score, refresh the deck"),
+        ("Day-boundary lake update", "owner: record the boundary values (approximation) or port daily_LAKE (~500 lines)"),
+        ("GPU practice run on Discover", "owner: pull, move the coupled6b tarball, MODE=step, paste back"),
+        ("Free-running comparison", "compute Ent and land forcing instead of replaying the real records"),
+        ("Radiation and SOCRATES", "135-295 h port estimate; only if the owner lifts the rule (D1-D6)"),
+        ("Multi-month criterion", "define it; use the 8-member JAN1950 leave-one-out scoring"),
+        ("Day-criterion relaxation", "owner may relax s9 later only to advance to the GPU run, dated, both statuses shown"),
+        ("Housekeeping", "owner: close extra sessions; decide where ANN4099 lives; push when batches pass"),
+    ]
+    yy = y + 32
+    for title, note in items:
+        p.rect(x2 + 16, yy + 2, 4, 26, VIOLET)
+        p.text(x2 + 30, yy, colw - 44, title, 9.6, INK, True, maxh=14)
+        p.text(x2 + 30, yy + 12, colw - 44, note, 8.4, MUTED, maxh=24)
+        yy += 39
+    banner(p, MARGIN, y + 362, W - 2 * MARGIN, 36,
+           "Honest status: the single step matches the real Fortran at step 0 on three dates, but the step is a hybrid and the one-day statistical test is not passed yet.", AMBER, 9.4)
+    footer(p, n, "README_START_HERE.md; ACCEPTANCE_CRITERIA.md s9; D187, D191, D195, D196, D199, D200; SOCRATES_PORT_PLAN.md; gpu/DISCOVER_RUN.md")
+    return p
+
+
 # ------------------------------------------------------------------ 2
 @slide
 def s_chron(n):
