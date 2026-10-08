@@ -1,0 +1,487 @@
+"""
+Build a PDF rendition of the ROCKE-3D -> JAX status slide deck using
+reportlab directly (weasyprint is unusable here: this system's libpango
+1.42 predates a Pango function every available weasyprint release calls,
+and there's no network path to a newer libpango or a headless browser).
+
+Not a pixel-identical export of the live Claude Artifact -- a faithful,
+hand-built recreation of the same content/structure/numbers, using
+reportlab's built-in Helvetica/Courier fonts (no Google Fonts network
+dependency) in the same navy/green/orange color scheme.
+"""
+from reportlab.lib.pagesizes import landscape
+from reportlab.lib.colors import HexColor
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_LEFT
+
+PAGE = landscape((7.5 * inch, 13.333 * inch))  # 540 x 960 pt, 16:9
+W, H = PAGE
+
+NAVY = HexColor("#0F172A")
+CARD = HexColor("#1E293B")
+CARD2 = HexColor("#14212C")
+GREEN = HexColor("#4ADE80")
+ORANGE = HexColor("#F97316")
+AMBER = HexColor("#FBBF24")
+BLUE = HexColor("#38BDF8")
+INK = HexColor("#F8FAFC")
+INK2 = HexColor("#E2E8F0")
+MUTED = HexColor("#94A3B8")
+FOOTER = HexColor("#64748B")
+
+MARGIN = 36
+
+def para(text, size=11, color=INK2, bold=False, leading=None, font="Helvetica"):
+    fname = font + ("-Bold" if bold else "")
+    style = ParagraphStyle(
+        "s", fontName=fname, fontSize=size, textColor=color,
+        leading=leading or size * 1.3, alignment=TA_LEFT,
+    )
+    return Paragraph(text, style)
+
+def draw_para(c, text, x, y, width, height, **kw):
+    p = para(text, **kw)
+    w, h = p.wrap(width, height)
+    p.drawOn(c, x, y - h)
+    return h
+
+def rounded(c, x, y, w, h, r, fill, stroke=None):
+    c.saveState()
+    c.setFillColor(fill)
+    if stroke:
+        c.setStrokeColor(stroke)
+        c.setLineWidth(1)
+    c.roundRect(x, y, w, h, r, stroke=1 if stroke else 0, fill=1)
+    c.restoreState()
+
+def left_bar_card(c, x, y, w, h, bar_color, r=8):
+    rounded(c, x, y, w, h, r, CARD2)
+    c.saveState()
+    c.setFillColor(bar_color)
+    c.rect(x, y, 4, h, stroke=0, fill=1)
+    c.restoreState()
+
+def footer(c, text):
+    draw_para(c, text, MARGIN, 22, W - 2 * MARGIN, 20, size=8, color=FOOTER)
+
+def eyebrow_title(c, eyebrow, title, subtitle=None, title_size=26):
+    y = H - MARGIN - 14
+    draw_para(c, eyebrow, MARGIN, y, W - 2 * MARGIN, 20,
+              size=10, color=GREEN, bold=True, font="Courier")
+    y -= 26
+    draw_para(c, title, MARGIN, y, W - 2 * MARGIN, 60,
+              size=title_size, color=INK, bold=True, leading=title_size * 1.1)
+    y -= (title_size * 1.15 + 10)
+    if subtitle:
+        h = draw_para(c, subtitle, MARGIN, y, W - 2 * MARGIN, 60, size=11, color=MUTED)
+        y -= (h + 10)
+    return y
+
+
+def slide_bottom_line(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(
+        c,
+        "ROCKE-3D &rarr; JAX &middot; Status as of 2026-09-22",
+        "Where Things Stand",
+        "Use an AI coding agent to autonomously convert ROCKE-3D (NASA GISS's Fortran GCM) to "
+        "Python/JAX, and measure accuracy, CPU/GPU performance, conversion cost, and gotchas "
+        "&mdash; validated against real production restart data (P2SAoM40).",
+        title_size=30,
+    )
+
+    cards = [
+        (GREEN, "14 / 17", "Modules faithfully ported",
+         "Validated directly against real Fortran. 3 remain placeholders &mdash; see slide 3.", "Courier", 20),
+        (GREEN, "1e-9 to 1e-3", "Accuracy vs. real Fortran",
+         "PBL + DRYCNV, same inputs, CPU and GPU &mdash; floating-point-level agreement.", "Helvetica", 15),
+        (GREEN, "2.3&ndash;6.3&times;", "GPU speedup vs. real Fortran",
+         "Measured, not estimated &mdash; first real GPU run, 2026-09-20 (kernel-level).", "Courier", 20),
+        (ORANGE, "Mixed on CPU", "JAX is not a blanket CPU win",
+         "Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU.", "Courier", 17),
+    ]
+    card_w = (W - 2 * MARGIN - 3 * 10) / 4
+    card_h = 150
+    card_y = y - card_h
+    x = MARGIN
+    for bar, num, label, note, num_font, num_size in cards:
+        left_bar_card(c, x, card_y, card_w, card_h, bar)
+        draw_para(c, num, x + 14, card_y + card_h - 14, card_w - 24, 40,
+                  size=num_size, color=INK, bold=True, font=num_font)
+        draw_para(c, label, x + 14, card_y + card_h - 46, card_w - 24, 30,
+                  size=10.5, color=INK2, bold=True)
+        draw_para(c, note, x + 14, card_y + card_h - 66, card_w - 24, 60, size=8.5, color=MUTED)
+        x += card_w + 10
+
+    band_y = card_y - 20 - 46
+    rounded(c, MARGIN, band_y, W - 2 * MARGIN, 46, 8, CARD2)
+    draw_para(c, "The comparison that matters:", MARGIN + 16, band_y + 32, 150, 20,
+              size=9.5, color=MUTED, bold=True)
+    draw_para(c,
+              "Every number here is <b><font color='#4ADE80'>JAX vs. the real production Fortran "
+              "model.</font></b>",
+              MARGIN + 170, band_y + 34, W - 2 * MARGIN - 190, 40, size=9.5, color=INK2)
+
+    footer(c, "Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &mdash; "
+              "the single current source of truth for this project")
+
+
+def bar_row(c, x, y, label, bar_w, value_text, bar_color, label_w=90, max_bar=220, row_h=20):
+    draw_para(c, label, x, y + 12, label_w, 16, size=9, color=MUTED)
+    c.saveState()
+    c.setFillColor(bar_color)
+    c.roundRect(x + label_w, y, max(bar_w, 3), 14, 3, stroke=0, fill=1)
+    c.restoreState()
+    draw_para(c, value_text, x + label_w + max_bar + 8, y + 12, 260, 16, size=9, color=INK2, font="Courier")
+
+
+def slide_performance(c):
+    import math
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "PERFORMANCE", "Real Fortran vs. JAX &mdash; CPU and GPU", title_size=26)
+
+    col_w_left = (W - 2 * MARGIN - 20) * 0.56
+    col_w_right = (W - 2 * MARGIN - 20) * 0.44 - 20
+    left_x = MARGIN
+    right_x = MARGIN + col_w_left + 20
+    panel_top = y
+    panel_h = 330
+
+    # ---- Left (dominant): full physics chain, 4 stages, log-scale bars ----
+    left_bar_card(c, left_x, panel_top - panel_h, col_w_left, panel_h, GREEN, r=12)
+    px, py = left_x + 18, panel_top - 22
+    draw_para(c, "FULL PHYSICS CHAIN &mdash; THE HEADLINE RESULT", px, py, col_w_left - 36, 14,
+              size=7.5, color=GREEN, bold=True, font="Courier")
+    py -= 18
+    draw_para(c, "Four stages, one real DTsrc step", px, py, col_w_left - 36, 18, size=13, color=INK, bold=True)
+    py -= 18
+    py -= draw_para(c, "PBL+radiation+surface+ground, P2SAoM40's real restart state. Radiation "
+              "excluded (graybody stand-in) to keep every leg fair. Log-scale bars.",
+              px, py, col_w_left - 36, 30, size=8, color=MUTED)
+    py -= 10
+
+    def log_pct(ms):
+        return (math.log10(ms) - math.log10(1)) / (math.log10(300) - math.log10(1))
+
+    max_bar = 220
+    stages = [
+        ("Real Fortran", 264.0, "264.0 ms", BLUE, False),
+        ("JAX, original, CPU", 59.56, "59.56 ms — 4.4x", ORANGE, False),
+        ("JAX, original, GPU", 32.96, "32.96 ms — 8.0x", AMBER, False),
+        ("JAX, optimized, GPU", 4.26, "4.26 ms — 62.0x", GREEN, True),
+    ]
+    for label, ms, val_text, color, emph in stages:
+        bar_w = max(max_bar * log_pct(ms), 3)
+        draw_para(c, label, px, py + 12, 105, 16, size=8, color=MUTED)
+        c.saveState(); c.setFillColor(color)
+        c.roundRect(px + 105, py, bar_w, 14, 3, stroke=0, fill=1)
+        c.restoreState()
+        draw_para(c, val_text, px + 105 + max_bar + 8, py + 12, 150, 16,
+                  size=8.5, color=(GREEN if emph else INK2), bold=emph, font="Courier")
+        py -= 22
+
+    py -= 8
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(px, py, px + col_w_left - 36, py)
+    c.restoreState()
+    py -= 16
+    draw_para(c, "4.2x GPU-vs-CPU on the optimized code (same A100, before/after fusing "
+              "~33 per-step JIT dispatches into one) -- clears the &gt;2x target. "
+              "Verification + a measurement-script bug this also fixed: next slide.",
+              px, py, col_w_left - 36, 40, size=8.5, color=GREEN, bold=True)
+
+    # ---- Right (secondary): scope caveat + condensed kernel-level ----
+    top2_h = 190
+    rounded(c, right_x, panel_top - top2_h, col_w_right, top2_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - 22
+    draw_para(c, "What \"62x\" is actually measuring", rx, ry, col_w_right - 32, 18, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "Real Fortran SURFACE() does more physics than this JAX driver: "
+              "area-weighted sub-tiling, full GHY land hydrology (not wired into JAX), "
+              "and a real tridiagonal turbulence solve (JAX uses a shortcut).",
+              rx, ry, col_w_right - 32, 60, size=8, color=INK2)
+    ry -= 6
+    draw_para(c, "So part of 62x is JAX computing faster -- part is JAX computing less "
+              "physics for that scope. A faithful full port would likely see a smaller ratio.",
+              rx, ry, col_w_right - 32, 50, size=8, color=AMBER, bold=True)
+
+    bot2_h = panel_h - top2_h - 20
+    rounded(c, right_x, panel_top - panel_h, col_w_right, bot2_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - top2_h - 20 - 22
+    draw_para(c, "Kernel-level (mean of 100 calls)", rx, ry, col_w_right - 32, 16, size=10.5, color=INK, bold=True)
+    ry -= 16
+    draw_para(c, "Isolated routine, not the full pipeline.", rx, ry, col_w_right - 32, 14, size=7.5, color=MUTED)
+    ry -= 22
+    stat_col_w = (col_w_right - 32 - 12) / 2
+    draw_para(c, "13.4x slower", rx, ry, stat_col_w, 18, size=13, color=ORANGE, bold=True, font="Courier")
+    draw_para(c, "2.3-6.3x faster", rx + stat_col_w + 12, ry, stat_col_w, 18, size=13, color=GREEN, bold=True, font="Courier")
+    ry -= 16
+    draw_para(c, "DRYCNV, JAX-CPU", rx, ry, stat_col_w, 14, size=7, color=MUTED)
+    draw_para(c, "DRYCNV/PBL, JAX-GPU", rx + stat_col_w + 12, ry, stat_col_w, 14, size=7, color=MUTED)
+
+    footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
+              "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
+              "NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md")
+
+
+def slide_journey(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "VERIFICATION", "Four Stages, Verified &mdash; Not Just Measured",
+        "This project already found one measurement bug in this exact chain. Before "
+        "shipping \"62x faster,\" here's what was checked before believing it.",
+        title_size=30)
+
+    col_w = (W - 2 * MARGIN - 20) / 2
+    left_x = MARGIN
+    right_x = MARGIN + col_w + 20
+    panel_top = y
+    panel_h = 330
+
+    rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    px, py = left_x + 18, panel_top - 26
+    draw_para(c, "Three independent checks", px, py, col_w - 36, 18, size=13, color=INK, bold=True)
+    py -= 22
+
+    checks = [
+        ("1. Did the fix touch the GPU number?",
+         "No. Diffed it line-by-line: the GPU timing code (warm-up, block_until_ready "
+         "before and after) is byte-for-byte unchanged. Only the mislabeled \"CPU\" "
+         "section changed."),
+        ("2. Does it reproduce?",
+         "Two independent runs of the same post-fusion code, same A100: 4.08 ms and "
+         "4.26 ms -- ~4% apart, normal jitter, not a fluke."),
+        ("3. Does the magnitude make sense?",
+         "3,312 points, one fused dispatch, on an A100: low-single-digit ms is expected, "
+         "not suspiciously fast. And 4.2x (not 40x) fits a grid too small to fully "
+         "saturate the GPU -- the same real effect the old buggy number was chasing."),
+    ]
+    for title, body in checks:
+        ih = 92
+        left_bar_card(c, px, py - ih, col_w - 36, ih, GREEN, r=6)
+        draw_para(c, title, px + 14, py - 18, col_w - 64, 20, size=10.5, color=INK, bold=True)
+        draw_para(c, body, px + 14, py - 38, col_w - 64, 52, size=8, color=MUTED)
+        py -= ih + 10
+
+    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    rx, ry = right_x + 18, panel_top - 26
+    draw_para(c, "The scope caveat -- read before quoting 62x", rx, ry, col_w - 36, 18,
+              size=11, color=AMBER, bold=True)
+    ry -= 22
+    ry -= draw_para(c, "The numbers are real. What they compare isn't two implementations "
+              "of identical work: real Fortran's SURFACE() does area-weighted multi-type "
+              "sub-tiling, full land hydrology (GHY), and a real tridiagonal turbulence "
+              "solve -- none of which the JAX full-chain driver currently does.",
+              rx, ry, col_w - 36, 70, size=9, color=INK2)
+    ry -= 8
+    ry -= draw_para(c, "A faithful, fully-featured port would do more work than today's "
+              "simplified driver and would likely land at a smaller -- still real -- multiple.",
+              rx, ry, col_w - 36, 40, size=9, color=AMBER, bold=True)
+    ry -= 16
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(rx, ry, rx + col_w - 36, ry)
+    c.restoreState()
+    ry -= 22
+    draw_para(c, "Bottom line", rx, ry, col_w - 36, 16, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "17.94 ms &rarr; 4.26 ms is a real, reproducible <font color='#4ADE80'><b>4.2x GPU "
+              "speedup</b></font> on the physics this driver actually runs today -- clearing "
+              "this project's own &gt;2x target from real dispatch-fusion engineering, "
+              "not a measurement artifact.",
+              rx, ry, col_w - 36, 60, size=9.5, color=INK2)
+    ry -= 6
+    draw_para(c, "Treat it as a validated, scope-bounded win: real for what's ported "
+              "today, not yet a claim about the full model.",
+              rx, ry, col_w - 36, 30, size=8.5, color=MUTED)
+
+    footer(c, "Full chart + discussion: claude.ai/artifact/FmHsaDwSg9ap1BUY5Be9Ai &middot; "
+              "STATUS.md \"Full Physics Chain\" &amp; \"GPU optimization: Phase 1\"")
+
+
+def slide_next_steps(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "WHAT'S NEXT", "Recommendation &amp; Open Items", title_size=26)
+
+    col_w = (W - 2 * MARGIN - 20) / 2
+    left_x = MARGIN
+    right_x = MARGIN + col_w + 20
+    panel_top = y
+    panel_h = 330
+
+    rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    px, py = left_x + 18, panel_top - 26
+    draw_para(c, "The remaining 3 modules &mdash; closed, not pursuing", px, py, col_w - 36, 20,
+              size=12, color=INK, bold=True)
+    py -= 20
+    py -= draw_para(c, "Scoped 2026-09-23 (GHY alone is a coupled land-surface model needing its "
+              "own orchestration ported, not a function to wire in) and decided against: it "
+              "doesn't serve this project's actual goal -- a representative, consistent-answers "
+              "workflow across Fortran/CPU/GPU/optimized, already achieved -- only a different "
+              "goal (scientific fidelity) this project isn't pursuing.",
+              px, py, col_w - 36, 55, size=8, color=MUTED)
+    py -= 14
+
+    items = [
+        (FOOTER, "SEAICE (core thermodynamics) — not pursuing",
+         "Domain case for porting (polar surface energy balance) still holds if the project's "
+         "goal ever shifts to fidelity -- kept in STATUS.md, not acted on."),
+        (FOOTER, "ATURB (PBL-top-finding) — not pursuing",
+         "Same reasoning as SEAICE. Has real tridiagonal-solver code already, but hardcoded "
+         "placeholder closure constants (c1-c5, b1) instead of real values."),
+        (ORANGE, "LAKES (lkmix) — defer",
+         "Lowest priority of the three even under the fidelity-first framing. Small fraction "
+         "of Earth's surface."),
+    ]
+    for bar, title, note in items:
+        ih = 74
+        left_bar_card(c, px, py - ih, col_w - 36, ih, bar, r=6)
+        draw_para(c, title, px + 14, py - 16, col_w - 64, 20, size=10, color=INK, bold=True)
+        draw_para(c, note, px + 14, py - 34, col_w - 64, 44, size=8, color=MUTED)
+        py -= ih + 8
+
+    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
+    rx, ry = right_x + 18, panel_top - 30
+    draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=13, color=INK, bold=True)
+    ry -= 36
+    opens = [
+        "<s>Get the full physics-chain GPU speedup above 2x</s> — <b><font color='#4ADE80'>done</font></b>, "
+        "2026-09-22: fused ~33 per-step JIT dispatches into one, then found and fixed a bug "
+        "where the \"CPU\" baseline was secretly timing the GPU. Real result: "
+        "<b><font color='#4ADE80'>4.2x</font></b> GPU speedup.",
+        "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
+        "— currently only worked around locally.",
+        "<s>Port SEAICE + ATURB, re-run the correlation check</s> — "
+        "<b><font color='#94A3B8'>closed, not pursuing</font></b>. Scoped 2026-09-23; doesn't "
+        "serve this project's representative-workflow goal (see left).",
+    ]
+    for i, item in enumerate(opens, 1):
+        ry -= draw_para(c, f"<b><font color='#4ADE80'>{i}</font></b>  {item}", rx, ry, col_w - 36, 60, size=10.5, color=INK2)
+        ry -= 20
+
+    footer(c, "Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)")
+
+
+def slide_output_maps(c):
+    import os
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "OUTPUT MAPS", "Where JAX and Fortran Differ, Spatially", title_size=24)
+
+    y -= draw_para(c,
+        "Difference maps only, from visualize_p2saom40_kernel_maps.ipynb / "
+        "outputs/p2saom40_kernel_*_diff_*.html, on P2SAoM40's real 72x46 grid. Field values are "
+        "synthetic test data, not real climate.",
+        MARGIN, y, W - 2 * MARGIN, 30, size=9.5, color=MUTED)
+    y -= 12
+
+    img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "diff_grid.png")
+    img_h = 300  # explicit, budget-checked so the note below and the footer both stay on-page
+    img_w = img_h * (2400 / 1050)  # native aspect ratio of diff_grid.png
+    img_x = MARGIN + (W - 2 * MARGIN - img_w) / 2  # centered
+    c.drawImage(img_path, img_x, y - img_h, width=img_w, height=img_h,
+                preserveAspectRatio=True, mask="auto")
+    y -= (img_h + 14)
+
+    draw_para(c,
+        "The bright outlier points in pbl.u/dpsih/dpsiq come from a few grid cells with "
+        "near-zero Monin-Obukhov length -- both Fortran and JAX reproduce the same outliers, so "
+        "these are still the same floating-point-level diffs reported in STATUS.md, not a bug.",
+        MARGIN, y, W - 2 * MARGIN, 30, size=8.5, color=FOOTER)
+
+    footer(c, "All 40 generated maps: outputs/p2saom40_kernel_*.html &middot; "
+              "notebook: visualize_p2saom40_kernel_maps.ipynb")
+
+
+def slide_appendix_profile(c):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    y = eyebrow_title(c, "APPENDIX", "Where the Pre-Fusion 55ms Actually Went",
+        "The profiling data behind the Phase 1 optimization on the Performance slide: "
+        "run_dtsrc_step dispatching 33 separate JIT calls per step, CPU, post-warmup, "
+        "mean of 30-100 calls.", title_size=26)
+
+    col_w_left = (W - 2 * MARGIN - 20) * 0.6
+    col_w_right = (W - 2 * MARGIN - 20) * 0.4 - 20
+    left_x = MARGIN
+    right_x = MARGIN + col_w_left + 20
+    panel_top = y
+    panel_h = 300
+
+    rounded(c, left_x, panel_top - panel_h, col_w_left, panel_h, 12, CARD)
+    px, py = left_x + 18, panel_top - 22
+
+    JIT_BLUE = HexColor("#2a78d6")
+    HOST_ORANGE = HexColor("#eb6834")
+    PY_AQUA = HexColor("#1baf7a")
+    rows = [
+        ("Unaccounted Python orchestration", "18.00 ms  32.5%", 1.0, PY_AQUA),
+        ("dry_convection_mixing_jit (1 call)", "13.68 ms  24.7%", 0.767, JIT_BLUE),
+        ("getcm + getchq (24 calls)", "13.35 ms  24.1%", 0.750, JIT_BLUE),
+        ("compute_pk_pek (1 call)", "4.56 ms  8.2%", 0.253, JIT_BLUE),
+        ("_surface_fluxes_relative_wind (2, not @jit)", "2.58 ms  4.7%", 0.143, HOST_ORANGE),
+        ("build_pressure_profile (NumPy loop)", "2.34 ms  4.2%", 0.130, HOST_ORANGE),
+        ("Everything else (5 calls)", "0.95 ms  1.6%", 0.053, JIT_BLUE),
+    ]
+    max_bar = 150
+    for label, val, frac, color in rows:
+        draw_para(c, label, px, py + 8, col_w_left - 36 - max_bar - 90, 14, size=7.5, color=MUTED)
+        c.saveState(); c.setFillColor(color)
+        c.roundRect(px + col_w_left - 36 - max_bar - 80, py, max(max_bar * frac, 3), 12, 3, stroke=0, fill=1)
+        c.restoreState()
+        draw_para(c, val, px + col_w_left - 36 - 78, py + 8, 78, 14, size=7, color=INK2, font="Courier")
+        py -= 20
+
+    py -= 6
+    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
+    c.line(px, py, px + col_w_left - 36, py)
+    c.restoreState()
+    py -= 16
+    for label, color in [("Redundant JIT dispatch", JIT_BLUE), ("Never fused (host-only)", HOST_ORANGE), ("Python glue overhead", PY_AQUA)]:
+        c.saveState(); c.setFillColor(color); c.rect(px, py - 2, 8, 8, stroke=0, fill=1); c.restoreState()
+        draw_para(c, label, px + 12, py + 6, 150, 12, size=7.5, color=MUTED)
+        px += 165
+    px = left_x + 18
+
+    rounded(c, right_x, panel_top - panel_h, col_w_right, panel_h, 12, CARD)
+    rx, ry = right_x + 16, panel_top - 22
+    draw_para(c, "What this diagnosed", rx, ry, col_w_right - 32, 16, size=11, color=INK, bold=True)
+    ry -= 20
+    ry -= draw_para(c, "Every leaf function was individually @jit-decorated but called "
+              "eagerly from Python -- some inside nested loops (the 6-iteration "
+              "Monin-Obukhov solve x 2 surface substeps = 24 dispatches alone). Two "
+              "functions never touched JAX at all.",
+              rx, ry, col_w_right - 32, 70, size=8, color=INK2)
+    ry -= 6
+    ry -= draw_para(c, "This is what Phase 1 fused into a single jax.jit computation -- "
+              "the direct cause of the 62x result on the Performance slide.",
+              rx, ry, col_w_right - 32, 40, size=8, color=GREEN, bold=True)
+    ry -= 20
+    draw_para(c, "Full interactive chart:", rx, ry, col_w_right - 32, 14, size=8, color=MUTED)
+    ry -= 16
+    draw_para(c, "claude.ai/artifact/WeVvMgHEXKFvVDvb9G3B96", rx, ry, col_w_right - 32, 30,
+              size=8, color=GREEN, font="Courier")
+
+    footer(c, "Source: instrumented run_dtsrc_step / solve_surface_layer / leaf-function "
+              "call counts, this repo's p2saom40_driver.py (pre-fusion) &middot; "
+              "STATUS.md \"GPU optimization: Phase 1\"")
+
+
+def main(out_path):
+    c = canvas.Canvas(out_path, pagesize=PAGE)
+    for slide_fn in (slide_bottom_line, slide_performance, slide_journey, slide_next_steps,
+                      slide_output_maps, slide_appendix_profile):
+        slide_fn(c)
+        c.showPage()
+    c.save()
+    print("wrote", out_path)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1] if len(sys.argv) > 1 else "deck.pdf")

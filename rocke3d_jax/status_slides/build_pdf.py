@@ -1,487 +1,517 @@
 """
-Build a PDF rendition of the ROCKE-3D -> JAX status slide deck using
-reportlab directly (weasyprint is unusable here: this system's libpango
-1.42 predates a Pango function every available weasyprint release calls,
-and there's no network path to a newer libpango or a headless browser).
+Build status_deck.pdf (2026-10-08 refresh: chronology and findings of the
+whole project). Same pipeline as build_pdf_2026-10-01.py (reportlab, built-in
+Helvetica/Courier, navy/green/orange palette); layout goes through
+deck_layout.py so overflow is checked at build time and PNG previews exist.
 
-Not a pixel-identical export of the live Claude Artifact -- a faithful,
-hand-built recreation of the same content/structure/numbers, using
-reportlab's built-in Helvetica/Courier fonts (no Google Fonts network
-dependency) in the same navy/green/orange color scheme.
+Usage (system python3 has reportlab; the conda env has matplotlib):
+  conda-python make_figures.py images_out     # figures -> images/
+  python3 build_pdf.py status_deck.pdf [--png PREVIEW_DIR]
+Every number on a slide comes from the repository documents named in the
+slide's footer (FULL_FIDELITY_DELTAS.md ledger ids D1..D198, Reports/*.md,
+git log). Status: ledger through D198, HEAD ec36779, 2026-10-08.
 """
-from reportlab.lib.pagesizes import landscape
-from reportlab.lib.colors import HexColor
-from reportlab.lib.units import inch
+import os, sys
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_LEFT
+from deck_layout import *
+import deck_layout as L
 
-PAGE = landscape((7.5 * inch, 13.333 * inch))  # 540 x 960 pt, 16:9
-W, H = PAGE
-
-NAVY = HexColor("#0F172A")
-CARD = HexColor("#1E293B")
-CARD2 = HexColor("#14212C")
-GREEN = HexColor("#4ADE80")
-ORANGE = HexColor("#F97316")
-AMBER = HexColor("#FBBF24")
-BLUE = HexColor("#38BDF8")
-INK = HexColor("#F8FAFC")
-INK2 = HexColor("#E2E8F0")
-MUTED = HexColor("#94A3B8")
-FOOTER = HexColor("#64748B")
-
-MARGIN = 36
-
-def para(text, size=11, color=INK2, bold=False, leading=None, font="Helvetica"):
-    fname = font + ("-Bold" if bold else "")
-    style = ParagraphStyle(
-        "s", fontName=fname, fontSize=size, textColor=color,
-        leading=leading or size * 1.3, alignment=TA_LEFT,
-    )
-    return Paragraph(text, style)
-
-def draw_para(c, text, x, y, width, height, **kw):
-    p = para(text, **kw)
-    w, h = p.wrap(width, height)
-    p.drawOn(c, x, y - h)
-    return h
-
-def rounded(c, x, y, w, h, r, fill, stroke=None):
-    c.saveState()
-    c.setFillColor(fill)
-    if stroke:
-        c.setStrokeColor(stroke)
-        c.setLineWidth(1)
-    c.roundRect(x, y, w, h, r, stroke=1 if stroke else 0, fill=1)
-    c.restoreState()
-
-def left_bar_card(c, x, y, w, h, bar_color, r=8):
-    rounded(c, x, y, w, h, r, CARD2)
-    c.saveState()
-    c.setFillColor(bar_color)
-    c.rect(x, y, 4, h, stroke=0, fill=1)
-    c.restoreState()
-
-def footer(c, text):
-    draw_para(c, text, MARGIN, 22, W - 2 * MARGIN, 20, size=8, color=FOOTER)
-
-def eyebrow_title(c, eyebrow, title, subtitle=None, title_size=26):
-    y = H - MARGIN - 14
-    draw_para(c, eyebrow, MARGIN, y, W - 2 * MARGIN, 20,
-              size=10, color=GREEN, bold=True, font="Courier")
-    y -= 26
-    draw_para(c, title, MARGIN, y, W - 2 * MARGIN, 60,
-              size=title_size, color=INK, bold=True, leading=title_size * 1.1)
-    y -= (title_size * 1.15 + 10)
-    if subtitle:
-        h = draw_para(c, subtitle, MARGIN, y, W - 2 * MARGIN, 60, size=11, color=MUTED)
-        y -= (h + 10)
-    return y
+HERE = os.path.dirname(os.path.abspath(__file__))
+IMG = os.path.join(HERE, "images")
+SLIDES = []
 
 
-def slide_bottom_line(c):
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(
-        c,
-        "ROCKE-3D &rarr; JAX &middot; Status as of 2026-09-22",
-        "Where Things Stand",
-        "Use an AI coding agent to autonomously convert ROCKE-3D (NASA GISS's Fortran GCM) to "
-        "Python/JAX, and measure accuracy, CPU/GPU performance, conversion cost, and gotchas "
-        "&mdash; validated against real production restart data (P2SAoM40).",
-        title_size=30,
-    )
+def slide(fn):
+    SLIDES.append(fn)
+    return fn
 
+
+def P(name):
+    return Page(name)
+
+
+# ------------------------------------------------------------------ 1
+@slide
+def s_glance(n):
+    p = P("glance")
+    y = header(p, "ROCKE-3D -> JAX | AT A GLANCE | status 2026-10-08 (HEAD ec36779, ledger through D198)",
+               "Where the project stands",
+               "Goal: rewrite NASA GISS's ROCKE-3D (Fortran GCM) in Python/JAX, checked against the real Fortran, for GPU use. "
+               "Configuration P2SAoM40 (72x46 grid, 40 layers, dynamic ocean). Every card says what is met and what is not.", 24)
     cards = [
-        (GREEN, "14 / 17", "Modules faithfully ported",
-         "Validated directly against real Fortran. 3 remain placeholders &mdash; see slide 3.", "Courier", 20),
-        (GREEN, "1e-9 to 1e-3", "Accuracy vs. real Fortran",
-         "PBL + DRYCNV, same inputs, CPU and GPU &mdash; floating-point-level agreement.", "Helvetica", 15),
-        (GREEN, "2.3&ndash;6.3&times;", "GPU speedup vs. real Fortran",
-         "Measured, not estimated &mdash; first real GPU run, 2026-09-20 (kernel-level).", "Courier", 20),
-        (ORANGE, "Mixed on CPU", "JAX is not a blanket CPU win",
-         "Fortran beats JAX-CPU on DRYCNV. The case for JAX here is GPU, not CPU.", "Courier", 17),
+        (ORANGE, "NOT MET", "One-day criterion (nov26, 54 steps)",
+         "ACCEPTANCE s9: never beyond 2x the largest real-member distance at every step. QCL at step 1 is 2.84x (one bistable cell, D197). Steps >= 3: worst ratio 1.13. D193, D195, D197."),
+        (AMBER, "MET / PARTLY MET", "One coupled step vs real Fortran (C2, step 0)",
+         "nov26 MET with one named column (25,16); dec01 and jan01 PARTLY MET (worst EGCM 9.9e-9 and 7.6e-9 of scale). Needs the libimf callback. D191."),
+        (GREEN, "18.8 s", "Steady step on CPU, was 44.3 s",
+         "99 jit executions (was 262), eager dispatches 490 (was ~15,700). Only 1.2-1.4x faster than the NumPy chain on the same cores. HYBRID step. D187, D191."),
+        (GREEN, "558 / 558", "C1: bitwise vs our NumPy chain",
+         "Step 0 on nov26, dec01, jan01 (category A). On the day: bitwise steps 0-22 (the NumPy reference aborts at step 23). D191, D195."),
+        (GREEN, "3,056 passed", "Last batch regression (a89e117)",
+         "6 skipped, 1 known failure (export artifact: test asserts a git HEAD; fixed afterwards, not re-run). README_START_HERE handoff."),
+        (ORANGE, "No GPU result", "GPU runner built, validated on CPU only",
+         "A100 probe: launch-bound for small sequential ops; device exp/sin/pow differ from NumPy by 1 ulp in 6-12% of values, so never bitwise on GPU. D198, gpu/DISCOVER_RUN.md."),
     ]
-    card_w = (W - 2 * MARGIN - 3 * 10) / 4
-    card_h = 150
-    card_y = y - card_h
-    x = MARGIN
-    for bar, num, label, note, num_font, num_size in cards:
-        left_bar_card(c, x, card_y, card_w, card_h, bar)
-        draw_para(c, num, x + 14, card_y + card_h - 14, card_w - 24, 40,
-                  size=num_size, color=INK, bold=True, font=num_font)
-        draw_para(c, label, x + 14, card_y + card_h - 46, card_w - 24, 30,
-                  size=10.5, color=INK2, bold=True)
-        draw_para(c, note, x + 14, card_y + card_h - 66, card_w - 24, 60, size=8.5, color=MUTED)
-        x += card_w + 10
-
-    band_y = card_y - 20 - 46
-    rounded(c, MARGIN, band_y, W - 2 * MARGIN, 46, 8, CARD2)
-    draw_para(c, "The comparison that matters:", MARGIN + 16, band_y + 32, 150, 20,
-              size=9.5, color=MUTED, bold=True)
-    draw_para(c,
-              "Every number here is <b><font color='#4ADE80'>JAX vs. the real production Fortran "
-              "model.</font></b>",
-              MARGIN + 170, band_y + 34, W - 2 * MARGIN - 190, 40, size=9.5, color=INK2)
-
-    footer(c, "Full detail: STATUS.md (this repo, projects/imvi/rocke3d_jax) &mdash; "
-              "the single current source of truth for this project")
+    cw, ch = (W - 2 * MARGIN - 2 * 12) / 3, 138
+    for i, (col, big, lab, note) in enumerate(cards):
+        x = MARGIN + (i % 3) * (cw + 12)
+        yy = y + (i // 3) * (ch + 12)
+        card(p, x, yy, cw, ch, col)
+        p.text(x + 14, yy + 10, cw - 24, big, 19, INK, True, True, maxh=26)
+        p.text(x + 14, yy + 38, cw - 24, lab, 9.5, INK2, True, maxh=26)
+        p.text(x + 14, yy + 62, cw - 24, note, 9.2, MUTED, maxh=ch - 66)
+    yb = y + 2 * (ch + 12) + 2
+    banner(p, MARGIN, yb, W - 2 * MARGIN, 52,
+           "This is a HYBRID port, not end-to-end JAX: radiation is the original Fortran (served) or replayed from a record; libimf math, QUS, pole columns and the OADVT2 pre-pass are host callbacks; "
+           "Ent exports, land forcing and tile radiation columns are recorded inputs (D191 s4). SOCRATES is never ported or modified.", AMBER, 9)
+    footer(p, n, "ACCEPTANCE_CRITERIA s1,3,4,8,9; D187, D191, D193-D198 (FULL_FIDELITY_DELTAS.md); Reports/README_START_HERE.md; gpu/DISCOVER_RUN.md")
+    return p
 
 
-def bar_row(c, x, y, label, bar_w, value_text, bar_color, label_w=90, max_bar=220, row_h=20):
-    draw_para(c, label, x, y + 12, label_w, 16, size=9, color=MUTED)
-    c.saveState()
-    c.setFillColor(bar_color)
-    c.roundRect(x + label_w, y, max(bar_w, 3), 14, 3, stroke=0, fill=1)
-    c.restoreState()
-    draw_para(c, value_text, x + label_w + max_bar + 8, y + 12, 260, 16, size=9, color=INK2, font="Courier")
+# ------------------------------------------------------------------ 2
+@slide
+def s_chron(n):
+    p = P("chronology")
+    y = header(p, "CHRONOLOGY | WHOLE PROJECT", "Six weeks, 273 commits: from reduced ports to a hybrid JAX coupled step", None, 20)
+    p.image(MARGIN - 6, y - 2, W - 2 * MARGIN + 12, 420, os.path.join(IMG, "chronology_full.png"))
+    p.text(MARGIN, 486, W - 2 * MARGIN, "Most work happened after 2026-09-24, when the owner reversed Track A's recommendation and set the full-fidelity direction. Rows and sources: Reports/PROJECT_CHRONOLOGY.md (generated from status_slides/chronology_data.py).", 8.5, MUTED, maxh=24)
+    footer(p, n, "git log (dates, commit ids); Project_Summary s1; ACCEPTANCE s8-9; Reports/PROJECT_CHRONOLOGY.md")
+    return p
 
 
-def slide_performance(c):
-    import math
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(c, "PERFORMANCE", "Real Fortran vs. JAX &mdash; CPU and GPU", title_size=26)
+@slide
+def s_zoom(n):
+    p = P("zoom")
+    y = header(p, "CHRONOLOGY | THE LAST 48 HOURS", "From the F1 gate to the one-day verdict: 2026-10-06 to 2026-10-08", None, 20)
+    p.image(MARGIN - 6, y - 4, W - 2 * MARGIN + 12, 442, os.path.join(IMG, "chronology_zoom.png"))
+    footer(p, n, "git log; ledger D118-D198 (FULL_FIDELITY_DELTAS.md); ACCEPTANCE s8-9. Owner decisions: 10-07 13:39 / 14:19 / 14:25 and 10-08 08:20.")
+    return p
 
-    col_w_left = (W - 2 * MARGIN - 20) * 0.56
-    col_w_right = (W - 2 * MARGIN - 20) * 0.44 - 20
-    left_x = MARGIN
-    right_x = MARGIN + col_w_left + 20
-    panel_top = y
-    panel_h = 330
 
-    # ---- Left (dominant): full physics chain, 4 stages, log-scale bars ----
-    left_bar_card(c, left_x, panel_top - panel_h, col_w_left, panel_h, GREEN, r=12)
-    px, py = left_x + 18, panel_top - 22
-    draw_para(c, "FULL PHYSICS CHAIN &mdash; THE HEADLINE RESULT", px, py, col_w_left - 36, 14,
-              size=7.5, color=GREEN, bold=True, font="Courier")
-    py -= 18
-    draw_para(c, "Four stages, one real DTsrc step", px, py, col_w_left - 36, 18, size=13, color=INK, bold=True)
-    py -= 18
-    py -= draw_para(c, "PBL+radiation+surface+ground, P2SAoM40's real restart state. Radiation "
-              "excluded (graybody stand-in) to keep every leg fair. Log-scale bars.",
-              px, py, col_w_left - 36, 30, size=8, color=MUTED)
-    py -= 10
+# ------------------------------------------------------------------ 4
+@slide
+def s_phases(n):
+    p = P("phases")
+    y = header(p, "CHRONOLOGY | PHASES AND WHAT EACH TAUGHT", "Seven phases, seven lessons", None, 22)
+    rows = [["Phase", "Dates", "Key commits / ledger", "What was learned"],
+            ["A Track A: reduced component ports, GPU kernels", "08-28 to 09-24", "c2991dd, 5cbe7f8, abd805b", "Reduced drivers ran fast (kernels 2.3-6.3x on GPU; fused chain 4.2x) but were not faithful; Track A recommended against a full port, later reversed by the owner."],
+            ["B Phase 0: Fortran oracle", "09-24", "97e2457, 9cd4bc6, 4ec6056 (D3)", "Instrumented real ModelE reproduces the restart bitwise. Chaos floor: 1-ulp perturbation reaches ~1-3% of variability in 5 days, so acceptance beyond one step must be statistical."],
+            ["C Track B: components vs real Fortran", "09-24 to 10-06", "D4-D145; D29, D36, D51, D55, D121-D123", "Dump-hook-and-validate found real bugs (3 in DYNSI, OMEGA constant, 2 land errors D135/D136) and dead code (OCNDYN.f legacy driver, OCNTDMIX.f, OCNQUS.f)."],
+            ["D Validation rungs F1 / F2 / F3", "10-06 to 10-07", "D127-D129, D149-D157, D163, D165", "Single-step gate needs libimf (3-5% of cloud columns flip without it). One-day runs sit inside the real model's own spread except condensate tails. Radiation can be served by real RADIA (D152-D162)."],
+            ["E Reconciliation + owner decisions", "10-07", "9cf08e6, 721d789, b71eb22, bd9b16c", "Fidelity work was ahead of the JAX deliverable; criteria were fixed BEFORE the coupled step was compared; C1 and C2 reported separately."],
+            ["F Hybrid coupled step, stages S0-S8", "10-07 to 10-08", "D180-D197", "Assembled device-resident step bitwise to NumPy (C1), C2 at step 0 MET/PARTLY MET; the 54-step day is NOT MET; every day diagnosis found a cause, none a port defect in clouds."],
+            ["G GPU tooling", "10-07 to 10-08", "5c5b7a4, c7c42c8, d320221, ec36779 (D198)", "Environment works on an A100; small sequential ops are launch-bound; no bitwise on GPU; no GPU run of the step yet."]]
+    p.table(MARGIN, y, [190, 80, 160, W - 2 * MARGIN - 430], rows, 10, maxh=450 - y + 40, bold_cols=(0,))
+    footer(p, n, "git log; Project_Summary s3-4; D3, D29, D36, D129, D135-D136, D151, D157, D191-D198; RECONCILIATION_PLAN s1; STATUS.md; gpu/DISCOVER_RUN.md")
+    return p
 
-    def log_pct(ms):
-        return (math.log10(ms) - math.log10(1)) / (math.log10(300) - math.log10(1))
 
-    max_bar = 220
-    stages = [
-        ("Real Fortran", 264.0, "264.0 ms", BLUE, False),
-        ("JAX, original, CPU", 59.56, "59.56 ms — 4.4x", ORANGE, False),
-        ("JAX, original, GPU", 32.96, "32.96 ms — 8.0x", AMBER, False),
-        ("JAX, optimized, GPU", 4.26, "4.26 ms — 62.0x", GREEN, True),
+# ------------------------------------------------------------------ 5
+@slide
+def s_categories(n):
+    p = P("categories")
+    y = header(p, "FINDINGS | HOW FIDELITY IS JUDGED", "Categories A / B / C / D, the gate, and two comparisons",
+               "Per prognostic field, maximum absolute difference as a fraction of the field's scale (ACCEPTANCE s3; categories fixed by the project plan and not loosened).", 22)
+    cw = (W - 2 * MARGIN - 36) / 4
+    cats = [(GREEN, "A", "bitwise equal"), (GREEN, "B", "<= 1e-12 of scale (rounding level)"), (AMBER, "C", "<= 1e-6 of scale"), (ORANGE, "D", "worse than C")]
+    for i, (c, k, d) in enumerate(cats):
+        x = MARGIN + i * (cw + 12)
+        card(p, x, y, cw, 62, c)
+        p.text(x + 14, y + 8, 30, k, 26, INK, True, True)
+        p.text(x + 50, y + 14, cw - 58, d, 9.5, INK2, True, maxh=40)
+    y += 76
+    h = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, y, h, 150, GREEN)
+    p.text(MARGIN + 14, y + 8, h - 24, "Verdict for one coupled step", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 28, h - 26, [
+        "MET: every prognostic field in A or B, except named exception columns (at most 10 per field, each <= 1e-9 of scale).",
+        "PARTLY MET: runs end to end with named exceptions in B or C and the first failing stage identified.",
+        "NOT MET: otherwise. Reported per date (nov26, dec01, jan01), never pooled.",
+        "Bitwise (A) needs the Intel libimf runtime; without it results are B or C and say so."], 9.6, maxh=118)
+    card(p, MARGIN + h + 12, y, h, 150, BLUE)
+    p.text(MARGIN + h + 26, y + 8, h - 24, "C1 versus C2 (reported separately)", 11, INK, True)
+    p.bullets(MARGIN + h + 26, y + 28, h - 26, [
+        "C1, port consistency: JAX-driven step vs our NumPy chained step, same start state, cores, flags, no compile cache. A pass says JAX reproduces our NumPy port, NOT that it reproduces ROCKE-3D.",
+        "C2, fidelity: JAX-driven step vs the real Fortran step-boundary dumps. Only C2 supports a statement about ROCKE-3D.",
+        "Hazards D139, D145, D175: results differ across core counts and with a warm compile cache."], 9.6, maxh=118)
+    y += 164
+    card(p, MARGIN, y, W - 2 * MARGIN, 120, ORANGE)
+    p.text(MARGIN + 14, y + 8, 400, "Multi-day rung (F2, statistical), ACCEPTANCE s4 and s9", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 28, W - 2 * MARGIN - 28, [
+        "Reference spread: five real one-ulp members of the nov26 day (D151). Classes per field and step: within (<= largest member distance), near (<= 2x), beyond (> 2x).",
+        "Owner decision 2026-10-08 (s9): the pass rule is 'never beyond 2x the largest member distance, at every step, for every scored field' over ALL steps; 'within at every step' is a secondary line.",
+        "Longer windows: the D172 leave-one-out scoring with the 8 JAN1950 members (D165); the earlier '>= 95% of zonal bins within 2 sigma' rule is not used (true members fail it)."], 9.6, maxh=88)
+    footer(p, n, "ACCEPTANCE_CRITERIA.md s2, s3, s4, s9; D139, D145, D151, D165, D172, D175")
+    return p
+
+
+# ------------------------------------------------------------------ 6
+@slide
+def s_gates(n):
+    p = P("gates")
+    y = header(p, "FINDINGS | GATE VERDICTS BY DATE", "Single-step (step 0) verdicts over time: honest status per date",
+               "dec01 and jan01 stay PARTLY MET in every ported-land configuration; nothing here is claimed as a pass beyond what the ledger says.", 22)
+    G, A_, O = GREEN, AMBER, ORANGE
+    rows = [["Date / entry", "Configuration", "nov26", "dec01", "jan01", "Note"],
+            ["10-06 D129", "libimf, RECORDED land patch", ("MET (named cols)", G), ("MET (A/B)", G), ("MET (named col)", G), "nov26 W2GCM 4 cols 1.7e-12; jan01 1 col <= 2.5e-12"],
+            ["10-06 D129", "libimf, ported GHY", ("NOT MET", O), ("PARTLY MET", A_), ("PARTLY MET", A_), "first failing stage: SURFACE/GHY land cell (62,34)"],
+            ["10-06 D129", "no libimf (libm)", ("NOT MET", O), ("NOT MET", O), ("NOT MET", O), "first failing stage CONDSE: cloud threshold flips in 3-5% of columns"],
+            ["10-06 0ad795b", "libimf, ported GHY after D135/D136 fixes", ("MET", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "all MET with recorded land"],
+            ["10-07 D187", "HYBRID assembled (libimf callback, replay radiation)", ("MET, 1 col", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "fails ACCEPTANCE items 1 and 3; 44.3 s/step"],
+            ["10-08 D191", "assembled device-resident step", ("MET, 1 col (25,16)", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "worst EGCM 9.9e-9 (dec01), 7.6e-9 (jan01); item 1 holds only under owner decision 8.3 with named exceptions"],
+            ["10-08 D195 / s9", "54-step nov26 day vs 5 real members", ("NOT MET", O), ("not run", MUTED), ("not run", MUTED), "QCL step 1 ratio 2.84; steps >= 3 worst 1.13"],
+            ["10-08 D198", "libm-mode GPU runner, CPU check", ("n/a (not fidelity)", MUTED), ("-", MUTED), ("-", MUTED), "vs NumPy libm: 555 A + 3 B of 558; vs libimf CPU: A126 B170 C47 D215 (a property of libm, not of the port)"]]
+    hh = p.table(MARGIN, y, [92, 190, 100, 82, 82, W - 2 * MARGIN - 546], rows, 10, maxh=360, bold_cols=(0,))
+    yy = y + hh + 10
+    banner(p, MARGIN, yy, W - 2 * MARGIN, 50,
+           "dec01 / jan01 stay PARTLY MET because of the ported land surface (SURFACE, D187 'first failing stage'); not re-diagnosed since. Four surface-composite exports (QGAVG, USAVG, VSAVG, TGVAVG) were category D against the real end record in D187 and were not re-measured in D191.", AMBER, 8.8)
+    footer(p, n, "D129, 0ad795b, D135-D136, D187, D191 s3, D195, D198 s2-3; ACCEPTANCE s3")
+    return p
+
+
+# ------------------------------------------------------------------ 7
+@slide
+def s_what_is_jax(n):
+    p = P("jax")
+    y = header(p, "FINDINGS | WHAT IS JAX AND WHAT IS NOT", "The assembled coupled step (D191) is a hybrid", None, 22)
+    G, A_, O = GREEN, AMBER, ORANGE
+    rows = [["Component", "How it runs in the assembled step", "Status", "Source"],
+            ["Atmosphere phase 1 dynamics (J1)", "JAX; 75 kernel dispatches from Python; pow through libimf host callback", ("JAX + callback", A_), "D186, D191"],
+            ["Clouds / convection", "LSCOND and MSTCNV on device (D189, fused libimf callbacks); QUS subsidence (176 calls, 249.5 MB) and 2 pole columns are host callbacks", ("JAX + callbacks", A_), "D189, D191 s4"],
+            ["Radiation (SOCRATES)", "Original Fortran RADIA via persistent server (~11 s/call, every 5th step, 33.7 MB to host, 11.6 MB back) or REPLAYED from the real record. Never ported.", ("Fortran / replay", O), "D159-D162, D185, SOCRATES_PORT_PLAN"],
+            ["libimf pow/exp", "Host callback into the original build's Intel runtime (the fidelity configuration); GPU/libm mode has none", ("host callback", O), "ACCEPTANCE s8.1, D183"],
+            ["Surface tiles + land (GHY)", "JAX SURFACE stage on fixed-shape tiles (D188); Ent exports, land forcing and tile radiation columns are RECORDED each step", ("JAX + recorded", A_), "D188, D191 s1"],
+            ["Post-tile surface + ocean", "Device-resident JAX (GROUND_*, RIVERF, DYNSI, OCEANS, FORM_SI, ADVSI); OADVT2 east-west pre-pass is a host callback", ("JAX + callback", A_), "D190, D191"],
+            ["Phase 2 (DISSIP, FILTER)", "jnp, bitwise vs NumPy; pow of SLP/MAtoPMB/PEK through libimf callback", ("JAX + callback", A_), "D191 s1"],
+            ["Host work every step", "template_build (eager, 294 dispatches), record load (200 calls, 138 MB), day boundary DAILY_ATMDYN in NumPy", ("host", O), "D191 s4, D195"],
+            ["Not implemented", "new-ice-tile donor rule; daily_LAKE (D196); daily ocean/ice/land updates; transfer-guard test of the full step", ("missing", O), "D191 s1, D195 s6, D196"]]
+    p.table(MARGIN, y, [150, 480, 95, W - 2 * MARGIN - 725], rows, 10, maxh=410, bold_cols=(0,))
+    p.text(MARGIN, 484, W - 2 * MARGIN, "D191 verdict on ACCEPTANCE s1: items 2-5 hold as reporting items; item 1 holds under owner decision 8.3 (three jit units plus host calls) for the prognostic state, with named exceptions. 'I do not call it end-to-end JAX.'", 8.6, AMBER, True, maxh=24)
+    footer(p, n, "D191 s1, s4 (non-JAX stage list); D183, D185, D188-D190; ACCEPTANCE s1, s8; SOCRATES_PORT_PLAN (planning only)")
+    return p
+
+
+# ------------------------------------------------------------------ 8
+@slide
+def s_perf(n):
+    p = P("perf")
+    y = header(p, "FINDINGS | STEP TIMINGS", "44.3 s to 18.8 s per step; 262 to 99 jit executions", None, 22)
+    p.image(MARGIN - 4, y - 2, W - 2 * MARGIN + 8, 200, os.path.join(IMG, "perf_steps.png"))
+    yy = y + 204
+    rows = [["Entry", "Change", "Before -> after", "Note"],
+            ["D182", "cold-compile pathology: XLA flags algsimp + reshape-mover disabled", "~3,000 s -> 390 s cold step 0 (commit 7131447: ~30x faster cold compile)", "results bitwise identical"],
+            ["D188", "SURFACE stage in JAX on fixed-shape tiles", "~2x faster, zero eager dispatches inside", "category A on 3 dates"],
+            ["D189", "MSTCNV as one device program, fused libimf callbacks", "phase 1 of step 0: 33.6 s -> 11.9 s", "bitwise equal"],
+            ["D190", "post-tile surface + ocean as JAX", "123 -> 5 jit executions; 8.0 s -> 1.76 s", "149/149 category A"],
+            ["D191", "assembly of J1 + J2 + J3", "steady 44.3 -> 18.8 s; cold first step 349 -> 490 s (worse)", "shared node, one run per number"],
+            ["D191", "vs NumPy libimf chain, same cores", "only 1.2-1.4x faster (22.6-23.3 s)", "46% of step is MSTCNV + callbacks, 13% dynamics dispatch"],
+            ["D198", "libm-mode runner on CPU", "cold 572 s, steady 11.0 s (load average ~20)", "indicative; GPU time unknown"]]
+    p.table(MARGIN, yy, [42, 270, 300, W - 2 * MARGIN - 612], rows, 7.9, maxh=272, bold_cols=(0,))
+    footer(p, n, "D182 (+commit 7131447), D188-D191 s5, D198 s3; times: CPU, no GPU, no compile cache, cores/loads as stated in each entry")
+    return p
+
+
+@slide
+def s_stage_share(n):
+    p = P("stageshare")
+    y = header(p, "FINDINGS | WHERE THE STEP TIME GOES", "Callbacks and recorded-input work still dominate the assembled step",
+               "D191 section 4, nov26, steady, timed run with a device block after every stage (step 17.8 s, stage sum 20.1 s incl. record load).", 21)
+    items = [("condse_mstcnv [device + libimf/QUS callbacks]", 46.4, ORANGE), ("dyn [75 dispatches + libimf pow]", 13.1, AMBER),
+             ("condse_post [LSCOND libimf, north-pole callback]", 12.5, ORANGE), ("record_load [recorded]", 11.3, ORANGE),
+             ("surface_tiles_land [JAX + recorded Ent/forcing]", 3.7, AMBER), ("ocean_b [OADVT2 pre-pass callback]", 2.7, AMBER),
+             ("condse_setup [south pole callback]", 1.8, AMBER), ("dissip_filter [libimf callbacks]", 1.2, AMBER),
+             ("template_build [host]", 1.2, ORANGE), ("ocean_a [pure JAX]", 5.3, GREEN)]
+    x0, bw = MARGIN + 300, 360
+    for i, (lab, v, c) in enumerate(items):
+        yy = y + 6 + i * 26
+        p.text(MARGIN, yy, 296, lab, 8.6, INK2, maxh=22)
+        p.rect(x0, yy + 1, max(bw * v / 50.0, 3), 14, c, 3)
+        p.text(x0 + bw * v / 50.0 + 6, yy + 1, 60, "%.1f%%" % v, 8.8, INK, True, True)
+    yy = y + 6 + len(items) * 26 + 8
+    p.bullets(MARGIN, yy, W - 2 * MARGIN, [
+        "Callback bodies (libimf_ops 5.0 s, fused 0.68 s, QUS 0.78 s, poles 0.39 s, OADVT2 0.26 s = 7.1 s) are included in these shares: about 40% of the step. Radiation: 0.04 s replayed; 12.7 s per call with the real server (1 call per 5 steps).",
+        "Purely-JAX stages (post_a, post_b, surface_pre, template_apply, tile_acc, carry_writeback, melt_si_dev, state_assembly) are each <= 0.2%. The kind labels (JJ/NP/REC) were set by hand from code inspection; the shares are measured.",
+        "Over the 54-step day (D195): steady median 15.9 s (min 15.1, max 18.7); 13 SURFACE rebuild steps of 68-74 s each; cold step 0 428 s; total wall 2,128 s."], 8.8, maxh=110)
+    footer(p, n, "D191 s4-5; D195 s2.2 (day timings). Colors: green = JAX only, amber = JAX with callbacks/records, orange = callback-dominated or host/recorded")
+    return p
+
+
+# ------------------------------------------------------------------ 10
+@slide
+def s_day(n):
+    p = P("day")
+    y = header(p, "FINDINGS | THE 54-STEP DAY", "One model day (nov26) vs five real members: NOT MET under ACCEPTANCE s9", None, 22)
+    p.image(MARGIN - 4, y - 4, W - 2 * MARGIN + 8, 176, os.path.join(IMG, "day_score.png"))
+    yy = y + 174
+    rows = [["Field", "within / near / beyond D195 (D193)", "worst ratio steps >= 3", "worst ratio all steps", "near steps", "beyond"],
+            ["T", "54/0/0 (54/0/0)", "0.94 (step 41)", "0.94", "-", "-"], ["U", "53/1/0 (53/1/0)", "1.02 (4)", "1.02", "4", "-"],
+            ["V", "54/0/0 (54/0/0)", "0.90 (8)", "0.90", "-", "-"], ["Q", "41/13/0 (43/11/0)", "1.05 (47)", "1.05", "41-53", "-"],
+            ["P", "54/0/0 (53/1/0)", "0.98 (37)", "0.98", "-", "-"],
+            ["QCL", "47/6/1 (49/4/1)", "1.13 (21)", ("2.84 (step 1)", ORANGE), "2, 13, 14, 18, 20, 21", ("step 1", ORANGE)],
+            ["QCI", "54/0/0 (54/0/0)", "0.98 (8)", "0.98", "-", "-"]]
+    hh = p.table(MARGIN, yy, [50, 190, 140, 140, 150, W - 2 * MARGIN - 670], rows, 7.8, maxh=140, bold_cols=(0,))
+    yy += hh + 6
+    banner(p, MARGIN, yy, W - 2 * MARGIN, 66,
+           "Status: NOT MET (owner decision 2026-10-08, ACCEPTANCE s9). The only field beyond 2x is QCL at step 1 (ours 1.15e-6 vs largest member distance 4.06e-7). "
+           "'Within at every step' also fails (U, Q, QCL near at some steps). The earlier claim of a ~1e-9 floor at steps < 3 was wrong (correction 8a649f7); no exception clause is recorded.", ORANGE, 8.8)
+    p.text(MARGIN, yy + 72, W - 2 * MARGIN, "Conditions: HYBRID; radiation REPLAYED (not computed); libimf host callback; Ent, land forcing, template columns recorded; ocean/ice/land daily updates not applied; nit_strict=False after step 22; one start state; five members. D193 table in brackets, newer D195 used.", 7.8, MUTED, maxh=24)
+    footer(p, n, "D195 s4 (score.md/json), D193 s4, ACCEPTANCE s9, correction note after D195, D197")
+    return p
+
+
+@slide
+def s_diag(n):
+    p = P("diag")
+    y = header(p, "FINDINGS | DIAGNOSES AFTER THE DAY", "D193-D197: each exceedance traced to a cause", None, 22)
+    cards = [
+        (GREEN, "D194 -> D195 (fixed)", "Step 7 divergence",
+         "Not the tile set. GHY cells with ffnit > 11 must regenerate sub-iteration lengths from OUR precipitation; the step used the recorded one. Fix merged (nit_fix default on): C1 bitwise steps 0-22. The NumPy reference aborts at step 23 (cell (41,21): 11 vs 14 iterations). D193's 'rebuild when the tile set changes' was wrong: the cause is max_substeps."),
+        (ORANGE, "D196 (open, patch not applied)", "Step-48 tile mismatches",
+         "54 lake cells (FOCEAN = 0) lose their open-water tile because daily_LAKE (LAKES.f:2492) is not applied at the day boundary (FLAKE changes in 632 of 636 lake cells at 47->48). Our NumPy chain has the same omission. Level-2 fix is a ~500-line port, not started."),
+        (ORANGE, "D197 (explained, still NOT MET)", "QCL step 1, ratio 2.84",
+         "One bistable cell (31,12,15) holds 96.8% of the squared error. 1-ulp PK differences from the dynamics exit flip a stratiform threshold; 1 of 8 random 1-ulp draws reproduces it exactly. CLOUDS port from real inputs is category A/B; the NumPy chain has the same value. Without that cell the ratio is 0.51. Does not relax the criterion."),
+        (AMBER, "Correction 8a649f7", "Noise floor at steps < 3",
+         "D192/D193/D195 said ~1e-9; wrong for the whole-column rms: largest member distance at k=0,1,2 is QCL 2.9e-7 / 4.1e-7 / 7.6e-7 (T 1.0e-4 / 2.5e-4 / 6.4e-4)."),
     ]
-    for label, ms, val_text, color, emph in stages:
-        bar_w = max(max_bar * log_pct(ms), 3)
-        draw_para(c, label, px, py + 12, 105, 16, size=8, color=MUTED)
-        c.saveState(); c.setFillColor(color)
-        c.roundRect(px + 105, py, bar_w, 14, 3, stroke=0, fill=1)
-        c.restoreState()
-        draw_para(c, val_text, px + 105 + max_bar + 8, py + 12, 150, 16,
-                  size=8.5, color=(GREEN if emph else INK2), bold=emph, font="Courier")
-        py -= 22
-
-    py -= 8
-    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
-    c.line(px, py, px + col_w_left - 36, py)
-    c.restoreState()
-    py -= 16
-    draw_para(c, "4.2x GPU-vs-CPU on the optimized code (same A100, before/after fusing "
-              "~33 per-step JIT dispatches into one) -- clears the &gt;2x target. "
-              "Verification + a measurement-script bug this also fixed: next slide.",
-              px, py, col_w_left - 36, 40, size=8.5, color=GREEN, bold=True)
-
-    # ---- Right (secondary): scope caveat + condensed kernel-level ----
-    top2_h = 190
-    rounded(c, right_x, panel_top - top2_h, col_w_right, top2_h, 12, CARD)
-    rx, ry = right_x + 16, panel_top - 22
-    draw_para(c, "What \"62x\" is actually measuring", rx, ry, col_w_right - 32, 18, size=11, color=INK, bold=True)
-    ry -= 20
-    ry -= draw_para(c, "Real Fortran SURFACE() does more physics than this JAX driver: "
-              "area-weighted sub-tiling, full GHY land hydrology (not wired into JAX), "
-              "and a real tridiagonal turbulence solve (JAX uses a shortcut).",
-              rx, ry, col_w_right - 32, 60, size=8, color=INK2)
-    ry -= 6
-    draw_para(c, "So part of 62x is JAX computing faster -- part is JAX computing less "
-              "physics for that scope. A faithful full port would likely see a smaller ratio.",
-              rx, ry, col_w_right - 32, 50, size=8, color=AMBER, bold=True)
-
-    bot2_h = panel_h - top2_h - 20
-    rounded(c, right_x, panel_top - panel_h, col_w_right, bot2_h, 12, CARD)
-    rx, ry = right_x + 16, panel_top - top2_h - 20 - 22
-    draw_para(c, "Kernel-level (mean of 100 calls)", rx, ry, col_w_right - 32, 16, size=10.5, color=INK, bold=True)
-    ry -= 16
-    draw_para(c, "Isolated routine, not the full pipeline.", rx, ry, col_w_right - 32, 14, size=7.5, color=MUTED)
-    ry -= 22
-    stat_col_w = (col_w_right - 32 - 12) / 2
-    draw_para(c, "13.4x slower", rx, ry, stat_col_w, 18, size=13, color=ORANGE, bold=True, font="Courier")
-    draw_para(c, "2.3-6.3x faster", rx + stat_col_w + 12, ry, stat_col_w, 18, size=13, color=GREEN, bold=True, font="Courier")
-    ry -= 16
-    draw_para(c, "DRYCNV, JAX-CPU", rx, ry, stat_col_w, 14, size=7, color=MUTED)
-    draw_para(c, "DRYCNV/PBL, JAX-GPU", rx + stat_col_w + 12, ry, stat_col_w, 14, size=7, color=MUTED)
-
-    footer(c, "Source: compare_fortran.f90 / compare_jax.py / compare_run_gpu_interactive.py "
-              "(kernel-level) &middot; p2saom40_driver.py / p2saom40_compare.py (full chain, "
-              "NVIDIA A100, discover cluster, 2026-09-22) &middot; STATUS.md")
+    cw = (W - 2 * MARGIN - 12) / 2
+    hs = [150, 130]
+    for i, (c, t1, t2, body) in enumerate(cards):
+        x = MARGIN + (i % 2) * (cw + 12)
+        yy = y + (i // 2) * 168
+        h = 160
+        card(p, x, yy, cw, h, c)
+        p.text(x + 14, yy + 8, cw - 24, t1, 8.5, c, True, True, maxh=14)
+        p.text(x + 14, yy + 24, cw - 24, t2, 12, INK, True, maxh=18)
+        p.text(x + 14, yy + 46, cw - 24, body, 10.2, INK2, maxh=h - 50)
+    footer(p, n, "D193, D194, D195 s1-3, D196 s1-2, D197 s0 (six lines), correction after D195; ACCEPTANCE s9")
+    return p
 
 
-def slide_journey(c):
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(c, "VERIFICATION", "Four Stages, Verified &mdash; Not Just Measured",
-        "This project already found one measurement bug in this exact chain. Before "
-        "shipping \"62x faster,\" here's what was checked before believing it.",
-        title_size=30)
+# ------------------------------------------------------------------ 12
+@slide
+def s_floor(n):
+    p = P("floor")
+    y = header(p, "FINDINGS | WHY THE TEST IS STATISTICAL", "The real model is chaotic; our step is judged against its own spread", None, 22)
+    cw = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, y, cw, 200, BLUE)
+    p.text(MARGIN + 14, y + 8, cw - 24, "Noise floors measured with the real binary", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 28, cw - 26, [
+        "D3 (5 days, 1-ulp T perturbation): T layer-1 pointwise rms 0.048 K, global-mean 1.4e-4 K; whole column T rms 0.27 K; only 36 of 257 restart variables stay bitwise identical.",
+        "D151/D149: five real members for the nov26 day; our NumPy and JAX runs diverge from each other exactly like real members.",
+        "D165: 8 real JAN1950 members (ctrl + 7 one-ulp); ctrl reproduces the stored month bitwise; t_500 global-mean sd 0.043 K; 8 members = about +-25% on a std; one season."], 10, maxh=165)
+    card(p, MARGIN + cw + 12, y, cw, 200, GREEN)
+    p.text(MARGIN + cw + 26, y + 8, cw - 24, "Earlier day results (replayed / free radiation)", 11, INK, True)
+    p.bullets(MARGIN + cw + 26, y + 28, cw - 26, [
+        "D151 open loop: T, U, V within at all 54 steps; Q near 15 steps, condensates near (<= 1.11x); none beyond 2x.",
+        "D155-D157 free-running radiation (real RADIA server): T/U/V within at every step; condensates up to 1.95x (QCI step 47); radiative flux differences < 1 W/m2 global mean.",
+        "D171 (Ent computed): QCI worst 1.62; QCL step 1 ratio 2.90 (D192 re-score). The D192 scorer reproduces D157 and D171 exactly.",
+        "None of these days is 'within at every step' for all fields; they were reported before the 2026-10-08 pass rule."], 9.8, maxh=165)
+    y += 212
+    card(p, MARGIN, y, W - 2 * MARGIN, 108, AMBER)
+    p.text(MARGIN + 14, y + 8, 600, "Consequences", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 28, W - 2 * MARGIN - 28, [
+        "Single steps are deterministic (floor 0) and can be bitwise only with libimf; beyond step ~1 any rounding difference grows, so acceptance is statistical (ACCEPTANCE s4).",
+        "Without libimf, cloud thresholds flip in 3-5% of columns: a multi-step run drifts about 0.1-0.2 K after 6 steps (GOAL.md; D129).",
+        "Limits: five members, one start state, one day; heavy-tailed condensates (QCI, QCL) are single-cell dominated, so a ratio near 2 is not a significance statement (D192)."], 10, maxh=76)
+    footer(p, n, "D3, D129, D149-D151, D155-D157, D165, D171, D192; GOAL.md; ACCEPTANCE s4")
+    return p
 
-    col_w = (W - 2 * MARGIN - 20) / 2
-    left_x = MARGIN
-    right_x = MARGIN + col_w + 20
-    panel_top = y
-    panel_h = 330
 
-    rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
-    px, py = left_x + 18, panel_top - 26
-    draw_para(c, "Three independent checks", px, py, col_w - 36, 18, size=13, color=INK, bold=True)
-    py -= 22
+# ------------------------------------------------------------------ 13
+@slide
+def s_hazards(n):
+    p = P("hazards")
+    y = header(p, "FINDINGS | MATH-LIBRARY AND REPRODUCIBILITY HAZARDS", "What can silently change a bitwise or statistical result", None, 22)
+    rows = [["Hazard", "What was found", "Source"],
+            ["Intel libimf vs glibc pow/exp", "Bitwise needs the real build's libimf. With NumPy/glibc dynamics differ at ~1e-13 and cloud columns flip in 3-5%. pow/exp/log are not correctly rounded: ~0.02% of a KPP table differs by 1 ulp (D54).", "README caveats; D54; D129"],
+            ["Single-precision literals", "Fortran literals without d0 (e.g. **(1./3.) in OCNKPP.f) are single precision under the build; REAL*4 DZDH1 in RIVERF.", "D54, D167"],
+            ["REAL*16 sites", "Only Ti/Ti2b in SEAICE.f; a binary128 emulation makes seaice_to_atmgrid and ADDICE bitwise; not applied to existing modules.", "D173"],
+            ["XLA CPU flags", "FMA fusion and x/c rewrites break bitwise; needs --xla_cpu_max_isa=AVX and algsimp (and reshape-mover, D182) disabled before importing JAX; such tests need separate processes.", "README caveats; D182"],
+            ["Core count / compile cache", "Existing code gives different results on 1 and 3 cores; a warm JAX compile cache changes results. Use identical affinity and no cache for validated runs.", "D139, D145, D175"],
+            ["Host callbacks on one core", "io_callback/pure_callback inside jit DEADLOCK on a single core (0.1% CPU for 23 min). Give such jobs >= 2 cores.", "D185; README"],
+            ["NumPy vs jnp semantics", "x**4 is libm pow in NumPy but repeated multiplication in jnp; jnp.cumsum is not a left-to-right sum.", "SOCRATES_PORT_PLAN s3"],
+            ["GPU device math", "exp, sin, pow differ from NumPy by 1 ulp in 6.14%, 11.96%, 9.07% of values (log 0.22%): category A is unattainable on GPU unless every call goes through a host callback.", "gpu/DISCOVER_RUN.md"]]
+    p.table(MARGIN, y, [150, 600, W - 2 * MARGIN - 750], rows, 10, maxh=420, bold_cols=(0,))
+    footer(p, n, "README_START_HERE.md caveats; D54, D129, D139, D145, D167, D173, D175, D182, D185; gpu/DISCOVER_RUN.md; SOCRATES_PORT_PLAN s3")
+    return p
 
-    checks = [
-        ("1. Did the fix touch the GPU number?",
-         "No. Diffed it line-by-line: the GPU timing code (warm-up, block_until_ready "
-         "before and after) is byte-for-byte unchanged. Only the mislabeled \"CPU\" "
-         "section changed."),
-        ("2. Does it reproduce?",
-         "Two independent runs of the same post-fusion code, same A100: 4.08 ms and "
-         "4.26 ms -- ~4% apart, normal jitter, not a fluke."),
-        ("3. Does the magnitude make sense?",
-         "3,312 points, one fused dispatch, on an A100: low-single-digit ms is expected, "
-         "not suspiciously fast. And 4.2x (not 40x) fits a grid too small to fully "
-         "saturate the GPU -- the same real effect the old buggy number was chasing."),
+
+# ------------------------------------------------------------------ 14
+@slide
+def s_gpu(n):
+    p = P("gpu")
+    y = header(p, "FINDINGS | GPU", "The A100 probe says: fuse into few large kernels, and do not expect bitwise", None, 22)
+    cw = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, y, cw, 250, GREEN)
+    p.text(MARGIN + 14, y + 8, cw - 24, "Measured on Discover (NVIDIA A100-SXM4-40GB, JAX 0.6.1 CUDA)", 10.5, INK, True, maxh=30)
+    p.bullets(MARGIN + 14, y + 40, cw - 26, [
+        "Smoke test 2026-10-07 (job 58776063): 27 pass, 2 warn (no pytest, no libimf), 0 fail; float64 works; jit+scan on model-sized state compiled in 0.6 s.",
+        "Probe (job 58778982): float64 matmul 2048x2048 1.2 ms (about 820 ms on one CPU core of the work node).",
+        "100,000 sequential scan steps: 575 ms on the A100 vs 41 ms on one CPU core: launch-bound, ~5.7 us/step; the probe note calls it 14x slower. Long chains of small ops lose; only wide parallel work wins.",
+        "Device exp 6.14%, sin 11.96%, pow(x,0.25) 9.07%, log 0.22% of values differ from NumPy (max 1 ulp)."], 10, maxh=200)
+    card(p, MARGIN + cw + 12, y, cw, 250, ORANGE)
+    p.text(MARGIN + cw + 26, y + 8, cw - 24, "What D198 built, and what is NOT known", 10.5, INK, True)
+    p.bullets(MARGIN + cw + 26, y + 28, cw - 26, [
+        "gpu_step_run.py runs the ASSEMBLED step in libm mode (no libimf), radiation replayed, no NumPy reference needed; data subset 6b (66 files, 1.58 GB), runbook MODE=step.",
+        "On CPU: libm step equals the NumPy libm chain (555 A + 3 B of 558). Against the libimf CPU result: A126 B170 C47 D215: threshold fields flip with ANY different arithmetic (another XLA version: 198 of 558 category D; no CPU flags: 208).",
+        "NOT run on a GPU. Unknown: whether JAX 0.6.1 CUDA runs it, compile and step time (CPU: cold 513-572 s, steady 10-14 s), callbacks inside while loops, memory.",
+        "Expected: ~99 jit executions, ~490 eager dispatches, 176 QUS callbacks per step: launch-bound, possibly slower than the CPU."], 10, maxh=215)
+    y += 262
+    banner(p, MARGIN, y, W - 2 * MARGIN, 52,
+           "Honest label for any future GPU result: libm mode, radiation replayed, recorded inputs, HYBRID, not bitwise to CPU or Fortran; judged at rounding-level categories for one step and statistically beyond. It must not be used for a C2 / fidelity claim (D198 parent check).", AMBER, 8.8)
+    footer(p, n, "gpu/DISCOVER_RUN.md (smoke 58776063, probe 58778982); D198 s1-3, s6; Track A GPU numbers (kernels 2.3-6.3x, chain 4.2x) are in STATUS.md and are reduced-scope")
+    return p
+
+
+# ------------------------------------------------------------------ 15
+@slide
+def s_tests(n):
+    p = P("tests")
+    y = header(p, "FINDINGS | TESTS AND REPRODUCIBILITY", "3,056 passed, 6 skipped at a89e117 (plus one known artifact failure)", None, 22)
+    p.image(MARGIN, y, 470, 243, os.path.join(IMG, "tests_growth.png"))
+    x2 = MARGIN + 490
+    p.bullets(x2, y + 4, W - x2 - MARGIN, [
+        "Batch regression of a89e117 (clean git-archive export, JOBS=4, cores 8-11, 3,667 s): 3,056 passed, 6 skipped, 1 failed.",
+        "The failure, test_jax_harness::test_header_complete, asserts a 40-character git HEAD that an export lacks; passes in the real tree. The test was then changed to tolerate a missing .git (commit 1036056); the full suite was NOT re-run after it.",
+        "The 6 skips are gated tests (environment switches) not run in the batch.",
+        "Mutation and non-vacuity checks accompany most ports; flag-sensitive JAX tests run in separate processes (run_all_tests.sh; sharded runner 34 min vs ~83 min serial, aggregate totals equal).",
+        "Rule of the owner (2026-10-07): large batches; no full-suite re-run per code change."], 8.8, maxh=260)
+    y += 256
+    banner(p, MARGIN, y, W - 2 * MARGIN, 70,
+           "Passed counts are what the repository records at each commit (680 after D51 per Project_Summary; 2,333; 2,848; 2,925; 2,953; 2,972; 3,043; 3,056). They count tests, not validated physics: acceptance is the ledger's per-field categories and the scorer of D192. "
+           "The 2,471 + 206 entry of 264283d is left out (ambiguous).", MUTED, 8.5)
+    footer(p, n, "README_START_HERE handoff; commits 6cb73ed, e843ad6, bd8dd2e, 4d352a8, 13d00c8, 51acc2f, eda8789, 1036056; Project_Summary s5")
+    return p
+
+
+# ------------------------------------------------------------------ 16
+@slide
+def s_remains(n):
+    p = P("remains")
+    y = header(p, "WHAT REMAINS", "Open work, grouped by what it blocks", None, 22)
+    cw = (W - 2 * MARGIN - 24) / 3
+    cols = [
+        (ORANGE, "Blocks the day criterion", [
+            "Day boundary: apply daily_LAKE (D196, ~500-line level-2 port, not started); other daily updates (ocean/ice/land) not applied.",
+            "New-ice-tile donor rule (D190 s6): not implemented; multi-day runs without per-step records need it.",
+            "NumPy reference aborts at step 23: C1 beyond step 22 unavailable; nit_strict policy beyond step 22.",
+            "Leave-one-out scoring with the 8 JAN1950 members (D172) for longer windows: not implemented for the coupled step."]),
+        (AMBER, "Blocks 'end-to-end JAX'", [
+            "Radiation stays Fortran (served/replayed): SOCRATES port is planning only, 34,899 reached lines, 135-295 h estimate, rule unchanged.",
+            "Recorded inputs: Ent exports (stage-1 port exists, not in the assembled step), land forcing, tile radiation columns, CONDSE entry set, PBL profile columns; AG2OG/IG2OG and straits start in ocean chain.",
+            "Host callbacks (libimf, QUS, poles, OADVT2) and host template build; no transfer-guard test of the full step.",
+            "dec01/jan01 PARTLY MET from the ported land surface (not re-diagnosed)."]),
+        (BLUE, "Blocks the project's purpose (GPU)", [
+            "First GPU run of the assembled step (D198 runner ready; MODE=step).",
+            "Fusing the step into few large kernels (probe: launch-bound).",
+            "Speed without the libimf callback was not measured (D191 s5).",
+            "Reference identity: our run is not shown to be the supplement run P2SAoM40_003 (PROVENANCE_MANIFEST); the 100-year climatology comparison is a later milestone, not tested."]),
     ]
-    for title, body in checks:
-        ih = 92
-        left_bar_card(c, px, py - ih, col_w - 36, ih, GREEN, r=6)
-        draw_para(c, title, px + 14, py - 18, col_w - 64, 20, size=10.5, color=INK, bold=True)
-        draw_para(c, body, px + 14, py - 38, col_w - 64, 52, size=8, color=MUTED)
-        py -= ih + 10
-
-    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - 26
-    draw_para(c, "The scope caveat -- read before quoting 62x", rx, ry, col_w - 36, 18,
-              size=11, color=AMBER, bold=True)
-    ry -= 22
-    ry -= draw_para(c, "The numbers are real. What they compare isn't two implementations "
-              "of identical work: real Fortran's SURFACE() does area-weighted multi-type "
-              "sub-tiling, full land hydrology (GHY), and a real tridiagonal turbulence "
-              "solve -- none of which the JAX full-chain driver currently does.",
-              rx, ry, col_w - 36, 70, size=9, color=INK2)
-    ry -= 8
-    ry -= draw_para(c, "A faithful, fully-featured port would do more work than today's "
-              "simplified driver and would likely land at a smaller -- still real -- multiple.",
-              rx, ry, col_w - 36, 40, size=9, color=AMBER, bold=True)
-    ry -= 16
-    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
-    c.line(rx, ry, rx + col_w - 36, ry)
-    c.restoreState()
-    ry -= 22
-    draw_para(c, "Bottom line", rx, ry, col_w - 36, 16, size=11, color=INK, bold=True)
-    ry -= 20
-    ry -= draw_para(c, "17.94 ms &rarr; 4.26 ms is a real, reproducible <font color='#4ADE80'><b>4.2x GPU "
-              "speedup</b></font> on the physics this driver actually runs today -- clearing "
-              "this project's own &gt;2x target from real dispatch-fusion engineering, "
-              "not a measurement artifact.",
-              rx, ry, col_w - 36, 60, size=9.5, color=INK2)
-    ry -= 6
-    draw_para(c, "Treat it as a validated, scope-bounded win: real for what's ported "
-              "today, not yet a claim about the full model.",
-              rx, ry, col_w - 36, 30, size=8.5, color=MUTED)
-
-    footer(c, "Full chart + discussion: claude.ai/artifact/FmHsaDwSg9ap1BUY5Be9Ai &middot; "
-              "STATUS.md \"Full Physics Chain\" &amp; \"GPU optimization: Phase 1\"")
+    for i, (c, t, its) in enumerate(cols):
+        x = MARGIN + i * (cw + 12)
+        card(p, x, y, cw, 380, c)
+        p.text(x + 14, y + 8, cw - 24, t, 11, INK, True, maxh=18)
+        p.bullets(x + 14, y + 32, cw - 26, its, 10.6, maxh=340, gap=8)
+    p.text(MARGIN, y + 388, W - 2 * MARGIN, "Effort: no current total is derived. GOAL.md (10-06) says ~100-170 h more to a month comparison; README_START_HERE (10-07) says that figure is too high but gives no new total; treat any total as provisional.", 8.3, MUTED, maxh=22)
+    footer(p, n, "README_START_HERE (next steps, remaining effort); D190 s6, D191 s7, D195 s6, D196, D198 s6; SOCRATES_PORT_PLAN; PROVENANCE_MANIFEST s4, s6; ACCEPTANCE s9")
+    return p
 
 
-def slide_next_steps(c):
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(c, "WHAT'S NEXT", "Recommendation &amp; Open Items", title_size=26)
-
-    col_w = (W - 2 * MARGIN - 20) / 2
-    left_x = MARGIN
-    right_x = MARGIN + col_w + 20
-    panel_top = y
-    panel_h = 330
-
-    rounded(c, left_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
-    px, py = left_x + 18, panel_top - 26
-    draw_para(c, "The remaining 3 modules &mdash; closed, not pursuing", px, py, col_w - 36, 20,
-              size=12, color=INK, bold=True)
-    py -= 20
-    py -= draw_para(c, "Scoped 2026-09-23 (GHY alone is a coupled land-surface model needing its "
-              "own orchestration ported, not a function to wire in) and decided against: it "
-              "doesn't serve this project's actual goal -- a representative, consistent-answers "
-              "workflow across Fortran/CPU/GPU/optimized, already achieved -- only a different "
-              "goal (scientific fidelity) this project isn't pursuing.",
-              px, py, col_w - 36, 55, size=8, color=MUTED)
-    py -= 14
-
-    items = [
-        (FOOTER, "SEAICE (core thermodynamics) — not pursuing",
-         "Domain case for porting (polar surface energy balance) still holds if the project's "
-         "goal ever shifts to fidelity -- kept in STATUS.md, not acted on."),
-        (FOOTER, "ATURB (PBL-top-finding) — not pursuing",
-         "Same reasoning as SEAICE. Has real tridiagonal-solver code already, but hardcoded "
-         "placeholder closure constants (c1-c5, b1) instead of real values."),
-        (ORANGE, "LAKES (lkmix) — defer",
-         "Lowest priority of the three even under the fidelity-first framing. Small fraction "
-         "of Earth's surface."),
-    ]
-    for bar, title, note in items:
-        ih = 74
-        left_bar_card(c, px, py - ih, col_w - 36, ih, bar, r=6)
-        draw_para(c, title, px + 14, py - 16, col_w - 64, 20, size=10, color=INK, bold=True)
-        draw_para(c, note, px + 14, py - 34, col_w - 64, 44, size=8, color=MUTED)
-        py -= ih + 8
-
-    rounded(c, right_x, panel_top - panel_h, col_w, panel_h, 12, CARD)
-    rx, ry = right_x + 18, panel_top - 30
-    draw_para(c, "Open items", rx, ry, col_w - 36, 18, size=13, color=INK, bold=True)
-    ry -= 36
-    opens = [
-        "<s>Get the full physics-chain GPU speedup above 2x</s> — <b><font color='#4ADE80'>done</font></b>, "
-        "2026-09-22: fused ~33 per-step JIT dispatches into one, then found and fixed a bug "
-        "where the \"CPU\" baseline was secretly timing the GPU. Real result: "
-        "<b><font color='#4ADE80'>4.2x</font></b> GPU speedup.",
-        "Fix the wind-speed convention bug in the shared FLUXES/SURFACE module files themselves "
-        "— currently only worked around locally.",
-        "<s>Port SEAICE + ATURB, re-run the correlation check</s> — "
-        "<b><font color='#94A3B8'>closed, not pursuing</font></b>. Scoped 2026-09-23; doesn't "
-        "serve this project's representative-workflow goal (see left).",
-    ]
-    for i, item in enumerate(opens, 1):
-        ry -= draw_para(c, f"<b><font color='#4ADE80'>{i}</font></b>  {item}", rx, ry, col_w - 36, 60, size=10.5, color=INK2)
-        ry -= 20
-
-    footer(c, "Full detail and reasoning: STATUS.md (this repo, projects/imvi/rocke3d_jax)")
+# ------------------------------------------------------------------ 17
+@slide
+def s_decisions(n):
+    p = P("decisions")
+    y = header(p, "DECISIONS", "Owner decisions taken (10-07, 10-08) and decisions still pending", None, 22)
+    cw = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, y, cw, 392, GREEN)
+    p.text(MARGIN + 14, y + 8, cw - 24, "Taken (recorded in the repository)", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 30, cw - 26, [
+        "2026-10-07 (GOAL.md): 'port' = end-to-end JAX first, validated components second; success = one coupled step first, then multi-day; a Fortran radiation callback is acceptable but must be labelled; match P2SAoM40 first; one-month and 100-year comparisons are later milestones.",
+        "2026-10-07: ACCEPTANCE_CRITERIA approved before any coupled step was compared; later changes must be dated, never silent.",
+        "2026-10-07 (s8): headline C2 uses a labelled libimf host callback and is also reported in libm mode; three jit units plus host calls satisfy s1 if boundaries and non-JAX stages are reported; D176 files adopted, D178 after verification.",
+        "2026-10-07: Ent exports stay recorded up to one day; Ent port started. One writer per working tree. Test/push rule: large batches.",
+        "2026-10-08 (s9): day pass rule = never beyond 2x at every step; nov26 day NOT MET; no exception for steps 0-2; relaxation only later, only to advance to the GPU run, dated, with both statuses."], 10.6, maxh=350, gap=7)
+    card(p, MARGIN + cw + 12, y, cw, 392, ORANGE)
+    p.text(MARGIN + cw + 26, y + 8, cw - 24, "Pending for the owner (as the documents stand)", 11, INK, True)
+    p.bullets(MARGIN + cw + 26, y + 30, cw - 26, [
+        "Whether to relax the day criterion to advance to the GPU run (s9.3): must be a dated decision after the results, stating the unrelaxed status next to it.",
+        "nit_strict policy beyond step 22 and what to do about the NumPy reference abort at step 23 (D195).",
+        "Whether to implement daily_LAKE (D196 patch proposal, level 2 ~500 lines) and the new-ice-tile donor rule.",
+        "Name the GPU host formally (ACCEPTANCE s7.4 / s8.5 still list it open; Discover A100 smoke/probe jobs exist) and when to run MODE=step.",
+        "Whether carbon outputs are part of the F3 acceptance; whether to apply the binary128 Ti/Ti2b diff (speed vs bitwise).",
+        "Whether to lift the rule 'SOCRATES is never ported' (plan: 135-295 h, decisions D1-D6).",
+        "With the project lead: the final comparison target (published 100-year climatology vs a shorter run), identity of our reference with P2SAoM40_003, where ANN4099.aijP2SAoM40.nc lives."], 10.6, maxh=350, gap=7)
+    footer(p, n, "GOAL.md; ACCEPTANCE_CRITERIA s7-s9; README_START_HERE (owner decisions, 6a-6c); D195 parent check; D196 s4; SOCRATES_PORT_PLAN; PROVENANCE_MANIFEST s6; DOCUMENTATION_REVIEW")
+    return p
 
 
-def slide_output_maps(c):
-    import os
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(c, "OUTPUT MAPS", "Where JAX and Fortran Differ, Spatially", title_size=24)
-
-    y -= draw_para(c,
-        "Difference maps only, from visualize_p2saom40_kernel_maps.ipynb / "
-        "outputs/p2saom40_kernel_*_diff_*.html, on P2SAoM40's real 72x46 grid. Field values are "
-        "synthetic test data, not real climate.",
-        MARGIN, y, W - 2 * MARGIN, 30, size=9.5, color=MUTED)
-    y -= 12
-
-    img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images", "diff_grid.png")
-    img_h = 300  # explicit, budget-checked so the note below and the footer both stay on-page
-    img_w = img_h * (2400 / 1050)  # native aspect ratio of diff_grid.png
-    img_x = MARGIN + (W - 2 * MARGIN - img_w) / 2  # centered
-    c.drawImage(img_path, img_x, y - img_h, width=img_w, height=img_h,
-                preserveAspectRatio=True, mask="auto")
-    y -= (img_h + 14)
-
-    draw_para(c,
-        "The bright outlier points in pbl.u/dpsih/dpsiq come from a few grid cells with "
-        "near-zero Monin-Obukhov length -- both Fortran and JAX reproduce the same outliers, so "
-        "these are still the same floating-point-level diffs reported in STATUS.md, not a bug.",
-        MARGIN, y, W - 2 * MARGIN, 30, size=8.5, color=FOOTER)
-
-    footer(c, "All 40 generated maps: outputs/p2saom40_kernel_*.html &middot; "
-              "notebook: visualize_p2saom40_kernel_maps.ipynb")
+# ------------------------------------------------------------------ 18
+@slide
+def s_caveats(n):
+    p = P("caveats")
+    y = header(p, "HONESTY NOTES", "Where documents disagree, and what this deck did about it", None, 22)
+    rows = [["Topic", "Disagreement found", "Used here"],
+            ["Ledger range", "The request mentions D1..D199; the ledger ends at D198 (HEAD ec36779).", "D1-D198"],
+            ["Step time", "GOAL.md (10-06): ~6 s per step plus clouds; D187: 44.3 s; D191: 18.8 s steady.", "D191 (newest)"],
+            ["Remaining effort", "GOAL.md ~100-170 h; README says too high, no new total; older 30-65 h understated.", "no total claimed"],
+            ["Noise floor at steps < 3", "D192/D193/D195 '~1e-9'; correction 8a649f7 shows 4e-7 (QCL, step 1).", "correction"],
+            ["SURFACE rebuild cause", "D193: tile set changes; D195: max_substeps.", "D195"],
+            ["Day table counts", "D193 Q 43/11/0, QCL 49/4/1; D195 Q 41/13/0, QCL 47/6/1.", "D195"],
+            ["C1 array count", "D187 559/559; D191 558/558 (p4_ij host index array is reference-only).", "558 for D191"],
+            ["Summary page age", "Project_Summary_and_Conclusions.md stops at D51 (680 tests); STATUS.md is Track A.", "ledger + README"],
+            ["GPU host", "ACCEPTANCE lists the GPU host as to be named; README/DISCOVER_RUN record an A100 smoke test and probe on Discover.", "both stated"],
+            ["Jit executions in the probe note", "DISCOVER_RUN says 'about 125'; D187 262, D191 99.", "D187/D191"]]
+    p.table(MARGIN, y, [150, 600, W - 2 * MARGIN - 750], rows, 9.6, maxh=380, bold_cols=(0,))
+    p.text(MARGIN, 470, W - 2 * MARGIN, "Not claimed anywhere in this deck: a pass of the day criterion; end-to-end JAX; any GPU speed-up of the full port; reproduction of the published 100-year climatology (ACCEPTANCE s5); any C2 statement from a C1 result.", 8.8, AMBER, True, maxh=30)
+    footer(p, n, "GOAL.md; README_START_HERE; Project_Summary; STATUS.md; ACCEPTANCE s5, s7-s9; D187, D191, D193, D195, correction 8a649f7; gpu/DISCOVER_RUN.md")
+    return p
 
 
-def slide_appendix_profile(c):
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-    y = eyebrow_title(c, "APPENDIX", "Where the Pre-Fusion 55ms Actually Went",
-        "The profiling data behind the Phase 1 optimization on the Performance slide: "
-        "run_dtsrc_step dispatching 33 separate JIT calls per step, CPU, post-warmup, "
-        "mean of 30-100 calls.", title_size=26)
-
-    col_w_left = (W - 2 * MARGIN - 20) * 0.6
-    col_w_right = (W - 2 * MARGIN - 20) * 0.4 - 20
-    left_x = MARGIN
-    right_x = MARGIN + col_w_left + 20
-    panel_top = y
-    panel_h = 300
-
-    rounded(c, left_x, panel_top - panel_h, col_w_left, panel_h, 12, CARD)
-    px, py = left_x + 18, panel_top - 22
-
-    JIT_BLUE = HexColor("#2a78d6")
-    HOST_ORANGE = HexColor("#eb6834")
-    PY_AQUA = HexColor("#1baf7a")
-    rows = [
-        ("Unaccounted Python orchestration", "18.00 ms  32.5%", 1.0, PY_AQUA),
-        ("dry_convection_mixing_jit (1 call)", "13.68 ms  24.7%", 0.767, JIT_BLUE),
-        ("getcm + getchq (24 calls)", "13.35 ms  24.1%", 0.750, JIT_BLUE),
-        ("compute_pk_pek (1 call)", "4.56 ms  8.2%", 0.253, JIT_BLUE),
-        ("_surface_fluxes_relative_wind (2, not @jit)", "2.58 ms  4.7%", 0.143, HOST_ORANGE),
-        ("build_pressure_profile (NumPy loop)", "2.34 ms  4.2%", 0.130, HOST_ORANGE),
-        ("Everything else (5 calls)", "0.95 ms  1.6%", 0.053, JIT_BLUE),
-    ]
-    max_bar = 150
-    for label, val, frac, color in rows:
-        draw_para(c, label, px, py + 8, col_w_left - 36 - max_bar - 90, 14, size=7.5, color=MUTED)
-        c.saveState(); c.setFillColor(color)
-        c.roundRect(px + col_w_left - 36 - max_bar - 80, py, max(max_bar * frac, 3), 12, 3, stroke=0, fill=1)
-        c.restoreState()
-        draw_para(c, val, px + col_w_left - 36 - 78, py + 8, 78, 14, size=7, color=INK2, font="Courier")
-        py -= 20
-
-    py -= 6
-    c.saveState(); c.setStrokeColor(HexColor("#334155")); c.setLineWidth(1)
-    c.line(px, py, px + col_w_left - 36, py)
-    c.restoreState()
-    py -= 16
-    for label, color in [("Redundant JIT dispatch", JIT_BLUE), ("Never fused (host-only)", HOST_ORANGE), ("Python glue overhead", PY_AQUA)]:
-        c.saveState(); c.setFillColor(color); c.rect(px, py - 2, 8, 8, stroke=0, fill=1); c.restoreState()
-        draw_para(c, label, px + 12, py + 6, 150, 12, size=7.5, color=MUTED)
-        px += 165
-    px = left_x + 18
-
-    rounded(c, right_x, panel_top - panel_h, col_w_right, panel_h, 12, CARD)
-    rx, ry = right_x + 16, panel_top - 22
-    draw_para(c, "What this diagnosed", rx, ry, col_w_right - 32, 16, size=11, color=INK, bold=True)
-    ry -= 20
-    ry -= draw_para(c, "Every leaf function was individually @jit-decorated but called "
-              "eagerly from Python -- some inside nested loops (the 6-iteration "
-              "Monin-Obukhov solve x 2 surface substeps = 24 dispatches alone). Two "
-              "functions never touched JAX at all.",
-              rx, ry, col_w_right - 32, 70, size=8, color=INK2)
-    ry -= 6
-    ry -= draw_para(c, "This is what Phase 1 fused into a single jax.jit computation -- "
-              "the direct cause of the 62x result on the Performance slide.",
-              rx, ry, col_w_right - 32, 40, size=8, color=GREEN, bold=True)
-    ry -= 20
-    draw_para(c, "Full interactive chart:", rx, ry, col_w_right - 32, 14, size=8, color=MUTED)
-    ry -= 16
-    draw_para(c, "claude.ai/artifact/WeVvMgHEXKFvVDvb9G3B96", rx, ry, col_w_right - 32, 30,
-              size=8, color=GREEN, font="Courier")
-
-    footer(c, "Source: instrumented run_dtsrc_step / solve_surface_layer / leaf-function "
-              "call counts, this repo's p2saom40_driver.py (pre-fusion) &middot; "
-              "STATUS.md \"GPU optimization: Phase 1\"")
+# ------------------------------------------------------------------ 19
+@slide
+def s_appendix(n):
+    p = P("appendix")
+    y = header(p, "APPENDIX | BEFORE THE FULL-FIDELITY PORT, SOURCES, REBUILD", "Track A history (superseded) and where everything lives", None, 22)
+    cw = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, y, cw, 400, MUTED)
+    p.text(MARGIN + 14, y + 8, cw - 24, "Track A (2026-08-28 to 09-24), reduced scope", 11, INK, True)
+    p.bullets(MARGIN + 14, y + 30, cw - 26, [
+        "Chained GHY/ATURB/SEAICE/LAKES/PBL/SURFACE driver, JAX-vectorized; measured CPU speedups 20-104x per component (Project_Summary s4A); kernels on GPU 2.3x (DRYCNV) and 6.3x (PBL); fused chain 4.2x GPU vs CPU on an A100 (STATUS.md).",
+        "Deliberately NOT full fidelity: SEAICE, LAKES and part of ATURB were placeholders; GHY found to be one on 2026-09-23. DRYCNV is not in the real P2SAoM40 binary (ATURB is; commit b2e0487).",
+        "The earlier deck (status_deck_2026-10-01.pdf, built by build_pdf_2026-10-01.py) reported 14 of 17 modules, 2.3-6.3x GPU kernels and a stop-the-port recommendation; the owner reversed that, so those figures are history, not current status.",
+        "Live artifact of 2026-09-24 (deck.json, slides/*.html) is unchanged and NOT refreshed."], 10.4, maxh=360, gap=6)
+    card(p, MARGIN + cw + 12, y, cw, 400, GREEN)
+    p.text(MARGIN + cw + 26, y + 8, cw - 24, "Sources and rebuild", 11, INK, True)
+    p.bullets(MARGIN + cw + 26, y + 30, cw - 26, [
+        "Ledger: FULL_FIDELITY_DELTAS.md (D1-D198). Index: Reports/README_START_HERE.md. Goal and status: Reports/GOAL.md. Criteria: Reports/ACCEPTANCE_CRITERIA.md (s1, 3, 4, 8, 9).",
+        "Design: JAX_COVERAGE_MATRIX.md (stages S0-S8). Plan/provenance: RECONCILIATION_PLAN.md, PROVENANCE_MANIFEST.md. Contingency: SOCRATES_PORT_PLAN.md. Lessons: LESSONS_LEARNED.md. Chronology table: Reports/PROJECT_CHRONOLOGY.md.",
+        "Rebuild: status_slides/README.md. In short: conda python make_figures.py DIR (matplotlib); python3 build_pdf.py status_deck.pdf --png DIR (system python3, reportlab). Core 11, scratch outside the repository.",
+        "Stage map S0-S8 (JAX_COVERAGE_MATRIX s6): S0 harness, S1 state pytree, S2 phase 1, S3 radiation hand-off, S4 surface tiles/land, S5 post-tile + ocean, S6 assembly, S7 one coupled step, S8 multi-day.",
+        "Review by: when the day criterion status changes, a GPU run exists, or the owner records a relaxation."], 10.4, maxh=360, gap=6)
+    footer(p, n, "Project_Summary s4A; STATUS.md; JAX_COVERAGE_MATRIX s6; status_slides/README.md")
+    return p
 
 
-def main(out_path):
-    c = canvas.Canvas(out_path, pagesize=PAGE)
-    for slide_fn in (slide_bottom_line, slide_performance, slide_journey, slide_next_steps,
-                      slide_output_maps, slide_appendix_profile):
-        slide_fn(c)
-        c.showPage()
+def main(out, png=None):
+    L.OVERFLOWS.clear()
+    c = canvas.Canvas(out, pagesize=(W, H))
+    c.setTitle("ROCKE-3D to JAX: chronology and findings, 2026-10-08")
+    for i, fn in enumerate(SLIDES, 1):
+        pg = fn(i)
+        pg.to_pdf(c)
+        if png:
+            os.makedirs(png, exist_ok=True)
+            pg.to_png(os.path.join(png, "slide_%02d.png" % i))
     c.save()
-    print("wrote", out_path)
+    print("wrote", out, len(SLIDES), "slides")
+    for o in L.OVERFLOWS:
+        print("OVERFLOW:", o)
+    return len(L.OVERFLOWS)
 
 
 if __name__ == "__main__":
-    import sys
-    main(sys.argv[1] if len(sys.argv) > 1 else "deck.pdf")
+    args = sys.argv[1:]
+    png = None
+    if "--png" in args:
+        i = args.index("--png"); png = args[i + 1]; del args[i:i + 2]
+    sys.exit(1 if main(args[0] if args else os.path.join(HERE, "status_deck.pdf"), png) else 0)
