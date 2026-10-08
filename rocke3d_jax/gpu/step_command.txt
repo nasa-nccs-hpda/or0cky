@@ -1,3 +1,8 @@
 # Command for MODE=step of run_gpu_job.sbatch: ONE command line (the first line that is not a comment). $PROJ = the project directory, $OUT = gpu_runs/<jobid>.
-# To be filled in when the assembled step (D191) is verified: its runner, the date, the number of steps, and the output directory $OUT/step.
-# Example shape (NOT valid yet):  cd $PROJ/fullfidelity && OMP_NUM_THREADS=1 python -u <runner>.py nov26 $OUT/step
+# Filled in 2026-10-08 (D198): the GPU-capable runner of the ASSEMBLED coupled step, LIBM mode (no Intel libimf), radiation REPLAYED from the record, nov26.
+#   --steps 6          steps 33312..33317 from the coupled data subset (gpu_data_stage/rocke3d_coupled6_data.tar; use rocke3d_coupled6b_data.tar if the old one lacks files, see D198)
+#                      change to --steps 1 for the shortest practice run (then it also repeats step 0 once for a steady-state time)
+#   --save first-last  end-state npz of step 0 and of the last step in $OUT/step/ (376 MB each); --save none to skip, --save all for every step
+#   optional: add  --ref <npz>  to compare in-script with a saved CPU end state (see gpu/DISCOVER_RUN.md); add  --timed  for per-stage times (slower)
+# Not set on purpose: JAX_PLATFORMS (the GPU must be found), XLA_FLAGS (the CPU-only bitwise flags must not be used on the GPU), any compile cache.
+cd $PROJ/fullfidelity && OMP_NUM_THREADS=1 python -u gpu_step_run.py nov26 $OUT/step --steps 6 --save first-last
