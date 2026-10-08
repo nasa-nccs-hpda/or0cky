@@ -1,0 +1,15 @@
+D196 proposal (TEXT ONLY, nothing applied).  Goal: remove the 54 tile-mask mismatches at step 48 and the FLAKE/RSI drift of 632/286 lake cells after the day boundary.
+
+Two levels.
+
+LEVEL 1 (small, recorded-input convention like SNOAGE, DAILY_ATMDYN; same declaration style as the other recorded inputs).
+At the day boundary (it % 48 == 0, k > 0) in d193_day.main, next to daily_on_state(...):
+  - read from the record of the NEW day's first step (ffc_cse_in_<it>.bin): FLAKE, FEARTH, FLAND, RSI (all (IM,JM));
+  - replace the static geometry arrays that hold FLAKE (geo['flake'], geo['fwater'] = focean + flake, is_lake = flake > 0, the K['flake'] copies used by jax_seaice_lake.py lines ~48/296/341/354 and by jax_posttile.py:71 JR.make_static) by the recorded ones;
+  - set ice['rsi'] in lake cells (FOCEAN == 0, FLAKE_old > 0) to the recorded RSI of the new day.
+  Problem: the daily_LAKE branch also changes MLDLK (LAKES.f:2815-2845: MLDLK*FLAKE/new_flake or a layer-2 entrainment with TLAKE change) and, in the crunch branch (RSI*FLAKE > new_flake: not observed at this boundary: 0 cells RSI -> 1), MSI/SNOWI/HSI.  MWL, GML, MSI, HSI are not changed in the non-crunch branch, but MLDLK/TLAKE are, and they are not in the records.  Level 1 is therefore a RECORDED-STATE approximation for the geometry and RSI only; MLDLK/TLAKE of cells with FLAKE growth stay at the old values (error of the order of the FLAKE change, <= 5e-3 relative).  Static shapes: changing FLAKE values does not change shapes, but any compile-time static index sets derived from flake > 0 (is_lake) must be checked: lake cells with FLAKE -> 0 or new lakes would change the sets (checked: 636 lake cells with FLAKE > 0 at both 33359 and 33360, none lost, so the static index set of lake cells is unchanged at this boundary).  The jit-compiled SURFACE stage must receive FLAKE as a traced array or be rebuilt (jax_surface already rebuilds on static index set change).
+  Test to add (tests/test_jax_surface.py or a new test): after the boundary the lake tile mask mismatches at step 48 are 0 (expected from the data: the 54 cells then have RSI = recorded < 1, so the type-1 tile exists), and the end-of-step-48 lake RSI differs from the record of 33361 by < 1e-3 in all lake cells (49 cells above 1e-3 today).
+
+LEVEL 2 (honest port, needs data not in the records): port daily_LAKE (LAKES.f:2492-3010, ~500 lines, variable_lk = 1).  Inputs missing from the dumps: DMWLDF (GHY soil saturation deficit, GHY_DRV.f:4062-4127), TANLK (lake geometry).  Minimal extra dump (from drv_daily.LAKE_STATUS): per lake cell, DMWLDF, TANLK, FLAKE/FEARTH/FLAND/RSI/MSI/SNOWI/HSI(4)/MWL/GML/TLAKE/MLDLK/T2Lbot before and after daily_LAKE at the first step of a day.  Not to be implemented without that dump (D178 position).
+
+Also worth doing independent of the patch: run the day with Level 1 on and off and compare the score; not done here.
