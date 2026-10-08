@@ -71,3 +71,10 @@ Reported with every correctness result: wall time per step (first step with comp
 3. **"JAX-driven" with several jit units:** three jit units (atmosphere phase 1, surface and ocean, atmosphere phase 2) plus the host calls for radiation and libimf SATISFY section 1, provided the state stays device-resident between stages and the boundaries, transfers and every non-JAX stage are reported.
 4. **Host layer:** the D176 files are verified and adopted as the host-side provider layer; the D178 files (`model_driver.py`, `drv_daily.py`) are adopted after the parent session has verified them.
 5. **Still open:** the GPU host (section 7 point 4).
+
+## 9. Owner decision of 2026-10-08 on the day criterion (section 4); nothing in sections 3 and 4 is loosened
+
+1. **Pass rule for the one-day run (54 steps):** "never beyond 2 times the largest member distance, at every step, for every scored field" (the D151/D157 convention), over ALL steps. "Within the members' spread at every step" is reported as a secondary line, not the pass rule.
+2. **Status of the nov26 day (D193, D195):** NOT MET on this rule. The only field beyond 2x is QCL at step 1 (ratio 2.84: ours 1.15e-6 vs largest member distance 4.06e-7). Steps >= 3: worst ratio <= 1.17 in D193 and 1.13 in D195 (reported as additional information only). The earlier statements that the floor at steps < 3 is "~1e-9" were wrong (correction in `FULL_FIDELITY_DELTAS.md`, commit 8a649f7); no exception clause or exclusion of steps 0-2 is recorded.
+3. **Possible later relaxation:** the owner said (2026-10-08) the criteria may be relaxed later only to advance to the GPU run. If that happens it must be recorded here as a dated owner decision made AFTER the results were known, with the unrelaxed status stated next to it; every result report will then carry both statuses.
+4. **Work queued:** a short QCL step-1 diagnosis; leave-one-out scoring with the 8 JAN1950 members (D172) for longer windows.
