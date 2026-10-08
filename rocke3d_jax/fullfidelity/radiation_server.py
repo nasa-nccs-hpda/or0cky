@@ -33,7 +33,7 @@ SCRATCH = os.environ.get(
 BIN = os.environ.get("RADSRV_BIN", os.path.join(SCRATCH, "mE2/model/P2SAoM40.bin"))
 SRC = "/panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0"
 HUGE = SRC + "/ModelE_Support/huge_space/P2SAoM40"
-FF = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 RESTARTS = {33312: FF + "/_pristine_restarts/fort1_nov26_itime33312.nc"}
 NC_LIB = "/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/lib"
 

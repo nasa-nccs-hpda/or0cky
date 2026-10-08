@@ -19,7 +19,7 @@ import sys
 import numpy as np
 import clouds_helpers_ff as ch
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 COLS = {
     "pmp": "rho flam dc cn out".split(),

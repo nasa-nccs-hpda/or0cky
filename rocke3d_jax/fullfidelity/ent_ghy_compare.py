@@ -27,7 +27,7 @@ import ent_ff as E
 import ghy_compare as GC
 import ghy_ref as G
 
-FF = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 RESTART = {"nov26": f"{FF}/_pristine_restarts/fort1_nov26_itime33312.nc",
            "dec01": f"{FF}/_pristine_restarts/fort1_dec01_itime33552.nc",
            "jan01": f"{FF}/_pristine_restarts/fort1_jan01_itime17520.nc",

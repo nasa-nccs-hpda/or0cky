@@ -6,7 +6,7 @@ import sys
 import numpy as np
 from ostres2_ff import ostres2, geomo_arrays, IM, JM
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 
 
 def load_geom(path):

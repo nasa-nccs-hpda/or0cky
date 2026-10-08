@@ -13,7 +13,7 @@ is taken when mod(ncall + (itime - FFD_START), stride) == 0, so every step sampl
 import glob
 import numpy as np
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 LM = 40
 NMOM = 9

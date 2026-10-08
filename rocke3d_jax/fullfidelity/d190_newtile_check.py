@@ -9,7 +9,7 @@ import clouds_jax_env  # noqa
 import pbl_compare as PC
 
 date = sys.argv[1] if len(sys.argv) > 1 else 'nov26_day'
-FF = '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data'
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 its = sorted(int(os.path.basename(p)[4:-4]) for p in glob.glob(f'{FF}/{date}/ffp_[0-9]*.bin'))
 print(date, 'ffp steps', len(its), its[0], its[-1])
 def rows(it):

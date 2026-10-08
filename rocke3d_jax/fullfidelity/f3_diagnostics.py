@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 IM, JM, LM = 72, 46, 40
 KAIJ = 1660
 KGZ = 20
-FF = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 
 # model constants (Constants_mod.F90, same values as clouds_dq_ff / clouds_helpers_ff)
 TF = 273.15

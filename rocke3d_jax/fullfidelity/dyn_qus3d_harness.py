@@ -30,7 +30,7 @@ import dyn_aadvq_ff as aq
 import dyn_qdynam_io as io
 from dyn_qdynam_io import IM, JM, LM
 
-FF_H = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/qus3d_harness"
+FF_H = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data") + "/qus3d_harness"
 BASE = ("dec01", 33552)
 NAMES = ['real', 'zero', 'ncyc2', 'ncycxy2', 'nstepx4', 'combo', 'real_x3y3z4']
 ERR_NAMES = ['err']

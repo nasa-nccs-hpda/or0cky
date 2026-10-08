@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-FF_DEFAULT = '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data'
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 TAGS = {0: 'pre_precip', 1: 'entry', 2: 'post_ground', 3: 'post_ostres', 4: 'post_oconv', 5: 'post_drag',
         6: 'post_polar', 7: 'post_odhorz0', 8: 'post_odhorz', 9: 'post_ofluxv', 10: 'post_oadvt',
         11: 'post_straits', 12: 'pre_odiff', 13: 'post_odiff', 14: 'exit'}

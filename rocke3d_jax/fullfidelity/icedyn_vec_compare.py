@@ -14,7 +14,7 @@ import dynsi_compare as C
 from icedyn_geom_ff import geomicdyn, icdyn_masks
 from icedyn_geom_compare import read_geom
 
-FF_DATA = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DATA = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = {"nov26": 33312, "dec01": 33552, "jan01": 17520}
 DTS = 1800.0
 OIPHI = np.deg2rad(25.0)

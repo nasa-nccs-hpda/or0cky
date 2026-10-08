@@ -17,7 +17,7 @@ import sys
 import numpy as np
 from dyn_aadvt_ff import aadvt, IM, JM, LM
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 NSTEP = 6
 NCALL = 2

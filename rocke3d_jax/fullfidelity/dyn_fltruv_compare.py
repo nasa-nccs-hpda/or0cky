@@ -14,7 +14,7 @@ import numpy as np
 from dyn_fltruv_ff import (IM, JM, LM, geometry, fltruv, fltry2, conserv_amb_ext,
                            add_am_as_solidbody_rotation, filter_chain)
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 NSTEP = 6
 

@@ -14,7 +14,7 @@ import sys
 import numpy as np
 import clouds_dq_ff as dq
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 NREC = 13
 COLS = ["itime", "site", "kind", "ncall", "sm", "qm", "plk", "mass", "lhx", "pl", "cond", "dqsum", "f"]
 SITE_NAMES = {1: "MSTCNV updraft cond", 2: "MSTCNV downdraft evap", 3: "MSTCNV precip evap",

@@ -25,7 +25,7 @@ import seaice_core_ff as SIF  # noqa: E402
 import atm_step as A  # noqa: E402
 
 IM, JM, LMO = 72, 46, 13
-FF = '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data'
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 TF = 273.15
 DTSRC = 1800.0
 ACE1I = SI.ACE1I

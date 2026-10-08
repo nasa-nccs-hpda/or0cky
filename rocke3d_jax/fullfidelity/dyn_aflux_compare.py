@@ -21,7 +21,7 @@ import sys
 import numpy as np
 from dyn_aflux_ff import (IM, JM, LM, load_geom, aflux, advecm, matop, avrx_tables, avrx_field)
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 NSTEP = 6
 NPASS = 5

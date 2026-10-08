@@ -11,7 +11,7 @@ import sys
 import numpy as np
 import clouds_massflux_ff as mf
 
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 DATES = [("nov26", 33312), ("dec01", 33552), ("jan01", 17520)]
 COLS = ("itime site ncall lmin lhx qmo1 qmo2 smo1 smo2 slh wmdn wmup wmedg airm0 airm1 byam0 byam1 byam2 sm2 qm2 "
         "plk0 plk1 pl0 pl1 fplume fmp2 dqsum iters dmse1 tnx qnx").split()

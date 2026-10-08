@@ -9,7 +9,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import advsi_ff as A  # noqa: E402
 
-FF = '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data'
+FF = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 STATE = ('rsi', 'rsix', 'rsiy', 'rsisave', 'msi', 'snowi', 'hsi', 'ssi')
 MASKED = ('msicnv', 'fwsim')   # defined only where FOCEAN > 0 and (for i > 1 at the poles) not at all: compared on processed cells
 

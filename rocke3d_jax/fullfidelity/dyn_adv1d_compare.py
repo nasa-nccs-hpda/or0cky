@@ -20,7 +20,7 @@ import numpy as np
 from dyn_adv1d_ff import adv1d, XDIR, YDIR, ZDIR
 
 NX = 72
-FF_DEFAULT = "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data"
+FF_DEFAULT = __import__("os").environ.get("FF_DATA", "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data")
 HARNESS_DIR = FF_DEFAULT + "/qus1d_harness"
 DIRS = (XDIR, YDIR, ZDIR)
 
