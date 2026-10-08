@@ -145,12 +145,45 @@ def s_categories(n):
     return p
 
 
+# ------------------------------------------------------------------ 5b
+@slide
+def s_compare(n):
+    p = P("compare")
+    y = header(p, "FINDINGS | WHAT WE COMPARE", "Identical inputs: what 'the same run' means, and what is compared at each horizon",
+               "Same restart, boundary data and configuration (P2SAoM40) for the Fortran and the JAX port; how exact the match can be depends on how far you run.", 22)
+    G, A_, O = GREEN, AMBER, ORANGE
+    rows = [["Horizon", "What is compared", "What 'match' means", "Status (2026-10-08)"],
+            ["One step", "Full model state after the step: T, U, V, Q, P, cloud water and ice, moment arrays; ocean, ice, lake and land state, field by field",
+             "Categories A bitwise, B <= 1e-12 of scale, C <= 1e-6, D worse; met if every gate field is A or B except named columns", ("nov26, dec01, jan01 MET at step 0 after D199 (nov26 with named column (25,16))", G)],
+            ["One model day (54 steps)", "The same fields at every step, as distance from the real run",
+             "Statistical: distance <= 2x the largest spread among five real one-ulp members at every step (ACCEPTANCE s9); bitwise is not expected (chaos)", ("nov26 NOT MET (D195, QCL step 1 = 2.84); rerun on the D199 land code in progress (D200)", O)],
+            ["Months and longer", "Climate statistics: zonal means, variability, energy balance",
+             "Not defined yet; 8-member JAN1950 ensemble and D172 leave-one-out scoring exist, no long run exists", ("not started", MUTED)]]
+    hh = p.table(MARGIN, y, [110, 300, 330, W - 2 * MARGIN - 740], rows, 10, maxh=250, bold_cols=(0,))
+    yy = y + hh + 12
+    h = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, yy, h, 190, BLUE)
+    p.text(MARGIN + 14, yy + 8, h - 24, "Identical inputs: what that includes today", 11, INK, True)
+    p.bullets(MARGIN + 14, yy + 28, h - 26, [
+        "Same restart state, boundary data, orbital and configuration settings, same physics code version: our tests start from the real model's own state at a step boundary.",
+        "The model is chaotic: two correct runs drift apart, so beyond a few steps agreement can only be statistical.",
+        "Bitwise matching needs the Intel libimf math library (host callback); on the GPU even exp/pow differ by 1 ulp in 6-12% of values."], 9.6, maxh=150)
+    card(p, MARGIN + h + 12, yy, h, 190, ORANGE)
+    p.text(MARGIN + h + 26, yy + 8, h - 24, "Not yet an independent same-parameters run", 11, INK, True)
+    p.bullets(MARGIN + h + 26, yy + 28, h - 26, [
+        "Recorded inputs: vegetation (Ent) exports, land forcing and some surface columns are taken from the real model's records each step, so the run is not free-running.",
+        "Radiation is replayed from the record or called through the original Fortran; SOCRATES is not ported.",
+        "The daily lake update at the day boundary is not ported (D196). A real blind comparison needs these computed, and a multi-month criterion defined."], 9.6, maxh=150)
+    footer(p, n, "ACCEPTANCE_CRITERIA.md s2, s3, s4, s8, s9; D187, D191, D195, D196, D199; GPU probe in gpu/DISCOVER_RUN.md")
+    return p
+
+
 # ------------------------------------------------------------------ 6
 @slide
 def s_gates(n):
     p = P("gates")
     y = header(p, "FINDINGS | GATE VERDICTS BY DATE", "Single-step (step 0) verdicts over time: honest status per date",
-               "dec01 and jan01 stay PARTLY MET in every ported-land configuration; nothing here is claimed as a pass beyond what the ledger says.", 22)
+               "dec01 and jan01 were PARTLY MET in every ported-land configuration until D199 fixed the land humidity (step 0, one run each); nothing here is claimed beyond what the ledger says.", 22)
     G, A_, O = GREEN, AMBER, ORANGE
     rows = [["Date / entry", "Configuration", "nov26", "dec01", "jan01", "Note"],
             ["10-06 D129", "libimf, RECORDED land patch", ("MET (named cols)", G), ("MET (A/B)", G), ("MET (named col)", G), "nov26 W2GCM 4 cols 1.7e-12; jan01 1 col <= 2.5e-12"],
@@ -159,12 +192,13 @@ def s_gates(n):
             ["10-06 0ad795b", "libimf, ported GHY after D135/D136 fixes", ("MET", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "all MET with recorded land"],
             ["10-07 D187", "HYBRID assembled (libimf callback, replay radiation)", ("MET, 1 col", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "fails ACCEPTANCE items 1 and 3; 44.3 s/step"],
             ["10-08 D191", "assembled device-resident step", ("MET, 1 col (25,16)", G), ("PARTLY MET", A_), ("PARTLY MET", A_), "worst EGCM 9.9e-9 (dec01), 7.6e-9 (jan01); item 1 holds only under owner decision 8.3 with named exceptions"],
+            ["10-08 D199", "assembled step after the land qg_aver/elhx fix", ("MET, 1 col (25,16)", G), ("MET (1/13/0/0)", G), ("MET (1/13/0/0)", G), "worst gate field 4.1e-13 (dec01), 6.3e-13 (jan01); C1 559/559; step 0 only, replayed radiation, libimf callback"],
             ["10-08 D195 / s9", "54-step nov26 day vs 5 real members", ("NOT MET", O), ("not run", MUTED), ("not run", MUTED), "QCL step 1 ratio 2.84; steps >= 3 worst 1.13"],
             ["10-08 D198", "libm-mode GPU runner, CPU check", ("n/a (not fidelity)", MUTED), ("-", MUTED), ("-", MUTED), "vs NumPy libm: 555 A + 3 B of 558; vs libimf CPU: A126 B170 C47 D215 (a property of libm, not of the port)"]]
     hh = p.table(MARGIN, y, [92, 190, 100, 82, 82, W - 2 * MARGIN - 546], rows, 10, maxh=360, bold_cols=(0,))
     yy = y + hh + 10
     banner(p, MARGIN, yy, W - 2 * MARGIN, 50,
-           "dec01 / jan01 stay PARTLY MET because of the ported land surface (SURFACE, D187 'first failing stage'); not re-diagnosed since. Four surface-composite exports (QGAVG, USAVG, VSAVG, TGVAVG) were category D against the real end record in D187 and were not re-measured in D191.", AMBER, 8.8)
+           "dec01 / jan01 were PARTLY MET because of one land humidity term (D199, fixed at step 0 only; later steps and the day are being re-measured). Four surface-composite exports (QGAVG, USAVG, VSAVG, TGVAVG) were category D against the real end record in D187 and were not re-measured in D191.", AMBER, 8.8)
     footer(p, n, "D129, 0ad795b, D135-D136, D187, D191 s3, D195, D198 s2-3; ACCEPTANCE s3")
     return p
 
