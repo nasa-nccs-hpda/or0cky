@@ -203,7 +203,7 @@ def land_substep_ent_par(p4, g, q1, trup, dtsurf=900.0, dyn=None, ent=None):
                  dth1=-(-ghy["ashg"] + dlw) / (LC.SHA * ma1), dq1=ghy["aevap"] / ma1, tsavg=tsv, qsavg=qsrf)
     ent.sub += 1
     return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next={k: ghy[k] for k in LC.DYN_KEYS},
-                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"])
+                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"], elhx=np.array(p4[:, 19]))
 
 
 def install_par(A, ent):

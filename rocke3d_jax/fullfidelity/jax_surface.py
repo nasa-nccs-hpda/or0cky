@@ -396,7 +396,7 @@ def _land(p4, out, gb, dyn, q1_land, ma1_land, trup, max_substeps):
     patch = dict(uflux1=rcdmws * out["us"], vflux1=rcdmws * out["vs"],
                  dth1=-(-ghy["ashg"] + dlw) / (SHA * ma1_land), dq1=ghy["aevap"] / ma1_land, tsavg=tsv, qsavg=qsrf)
     return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next={k: ghy[k] for k in J_DYN_KEYS},
-                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"])
+                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"], elhx=p4[:, 19])
 
 
 def _pow4(x):
@@ -414,13 +414,15 @@ def next_land_pbl_columns(rec, land):
     ps = rec[:, 16]
     tg = gh["tsns"] + TF
     qg_sat = P.qsat(tg, rec[:, 19], ps)
+    # elhx of the substep that just ran (GHY_DRV.f:1304-1312), see land_chain.next_land_pbl_columns (D199)
+    qg_sat_cur = qg_sat if land.get("elhx") is None else P.qsat(tg, land["elhx"], ps)
     qs = land["pbl"]["qsrf"]
     rcdhws = land["pbl"]["ch"] * land["pbl"]["ws"] * land["rho"]
     em, fr = land["evap_max_ij"], land["fr_sat_ij"]
     m = rcdhws > 1e-30
     qn = jnp.where(m, qs + em / (C001 * jnp.where(m, rcdhws, 1.0)), qs)
-    qn = jnp.minimum(qn, qg_sat)
-    qg = fr * qg_sat + (1.0 - fr) * qn
+    qn = jnp.minimum(qn, qg_sat_cur)
+    qg = fr * qg_sat_cur + (1.0 - fr) * qn
     rhosrf0 = 100.0 * ps / (RGAS * tg * (1.0 + qg * 0.0))
     rec = rec.at[:, 18].set(tg).at[:, 6].set(tg * (1.0 + qg * 0.0)).at[:, 8].set(qg_sat).at[:, 9].set(qg)
     rec = rec.at[:, 11].set(_pow4(gh["tbcs"] + TF)).at[:, 12].set(em * 1000.0 / rhosrf0).at[:, 13].set(fr)

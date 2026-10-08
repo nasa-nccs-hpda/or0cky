@@ -282,7 +282,7 @@ def land_substep_ent(p4, g, q1, trup, dtsurf=900.0, dyn=None, ent=None):
                  dth1=-(-ghy["ashg"] + dlw) / (LC.SHA * ma1), dq1=ghy["aevap"] / ma1, tsavg=tsv, qsavg=qsrf)
     ent.sub += 1
     return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next={k: ghy[k] for k in LC.DYN_KEYS},
-                evap_max_ij=emax, fr_sat_ij=frsat)
+                evap_max_ij=emax, fr_sat_ij=frsat, elhx=np.array(p4[:, 19]))
 
 
 class _LCShim:

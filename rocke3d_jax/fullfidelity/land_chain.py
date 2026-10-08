@@ -93,7 +93,8 @@ def land_substep(p4, g, q1, trup, dtsurf=900.0, dyn=None):
     patch = dict(uflux1=rcdmws * out["us"], vflux1=rcdmws * out["vs"],
                  dth1=-(-ghy["ashg"] + dlw) / (SHA * ma1), dq1=ghy["aevap"] / ma1, tsavg=tsv, qsavg=qsrf)
     return dict(patch=patch, pbl=out, ghy=ghy, rho=rho,
-                dyn_next={k: ghy[k] for k in DYN_KEYS}, evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"])
+                dyn_next={k: ghy[k] for k in DYN_KEYS}, evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"],
+                elhx=np.array(p4[:, 19]))
 
 
 def next_land_pbl_columns(rec, land):
@@ -105,14 +106,18 @@ def next_land_pbl_columns(rec, land):
     ps = rec[:, 16]
     tg = gh["tsns"] + TF
     qg_sat = np.asarray(P.qsat(jnp.asarray(tg), jnp.asarray(rec[:, 19]), jnp.asarray(ps)))
+    # GHY_DRV.f:1304-1312: qg_ij uses qg_sat = qsat(tg1+tf, elhx, ps) with the elhx of the substep that just ran (set from the
+    # ENTRY tg1, GHY_DRV.f:1071-1075), not the elhx of the next substep's row (rec[:, 19]); they differ when tsns crossed 0 C (D199).
+    el_cur = land.get("elhx")
+    qg_sat_cur = qg_sat if el_cur is None else np.asarray(P.qsat(jnp.asarray(tg), jnp.asarray(el_cur), jnp.asarray(ps)))
     qs = land["pbl"]["qsrf"]
     rcdhws = land["pbl"]["ch"] * land["pbl"]["ws"] * land["rho"]
     em, fr = land["evap_max_ij"], land["fr_sat_ij"]
     qn = np.array(qs)
     m = rcdhws > 1e-30
     qn[m] = qs[m] + em[m] / (C001 * rcdhws[m])
-    qn = np.minimum(qn, qg_sat)
-    qg = fr * qg_sat + (1.0 - fr) * qn
+    qn = np.minimum(qn, qg_sat_cur)
+    qg = fr * qg_sat_cur + (1.0 - fr) * qn
     rhosrf0 = 100.0 * ps / (RGAS * tg * (1.0 + qg * XDELT))
     rec[:, 18] = tg
     rec[:, 6] = tg * (1.0 + qg * XDELT)

@@ -81,4 +81,5 @@ def land_substep_v2(p4, g, q1, trup, ma1_ij, dtsurf=900.0, dyn=None, set_elhx=Fa
     patch = dict(uflux1=rcdmws * out["us"], vflux1=rcdmws * out["vs"],
                  dth1=-(-ghy["ashg"] + dlw) / (LC.SHA * ma1), dq1=ghy["aevap"] / ma1, tsavg=tsv, qsavg=qsrf)
     return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next={k: ghy[k] for k in LC.DYN_KEYS},
-                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"], leftovers=left)
+                evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"], leftovers=left,
+                elhx=np.array(p4[:, P_ELHX]))
