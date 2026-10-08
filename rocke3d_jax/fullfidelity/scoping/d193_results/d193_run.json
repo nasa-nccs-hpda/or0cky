@@ -1,0 +1,3951 @@
+{
+ "date": "nov26",
+ "it0": 33312,
+ "nsteps_requested": 54,
+ "header": {
+  "timestamp_utc": "2026-10-08T06:59:29+00:00",
+  "timestamp_local": "2026-10-08T02:59:29-04:00",
+  "host": {
+   "hostname": "forest204",
+   "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+   "machine": "x86_64",
+   "cpu_count_visible": 12
+  },
+  "core_affinity": {
+   "cores": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "n_cores": 5,
+   "pid": 239648
+  },
+  "thread_env": {
+   "OMP_NUM_THREADS": "1",
+   "MKL_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null,
+   "NUMEXPR_NUM_THREADS": null,
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "TF_NUM_INTRAOP_THREADS": null,
+   "XLA_PYTHON_CLIENT_PREALLOCATE": null
+  },
+  "xla_flags": {
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "documented_flags_present": true,
+   "required": [
+    "--xla_cpu_max_isa=AVX",
+    "--xla_disable_hlo_passes=algsimp"
+   ],
+   "jax_imported_before_harness": true
+  },
+  "jax": {
+   "version": "0.5.3",
+   "backend": "cpu",
+   "devices": [
+    "TFRT_CPU_0"
+   ],
+   "x64_enabled": true,
+   "jaxlib_version": "0.5.3"
+  },
+  "compile_cache": {
+   "checked": [
+    "JAX_COMPILATION_CACHE_DIR",
+    "CLOUDS_JAX_CACHE",
+    "jax.config.jax_compilation_cache_dir"
+   ],
+   "cache_set": false
+  },
+  "git": {
+   "head": "5ae767b8085e827f99924f528762da54bf7c7b39",
+   "branch": "full-fidelity-port",
+   "modified_tracked_files": 0,
+   "modified_tracked_list": [],
+   "untracked_entries": 15
+  },
+  "libimf": {
+   "available": true,
+   "search_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+  },
+  "versions": {
+   "python": "3.10.16",
+   "python_full": "3.10.16 (main, Dec 11 2024, 16:24:50) [GCC 11.2.0]",
+   "numpy": "2.2.4",
+   "executable": "/home/gtamkin/.conda/envs/graphcast-env/bin/python"
+  },
+  "argv": [
+   "d193_day.py",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d193/out",
+   "--c1dir",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d193/c1"
+  ],
+  "sentences": {
+   "radiation": "radiation computed by the original Fortran (hybrid component)",
+   "libimf": "libimf math functions provided by a host callback to the original build's runtime"
+  },
+  "extra": {
+   "task": "D193 one model day, assembled coupled step",
+   "date": "nov26",
+   "libimf": {
+    "requested": "libimf",
+    "effective": "libimf",
+    "libimf_available": true,
+    "fallback_allowed": false,
+    "traced": false,
+    "libimf_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+   },
+   "installed": {
+    "clouds_lscond_jax.OPS[imf]": "OpsImf (exp, pw, dq through libimf_ops)",
+    "clouds_mstcnv_jax.jnp": "libimf_ops.JnpProxy (power, exp -> libimf_ops; everything else jax.numpy)",
+    "clouds_mstcnv_jax.conv_micro_j": "conv_micro_j_imf",
+    "dyn_jax_pgf.jnp": "JnpProxy (PKU/PKD pow)",
+    "dyn_jax_aflux.jnp": "JnpProxy (MAtoP pk pow)",
+    "dyn_jax_pgf hk": "KAPA subclass: .01**KAPA = libimf scalar pow",
+    "jax_atm_step.stage_dyn": "stage_dyn (PEK pow via libimf_ops)",
+    "jax_atm_step.stage_condse": "stage_condse (LSCOND mode imf)",
+    "jax_atm_step.make_kit": "KitImf",
+    "jax_p1_glue.jnp": "libimf_ops.JnpProxy (matopmb pk pow, pek_of pow, calc_trop pow x2)",
+    "jax_p1_condse.jnp": "libimf_ops.JnpProxy (snow-age exp)",
+    "jax_p1_condse.lj": "_LjShim (LSCOND core mode \"imf\")",
+    "jax_p1_condse.cf": "_CfShim (pole columns keep the imf backend)",
+    "DynDevice.kit": "jax_atm_step_imf.KitImf (set by make_phase1)"
+   }
+  }
+ },
+ "taskset": [
+  0,
+  1,
+  2,
+  6,
+  7
+ ],
+ "steps": [
+  {
+   "k": 0,
+   "itime": 33312,
+   "wall": 437.2745766621083,
+   "record_load": 2.759044304024428,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 99,
+   "eager_primitives": 551,
+   "compiles_cum": 126,
+   "compile_seconds_cum": 319.76993203163147,
+   "compiles_this_step": 126,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2709,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 1,
+   "itime": 33313,
+   "wall": 18.446284758858383,
+   "record_load": 1.6873060001526028,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 2,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 2,
+   "itime": 33314,
+   "wall": 15.784792718011886,
+   "record_load": 1.908530434826389,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 3,
+   "itime": 33315,
+   "wall": 15.373669563792646,
+   "record_load": 2.307911662850529,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 4,
+   "itime": 33316,
+   "wall": 15.100082583958283,
+   "record_load": 2.020964982919395,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 5,
+   "itime": 33317,
+   "wall": 15.757726654177532,
+   "record_load": 1.1973350390326232,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 6,
+   "itime": 33318,
+   "wall": 16.222821332979947,
+   "record_load": 1.1539385998621583,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 128,
+   "compile_seconds_cum": 320.987872838974,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 7,
+   "itime": 33319,
+   "wall": 71.2251877298113,
+   "record_load": 1.0035467841662467,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 134,
+   "compile_seconds_cum": 356.5730195045471,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 12
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 8,
+   "itime": 33320,
+   "wall": 70.34042055206373,
+   "record_load": 0.9200006029568613,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 140,
+   "compile_seconds_cum": 393.0615921020508,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 13
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 9,
+   "itime": 33321,
+   "wall": 69.48827746906318,
+   "record_load": 1.9467173381708562,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 146,
+   "compile_seconds_cum": 429.68130135536194,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 12
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 10,
+   "itime": 33322,
+   "wall": 73.16899984399788,
+   "record_load": 0.8648805450648069,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 97,
+   "eager_primitives": 492,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2659,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 11,
+   "itime": 33323,
+   "wall": 15.736204009968787,
+   "record_load": 1.7177419089712203,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 12,
+   "itime": 33324,
+   "wall": 16.362260340945795,
+   "record_load": 1.1687959730625153,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 13,
+   "itime": 33325,
+   "wall": 15.744821958942339,
+   "record_load": 1.311871006153524,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 14,
+   "itime": 33326,
+   "wall": 15.882349171908572,
+   "record_load": 1.047641154145822,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 98,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 15,
+   "itime": 33327,
+   "wall": 15.989357745973393,
+   "record_load": 0.7194037560839206,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 16,
+   "itime": 33328,
+   "wall": 15.400889693992212,
+   "record_load": 0.9201033259741962,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 152,
+   "compile_seconds_cum": 466.54231691360474,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 17,
+   "itime": 33329,
+   "wall": 72.32991807698272,
+   "record_load": 1.111332817003131,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 158,
+   "compile_seconds_cum": 503.4647448062897,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 14
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 18,
+   "itime": 33330,
+   "wall": 70.71825007791631,
+   "record_load": 1.3965835869312286,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 164,
+   "compile_seconds_cum": 540.2784831523895,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 13
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 19,
+   "itime": 33331,
+   "wall": 15.569832418812439,
+   "record_load": 1.3027290659956634,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 164,
+   "compile_seconds_cum": 540.2784831523895,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 13
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 20,
+   "itime": 33332,
+   "wall": 15.517242409056053,
+   "record_load": 1.4440851400140673,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 164,
+   "compile_seconds_cum": 540.2784831523895,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 13
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 21,
+   "itime": 33333,
+   "wall": 72.79072230891325,
+   "record_load": 1.6445761232171208,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 170,
+   "compile_seconds_cum": 577.7592170238495,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 12
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 22,
+   "itime": 33334,
+   "wall": 72.85148957604542,
+   "record_load": 1.340287524042651,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 176,
+   "compile_seconds_cum": 614.8239009380341,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 23,
+   "itime": 33335,
+   "wall": 73.09815870807506,
+   "record_load": 1.5740331311244518,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 182,
+   "compile_seconds_cum": 652.492155790329,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 14
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 24,
+   "itime": 33336,
+   "wall": 70.89833893696778,
+   "record_load": 1.6036402769386768,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 188,
+   "compile_seconds_cum": 688.5003423690796,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 15
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 25,
+   "itime": 33337,
+   "wall": 71.09374826122075,
+   "record_load": 1.4959217079449445,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 97,
+   "eager_primitives": 492,
+   "compiles_cum": 194,
+   "compile_seconds_cum": 725.170880317688,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 13
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 26,
+   "itime": 33338,
+   "wall": 72.86963644810021,
+   "record_load": 1.245731770992279,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 200,
+   "compile_seconds_cum": 762.0510694980621,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 12
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 27,
+   "itime": 33339,
+   "wall": 15.665641740895808,
+   "record_load": 1.46013368293643,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 98,
+   "eager_primitives": 490,
+   "compiles_cum": 200,
+   "compile_seconds_cum": 762.0510694980621,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    783
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 12
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 28,
+   "itime": 33340,
+   "wall": 69.28325004898943,
+   "record_load": 1.6913276710547507,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": true,
+   "jit_executions": 96,
+   "eager_primitives": 492,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 6,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 29,
+   "itime": 33341,
+   "wall": 16.322555353865027,
+   "record_load": 1.8136829601135105,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 30,
+   "itime": 33342,
+   "wall": 16.24749235389754,
+   "record_load": 1.8598598910029978,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2657,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 31,
+   "itime": 33343,
+   "wall": 15.689576059114188,
+   "record_load": 1.585865450790152,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2656,
+    784
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 32,
+   "itime": 33344,
+   "wall": 15.236217520898208,
+   "record_load": 1.709205724997446,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2654,
+    785
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 33,
+   "itime": 33345,
+   "wall": 16.10522861778736,
+   "record_load": 1.9588301531039178,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2654,
+    785
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 34,
+   "itime": 33346,
+   "wall": 19.27186699816957,
+   "record_load": 1.3038876818027347,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2653,
+    785
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 35,
+   "itime": 33347,
+   "wall": 15.20798918302171,
+   "record_load": 1.5035376178566366,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    785
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 36,
+   "itime": 33348,
+   "wall": 15.67493926291354,
+   "record_load": 1.5118220578879118,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    785
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 37,
+   "itime": 33349,
+   "wall": 15.8027227378916,
+   "record_load": 1.5055470471270382,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2651,
+    786
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 38,
+   "itime": 33350,
+   "wall": 15.54641767591238,
+   "record_load": 1.5004944000393152,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    786
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 39,
+   "itime": 33351,
+   "wall": 15.188492109067738,
+   "record_load": 1.566958722891286,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 40,
+   "itime": 33352,
+   "wall": 15.943717871094123,
+   "record_load": 1.6230984218418598,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 41,
+   "itime": 33353,
+   "wall": 15.728668062016368,
+   "record_load": 1.492114929948002,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 98,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 42,
+   "itime": 33354,
+   "wall": 15.496728566940874,
+   "record_load": 2.0059498390182853,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 43,
+   "itime": 33355,
+   "wall": 16.208325813058764,
+   "record_load": 2.1807754661422223,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    1,
+    0
+   ],
+   "masks_tiles": [
+    2651,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 44,
+   "itime": 33356,
+   "wall": 17.05998332495801,
+   "record_load": 1.4237003289163113,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 45,
+   "itime": 33357,
+   "wall": 14.596346870064735,
+   "record_load": 1.327509957831353,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2653,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 46,
+   "itime": 33358,
+   "wall": 14.884674374945462,
+   "record_load": 1.7803619808983058,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2653,
+    787
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 47,
+   "itime": 33359,
+   "wall": 14.654349195072427,
+   "record_load": 1.4303772849962115,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    0,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 48,
+   "itime": 33360,
+   "wall": 15.052778932033107,
+   "record_load": 1.4175245771184564,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    55,
+    0
+   ],
+   "masks_tiles": [
+    2651,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": {
+    "deltam": -3.8198777474462986e-11,
+    "smass": 5.117470633825442e+18,
+    "mdryanow": 10034.007535702853,
+    "snoage_change_recorded": 14.040197194325266,
+    "ch4ox_dm_i_spread_rel": 4.657215476599067e-13
+   },
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 49,
+   "itime": 33361,
+   "wall": 15.612366436980665,
+   "record_load": 1.5702951331622899,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    3,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 50,
+   "itime": 33362,
+   "wall": 15.303698853822425,
+   "record_load": 1.825768811861053,
+   "radiation_step": true,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 97,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    3,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 51,
+   "itime": 33363,
+   "wall": 17.487773993983865,
+   "record_load": 1.4286657839547843,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    3,
+    0
+   ],
+   "masks_tiles": [
+    2653,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 52,
+   "itime": 33364,
+   "wall": 15.372201300226152,
+   "record_load": 1.3586023040115833,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    4,
+    0
+   ],
+   "masks_tiles": [
+    2651,
+    788
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  },
+  {
+   "k": 53,
+   "itime": 33365,
+   "wall": 15.047419401817024,
+   "record_load": 1.4393374880310148,
+   "radiation_step": false,
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "flags_sum": 0,
+   "stage_rebuilt": false,
+   "jit_executions": 96,
+   "eager_primitives": 490,
+   "compiles_cum": 206,
+   "compile_seconds_cum": 798.0426917076111,
+   "compiles_this_step": 0,
+   "tile_mask_mismatch": [
+    3,
+    0
+   ],
+   "masks_tiles": [
+    2652,
+    789
+   ],
+   "host": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "daily": null,
+   "n_slp_exp_branch": 0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   }
+  }
+ ],
+ "mdrya": 10034.007535702814,
+ "completed": 54,
+ "error": null,
+ "radiation": "replay of the recorded SRHR/TRHR (held between radiation steps) and COSZ1; no Fortran callback",
+ "record_dir": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26_day",
+ "total_wall": 2135.212610620074,
+ "counters_totals": {
+  "entries": 108,
+  "jit_calls": 0,
+  "h2d_calls": 0,
+  "h2d_bytes": 0,
+  "d2h_calls": 0,
+  "d2h_bytes": 0,
+  "cb_calls": 0,
+  "cb_bytes": 0,
+  "cb_seconds": 0.0,
+  "compiles": 206,
+  "compile_seconds": 798.0426917076111,
+  "wall_seconds": 2082.8149178854655,
+  "self_seconds": 2082.8149178854655
+ },
+ "counters_by_stage": {
+  "record_load": {
+   "entries": 54,
+   "jit_calls": 0,
+   "h2d_calls": 0,
+   "h2d_bytes": 0,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 12,
+   "compile_seconds": 0.2362205982208252,
+   "wall_seconds": 82.08840181748383,
+   "self_seconds": 82.08840181748383
+  },
+  "step": {
+   "entries": 54,
+   "jit_calls": 0,
+   "h2d_calls": 0,
+   "h2d_bytes": 0,
+   "d2h_calls": 0,
+   "d2h_bytes": 0,
+   "cb_calls": 0,
+   "cb_bytes": 0,
+   "cb_seconds": 0.0,
+   "compiles": 194,
+   "compile_seconds": 797.8064711093903,
+   "wall_seconds": 2000.7265160679817,
+   "self_seconds": 2000.7265160679817
+  }
+ },
+ "libimf_ops": {
+  "exp": {
+   "calls": 41742,
+   "elements": 74469227,
+   "bytes_in": 1233258048,
+   "bytes_out": 1096229376,
+   "seconds": 62.51883957441896
+  },
+  "pow": {
+   "calls": 34517,
+   "elements": 131454171,
+   "bytes_in": 2774800656,
+   "bytes_out": 1305788544,
+   "seconds": 159.93784638517536
+  },
+  "total": {
+   "calls": 76259,
+   "elements": 205923398,
+   "bytes_in": 4008058704,
+   "bytes_out": 2402017920,
+   "seconds": 222.45668595959432
+  }
+ },
+ "libimf_fused": {
+  "total": {
+   "calls": 252417,
+   "lanes": 70058075,
+   "bytes_in": 5933410176,
+   "bytes_out": 3893496832,
+   "seconds": 32.10606379294768
+  },
+  "tags": {
+   "base_cb": {
+    "calls": 1188,
+    "lanes": 15054336,
+    "bytes_in": 135489024,
+    "bytes_out": 120434688,
+    "seconds": 0.4831364369019866
+   },
+   "mf_trip": {
+    "calls": 9504,
+    "lanes": 1358716,
+    "bytes_in": 270978048,
+    "bytes_out": 240869376,
+    "seconds": 1.005683563183993
+   },
+   "asc_cb0": {
+    "calls": 36233,
+    "lanes": 10119455,
+    "bytes_in": 921837856,
+    "bytes_out": 604483840,
+    "seconds": 6.055208618286997
+   },
+   "asc_dq": {
+    "calls": 72456,
+    "lanes": 4016470,
+    "bytes_in": 271990080,
+    "bytes_out": 241768960,
+    "seconds": 6.307713775429875
+   },
+   "cm_flam_dc": {
+    "calls": 35645,
+    "lanes": 12762484,
+    "bytes_in": 1779752576,
+    "bytes_out": 837530624,
+    "seconds": 5.807958726771176
+   },
+   "cm_mp": {
+    "calls": 35645,
+    "lanes": 16408908,
+    "bytes_in": 1570369920,
+    "bytes_out": 1076825088,
+    "seconds": 6.738536575809121
+   },
+   "dd_dq": {
+    "calls": 54564,
+    "lanes": 3685395,
+    "bytes_in": 208050336,
+    "bytes_out": 184933632,
+    "seconds": 4.777051510056481
+   },
+   "pp_dq": {
+    "calls": 7128,
+    "lanes": 6527223,
+    "bytes_in": 530651520,
+    "bytes_out": 471690240,
+    "seconds": 0.868082138709724
+   },
+   "post_radius": {
+    "calls": 54,
+    "lanes": 125088,
+    "bytes_in": 244290816,
+    "bytes_out": 114960384,
+    "seconds": 0.06269244779832661
+   }
+  }
+ },
+ "qus_callbacks": {
+  "calls": 9504,
+  "bytes": 14267671040,
+  "seconds": 41.21999747049995
+ },
+ "oadvt2_prepass_callbacks": {
+  "calls": 216,
+  "seconds": 15.515072862617671,
+  "bytes_in": 164468416,
+  "bytes_out": 84281904
+ },
+ "pole_callbacks": {
+  "calls": 108,
+  "seconds": 30.06957372603938,
+  "bytes": 24884928
+ },
+ "radiation_interface": {
+  "calls": 11,
+  "bytes_device_to_host": 370440752,
+  "bytes_host_to_device": 127657728,
+  "arrays_device_to_host": 594,
+  "arrays_host_to_device": 242,
+  "packet_file_bytes_in": 0,
+  "packet_file_bytes_out": 0,
+  "wall_s_callback": 0.26225929195061326,
+  "wall_s_server_request": 0.0,
+  "wall_s_server_radia_and_io": 0.0,
+  "host_sync_points": 11,
+  "steps_without_callback": 0,
+  "server_binary": "none (recorded replay)",
+  "restart": "none",
+  "SOCRATES_modified": false,
+  "seeds": [
+   -588724193,
+   1129930407,
+   477879343,
+   193224887,
+   369298495,
+   1550057159,
+   1114593359,
+   130627799,
+   -797851553,
+   491065063,
+   -1266989969
+  ],
+  "itimes": [
+   33312,
+   33317,
+   33322,
+   33327,
+   33332,
+   33337,
+   33342,
+   33347,
+   33352,
+   33357,
+   33362
+  ]
+ },
+ "radiation_sentence": "radiation replayed from the real record (not computed; no Fortran callback in this result)",
+ "stage_table": [
+  {
+   "name": "record_load",
+   "kind": "REC",
+   "seconds": 82.08579922933131,
+   "calls": 54,
+   "share": 0.03980604308735854,
+   "description": "host file reads of the recorded entry data of the step through the registry, then device_put (CONDSE entry set, radiation record, restart ice state)"
+  },
+  {
+   "name": "dyn",
+   "kind": "JJ/NP",
+   "seconds": 180.75964756403118,
+   "calls": 54,
+   "share": 0.08765616448817495,
+   "description": "DYNAM+QDYNAM+energy fix+TROP+PGRAD_PBL+KEA, all kernels and glue on device; NumPy part: none; host part: dispatch of ~100 kernel calls from Python, QDYNAM extra-column branch not executed (flagged) [libimf pow/exp: labelled host callback inside this stage, time included]"
+  },
+  {
+   "name": "condse_entry",
+   "kind": "JJ",
+   "seconds": 1.1337752919644117,
+   "calls": 54,
+   "share": 0.0005498040897089957,
+   "description": "CONDSE entry set"
+  },
+  {
+   "name": "condse_setup",
+   "kind": "JJ/NP",
+   "seconds": 18.306002986384556,
+   "calls": 54,
+   "share": 0.008877169382215855,
+   "description": "CONDSE column set-up (JJ) + south pole column: per-column NumPy port clouds_condse_ff.condse_column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]"
+  },
+  {
+   "name": "condse_mstcnv",
+   "kind": "JJ/NP",
+   "seconds": 602.2855349625461,
+   "calls": 54,
+   "share": 0.29206761925569674,
+   "description": "MSTCNV (D189): cloud-base loop and event block as ONE device program; libimf exp/pow through FUSED host callbacks (C shim over libimf.so); QUS ADV1D subsidence = NumPy host callback (176 calls)"
+  },
+  {
+   "name": "condse_post",
+   "kind": "JJ/NP",
+   "seconds": 134.3250394409988,
+   "calls": 54,
+   "share": 0.06513853014650232,
+   "description": "CONDSE post-processing + LSCOND (JJ); north pole column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]"
+  },
+  {
+   "name": "radia",
+   "kind": "JJ/REC",
+   "seconds": 1.4217870864085853,
+   "calls": 54,
+   "share": 0.0006894702683531531,
+   "description": "RADIA apply: hand-off interface of D185; in replay mode the packet is served from the recorded ffa_step_r record (REC); with the real server FORT"
+  },
+  {
+   "name": "flag_read",
+   "kind": "NP",
+   "seconds": 0.016440659295767546,
+   "calls": 54,
+   "share": 7.972604256231178e-06,
+   "description": "one host read of the stop-model flags per step"
+  },
+  {
+   "name": "template_build",
+   "kind": "REC/NP",
+   "seconds": 35.62604701286182,
+   "calls": 54,
+   "share": 0.017276215566400976,
+   "description": "host: scatter of the recorded SURFACE rows (ffp/ffs/ffl/ffg/fft) into the fixed slots, per-cell Python GHY batch build (ghy_advnc_test.build_batch), upload of the template (D188 jax_surface.build_template). Disappears only when Ent and the template columns come from the pytree"
+  },
+  {
+   "name": "melt_si_dev",
+   "kind": "JJ",
+   "seconds": 0.6344605882186443,
+   "calls": 54,
+   "share": 0.0003076703370007248,
+   "description": "MELT_SI on the device state (jit) and replacement of the CONDSE-entry RSI by its result"
+  },
+  {
+   "name": "carry_writeback",
+   "kind": "JJ",
+   "seconds": 0.2728105846326798,
+   "calls": 54,
+   "share": 0.00013229462329088893,
+   "description": "CONDSE exit -> carry (CLDSS/CLDMC masking, held SNOAGE/RQT/KLIQ of the radiation server written back into the carry; one small jit)"
+  },
+  {
+   "name": "tile_mask_check",
+   "kind": "JJ",
+   "seconds": 0.29637334030121565,
+   "calls": 54,
+   "share": 0.00014372096105216508,
+   "description": "tile masks from the MELT_SI result (jax_state_d181.tile_masks), compared with the template slot validity on the device"
+  },
+  {
+   "name": "surface_pre",
+   "kind": "JJ",
+   "seconds": 3.0840002584736794,
+   "calls": 54,
+   "share": 0.0014955308752888684,
+   "description": "PRECIP_SI, AG2OG, PRECIP_OC (+TOC2SST), PRECIP_LI, PRECIP_LK, seaice_to_atmgrid (jax_posttile.surface_pre_dev)"
+  },
+  {
+   "name": "template_apply",
+   "kind": "JJ",
+   "seconds": 31.913579135900363,
+   "calls": 54,
+   "share": 0.015475920537806586,
+   "description": "device rewrite of the state columns of the SURFACE templates and of the GHY precipitation forcing (jax_tpl_state)"
+  },
+  {
+   "name": "surface_tiles_land",
+   "kind": "JJ/REC",
+   "seconds": 747.087753494503,
+   "calls": 54,
+   "share": 0.36228687038249285,
+   "description": "SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), land ice, 2 substeps; 5 jit executions"
+  },
+  {
+   "name": "tile_acc",
+   "kind": "JJ",
+   "seconds": 9.580306377727538,
+   "calls": 54,
+   "share": 0.004645798567380592,
+   "description": "tile accumulators of the post-tile stage from the device tile outputs"
+  },
+  {
+   "name": "post_a",
+   "kind": "JJ",
+   "seconds": 33.55592309613712,
+   "calls": 54,
+   "share": 0.01627234592513579,
+   "description": "DYNSI, GROUND_LI, lake chain, RIVERF, ocean-driver head (jit)"
+  },
+  {
+   "name": "ocean_a",
+   "kind": "JJ",
+   "seconds": 58.465297668473795,
+   "calls": 54,
+   "share": 0.028351702486377427,
+   "description": "OCEANS: ground, ostres, oconv, drag, polar (jit)"
+  },
+  {
+   "name": "ocean_b",
+   "kind": "JJ/NP",
+   "seconds": 98.03558990871534,
+   "calls": 54,
+   "share": 0.047540609370183326,
+   "description": "OCEANS: dynamics, straits, post, odiff, meso (jit) with the OADVT2 X pre-pass as a host pure_callback (4 calls/step, NumPy)"
+  },
+  {
+   "name": "post_b",
+   "kind": "JJ",
+   "seconds": 7.363219770370051,
+   "calls": 54,
+   "share": 0.003570661992608197,
+   "description": "FORM_SI, TOC2SST, ADVSI (double-double Ti2b), pole replication (jit)"
+  },
+  {
+   "name": "dissip_filter",
+   "kind": "JJ/NP",
+   "seconds": 15.84180522384122,
+   "calls": 54,
+   "share": 0.007682200663722554,
+   "description": "DISSIP + FILTER (J3, jax_phase2); the pow of SLP, MAtoPMB and PEK through the libimf host callback"
+  },
+  {
+   "name": "state_assembly",
+   "kind": "JJ",
+   "seconds": 0.052964912727475166,
+   "calls": 54,
+   "share": 2.5684388992276568e-05,
+   "description": "assembly of the next-step state pytree (device dict operations, no jit)"
+  }
+ ],
+ "non_jax_text": "Non-JAX stages (every stage whose implementation kind is not purely JJ; FORT=original Fortran, REC=recorded input, NP=NumPy/Python, EJ=eager JAX, JJ=jitted JAX):\n  record_load [REC] 4.0% of measured step time (82.086 s, 54 calls). host file reads of the recorded entry data of the step through the registry, then device_put (CONDSE entry set, radiation record, restart ice state)\n  dyn [JJ/NP] 8.8% of measured step time (180.760 s, 54 calls). DYNAM+QDYNAM+energy fix+TROP+PGRAD_PBL+KEA, all kernels and glue on device; NumPy part: none; host part: dispatch of ~100 kernel calls from Python, QDYNAM extra-column branch not executed (flagged) [libimf pow/exp: labelled host callback inside this stage, time included]\n  condse_setup [JJ/NP] 0.9% of measured step time (18.306 s, 54 calls). CONDSE column set-up (JJ) + south pole column: per-column NumPy port clouds_condse_ff.condse_column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]\n  condse_mstcnv [JJ/NP] 29.2% of measured step time (602.286 s, 54 calls). MSTCNV (D189): cloud-base loop and event block as ONE device program; libimf exp/pow through FUSED host callbacks (C shim over libimf.so); QUS ADV1D subsidence = NumPy host callback (176 calls)\n  condse_post [JJ/NP] 6.5% of measured step time (134.325 s, 54 calls). CONDSE post-processing + LSCOND (JJ); north pole column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]\n  radia [JJ/REC] 0.1% of measured step time (1.422 s, 54 calls). RADIA apply: hand-off interface of D185; in replay mode the packet is served from the recorded ffa_step_r record (REC); with the real server FORT\n  flag_read [NP] 0.0% of measured step time (0.016 s, 54 calls). one host read of the stop-model flags per step\n  template_build [REC/NP] 1.7% of measured step time (35.626 s, 54 calls). host: scatter of the recorded SURFACE rows (ffp/ffs/ffl/ffg/fft) into the fixed slots, per-cell Python GHY batch build (ghy_advnc_test.build_batch), upload of the template (D188 jax_surface.build_template). Disappears only when Ent and the template columns come from the pytree\n  surface_tiles_land [JJ/REC] 36.2% of measured step time (747.088 s, 54 calls). SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), land ice, 2 substeps; 5 jit executions\n  ocean_b [JJ/NP] 4.8% of measured step time (98.036 s, 54 calls). OCEANS: dynamics, straits, post, odiff, meso (jit) with the OADVT2 X pre-pass as a host pure_callback (4 calls/step, NumPy)\n  dissip_filter [JJ/NP] 0.8% of measured step time (15.842 s, 54 calls). DISSIP + FILTER (J3, jax_phase2); the pow of SLP, MAtoPMB and PEK through the libimf host callback",
+ "recorded_inputs": {
+  "summary": {
+   "n_declared": 27,
+   "n_inputs_declared": 20,
+   "n_inputs_read": 8,
+   "n_comparison_only_read": 0,
+   "bytes_inputs_read_total": 11069983424,
+   "undeclared_read_attempts": [],
+   "sentence": "8 recorded inputs read of 20 declared, 11069983424 bytes read in total; every one is listed with source file and size"
+  },
+  "items": [
+   {
+    "name": "sitea",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_a.bin",
+    "declared_size_bytes": null,
+    "description": "hidden/PBL start state, PDSIG, PEK (D180: step 0 only used for start)",
+    "role": "input",
+    "origin": "D174 \"First-step atmosphere state\"; D180 sitea",
+    "read_count": 1,
+    "bytes_read": 39770528,
+    "size_bytes": 39770528,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "siter",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_r.bin",
+    "declared_size_bytes": null,
+    "description": "SRHR/TRHR/COSZ1 and the radiation-step state (radiation output recorded)",
+    "role": "input",
+    "origin": "D180 siter; D174 \"Radiation itself\"",
+    "read_count": 54,
+    "bytes_read": 867056832,
+    "size_bytes": 16056608,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "s1",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s1.bin",
+    "declared_size_bytes": null,
+    "description": "start state of the step (step 0 only)",
+    "role": "input",
+    "origin": "D180 s1",
+    "read_count": 1,
+    "bytes_read": 33994368,
+    "size_bytes": 33994368,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "ci",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffc_cse_in_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "non-dynamic CONDSE entry fields (cloud/precip carry, ground fields, tuning)",
+    "role": "input",
+    "origin": "D174 \"CONDSE entry non-state fields\"; D180 ci",
+    "read_count": 54,
+    "bytes_read": 4630702608,
+    "size_bytes": 85753752,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "co",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffc_cse_out_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "CONDSE exit; read for RADIA cloud masking on radiation steps / stage references",
+    "role": "input",
+    "origin": "D180 co",
+    "read_count": 54,
+    "bytes_read": 4205759760,
+    "size_bytes": 77884440,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "sited",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_d.bin",
+    "declared_size_bytes": null,
+    "description": "real dissip-stage state (reference only)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "sitee",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_e.bin",
+    "declared_size_bytes": null,
+    "description": "real end-of-step state (reference only)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "s3",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s3.bin",
+    "declared_size_bytes": null,
+    "description": "real state after dynamics (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "s4",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s4.bin",
+    "declared_size_bytes": null,
+    "description": "real dynamics exports (stage reference; dpdx.. used by isolated stages)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ps",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/post_surface_<it>",
+    "declared_size_bytes": null,
+    "description": "real post-surface state (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "fi",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_filt_<it>_in.bin",
+    "declared_size_bytes": null,
+    "description": "real filter input (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "fo",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_filt_<it>_out.bin",
+    "declared_size_bytes": null,
+    "description": "real filter output (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "surface_records",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffp_<it>.bin, ffs_<it>.bin, ffl_<it>.bin, ffg_<it>.bin, fft_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "SURFACE tile (ffp/ffs), land-ice (ffl), land forcing + Ent exports (ffg), recorded GHY outputs (fft) templates",
+    "role": "input",
+    "origin": "D174 table rows 1-16; D180 section 3",
+    "read_count": 54,
+    "bytes_read": 1292209152,
+    "size_bytes": 23935872,
+    "stages": [
+     "surface"
+    ]
+   },
+   {
+    "name": "ctx_static",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/<restart>, geometry and constants files of make_ctx(date)",
+    "declared_size_bytes": null,
+    "description": "restart-derived static data, dynamics geometry, CONDSE/filter constants for the date",
+    "role": "input",
+    "origin": "D180 \"CONDSE module constants and geometry (make_cfg)\"",
+    "read_count": 1,
+    "bytes_read": 0,
+    "size_bytes": 0,
+    "stages": [
+     "setup"
+    ]
+   },
+   {
+    "name": "surface_restart_for_melt_si",
+    "source_file": "ff_data/_pristine_restarts/<restart>.nc + ocean geometry (surface_loop.init_surface_state)",
+    "declared_size_bytes": null,
+    "description": "sea-ice, lake and ocean-derived exchange state (GTEMP, SSS, MLHC) at step 0 for MELT_SI",
+    "role": "input",
+    "origin": "D186",
+    "read_count": 1,
+    "bytes_read": 490176,
+    "size_bytes": 490176,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "live_radiation_packet",
+    "source_file": "ff_data/nov26_day/rsv_n26_<it>_in.bin",
+    "declared_size_bytes": null,
+    "description": "real-server variant only: RQT, KLIQ and the 21 surface fields of the radiation packet (D185 practice)",
+    "role": "input",
+    "origin": "D186",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ent_exports",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffg cols 3-6 and per-iteration Ent exports (ent=record)",
+    "role": "input",
+    "origin": "D171/D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "trup_in_rad",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffs col 80 / ffl col 14 (TRUP_in_rad of land)",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "mmst",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "init_STRAITS MMST start state",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "advsi_geometry",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "5 static ADVSI geometry vectors",
+    "role": "input",
+    "origin": "D166/D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "irrigation_demand",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffg cols 147,148 (reconstructed from the recorded actual flux)",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "radiation_packet_surface_side",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "20-field surface side of the radiation packet (until drv_radpacket is accepted)",
+    "role": "input",
+    "origin": "D174/D176",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "mdrya_dh2o_ca",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "MDRYA / dH2O / Ca constants per date",
+    "role": "input",
+    "origin": "D174/D178",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "seeds0",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "SEEDS[0] of the first step (later seeds computed by drv_rng)",
+    "role": "input",
+    "origin": "D174 section 2",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ag2og_ig2og",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "AG2OG/IG2OG items of the replay ocean chain",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "straits_start",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "straits start state",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "surface_init",
+    "source_file": "ff_data/nov26: ffc_cse_in (FLAKE...), ffp (coriolis), ffl2 (lake depth), ffo_geom.bin, ffo_state_<it0> tag 0 (MMST), restart nc (ocean, ice, lake, land ice, ADVSI rsix/rsiy), advsi_dumps/nov26/ffadv_in_<it0> (ADVSI geometry)",
+    "declared_size_bytes": null,
+    "description": "statics and initial state of the surface (surface_loop.load_statics, init_surface_state, make_static_all, V2State)",
+    "role": "input",
+    "origin": "D187/D190; D174 items mmst, advsi_geometry, straits_start",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   }
+  ]
+ }
+}
