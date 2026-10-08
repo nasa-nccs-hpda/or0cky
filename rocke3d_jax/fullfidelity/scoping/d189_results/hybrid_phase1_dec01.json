@@ -1,0 +1,397 @@
+{
+ "old_cold": {
+  "variant": "old",
+  "run": "cold",
+  "phase1_s": 171.38012342900038,
+  "jit_executions": 125,
+  "libimf_ops": {
+   "calls": 35634,
+   "elements": 16720477,
+   "bytes_in": 238998048,
+   "bytes_out": 147656960,
+   "seconds": 16.494798472849652
+  },
+  "fused": {
+   "calls": 0,
+   "lanes": 0,
+   "bytes_in": 0,
+   "bytes_out": 0,
+   "seconds": 0.0
+  },
+  "fused_tags": {},
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.6540139243006706,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 0,
+   "bytes": 0,
+   "seconds": 0.0
+  },
+  "stage_seconds": {
+   "melt_si": 0.5909453581552953,
+   "dyn": 55.11893674102612,
+   "condse_entry": 0.26153045520186424,
+   "condse_setup": 1.0076025549788028,
+   "condse_mstcnv": 102.83244124497287,
+   "condse_post": 11.262090312782675,
+   "radia": 0.22559827216900885
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 46,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "old_steady": {
+  "variant": "old",
+  "run": "steady",
+  "phase1_s": 32.94723075116053,
+  "jit_executions": 125,
+  "libimf_ops": {
+   "calls": 35634,
+   "elements": 16720477,
+   "bytes_in": 238998048,
+   "bytes_out": 147656960,
+   "seconds": 14.83818934764713
+  },
+  "fused": {
+   "calls": 0,
+   "lanes": 0,
+   "bytes_in": 0,
+   "bytes_out": 0,
+   "seconds": 0.0
+  },
+  "fused_tags": {},
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.6262752721086144,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 0,
+   "bytes": 0,
+   "seconds": 0.0
+  },
+  "stage_seconds": {
+   "melt_si": 0.0002673668786883354,
+   "dyn": 1.629752640845254,
+   "condse_entry": 0.016330332029610872,
+   "condse_setup": 0.008960698964074254,
+   "condse_mstcnv": 29.53738375613466,
+   "condse_post": 1.6769520852249116,
+   "radia": 0.07365527702495456
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 46,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "old_timed": {
+  "variant": "old",
+  "run": "timed",
+  "phase1_s": 32.838852582965046,
+  "jit_executions": 125,
+  "libimf_ops": {
+   "calls": 35634,
+   "elements": 16720477,
+   "bytes_in": 238998048,
+   "bytes_out": 147656960,
+   "seconds": 15.304150001844391
+  },
+  "fused": {
+   "calls": 0,
+   "lanes": 0,
+   "bytes_in": 0,
+   "bytes_out": 0,
+   "seconds": 0.0
+  },
+  "fused_tags": {},
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.6351776390802115,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 0,
+   "bytes": 0,
+   "seconds": 0.0
+  },
+  "stage_seconds": {
+   "melt_si": 0.0009078178554773331,
+   "dyn": 2.265227906871587,
+   "condse_entry": 0.019723088014870882,
+   "condse_setup": 0.10745207197032869,
+   "condse_mstcnv": 28.37735606590286,
+   "condse_post": 2.0219325099606067,
+   "radia": 0.03970626392401755
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 46,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "new_cold": {
+  "variant": "new",
+  "run": "cold",
+  "phase1_s": 176.2902639801614,
+  "jit_executions": 82,
+  "libimf_ops": {
+   "calls": 1366,
+   "elements": 3538077,
+   "bytes_in": 69369696,
+   "bytes_out": 42197760,
+   "seconds": 2.3318264223635197
+  },
+  "fused": {
+   "calls": 4505,
+   "lanes": 1256768,
+   "bytes_in": 109308224,
+   "bytes_out": 71875072,
+   "seconds": 0.5381890614517033
+  },
+  "fused_tags": {
+   "base_cb": 22,
+   "mf_trip": 176,
+   "asc_cb0": 647,
+   "asc_dq": 1294,
+   "cm_flam_dc": 635,
+   "cm_mp": 635,
+   "dd_dq": 963,
+   "pp_dq": 132,
+   "post_radius": 1
+  },
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.652115108910948,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 176,
+   "bytes": 274305024,
+   "seconds": 0.6610032028984278
+  },
+  "stage_seconds": {
+   "melt_si": 0.0002818899229168892,
+   "dyn": 1.5993955379817635,
+   "condse_entry": 0.022478022146970034,
+   "condse_setup": 0.007784760091453791,
+   "condse_mstcnv": 172.97229378996417,
+   "condse_post": 1.6416071499697864,
+   "radia": 0.041699848137795925
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 3,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "new_steady": {
+  "variant": "new",
+  "run": "steady",
+  "phase1_s": 12.10379098309204,
+  "jit_executions": 82,
+  "libimf_ops": {
+   "calls": 1366,
+   "elements": 3538077,
+   "bytes_in": 69369696,
+   "bytes_out": 42197760,
+   "seconds": 3.6686129053123295
+  },
+  "fused": {
+   "calls": 4505,
+   "lanes": 1256768,
+   "bytes_in": 109308224,
+   "bytes_out": 71875072,
+   "seconds": 0.5625756729859859
+  },
+  "fused_tags": {
+   "base_cb": 22,
+   "mf_trip": 176,
+   "asc_cb0": 647,
+   "asc_dq": 1294,
+   "cm_flam_dc": 635,
+   "cm_mp": 635,
+   "dd_dq": 963,
+   "pp_dq": 132,
+   "post_radius": 1
+  },
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.6486771386116743,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 176,
+   "bytes": 274305024,
+   "seconds": 0.6576284205075353
+  },
+  "stage_seconds": {
+   "melt_si": 0.0003696209751069546,
+   "dyn": 1.6980558761861175,
+   "condse_entry": 0.015718755079433322,
+   "condse_setup": 0.009421846130862832,
+   "condse_mstcnv": 0.8031448540277779,
+   "condse_post": 0.023945068009197712,
+   "radia": 9.548368607880548
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 3,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "new_timed": {
+  "variant": "new",
+  "run": "timed",
+  "phase1_s": 12.22023344784975,
+  "jit_executions": 82,
+  "libimf_ops": {
+   "calls": 1366,
+   "elements": 3538077,
+   "bytes_in": 69369696,
+   "bytes_out": 42197760,
+   "seconds": 4.1899122362956405
+  },
+  "fused": {
+   "calls": 4505,
+   "lanes": 1256768,
+   "bytes_in": 109308224,
+   "bytes_out": 71875072,
+   "seconds": 0.5593126271851361
+  },
+  "fused_tags": {
+   "base_cb": 22,
+   "mf_trip": 176,
+   "asc_cb0": 647,
+   "asc_dq": 1294,
+   "cm_flam_dc": 635,
+   "cm_mp": 635,
+   "dd_dq": 963,
+   "pp_dq": 132,
+   "post_radius": 1
+  },
+  "qus_old": {
+   "calls": 176,
+   "seconds": 0.6814522598870099,
+   "bytes": 274305024
+  },
+  "qus_new": {
+   "calls": 176,
+   "bytes": 274305024,
+   "seconds": 0.6903919139876962
+  },
+  "stage_seconds": {
+   "melt_si": 0.0010165199637413025,
+   "dyn": 2.3456916550640017,
+   "condse_entry": 0.010869331192225218,
+   "condse_setup": 0.11950751603581011,
+   "condse_mstcnv": 7.5006568799726665,
+   "condse_post": 2.1889822729863226,
+   "radia": 0.04393648402765393
+  },
+  "flags": {
+   "aadvt_bad": 0,
+   "advecm_exc2": 0,
+   "handoff_error": 0,
+   "lscond_vmp": 0,
+   "mstcnv_negative_cloud": 0,
+   "qdynam_do_z_extra": 0,
+   "qdynam_err": 0,
+   "sdrag_bad": 0,
+   "subsid_error": 0
+  },
+  "stage_jit": {
+   "melt_si": 1,
+   "dyn": 73,
+   "condse_entry": 1,
+   "condse_setup": 1,
+   "condse_mstcnv": 3,
+   "condse_post": 1,
+   "radia": 1
+  }
+ },
+ "compare_new_vs_old": {
+  "compared": 238,
+  "equal": 238,
+  "unequal": []
+ }
+}

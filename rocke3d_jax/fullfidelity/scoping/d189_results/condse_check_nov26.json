@@ -1,0 +1,160 @@
+{
+ "date": "nov26",
+ "itime": 33312,
+ "numpy_s": 7.355012326966971,
+ "old_cold_s": 121.76134748198092,
+ "old_steady_s": 30.46883211005479,
+ "old_libimf_ops": {
+  "exp": {
+   "calls": 20876,
+   "elements": 7810573,
+   "bytes_in": 80714016,
+   "bytes_out": 71745792,
+   "seconds": 5.589280057465658
+  },
+  "pow": {
+   "calls": 14681,
+   "elements": 6420573,
+   "bytes_in": 119021760,
+   "bytes_out": 56010240,
+   "seconds": 7.933868782827631
+  },
+  "total": {
+   "calls": 35557,
+   "elements": 14231146,
+   "bytes_in": 199735776,
+   "bytes_out": 127756032,
+   "seconds": 13.523148840293288
+  }
+ },
+ "new_cold_s": 188.18177201109938,
+ "new_steady_s": 9.443083632038906,
+ "new_libimf_ops_lscond": {
+  "exp": {
+   "calls": 772,
+   "elements": 1376749,
+   "bytes_in": 22809600,
+   "bytes_out": 20275200,
+   "seconds": 0.7988651054911315
+  },
+  "pow": {
+   "calls": 121,
+   "elements": 334845,
+   "bytes_in": 15564384,
+   "bytes_out": 7324416,
+   "seconds": 0.3790083206258714
+  },
+  "total": {
+   "calls": 893,
+   "elements": 1711594,
+   "bytes_in": 38373984,
+   "bytes_out": 27599616,
+   "seconds": 1.177873426117003
+  }
+ },
+ "new_fused": {
+  "total": {
+   "calls": 4666,
+   "lanes": 1262138,
+   "bytes_in": 104631424,
+   "bytes_out": 68727808,
+   "seconds": 0.580355895916
+  },
+  "tags": {
+   "base_cb": {
+    "calls": 22,
+    "lanes": 278784,
+    "bytes_in": 2509056,
+    "bytes_out": 2230272,
+    "seconds": 0.008405864471569657
+   },
+   "mf_trip": {
+    "calls": 176,
+    "lanes": 25298,
+    "bytes_in": 5018112,
+    "bytes_out": 4460544,
+    "seconds": 0.019194080960005522
+   },
+   "asc_cb0": {
+    "calls": 670,
+    "lanes": 180800,
+    "bytes_in": 16273824,
+    "bytes_out": 10671360,
+    "seconds": 0.10817253170534968
+   },
+   "asc_dq": {
+    "calls": 1340,
+    "lanes": 71760,
+    "bytes_in": 4802112,
+    "bytes_out": 4268544,
+    "seconds": 0.11739156115800142
+   },
+   "cm_flam_dc": {
+    "calls": 651,
+    "lanes": 226933,
+    "bytes_in": 31111360,
+    "bytes_out": 14640640,
+    "seconds": 0.10274927807040513
+   },
+   "cm_mp": {
+    "calls": 651,
+    "lanes": 291771,
+    "bytes_in": 27451200,
+    "bytes_out": 18823680,
+    "seconds": 0.11939532472752035
+   },
+   "dd_dq": {
+    "calls": 1023,
+    "lanes": 65157,
+    "bytes_in": 3660768,
+    "bytes_out": 3254016,
+    "seconds": 0.08797433809377253
+   },
+   "pp_dq": {
+    "calls": 132,
+    "lanes": 119547,
+    "bytes_in": 9281088,
+    "bytes_out": 8249856,
+    "seconds": 0.01587151689454913
+   },
+   "post_radius": {
+    "calls": 1,
+    "lanes": 2088,
+    "bytes_in": 4523904,
+    "bytes_out": 2128896,
+    "seconds": 0.0012013998348265886
+   }
+  }
+ },
+ "new_qus": {
+  "calls": 176,
+  "bytes": 249541376,
+  "seconds": 0.6713374888058752
+ },
+ "mstcnv_stage": {
+  "compared": 43,
+  "equal": 43,
+  "unequal": []
+ },
+ "D vs O": {
+  "compared": 68,
+  "equal": 68,
+  "unequal": []
+ },
+ "D vs N": {
+  "compared": 68,
+  "equal": 68,
+  "unequal": []
+ },
+ "O vs N": {
+  "compared": 68,
+  "equal": 68,
+  "unequal": []
+ },
+ "mutation": {
+  "compared": 68,
+  "equal": 10,
+  "unequal": 58,
+  "detected": true
+ }
+}
