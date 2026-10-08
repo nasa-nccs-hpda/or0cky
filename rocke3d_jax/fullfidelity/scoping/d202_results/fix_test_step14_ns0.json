@@ -1,0 +1,43 @@
+{
+ "step": 14,
+ "ns": 0,
+ "ncell": 753,
+ "nit_equal": 753,
+ "nit_diff_cells": [],
+ "exhausted": 0,
+ "tbcs": {
+  "max_abs_base_vs_real": 5.968558980384842e-13,
+  "max_abs_new_vs_real": 5.968558980384842e-13,
+  "max_abs_new_vs_base": 5.684341886080802e-14,
+  "max_abs_new_vs_base_nit_equal_cells": 5.684341886080802e-14,
+  "bitwise_equal_to_base": 740
+ },
+ "tsns": {
+  "max_abs_base_vs_real": 3.126388037344441e-13,
+  "max_abs_new_vs_real": 3.126388037344441e-13,
+  "max_abs_new_vs_base": 0.0,
+  "max_abs_new_vs_base_nit_equal_cells": 0.0,
+  "bitwise_equal_to_base": 753
+ },
+ "ashg": {
+  "max_abs_base_vs_real": 2.0809238776564598e-08,
+  "max_abs_new_vs_real": 2.0809238776564598e-08,
+  "max_abs_new_vs_base": 9.094947017729282e-13,
+  "max_abs_new_vs_base_nit_equal_cells": 9.094947017729282e-13,
+  "bitwise_equal_to_base": 752
+ },
+ "alhg": {
+  "max_abs_base_vs_real": 3.7107383832335472e-09,
+  "max_abs_new_vs_real": 3.7107383832335472e-09,
+  "max_abs_new_vs_base": 1.1641532182693481e-10,
+  "max_abs_new_vs_base_nit_equal_cells": 1.1641532182693481e-10,
+  "bitwise_equal_to_base": 742
+ },
+ "aevap": {
+  "max_abs_base_vs_real": 1.4849232954361469e-15,
+  "max_abs_new_vs_real": 1.4849232954361469e-15,
+  "max_abs_new_vs_base": 5.551115123125783e-17,
+  "max_abs_new_vs_base_nit_equal_cells": 5.551115123125783e-17,
+  "bitwise_equal_to_base": 742
+ }
+}

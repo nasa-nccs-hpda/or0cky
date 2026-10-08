@@ -1,0 +1,14 @@
+--- a/fullfidelity/jax_surface.py   (PROPOSED, not applied; D202)
++++ b/fullfidelity/jax_surface.py
+@@ def _land(p4, out, gb, dyn, q1_land, ma1_land, trup, max_substeps):
+     forcing.update(ts=tsv / (1.0 + qsrf * 0.0), qs=qsrf, rho=rho, ch=out["ch"], vs=out["ws"],
++                   gusti=p4[:, PBL_GUSTI_OUT],        # GHY_DRV.f:1267 passes pbl_args%gusti (what the PBL used), not the recorded ffg gusti_in
+                    tprime=jnp.where(ddml, p4[:, 25] - p4[:, 7], 0.0), qprime=jnp.where(ddml, p4[:, 26] - p4[:, 39], 0.0),
+                    qm1=q1_land * ma1_land)
+--- a/fullfidelity/land_chain.py   (same change for the NumPy copy)
++++ b/fullfidelity/land_chain.py
+@@ def land_substep(p4, g, q1, trup, dtsurf=900.0, dyn=None):
+     forcing = dict(ts=tsv / (1.0 + qsrf * XDELT), qs=qsrf, rho=rho, ch=out["ch"], vs=out["ws"],
++                   gusti=p4[:, 113],
+                    tprime=np.where(ddml, p4[:, 25] - p4[:, 7], 0.0), qprime=np.where(ddml, p4[:, 26] - p4[:, 39], 0.0),
+                    qm1=q1 * ma1)

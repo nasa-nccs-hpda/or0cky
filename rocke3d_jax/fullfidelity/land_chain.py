@@ -85,6 +85,7 @@ def land_substep(p4, g, q1, trup, dtsurf=900.0, dyn=None):
     ddml = p4[:, 23] > 0.5
     ma1 = g[:, 165]
     forcing = dict(ts=tsv / (1.0 + qsrf * XDELT), qs=qsrf, rho=rho, ch=out["ch"], vs=out["ws"],
+                   gusti=p4[:, 113],                  # GHY_DRV.f:1267 passes pbl_args%gusti (D202)
                    tprime=np.where(ddml, p4[:, 25] - p4[:, 7], 0.0), qprime=np.where(ddml, p4[:, 26] - p4[:, 39], 0.0),
                    qm1=q1 * ma1)
     ghy, _ = run_ghy(g, forcing, dyn)

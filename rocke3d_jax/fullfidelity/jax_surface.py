@@ -384,6 +384,7 @@ def _land(p4, out, gb, dyn, q1_land, ma1_land, trup, max_substeps):
     ddml = p4[:, 23] > 0.5
     forcing = dict(gb['forcing'])
     forcing.update(ts=tsv / (1.0 + qsrf * 0.0), qs=qsrf, rho=rho, ch=out["ch"], vs=out["ws"],
+                   gusti=p4[:, PBL_GUSTI_OUT],        # GHY_DRV.f:1267 passes pbl_args%gusti (what the PBL used), not the recorded ffg gusti_in (D202)
                    tprime=jnp.where(ddml, p4[:, 25] - p4[:, 7], 0.0), qprime=jnp.where(ddml, p4[:, 26] - p4[:, 39], 0.0),
                    qm1=q1_land * ma1_land)
     d0 = dict(gb['dyn0'])

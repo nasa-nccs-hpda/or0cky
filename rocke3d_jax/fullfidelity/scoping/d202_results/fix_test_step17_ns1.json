@@ -1,0 +1,43 @@
+{
+ "step": 17,
+ "ns": 1,
+ "ncell": 753,
+ "nit_equal": 753,
+ "nit_diff_cells": [],
+ "exhausted": 0,
+ "tbcs": {
+  "max_abs_base_vs_real": 9.835787295742193e-08,
+  "max_abs_new_vs_real": 9.835787295742193e-08,
+  "max_abs_new_vs_base": 5.684341886080802e-14,
+  "max_abs_new_vs_base_nit_equal_cells": 5.684341886080802e-14,
+  "bitwise_equal_to_base": 741
+ },
+ "tsns": {
+  "max_abs_base_vs_real": 1.576063482389145e-06,
+  "max_abs_new_vs_real": 1.576063482389145e-06,
+  "max_abs_new_vs_base": 0.0,
+  "max_abs_new_vs_base_nit_equal_cells": 0.0,
+  "bitwise_equal_to_base": 753
+ },
+ "ashg": {
+  "max_abs_base_vs_real": 0.016891544157260796,
+  "max_abs_new_vs_real": 0.016891544157260796,
+  "max_abs_new_vs_base": 5.820766091346741e-11,
+  "max_abs_new_vs_base_nit_equal_cells": 5.820766091346741e-11,
+  "bitwise_equal_to_base": 750
+ },
+ "alhg": {
+  "max_abs_base_vs_real": 0.04120090074138716,
+  "max_abs_new_vs_real": 0.04120090074138716,
+  "max_abs_new_vs_base": 5.820766091346741e-11,
+  "max_abs_new_vs_base_nit_equal_cells": 5.820766091346741e-11,
+  "bitwise_equal_to_base": 743
+ },
+ "aevap": {
+  "max_abs_base_vs_real": 1.64803602709096e-08,
+  "max_abs_new_vs_real": 1.64803602709096e-08,
+  "max_abs_new_vs_base": 1.3877787807814457e-17,
+  "max_abs_new_vs_base_nit_equal_cells": 1.3877787807814457e-17,
+  "bitwise_equal_to_base": 742
+ }
+}
