@@ -97,6 +97,9 @@ STAGES2 = [
     ('carry_writeback', 'JJ', 'CONDSE exit -> carry (CLDSS/CLDMC masking, held SNOAGE/RQT/KLIQ of the radiation server written back into the carry; one small jit)'),
     ('tile_mask_check', 'JJ', 'tile masks from the MELT_SI result (jax_state_d181.tile_masks), compared with the template slot validity on the device'),
     ('surface_pre', 'JJ', 'PRECIP_SI, AG2OG, PRECIP_OC (+TOC2SST), PRECIP_LI, PRECIP_LK, seaice_to_atmgrid (jax_posttile.surface_pre_dev)'),
+    ('nit_rebuild', 'REC/NP', 'host (D195, ON by default, Coupled(nit_fix=True)): only on steps with a cell of recorded ffnit > 11: ONE declared device->host read of PREC/EPREC/PRECSS (3 small arrays), '
+                              'ghy_advnc_test.build_batch (NumPy, ghy_ref_nit.run_cell_full) of those rows with OUR precipitation, device replacement of edts/ecnc/elai/ebet/nsub/dt of those cells '
+                              '(jax_surface.nit_rebuild); a no-op, no transfer, on the other steps'),
     ('template_apply', 'JJ', 'device rewrite of the state columns of the SURFACE templates and of the GHY precipitation forcing (jax_tpl_state)'),
     ('surface_tiles_land', 'JJ/REC', 'SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), '
                                       'land ice, 2 substeps; 5 jit executions'),
@@ -111,7 +114,9 @@ STAGES2 = [
 
 
 class Coupled:
-    def __init__(self, date, mstcnv='dev', log=print):
+    def __init__(self, date, mstcnv='dev', log=print, nit_fix=True, nit_strict=True):
+        self.nit_strict = bool(nit_strict)   # True (default): the build_batch_nit assertion nit == ffnit is NOT caught (as the NumPy chain); False: reported in jax_surface.NIT_MISMATCH
+        self.nit_fix = bool(nit_fix)      # D195: GHY dts of ffnit>11 cells from OUR precipitation (as the NumPy chain); False = D193 behaviour (recorded precipitation)
         self.date = date
         self.it0 = dict(A.DATES)[date]
         self.log = log
@@ -274,6 +279,12 @@ class Coupled:
         with stage('tile_mask_check'):
             masks = self.mask_check(ice_new['rsi'], tpl['ns'][0]['wvalid'], jnp.asarray(host['wj']), jnp.asarray(host['wi']), self.sp181)
             fin(masks)
+        with stage('nit_rebuild'):
+            n_nit, n_d2h = 0, 0
+            if self.nit_fix:
+                tpl, n_nit, n_d2h = JS.nit_rebuild(tpl, host, prec, eprec, precss, strict=self.nit_strict)
+                fin(tpl)
+            info['nit_rebuild'] = dict(cells=n_nit, device_to_host_arrays=n_d2h)
         with stage('template_apply'):
             lp = state['land_prev']
             tpl_m = apply(tpl, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)

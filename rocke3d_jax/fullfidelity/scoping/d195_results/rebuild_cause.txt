@@ -1,0 +1,6 @@
+rebuilt steps (run): [0, 7, 8, 9, 10, 17, 18, 21, 22, 23, 24, 25, 26, 28]
+steps whose water/land/Ent/block cell sets differ from the previous step: []
+steps whose recorded max ffnit (>=11) differs from the previous step: [7, 8, 9, 10, 17, 18, 21, 22, 23, 24, 25, 26, 28]
+max_substeps in run == record-derived max for all steps: True
+rebuild set == (tile set change) U (max_substeps change): True
+steps with ffnit>11 cell-substeps (step,count): [(7, 1), (8, 1), (9, 1), (17, 2), (18, 1), (19, 1), (20, 1), (21, 1), (23, 1), (24, 2), (25, 1), (26, 1), (27, 1)] total 15

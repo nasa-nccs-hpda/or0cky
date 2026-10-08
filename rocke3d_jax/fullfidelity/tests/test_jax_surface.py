@@ -96,3 +96,56 @@ def test_whole_stage_c1_bitwise_vs_numpy(world):
     for k in ('T', 'Q', 'U', 'V', 'UALIJ', 'VALIJ', 'EGCM', 'W2GCM', 'PBLHT', 'DCLEV', 'PBLPTOP', 'T1AA', 'U1AA', 'V1AA', 'TSAVG', 'QSAVG',
               'USTARPBL', 'LMONINPBL', 'TMOM', 'QMOM'):
         assert np.array_equal(np.asarray(out[k]), S2[k]), k
+
+
+# ---- D195: the GHY substep schedule of cells with recorded ffnit > 11 follows OUR precipitation (as the NumPy chain), not the recorded one
+DAYDIR, IT_NIT = 'nov26_day', 33319          # step 7 of the nov26 day: first step with a cell of ffnit 12, cell (64,19)
+
+
+def test_nit_rule_ffnit_gt_11_uses_our_precipitation():
+    import ghy_advnc_test as AT
+    import os.path as op
+    if not op.exists(f'{A.FF}/{DAYDIR}/ffg_{IT_NIT}.bin') and not op.exists(f'{A.FF}/{DAYDIR}/ffg_{IT_NIT}'):
+        pytest.skip('nov26_day step 7 records not available')
+    rec = A.surface_records(A.Real(DAYDIR, IT_NIT))
+    tpl, host = JS.build_template(rec)
+    hit = host['nit_hit']
+    assert len(hit[0]) + len(hit[1]) >= 1, 'no ffnit > 11 cell in this record (the test needs one)'
+    k = 0 if len(hit[0]) else 1
+    idx = hit[k]
+    g0 = host['nit_rows'][k]
+    assert (np.round(g0[idx, 289]).astype(int) > 11).all()
+    # grid precipitation in the units of PREC/EPREC/PRECSS; recorded = grid values reproduce the record exactly
+    P, E, Ps = (np.zeros((72, 46)) for _ in range(3))
+    i, j = g0[:, 0].astype(int) - 1, g0[:, 1].astype(int) - 1
+    P[i, j], E[i, j], Ps[i, j] = g0[:, 143] * 1800.0 * 1000.0, g0[:, 144] * 1800.0, g0[:, 145] * 1800.0 * 1000.0
+    JS.NIT_LOG.clear()
+    t_same, ncell, _ = JS.nit_rebuild(tpl, host, jnp.asarray(P), jnp.asarray(E), jnp.asarray(Ps))
+    assert ncell >= 1
+    # (1) with our precipitation == the record the schedule equals the recorded-row schedule
+    for key in JS.NIT_KEYS:
+        a, b = np.asarray(t_same['ghy'][k][key]), np.asarray(tpl['ghy'][k][key])
+        assert np.allclose(a[idx], b[idx], rtol=0, atol=1e-9), key
+    # (2) with a different precipitation the schedule of exactly the ffnit > 11 cells changes, and equals the NumPy build_batch of the row with our precipitation
+    P2, E2 = P * (1 + 1e-3) + 1e-9, E * (1 + 1e-3)
+    t_new, ncell2, _ = JS.nit_rebuild(tpl, host, jnp.asarray(P2), jnp.asarray(E2), jnp.asarray(Ps))
+    g = np.array(g0, dtype=np.float64, copy=True)
+    g[:, 143], g[:, 144], g[:, 145] = P2[i, j] / 1.8e6, E2[i, j] / 1800.0, Ps[i, j] / 1.8e6
+    ref = AT.build_batch(g)
+    edts_ref, nsub_ref = np.asarray(ref[3]), np.asarray(ref[7])
+    got_e, got_n = np.asarray(t_new['ghy'][k]['edts']), np.asarray(t_new['ghy'][k]['nsub'])
+    w = got_e.shape[1]
+    ref_pad = np.pad(edts_ref, ((0, 0), (0, w - edts_ref.shape[1])))
+    assert np.array_equal(got_e[idx], ref_pad[idx]) and np.array_equal(got_n[idx], nsub_ref[idx])
+    assert not np.array_equal(got_e[idx], np.asarray(tpl['ghy'][k]['edts'])[idx]), 'non-vacuity: our precipitation must change the schedule'
+    other = np.setdiff1d(np.arange(got_e.shape[0]), idx)
+    assert np.array_equal(got_e[other], np.asarray(tpl['ghy'][k]['edts'])[other])      # all other cells keep the recorded schedule
+    # (2b) the explicit non-strict option (iteration count reported, not asserted) gives the same schedule when the count matches the record
+    JS.NIT_MISMATCH.clear()
+    t_free, _, _ = JS.nit_rebuild(tpl, host, jnp.asarray(P2), jnp.asarray(E2), jnp.asarray(Ps), strict=False)
+    assert np.array_equal(np.asarray(t_free['ghy'][k]['edts']), got_e) and np.array_equal(np.asarray(t_free['ghy'][k]['nsub']), got_n)
+    assert JS.NIT_MISMATCH == []
+    # (3) no ffnit > 11 cell: no-op and no device->host read
+    host0 = dict(host, nit_hit=[np.zeros(0, int), np.zeros(0, int)])
+    t0, n0, d0 = JS.nit_rebuild(tpl, host0, None, None, None)
+    assert t0 is tpl and n0 == 0 and d0 == 0

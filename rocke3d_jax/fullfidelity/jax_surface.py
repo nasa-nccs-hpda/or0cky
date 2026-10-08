@@ -173,15 +173,97 @@ def build_template(rec, reg=None, ghy_builder=None):
             b['elai'] = np.pad(b['elai'], ((0, 0), (0, pad)))
             b['ebet'] = np.pad(b['ebet'], ((0, 0), (0, pad), (0, 0)))
     host['max_substeps'] = width
+    # D195: the recorded GHY rows and the cells with ffnit > 11 (their dts are regenerated from the row, see nit_rebuild)
+    host['nit_rows'] = (np.array(g1, copy=True), np.array(g2, copy=True))
+    host['nit_hit'] = [np.nonzero(np.round(np.asarray(g)[:, 289]).astype(int) > 11)[0] for g in (g1, g2)]
     out = dict(ns=[jax.tree_util.tree_map(jnp.asarray, tpl[0]), jax.tree_util.tree_map(jnp.asarray, tpl[1])],
                coriol=jnp.asarray(cor.reshape(JM, IM)), trup=jnp.asarray(trup),
                ma1_land=jnp.asarray(g1[:, 165]), ghy=[jax.tree_util.tree_map(jnp.asarray, b) for b in gb])
     return out, host
 
 
-def _ghy_batch(g, AT):
+NIT_KEYS = ('edts', 'ecnc', 'elai', 'ebet', 'nsub', 'dt')
+NIT_LOG = []
+
+
+NIT_MISMATCH = []
+
+
+def _build_batch_nit_report(rec):
+    """ghy_advnc_test_nit.build_batch_nit with the single difference that `info['nit'] == ffnit` is REPORTED (NIT_MISMATCH) instead of asserted: in a free-running
+    day the iteration count of a cell may legitimately differ from the recorded one (D194 section 3).  Everything else is a copy, except that the dts row of such a cell is zeroed before it is filled (no stale recorded dts beyond a smaller recomputed count; identical when the count matches)."""
+    import ghy_advnc_test as AT
+    import ghy_compare as GC
+    import ghy_ref_nit as N
+    out = list(AT.build_batch_recorded(rec))
+    (static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt_total, snowm, ws_can, shc_can, refs) = out
+    ffnit = np.round(np.asarray(rec)[:, 289]).astype(int)
+    res = [N.run_cell_full(rec[i], dt=900.0, use_recorded_dts=False) for i in np.where(ffnit > 11)[0]]
+    width = max(ent_dts.shape[1], int(ffnit.max()), max([r[2]['nit'] for r in res], default=0))
+    if width > ent_dts.shape[1]:
+        pad = width - ent_dts.shape[1]
+        ent_dts = np.pad(ent_dts, ((0, 0), (0, pad)))
+        ent_cnc = np.pad(ent_cnc, ((0, 0), (0, pad)))
+        ent_lai = np.pad(ent_lai, ((0, 0), (0, pad)))
+        ent_betadl = np.pad(ent_betadl, ((0, 0), (0, pad), (0, 0)))
+    dt_total = np.array(dt_total, dtype=float)
+    n_substeps = np.array(n_substeps)
+    for i, (col, r, info) in zip(np.where(ffnit > 11)[0], res):
+        if info['nit'] != ffnit[i]:
+            NIT_MISMATCH.append(dict(row=int(i), cell=(int(rec[i][0]), int(rec[i][1])), recomputed=int(info['nit']), recorded=int(ffnit[i])))
+        u = GC.unpack(rec[i])[3]
+        ent_dts[i, :] = 0.0
+        for j in range(info['nit']):
+            src = u[min(j, len(u) - 1)]
+            ent_dts[i, j] = info['dts'][j]; ent_cnc[i, j] = src['cnc']; ent_lai[i, j] = src['lai']; ent_betadl[i, j] = src['betadl']
+        n_substeps[i] = info['nit']
+        dt_total[i] = 900.0
+    return (static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt_total, snowm, ws_can, shc_can, refs)
+
+
+def nit_rebuild(tpl, host, prec, eprec, precss, strict=True):
+    """D195 (merge of D194): the GHY substep schedule of the cells with recorded ffnit > 11 follows OUR precipitation, as in the NumPy chain
+    (surface_loop.Loop.stage_surface overwrites ffg columns 143-145 with PREC/EPREC/PRECSS before ghy_advnc_test.build_batch).  build_template builds the
+    batch from the RECORDED row; for those cells only (none: no-op and no transfer) ONE declared device->host read of PREC/EPREC/PRECSS rebuilds the batch
+    from the rows with our precipitation and replaces edts/ecnc/elai/ebet/nsub/dt of exactly those cells on the device (same shapes).  The assertion
+    nit == ffnit of build_batch_nit is NOT caught.  Returns (tpl, n_cells, n_device_to_host_arrays)."""
+    import ghy_advnc_test as AT
+    hits = host.get('nit_hit')
+    if hits is None or not any(len(h) for h in hits):
+        return tpl, 0, 0
+    P, E, Ps = (np.asarray(x) for x in jax.device_get((prec, eprec, precss)))      # the declared device->host read (1 jax.device_get call, 3 arrays)
+    dtsrc, rhow = 1800.0, 1000.0
+    w = host['max_substeps']
+    ghy = list(tpl['ghy'])
+    ncell = 0
+    for k, g0 in enumerate(host['nit_rows']):
+        idx = hits[k]
+        if not len(idx):
+            continue
+        g = np.array(g0, dtype=np.float64, copy=True)
+        i, j = g[:, 0].astype(int) - 1, g[:, 1].astype(int) - 1
+        g[:, 143] = P[i, j] / (dtsrc * rhow)
+        g[:, 144] = E[i, j] / dtsrc
+        g[:, 145] = Ps[i, j] / (dtsrc * rhow)
+        gb = _ghy_batch(g, AT, batch=None if strict else _build_batch_nit_report)
+        assert gb['edts'].shape[1] <= w, ('batch wider than the compiled max_substeps', gb['edts'].shape, w)
+        new = dict(ghy[k])
+        rep = {}
+        for key in NIT_KEYS:
+            v = np.asarray(gb[key])[idx]
+            if v.ndim >= 2 and v.shape[1] < w:
+                v = np.pad(v, [(0, 0), (0, w - v.shape[1])] + [(0, 0)] * (v.ndim - 2))
+            rep[key] = float(np.abs(v - np.asarray(new[key])[idx]).max())
+            new[key] = new[key].at[jnp.asarray(idx)].set(jnp.asarray(v).astype(new[key].dtype))
+        NIT_LOG.append(dict(substep=k + 1, cells=[(int(i[c]) + 1, int(j[c]) + 1) for c in idx], nsub=[int(x) for x in np.asarray(gb['nsub'])[idx]], max_abs_change=rep))
+        ghy[k] = new
+        ncell += len(idx)
+    return dict(tpl, ghy=ghy), ncell, 3
+
+
+def _ghy_batch(g, AT, batch=None):
     """Host part of land_chain.run_ghy: the recorded batch (Ent exports, forcing, start state), conditioned as D135/D136 (all recorded data)."""
-    (s0, d0, f, edts, ecnc, ebet, elai, ns, dt, snowm, wsc, shc, refs) = AT.build_batch(g)
+    (s0, d0, f, edts, ecnc, ebet, elai, ns, dt, snowm, wsc, shc, refs) = (batch or AT.build_batch)(g)
     f = dict(f)
     pr = np.maximum(f["pr"], 0.0)
     prs = np.minimum(np.maximum(f["prs"], 0.0), pr)
