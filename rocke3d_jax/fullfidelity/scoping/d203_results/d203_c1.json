@@ -1,0 +1,440 @@
+{
+ "date": "nov26",
+ "n": 54,
+ "header": {
+  "timestamp_utc": "2026-10-08T22:15:33+00:00",
+  "timestamp_local": "2026-10-08T18:15:33-04:00",
+  "host": {
+   "hostname": "forest204",
+   "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+   "machine": "x86_64",
+   "cpu_count_visible": 12
+  },
+  "core_affinity": {
+   "cores": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "n_cores": 5,
+   "pid": 971454
+  },
+  "thread_env": {
+   "OMP_NUM_THREADS": "1",
+   "MKL_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null,
+   "NUMEXPR_NUM_THREADS": null,
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "TF_NUM_INTRAOP_THREADS": null,
+   "XLA_PYTHON_CLIENT_PREALLOCATE": null
+  },
+  "xla_flags": {
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "documented_flags_present": true,
+   "required": [
+    "--xla_cpu_max_isa=AVX",
+    "--xla_disable_hlo_passes=algsimp"
+   ],
+   "jax_imported_before_harness": true
+  },
+  "jax": {
+   "version": "0.5.3",
+   "backend": "cpu",
+   "devices": [
+    "TFRT_CPU_0"
+   ],
+   "x64_enabled": true,
+   "jaxlib_version": "0.5.3"
+  },
+  "compile_cache": {
+   "checked": [
+    "JAX_COMPILATION_CACHE_DIR",
+    "CLOUDS_JAX_CACHE",
+    "jax.config.jax_compilation_cache_dir"
+   ],
+   "cache_set": false
+  },
+  "git": {
+   "head": "10707bb15fc02afab0dba61e79c380c21a5d91f0",
+   "branch": "full-fidelity-port",
+   "modified_tracked_files": 0,
+   "modified_tracked_list": [],
+   "untracked_entries": 16
+  },
+  "libimf": {
+   "available": true,
+   "search_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+  },
+  "versions": {
+   "python": "3.10.16",
+   "python_full": "3.10.16 (main, Dec 11 2024, 16:24:50) [GCC 11.2.0]",
+   "numpy": "2.2.4",
+   "executable": "/home/gtamkin/.conda/envs/graphcast-env/bin/python"
+  },
+  "argv": [
+   "d193_ref_day.py",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d203/ref",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d203/c1",
+   "54"
+  ],
+  "sentences": {
+   "radiation": "radiation computed by the original Fortran (hybrid component)",
+   "libimf": "libimf math functions provided by a host callback to the original build's runtime"
+  },
+  "extra": {
+   "task": "D193 NumPy libimf chain reference (closed surface), one day",
+   "date": "nov26"
+  }
+ },
+ "steps": [
+  {
+   "k": 0,
+   "itime": 33312,
+   "wall": 151.97551121213473,
+   "daily": null,
+   "c1_total": {
+    "A": 559,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 559,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 1,
+   "itime": 33313,
+   "wall": 42.82936464087106,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 2,
+   "itime": 33314,
+   "wall": 23.119039711076766,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 3,
+   "itime": 33315,
+   "wall": 22.268949120072648,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 4,
+   "itime": 33316,
+   "wall": 22.475753176026046,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 5,
+   "itime": 33317,
+   "wall": 22.159766308031976,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 6,
+   "itime": 33318,
+   "wall": 21.86315956991166,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 7,
+   "itime": 33319,
+   "wall": 36.51879194704816,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 8,
+   "itime": 33320,
+   "wall": 36.96776175010018,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 9,
+   "itime": 33321,
+   "wall": 45.52337154513225,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 10,
+   "itime": 33322,
+   "wall": 21.673724964959547,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 11,
+   "itime": 33323,
+   "wall": 41.501989278011024,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 12,
+   "itime": 33324,
+   "wall": 23.9354484800715,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 13,
+   "itime": 33325,
+   "wall": 23.420620610006154,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 14,
+   "itime": 33326,
+   "wall": 22.482253855094314,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 15,
+   "itime": 33327,
+   "wall": 22.05426932312548,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 16,
+   "itime": 33328,
+   "wall": 24.465942728798836,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 17,
+   "itime": 33329,
+   "wall": 51.92129925615154,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 18,
+   "itime": 33330,
+   "wall": 22.97399688907899,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 19,
+   "itime": 33331,
+   "wall": 24.076621001120657,
+   "daily": null,
+   "c1_total": {
+    "A": 570,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 570,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  }
+ ],
+ "taskset": [
+  0,
+  1,
+  2,
+  6,
+  7
+ ]
+}

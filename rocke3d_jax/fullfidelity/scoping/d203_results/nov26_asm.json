@@ -1,0 +1,3106 @@
+{
+ "header": {
+  "timestamp_utc": "2026-10-08T21:40:49+00:00",
+  "timestamp_local": "2026-10-08T17:40:49-04:00",
+  "host": {
+   "hostname": "forest204",
+   "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+   "machine": "x86_64",
+   "cpu_count_visible": 12
+  },
+  "core_affinity": {
+   "cores": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "n_cores": 5,
+   "pid": 952185
+  },
+  "thread_env": {
+   "OMP_NUM_THREADS": "1",
+   "MKL_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null,
+   "NUMEXPR_NUM_THREADS": null,
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "TF_NUM_INTRAOP_THREADS": null,
+   "XLA_PYTHON_CLIENT_PREALLOCATE": null
+  },
+  "xla_flags": {
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "documented_flags_present": true,
+   "required": [
+    "--xla_cpu_max_isa=AVX",
+    "--xla_disable_hlo_passes=algsimp"
+   ],
+   "jax_imported_before_harness": true
+  },
+  "jax": {
+   "version": "0.5.3",
+   "backend": "cpu",
+   "devices": [
+    "TFRT_CPU_0"
+   ],
+   "x64_enabled": true,
+   "jaxlib_version": "0.5.3"
+  },
+  "compile_cache": {
+   "checked": [
+    "JAX_COMPILATION_CACHE_DIR",
+    "CLOUDS_JAX_CACHE",
+    "jax.config.jax_compilation_cache_dir"
+   ],
+   "cache_set": false
+  },
+  "git": {
+   "head": "10707bb15fc02afab0dba61e79c380c21a5d91f0",
+   "branch": "full-fidelity-port",
+   "modified_tracked_files": 0,
+   "modified_tracked_list": [],
+   "untracked_entries": 15
+  },
+  "libimf": {
+   "available": true,
+   "search_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+  },
+  "versions": {
+   "python": "3.10.16",
+   "python_full": "3.10.16 (main, Dec 11 2024, 16:24:50) [GCC 11.2.0]",
+   "numpy": "2.2.4",
+   "executable": "/home/gtamkin/.conda/envs/graphcast-env/bin/python"
+  },
+  "argv": [
+   "d191_run.py",
+   "nov26",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d203/final",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d203/refn",
+   "--runs",
+   "1"
+  ],
+  "sentences": {
+   "radiation": "radiation computed by the original Fortran (hybrid component)",
+   "libimf": "libimf math functions provided by a host callback to the original build's runtime"
+  },
+  "extra": {
+   "task": "D191 assembled device-resident coupled step, step 0",
+   "date": "nov26",
+   "libimf": {
+    "requested": "libimf",
+    "effective": "libimf",
+    "libimf_available": true,
+    "fallback_allowed": false,
+    "traced": false,
+    "libimf_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+   },
+   "installed": {
+    "clouds_lscond_jax.OPS[imf]": "OpsImf (exp, pw, dq through libimf_ops)",
+    "clouds_mstcnv_jax.jnp": "libimf_ops.JnpProxy (power, exp -> libimf_ops; everything else jax.numpy)",
+    "clouds_mstcnv_jax.conv_micro_j": "conv_micro_j_imf",
+    "dyn_jax_pgf.jnp": "JnpProxy (PKU/PKD pow)",
+    "dyn_jax_aflux.jnp": "JnpProxy (MAtoP pk pow)",
+    "dyn_jax_pgf hk": "KAPA subclass: .01**KAPA = libimf scalar pow",
+    "jax_atm_step.stage_dyn": "stage_dyn (PEK pow via libimf_ops)",
+    "jax_atm_step.stage_condse": "stage_condse (LSCOND mode imf)",
+    "jax_atm_step.make_kit": "KitImf",
+    "jax_p1_glue.jnp": "libimf_ops.JnpProxy (matopmb pk pow, pek_of pow, calc_trop pow x2)",
+    "jax_p1_condse.jnp": "libimf_ops.JnpProxy (snow-age exp)",
+    "jax_p1_condse.lj": "_LjShim (LSCOND core mode \"imf\")",
+    "jax_p1_condse.cf": "_CfShim (pole columns keep the imf backend)",
+    "DynDevice.kit": "jax_atm_step_imf.KitImf (set by make_phase1)"
+   }
+  }
+ },
+ "date": "nov26",
+ "itime": 33312,
+ "libimf_install": {
+  "clouds_lscond_jax.OPS[imf]": "OpsImf (exp, pw, dq through libimf_ops)",
+  "clouds_mstcnv_jax.jnp": "libimf_ops.JnpProxy (power, exp -> libimf_ops; everything else jax.numpy)",
+  "clouds_mstcnv_jax.conv_micro_j": "conv_micro_j_imf",
+  "dyn_jax_pgf.jnp": "JnpProxy (PKU/PKD pow)",
+  "dyn_jax_aflux.jnp": "JnpProxy (MAtoP pk pow)",
+  "dyn_jax_pgf hk": "KAPA subclass: .01**KAPA = libimf scalar pow",
+  "jax_atm_step.stage_dyn": "stage_dyn (PEK pow via libimf_ops)",
+  "jax_atm_step.stage_condse": "stage_condse (LSCOND mode imf)",
+  "jax_atm_step.make_kit": "KitImf",
+  "jax_p1_glue.jnp": "libimf_ops.JnpProxy (matopmb pk pow, pek_of pow, calc_trop pow x2)",
+  "jax_p1_condse.jnp": "libimf_ops.JnpProxy (snow-age exp)",
+  "jax_p1_condse.lj": "_LjShim (LSCOND core mode \"imf\")",
+  "jax_p1_condse.cf": "_CfShim (pole columns keep the imf backend)",
+  "DynDevice.kit": "jax_atm_step_imf.KitImf (set by make_phase1)"
+ },
+ "taskset": [
+  0,
+  1,
+  2,
+  6,
+  7
+ ],
+ "seconds": {
+  "setup": 7.230790511937812,
+  "total_process": 494.47029508207925
+ },
+ "runs": [
+  {
+   "label": "cold",
+   "rad_mode": "replay",
+   "timed": false,
+   "record_load_seconds": 1.4758394970558584,
+   "record_load_jit_eager": {
+    "jit": 0,
+    "eager": 59
+   },
+   "step_seconds": 473.2309273390565,
+   "wall_seconds": 474.7067694249563,
+   "step_jit_executions": 99,
+   "step_eager_primitive_dispatches": 492,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "eager_by_stage": {
+    "template_build": 294,
+    "melt_si_dev": 0,
+    "carry_writeback": 1,
+    "surface_pre": 0,
+    "tile_mask_check": 0,
+    "nit_rebuild": 0,
+    "template_apply": 2,
+    "surface_tiles_land": 0,
+    "tile_acc": 0,
+    "post_a": 2,
+    "ocean_a": 0,
+    "ocean_b": 0,
+    "post_b": 0,
+    "dissip_filter": 0,
+    "state_assembly": 0
+   },
+   "jit_by_name_all": {
+    "melt_si_dev": 1,
+    "dyn": 75,
+    "condse_entry": 1,
+    "condse_setup": 1,
+    "condse_mstcnv": 3,
+    "condse_post": 1,
+    "radia": 1,
+    "(outside)": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1
+   },
+   "info": {
+    "k": 0,
+    "itime": 33312,
+    "stage_rebuilt": true,
+    "phase1_seconds": 264.32043409417383,
+    "flags": {
+     "aadvt_bad": 0,
+     "advecm_exc2": 0,
+     "handoff_error": 0,
+     "lscond_vmp": 0,
+     "mstcnv_negative_cloud": 0,
+     "qdynam_do_z_extra": 0,
+     "qdynam_err": 0,
+     "sdrag_bad": 0,
+     "subsid_error": 0
+    },
+    "phase1_stage_seconds": {
+     "melt_si": 2.2023916244506836e-05,
+     "dyn": 62.28722832095809,
+     "condse_entry": 0.24441418913193047,
+     "condse_setup": 0.8280866700224578,
+     "condse_mstcnv": 184.0918988310732,
+     "condse_post": 16.093747728969902,
+     "radia": 0.5558229070156813
+    },
+    "phase1_stage_jit": {
+     "melt_si": 0,
+     "dyn": 75,
+     "condse_entry": 1,
+     "condse_setup": 1,
+     "condse_mstcnv": 3,
+     "condse_post": 1,
+     "radia": 1
+    },
+    "phase1_stage_eager": {
+     "melt_si": 0,
+     "dyn": 66,
+     "condse_entry": 0,
+     "condse_setup": 0,
+     "condse_mstcnv": 80,
+     "condse_post": 0,
+     "radia": 44
+    },
+    "nit_rebuild": {
+     "cells": 0,
+     "device_to_host_arrays": 0
+    },
+    "host": {
+     "Nw": 2731,
+     "Nl": 346,
+     "Ne": 753,
+     "max_substeps": 11
+    }
+   },
+   "counters_by_stage": {
+    "record_load": {
+     "entries": 1,
+     "jit_calls": 0,
+     "h2d_calls": 200,
+     "h2d_bytes": 138106688,
+     "d2h_calls": 0,
+     "d2h_bytes": 0,
+     "cb_calls": 0,
+     "cb_bytes": 0,
+     "cb_seconds": 0.0,
+     "compiles": 12,
+     "compile_seconds": 0.2300560474395752,
+     "wall_seconds": 1.4757989209610969,
+     "self_seconds": 1.4757989209610969
+    },
+    "step": {
+     "entries": 1,
+     "jit_calls": 0,
+     "h2d_calls": 2689,
+     "h2d_bytes": 67298638,
+     "d2h_calls": 1,
+     "d2h_bytes": 36,
+     "cb_calls": 0,
+     "cb_bytes": 0,
+     "cb_seconds": 0.0,
+     "compiles": 114,
+     "compile_seconds": 353.4023835659027,
+     "wall_seconds": 473.2308976720087,
+     "self_seconds": 473.2308976720087
+    },
+    "(outside)": {
+     "entries": 0,
+     "jit_calls": 0,
+     "h2d_calls": 6297,
+     "h2d_bytes": 351926472,
+     "d2h_calls": 0,
+     "d2h_bytes": 0,
+     "cb_calls": 0,
+     "cb_bytes": 0,
+     "cb_seconds": 0.0,
+     "compiles": 0,
+     "compile_seconds": 0.0,
+     "wall_seconds": 0.0,
+     "self_seconds": 0.0
+    }
+   },
+   "counters_totals": {
+    "entries": 2,
+    "jit_calls": 0,
+    "h2d_calls": 9186,
+    "h2d_bytes": 557331798,
+    "d2h_calls": 1,
+    "d2h_bytes": 36,
+    "cb_calls": 0,
+    "cb_bytes": 0,
+    "cb_seconds": 0.0,
+    "compiles": 126,
+    "compile_seconds": 353.6324396133423,
+    "wall_seconds": 474.7066965929698,
+    "self_seconds": 474.7066965929698
+   },
+   "libimf_ops": {
+    "exp": {
+     "calls": 773,
+     "elements": 1379917,
+     "bytes_in": 22838112,
+     "bytes_out": 20300544,
+     "seconds": 1.3320988325867802
+    },
+    "pow": {
+     "calls": 676,
+     "elements": 2558342,
+     "bytes_in": 53456976,
+     "bytes_out": 25156224,
+     "seconds": 4.221869716187939
+    },
+    "total": {
+     "calls": 1449,
+     "elements": 3938259,
+     "bytes_in": 76295088,
+     "bytes_out": 45456768,
+     "seconds": 5.553968548774719
+    }
+   },
+   "libimf_fused": {
+    "total": {
+     "calls": 4666,
+     "lanes": 1262138,
+     "bytes_in": 104631424,
+     "bytes_out": 68727808,
+     "seconds": 0.6058889334090054
+    },
+    "tags": {
+     "base_cb": {
+      "calls": 22,
+      "lanes": 278784,
+      "bytes_in": 2509056,
+      "bytes_out": 2230272,
+      "seconds": 0.009097999427467585
+     },
+     "mf_trip": {
+      "calls": 176,
+      "lanes": 25298,
+      "bytes_in": 5018112,
+      "bytes_out": 4460544,
+      "seconds": 0.01927202451042831
+     },
+     "asc_cb0": {
+      "calls": 670,
+      "lanes": 180800,
+      "bytes_in": 16273824,
+      "bytes_out": 10671360,
+      "seconds": 0.113057293696329
+     },
+     "asc_dq": {
+      "calls": 1340,
+      "lanes": 71760,
+      "bytes_in": 4802112,
+      "bytes_out": 4268544,
+      "seconds": 0.12183097191154957
+     },
+     "cm_flam_dc": {
+      "calls": 651,
+      "lanes": 226933,
+      "bytes_in": 31111360,
+      "bytes_out": 14640640,
+      "seconds": 0.10740325110964477
+     },
+     "cm_mp": {
+      "calls": 651,
+      "lanes": 291771,
+      "bytes_in": 27451200,
+      "bytes_out": 18823680,
+      "seconds": 0.12356585497036576
+     },
+     "dd_dq": {
+      "calls": 1023,
+      "lanes": 65157,
+      "bytes_in": 3660768,
+      "bytes_out": 3254016,
+      "seconds": 0.0923380081076175
+     },
+     "pp_dq": {
+      "calls": 132,
+      "lanes": 119547,
+      "bytes_in": 9281088,
+      "bytes_out": 8249856,
+      "seconds": 0.0173506666906178
+     },
+     "post_radius": {
+      "calls": 1,
+      "lanes": 2088,
+      "bytes_in": 4523904,
+      "bytes_out": 2128896,
+      "seconds": 0.001972862984985113
+     }
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 249541376,
+    "seconds": 0.739163838326931
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.6523058020975441,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 1.5051354188472033,
+    "bytes": 460832
+   },
+   "radiation_interface": {
+    "calls": 1,
+    "bytes_device_to_host": 33676432,
+    "bytes_host_to_device": 11605248,
+    "arrays_device_to_host": 54,
+    "arrays_host_to_device": 22,
+    "packet_file_bytes_in": 0,
+    "packet_file_bytes_out": 0,
+    "wall_s_callback": 0.012865272117778659,
+    "wall_s_server_request": 0.0,
+    "wall_s_server_radia_and_io": 0.0,
+    "host_sync_points": 1,
+    "steps_without_callback": 0,
+    "server_binary": "none (recorded replay)",
+    "restart": "none",
+    "SOCRATES_modified": false,
+    "seeds": [
+     -588724193
+    ],
+    "itimes": [
+     33312
+    ]
+   },
+   "radiation_sentence": "radiation replayed from the real record (not computed; no Fortran callback in this result)",
+   "stage_table": [
+    {
+     "name": "record_load",
+     "kind": "REC",
+     "seconds": 1.4757696110755205,
+     "calls": 1,
+     "share": 0.007015657621937134,
+     "description": "host file reads of the recorded entry data of the step through the registry, then device_put (CONDSE entry set, radiation record, restart ice state)"
+    },
+    {
+     "name": "dyn",
+     "kind": "JJ/NP",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "DYNAM+QDYNAM+energy fix+TROP+PGRAD_PBL+KEA, all kernels and glue on device; NumPy part: none; host part: dispatch of ~100 kernel calls from Python, QDYNAM extra-column branch not executed (flagged) [libimf pow/exp: labelled host callback inside this stage, time included]"
+    },
+    {
+     "name": "condse_entry",
+     "kind": "JJ",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "CONDSE entry set"
+    },
+    {
+     "name": "condse_setup",
+     "kind": "JJ/NP",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "CONDSE column set-up (JJ) + south pole column: per-column NumPy port clouds_condse_ff.condse_column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]"
+    },
+    {
+     "name": "condse_mstcnv",
+     "kind": "JJ/NP",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "MSTCNV (D189): cloud-base loop and event block as ONE device program; libimf exp/pow through FUSED host callbacks (C shim over libimf.so); QUS ADV1D subsidence = NumPy host callback (176 calls)"
+    },
+    {
+     "name": "condse_post",
+     "kind": "JJ/NP",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "CONDSE post-processing + LSCOND (JJ); north pole column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]"
+    },
+    {
+     "name": "radia",
+     "kind": "JJ/REC",
+     "seconds": 0.0,
+     "calls": 0,
+     "share": null,
+     "description": "RADIA apply: hand-off interface of D185; in replay mode the packet is served from the recorded ffa_step_r record (REC); with the real server FORT"
+    },
+    {
+     "name": "flag_read",
+     "kind": "NP",
+     "seconds": 0.00045099807903170586,
+     "calls": 1,
+     "share": 2.1439986884754176e-06,
+     "description": "one host read of the stop-model flags per step"
+    },
+    {
+     "name": "template_build",
+     "kind": "REC/NP",
+     "seconds": 1.022600598167628,
+     "calls": 1,
+     "share": 0.004861338536103697,
+     "description": "host: scatter of the recorded SURFACE rows (ffp/ffs/ffl/ffg/fft) into the fixed slots, per-cell Python GHY batch build (ghy_advnc_test.build_batch), upload of the template (D188 jax_surface.build_template). Disappears only when Ent and the template columns come from the pytree"
+    },
+    {
+     "name": "melt_si_dev",
+     "kind": "JJ",
+     "seconds": 0.6141061838716269,
+     "calls": 1,
+     "share": 0.0029193979176856976,
+     "description": "MELT_SI on the device state (jit) and replacement of the CONDSE-entry RSI by its result"
+    },
+    {
+     "name": "carry_writeback",
+     "kind": "JJ",
+     "seconds": 0.1356427848804742,
+     "calls": 1,
+     "share": 0.000644831910391452,
+     "description": "CONDSE exit -> carry (CLDSS/CLDMC masking, held SNOAGE/RQT/KLIQ of the radiation server written back into the carry; one small jit)"
+    },
+    {
+     "name": "tile_mask_check",
+     "kind": "JJ",
+     "seconds": 0.275586673989892,
+     "calls": 1,
+     "share": 0.0013101108298824767,
+     "description": "tile masks from the MELT_SI result (jax_state_d181.tile_masks), compared with the template slot validity on the device"
+    },
+    {
+     "name": "surface_pre",
+     "kind": "JJ",
+     "seconds": 3.5581532400101423,
+     "calls": 1,
+     "share": 0.016915096171485015,
+     "description": "PRECIP_SI, AG2OG, PRECIP_OC (+TOC2SST), PRECIP_LI, PRECIP_LK, seaice_to_atmgrid (jax_posttile.surface_pre_dev)"
+    },
+    {
+     "name": "nit_rebuild",
+     "kind": "REC/NP",
+     "seconds": 3.8416823372244835e-05,
+     "calls": 1,
+     "share": 1.8262964468124546e-07,
+     "description": "host (D195, ON by default, Coupled(nit_fix=True)): only on steps with a cell of recorded ffnit > 11: ONE declared device->host read of PREC/EPREC/PRECSS (3 small arrays), ghy_advnc_test.build_batch (NumPy, ghy_ref_nit.run_cell_full) of those rows with OUR precipitation, device replacement of edts/ecnc/elai/ebet/nsub/dt of those cells (jax_surface.nit_rebuild); a no-op, no transfer, on the other steps"
+    },
+    {
+     "name": "template_apply",
+     "kind": "JJ",
+     "seconds": 1.632616715040058,
+     "calls": 1,
+     "share": 0.007761292694071211,
+     "description": "device rewrite of the state columns of the SURFACE templates and of the GHY precipitation forcing (jax_tpl_state)"
+    },
+    {
+     "name": "surface_tiles_land",
+     "kind": "JJ/REC",
+     "seconds": 54.9410339940805,
+     "calls": 1,
+     "share": 0.26118405000680917,
+     "description": "SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), land ice, 2 substeps; 5 jit executions"
+    },
+    {
+     "name": "tile_acc",
+     "kind": "JJ",
+     "seconds": 0.7251713629812002,
+     "calls": 1,
+     "share": 0.0034473904068277016,
+     "description": "tile accumulators of the post-tile stage from the device tile outputs"
+    },
+    {
+     "name": "post_a",
+     "kind": "JJ",
+     "seconds": 34.341986182145774,
+     "calls": 1,
+     "share": 0.16325828591608085,
+     "description": "DYNSI, GROUND_LI, lake chain, RIVERF, ocean-driver head (jit)"
+    },
+    {
+     "name": "ocean_a",
+     "kind": "JJ",
+     "seconds": 28.809429483953863,
+     "calls": 1,
+     "share": 0.1369570778703467,
+     "description": "OCEANS: ground, ostres, oconv, drag, polar (jit)"
+    },
+    {
+     "name": "ocean_b",
+     "kind": "JJ/NP",
+     "seconds": 70.34978227200918,
+     "calls": 1,
+     "share": 0.3344356615654571,
+     "description": "OCEANS: dynamics, straits, post, odiff, meso (jit) with the OADVT2 X pre-pass as a host pure_callback (4 calls/step, NumPy)"
+    },
+    {
+     "name": "post_b",
+     "kind": "JJ",
+     "seconds": 8.527989524183795,
+     "calls": 1,
+     "share": 0.04054118898785102,
+     "description": "FORM_SI, TOC2SST, ADVSI (double-double Ti2b), pole replication (jit)"
+    },
+    {
+     "name": "dissip_filter",
+     "kind": "JJ/NP",
+     "seconds": 3.9059931579977274,
+     "calls": 1,
+     "share": 0.01856869152507487,
+     "description": "DISSIP + FILTER (J3, jax_phase2); the pow of SLP, MAtoPMB and PEK through the libimf host callback"
+    },
+    {
+     "name": "state_assembly",
+     "kind": "JJ",
+     "seconds": 0.037359115900471807,
+     "calls": 1,
+     "share": 0.00017760141166273498,
+     "description": "assembly of the next-step state pytree (device dict operations, no jit)"
+    }
+   ],
+   "non_jax_text": "Non-JAX stages (every stage whose implementation kind is not purely JJ; FORT=original Fortran, REC=recorded input, NP=NumPy/Python, EJ=eager JAX, JJ=jitted JAX):\n  record_load [REC] 0.7% of measured step time (1.476 s, 1 calls). host file reads of the recorded entry data of the step through the registry, then device_put (CONDSE entry set, radiation record, restart ice state)\n  dyn [JJ/NP] not measured. DYNAM+QDYNAM+energy fix+TROP+PGRAD_PBL+KEA, all kernels and glue on device; NumPy part: none; host part: dispatch of ~100 kernel calls from Python, QDYNAM extra-column branch not executed (flagged) [libimf pow/exp: labelled host callback inside this stage, time included]\n  condse_setup [JJ/NP] not measured. CONDSE column set-up (JJ) + south pole column: per-column NumPy port clouds_condse_ff.condse_column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]\n  condse_mstcnv [JJ/NP] not measured. MSTCNV (D189): cloud-base loop and event block as ONE device program; libimf exp/pow through FUSED host callbacks (C shim over libimf.so); QUS ADV1D subsidence = NumPy host callback (176 calls)\n  condse_post [JJ/NP] not measured. CONDSE post-processing + LSCOND (JJ); north pole column through pure_callback (NP) [libimf pow/exp: labelled host callback inside this stage, time included]\n  radia [JJ/REC] not measured. RADIA apply: hand-off interface of D185; in replay mode the packet is served from the recorded ffa_step_r record (REC); with the real server FORT\n  flag_read [NP] 0.0% of measured step time (0.000 s, 1 calls). one host read of the stop-model flags per step\n  template_build [REC/NP] 0.5% of measured step time (1.023 s, 1 calls). host: scatter of the recorded SURFACE rows (ffp/ffs/ffl/ffg/fft) into the fixed slots, per-cell Python GHY batch build (ghy_advnc_test.build_batch), upload of the template (D188 jax_surface.build_template). Disappears only when Ent and the template columns come from the pytree\n  nit_rebuild [REC/NP] 0.0% of measured step time (0.000 s, 1 calls). host (D195, ON by default, Coupled(nit_fix=True)): only on steps with a cell of recorded ffnit > 11: ONE declared device->host read of PREC/EPREC/PRECSS (3 small arrays), ghy_advnc_test.build_batch (NumPy, ghy_ref_nit.run_cell_full) of those rows with OUR precipitation, device replacement of edts/ecnc/elai/ebet/nsub/dt of those cells (jax_surface.nit_rebuild); a no-op, no transfer, on the other steps\n  surface_tiles_land [JJ/REC] 26.1% of measured step time (54.941 s, 1 calls). SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), land ice, 2 substeps; 5 jit executions\n  ocean_b [JJ/NP] 33.4% of measured step time (70.350 s, 1 calls). OCEANS: dynamics, straits, post, odiff, meso (jit) with the OADVT2 X pre-pass as a host pure_callback (4 calls/step, NumPy)\n  dissip_filter [JJ/NP] 1.9% of measured step time (3.906 s, 1 calls). DISSIP + FILTER (J3, jax_phase2); the pow of SLP, MAtoPMB and PEK through the libimf host callback",
+   "groups_bytes": null,
+   "validation": {
+    "n_arrays": 559,
+    "c1": {
+     "dyn": {
+      "n_fields": 52,
+      "categories": {
+       "A": 52,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "condse": {
+      "n_fields": 59,
+      "categories": {
+       "A": 59,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "radia": {
+      "n_fields": 59,
+      "categories": {
+       "A": 59,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "X": {
+      "n_fields": 68,
+      "categories": {
+       "A": 68,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "surface": {
+      "n_fields": 59,
+      "categories": {
+       "A": 59,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "dissip": {
+      "n_fields": 60,
+      "categories": {
+       "A": 60,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "filter": {
+      "n_fields": 60,
+      "categories": {
+       "A": 60,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "surf": {
+      "n_fields": 74,
+      "categories": {
+       "A": 74,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [],
+      "not_A": {}
+     },
+     "land": {
+      "n_fields": 68,
+      "categories": {
+       "A": 68,
+       "B": 0,
+       "C": 0,
+       "D": 0
+      },
+      "only_in_hybrid": [],
+      "only_in_reference": [
+       "p4_ij"
+      ],
+      "not_A": {}
+     }
+    },
+    "c1_total": {
+     "A": 559,
+     "B": 0,
+     "C": 0,
+     "D": 0
+    },
+    "c1_n": 559,
+    "non_vacuity_1ulp_detected_as": "B",
+    "atm_gate": {
+     "verdict": "MET with named exception columns",
+     "categories": {
+      "B": 11,
+      "C": 2,
+      "A": 1
+     },
+     "gate_fields": {
+      "U": {
+       "cat": "B",
+       "max_abs": 7.753797603982093e-13,
+       "scale": 87.76457562011248,
+       "rel": 8.834769095841446e-15,
+       "n_diff": 18450,
+       "n": 132480,
+       "worst": [
+        65,
+        18,
+        11
+       ],
+       "n_cols_over": 0
+      },
+      "V": {
+       "cat": "B",
+       "max_abs": 1.0764722446765518e-12,
+       "scale": 63.23661556481626,
+       "rel": 1.702292627557193e-14,
+       "n_diff": 18676,
+       "n": 132480,
+       "worst": [
+        48,
+        8,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "T": {
+       "cat": "B",
+       "max_abs": 8.526512829121202e-13,
+       "scale": 451.27559908205785,
+       "rel": 1.8894247432090343e-15,
+       "n_diff": 107391,
+       "n": 132480,
+       "worst": [
+        1,
+        18,
+        40
+       ],
+       "n_cols_over": 0
+      },
+      "Q": {
+       "cat": "B",
+       "max_abs": 1.5577816814271728e-15,
+       "scale": 0.01956326713318943,
+       "rel": 7.962788990313221e-14,
+       "n_diff": 21800,
+       "n": 132480,
+       "worst": [
+        2,
+        29,
+        1
+       ],
+       "n_cols_over": 0
+      },
+      "QCL": {
+       "cat": "B",
+       "max_abs": 1.8566962203814263e-18,
+       "scale": 0.003139394766699242,
+       "rel": 5.914185243844169e-16,
+       "n_diff": 1383,
+       "n": 132480,
+       "worst": [
+        36,
+        29,
+        13
+       ],
+       "n_cols_over": 0
+      },
+      "QCI": {
+       "cat": "B",
+       "max_abs": 4.7704895589362195e-18,
+       "scale": 0.017967811189586194,
+       "rel": 2.655019862241821e-16,
+       "n_diff": 483,
+       "n": 132480,
+       "worst": [
+        19,
+        29,
+        20
+       ],
+       "n_cols_over": 0
+      },
+      "MA": {
+       "cat": "B",
+       "max_abs": 3.183231456205249e-11,
+       "scale": 565.0660239684089,
+       "rel": 5.6333796780944197e-14,
+       "n_diff": 11398,
+       "n": 132480,
+       "worst": [
+        12,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "TMOM": {
+       "cat": "B",
+       "max_abs": 6.661338147750939e-16,
+       "scale": 48.52632508748223,
+       "rel": 1.3727266871624876e-17,
+       "n_diff": 3370,
+       "n": 1192320,
+       "worst": [
+        3,
+        25,
+        43,
+        1
+       ],
+       "n_cols_over": 0
+      },
+      "QMOM": {
+       "cat": "B",
+       "max_abs": 9.627715291671279e-17,
+       "scale": 0.016487156140242206,
+       "rel": 5.839524542484161e-15,
+       "n_diff": 98538,
+       "n": 1192320,
+       "worst": [
+        2,
+        38,
+        29,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "EGCM": {
+       "cat": "C",
+       "max_abs": 1.021316364813174e-11,
+       "scale": 8.061516235534743,
+       "rel": 1.2669035637629368e-12,
+       "n_diff": 82346,
+       "n": 132480,
+       "worst": [
+        3,
+        25,
+        16
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         25,
+         16
+        ]
+       ]
+      },
+      "W2GCM": {
+       "cat": "C",
+       "max_abs": 2.042632729626348e-11,
+       "scale": 6.572692143634033,
+       "rel": 3.107756585868297e-12,
+       "n_diff": 82165,
+       "n": 132480,
+       "worst": [
+        3,
+        25,
+        16
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         25,
+         16
+        ]
+       ]
+      },
+      "PBLHT": {
+       "cat": "B",
+       "max_abs": 7.660219125682488e-10,
+       "scale": 4000.0,
+       "rel": 1.9150547814206221e-13,
+       "n_diff": 2956,
+       "n": 3312,
+       "worst": [
+        63,
+        30
+       ],
+       "n_cols_over": 0
+      },
+      "DCLEV": {
+       "cat": "A",
+       "max_abs": 0.0,
+       "scale": 12.0,
+       "rel": 0.0,
+       "n_diff": 0,
+       "n": 3312,
+       "worst": null,
+       "n_cols_over": 0
+      },
+      "PBLPTOP": {
+       "cat": "B",
+       "max_abs": 8.094502845779061e-11,
+       "scale": 1025.265143571825,
+       "rel": 7.895033686193e-14,
+       "n_diff": 2383,
+       "n": 3312,
+       "worst": [
+        33,
+        24
+       ],
+       "n_cols_over": 0
+      }
+     },
+     "exception_columns": {
+      "EGCM": {
+       "cols": [
+        [
+         25,
+         16
+        ]
+       ],
+       "n_cols": 1,
+       "rel": 1.2669035637629368e-12
+      },
+      "W2GCM": {
+       "cols": [
+        [
+         25,
+         16
+        ]
+       ],
+       "n_cols": 1,
+       "rel": 3.107756585868297e-12
+      }
+     }
+    },
+    "atm_end30": {
+     "categories": {
+      "A": 2,
+      "B": 25,
+      "C": 3,
+      "D": 0
+     },
+     "fields": {
+      "U": {
+       "cat": "B",
+       "max_abs": 7.753797603982093e-13,
+       "scale": 87.76457562011248,
+       "rel": 8.834769095841446e-15,
+       "n_diff": 18450,
+       "n": 132480,
+       "worst": [
+        65,
+        18,
+        11
+       ],
+       "n_cols_over": 0
+      },
+      "V": {
+       "cat": "B",
+       "max_abs": 1.0764722446765518e-12,
+       "scale": 63.23661556481626,
+       "rel": 1.702292627557193e-14,
+       "n_diff": 18676,
+       "n": 132480,
+       "worst": [
+        48,
+        8,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "T": {
+       "cat": "B",
+       "max_abs": 8.526512829121202e-13,
+       "scale": 451.27559908205785,
+       "rel": 1.8894247432090343e-15,
+       "n_diff": 107391,
+       "n": 132480,
+       "worst": [
+        1,
+        18,
+        40
+       ],
+       "n_cols_over": 0
+      },
+      "Q": {
+       "cat": "B",
+       "max_abs": 1.5577816814271728e-15,
+       "scale": 0.01956326713318943,
+       "rel": 7.962788990313221e-14,
+       "n_diff": 21800,
+       "n": 132480,
+       "worst": [
+        2,
+        29,
+        1
+       ],
+       "n_cols_over": 0
+      },
+      "QCL": {
+       "cat": "B",
+       "max_abs": 1.8566962203814263e-18,
+       "scale": 0.003139394766699242,
+       "rel": 5.914185243844169e-16,
+       "n_diff": 1383,
+       "n": 132480,
+       "worst": [
+        36,
+        29,
+        13
+       ],
+       "n_cols_over": 0
+      },
+      "QCI": {
+       "cat": "B",
+       "max_abs": 4.7704895589362195e-18,
+       "scale": 0.017967811189586194,
+       "rel": 2.655019862241821e-16,
+       "n_diff": 483,
+       "n": 132480,
+       "worst": [
+        19,
+        29,
+        20
+       ],
+       "n_cols_over": 0
+      },
+      "MA": {
+       "cat": "B",
+       "max_abs": 3.183231456205249e-11,
+       "scale": 565.0660239684089,
+       "rel": 5.6333796780944197e-14,
+       "n_diff": 11398,
+       "n": 132480,
+       "worst": [
+        12,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "PEDN": {
+       "cat": "B",
+       "max_abs": 4.979483492206782e-11,
+       "scale": 1038.756065341179,
+       "rel": 4.793698596187039e-14,
+       "n_diff": 8610,
+       "n": 135792,
+       "worst": [
+        1,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "PMID": {
+       "cat": "B",
+       "max_abs": 4.9112713895738125e-11,
+       "scale": 1028.0995177951218,
+       "rel": 4.7770388999954026e-14,
+       "n_diff": 8335,
+       "n": 132480,
+       "worst": [
+        1,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "PK": {
+       "cat": "B",
+       "max_abs": 1.0746958878371515e-13,
+       "scale": 7.279761123806541,
+       "rel": 1.4762790558094574e-14,
+       "n_diff": 4445,
+       "n": 132480,
+       "worst": [
+        1,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "PDSIG": {
+       "cat": "B",
+       "max_abs": 3.11928260998684e-12,
+       "scale": 55.414047239497975,
+       "rel": 5.6290467225853165e-14,
+       "n_diff": 11064,
+       "n": 132480,
+       "worst": [
+        12,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "PEK": {
+       "cat": "B",
+       "max_abs": 1.0835776720341528e-13,
+       "scale": 7.301279261286836,
+       "rel": 1.484092901061251e-14,
+       "n_diff": 4668,
+       "n": 135792,
+       "worst": [
+        1,
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "P": {
+       "cat": "B",
+       "max_abs": 5.013589543523267e-11,
+       "scale": 888.756065341179,
+       "rel": 5.641131170900793e-14,
+       "n_diff": 393,
+       "n": 3312,
+       "worst": [
+        39,
+        29
+       ],
+       "n_cols_over": 0
+      },
+      "TMOM": {
+       "cat": "B",
+       "max_abs": 6.661338147750939e-16,
+       "scale": 48.52632508748223,
+       "rel": 1.3727266871624876e-17,
+       "n_diff": 3370,
+       "n": 1192320,
+       "worst": [
+        3,
+        25,
+        43,
+        1
+       ],
+       "n_cols_over": 0
+      },
+      "QMOM": {
+       "cat": "B",
+       "max_abs": 9.627715291671279e-17,
+       "scale": 0.016487156140242206,
+       "rel": 5.839524542484161e-15,
+       "n_diff": 98538,
+       "n": 1192320,
+       "worst": [
+        2,
+        38,
+        29,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "UALIJ": {
+       "cat": "B",
+       "max_abs": 5.000444502911705e-13,
+       "scale": 78.41819283812714,
+       "rel": 6.3766382798871074e-15,
+       "n_diff": 19165,
+       "n": 132480,
+       "worst": [
+        11,
+        65,
+        18
+       ],
+       "n_cols_over": 0
+      },
+      "VALIJ": {
+       "cat": "B",
+       "max_abs": 2.877698079828406e-13,
+       "scale": 52.65786451193048,
+       "rel": 5.464897041497794e-15,
+       "n_diff": 19430,
+       "n": 132480,
+       "worst": [
+        7,
+        48,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "EGCM": {
+       "cat": "C",
+       "max_abs": 1.021316364813174e-11,
+       "scale": 8.061516235534743,
+       "rel": 1.2669035637629368e-12,
+       "n_diff": 82346,
+       "n": 132480,
+       "worst": [
+        3,
+        25,
+        16
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         25,
+         16
+        ]
+       ]
+      },
+      "W2GCM": {
+       "cat": "C",
+       "max_abs": 2.042632729626348e-11,
+       "scale": 6.572692143634033,
+       "rel": 3.107756585868297e-12,
+       "n_diff": 82165,
+       "n": 132480,
+       "worst": [
+        3,
+        25,
+        16
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         25,
+         16
+        ]
+       ]
+      },
+      "PBLHT": {
+       "cat": "B",
+       "max_abs": 7.660219125682488e-10,
+       "scale": 4000.0,
+       "rel": 1.9150547814206221e-13,
+       "n_diff": 2956,
+       "n": 3312,
+       "worst": [
+        63,
+        30
+       ],
+       "n_cols_over": 0
+      },
+      "DCLEV": {
+       "cat": "A",
+       "max_abs": 0.0,
+       "scale": 12.0,
+       "rel": 0.0,
+       "n_diff": 0,
+       "n": 3312,
+       "worst": null,
+       "n_cols_over": 0
+      },
+      "PBLPTOP": {
+       "cat": "B",
+       "max_abs": 8.094502845779061e-11,
+       "scale": 1025.265143571825,
+       "rel": 7.895033686193e-14,
+       "n_diff": 2383,
+       "n": 3312,
+       "worst": [
+        33,
+        24
+       ],
+       "n_cols_over": 0
+      },
+      "T1AA": {
+       "cat": "B",
+       "max_abs": 9.237055564881302e-14,
+       "scale": 44.53836959374164,
+       "rel": 2.073954580991051e-15,
+       "n_diff": 2675,
+       "n": 3312,
+       "worst": [
+        63,
+        30
+       ],
+       "n_cols_over": 0
+      },
+      "U1AA": {
+       "cat": "B",
+       "max_abs": 1.5987211554602254e-13,
+       "scale": 19.859085295566604,
+       "rel": 8.050326244467707e-15,
+       "n_diff": 3048,
+       "n": 3312,
+       "worst": [
+        63,
+        30
+       ],
+       "n_cols_over": 0
+      },
+      "V1AA": {
+       "cat": "B",
+       "max_abs": 2.007283228522283e-13,
+       "scale": 19.17003771897239,
+       "rel": 1.0470940422489077e-14,
+       "n_diff": 3054,
+       "n": 3312,
+       "worst": [
+        70,
+        39
+       ],
+       "n_cols_over": 0
+      },
+      "USTARPBL": {
+       "cat": "B",
+       "max_abs": 5.469999453389107e-13,
+       "scale": 1.182316894436087,
+       "rel": 4.626508746623346e-13,
+       "n_diff": 2834,
+       "n": 3312,
+       "worst": [
+        21,
+        4
+       ],
+       "n_cols_over": 0
+      },
+      "LMONINPBL": {
+       "cat": "C",
+       "max_abs": 0.0003953095292672515,
+       "scale": 736257.8206314837,
+       "rel": 5.369172566862475e-10,
+       "n_diff": 2868,
+       "n": 3312,
+       "worst": [
+        9,
+        7
+       ],
+       "n_cols_over": 7,
+       "cols_over_first10": [
+        [
+         9,
+         7
+        ],
+        [
+         12,
+         45
+        ],
+        [
+         14,
+         14
+        ],
+        [
+         17,
+         2
+        ],
+        [
+         30,
+         38
+        ],
+        [
+         41,
+         41
+        ],
+        [
+         70,
+         39
+        ]
+       ]
+      },
+      "DDM1": {
+       "cat": "A",
+       "max_abs": 0.0,
+       "scale": 0.044928787391192104,
+       "rel": 0.0,
+       "n_diff": 0,
+       "n": 3312,
+       "worst": null,
+       "n_cols_over": 0
+      },
+      "TSAVG": {
+       "cat": "B",
+       "max_abs": 3.353761712787673e-12,
+       "scale": 306.48592944075307,
+       "rel": 1.0942628651525061e-14,
+       "n_diff": 2569,
+       "n": 3312,
+       "worst": [
+        25,
+        6
+       ],
+       "n_cols_over": 0
+      },
+      "QSAVG": {
+       "cat": "B",
+       "max_abs": 4.165071065820314e-15,
+       "scale": 0.019716633204661955,
+       "rel": 2.1124656641862628e-13,
+       "n_diff": 2811,
+       "n": 3312,
+       "worst": [
+        14,
+        14
+       ],
+       "n_cols_over": 0
+      }
+     },
+     "n_compared": 30,
+     "missing": []
+    },
+    "surface_c2": {
+     "ocean_exit_vs_ffo_tag14": {
+      "g0m": {
+       "cat": "C",
+       "max_abs": 9785860608.0,
+       "scale": 8.31049763879606e+21,
+       "rel": 1.1775300389132503e-12,
+       "n_diff": 18242,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        4
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         65,
+         38
+        ]
+       ]
+      },
+      "s0m": {
+       "cat": "B",
+       "max_abs": 3439.171875,
+       "scale": 1.3943503603095872e+16,
+       "rel": 2.466504813206633e-13,
+       "n_diff": 17938,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        3
+       ],
+       "n_cols_over": 0
+      },
+      "gxmo": {
+       "cat": "B",
+       "max_abs": 331850816.0,
+       "scale": 3.7291427118413126e+20,
+       "rel": 8.898849994296527e-13,
+       "n_diff": 20304,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        4
+       ],
+       "n_cols_over": 0
+      },
+      "gymo": {
+       "cat": "C",
+       "max_abs": 644796416.0,
+       "scale": 5.098526787763719e+20,
+       "rel": 1.2646720177041891e-12,
+       "n_diff": 20200,
+       "n": 43056,
+       "worst": [
+        25,
+        31,
+        4
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         25,
+         31
+        ]
+       ]
+      },
+      "gzmo": {
+       "cat": "C",
+       "max_abs": 25528435268.0,
+       "scale": 1.8439130704496364e+21,
+       "rel": 1.3844706497890877e-11,
+       "n_diff": 20966,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        2
+       ],
+       "n_cols_over": 91,
+       "cols_over_first10": [
+        [
+         12,
+         25
+        ],
+        [
+         12,
+         27
+        ],
+        [
+         13,
+         26
+        ],
+        [
+         13,
+         27
+        ],
+        [
+         13,
+         28
+        ],
+        [
+         13,
+         29
+        ],
+        [
+         14,
+         26
+        ],
+        [
+         14,
+         27
+        ],
+        [
+         14,
+         30
+        ],
+        [
+         15,
+         21
+        ]
+       ]
+      },
+      "sxmo": {
+       "cat": "C",
+       "max_abs": 8180.015209197998,
+       "scale": 12050199693000.686,
+       "rel": 6.788281868846813e-10,
+       "n_diff": 23953,
+       "n": 43056,
+       "worst": [
+        11,
+        32,
+        13
+       ],
+       "n_cols_over": 2031,
+       "cols_over_first10": [
+        [
+         1,
+         4
+        ],
+        [
+         1,
+         5
+        ],
+        [
+         1,
+         6
+        ],
+        [
+         1,
+         7
+        ],
+        [
+         1,
+         8
+        ],
+        [
+         1,
+         9
+        ],
+        [
+         1,
+         10
+        ],
+        [
+         1,
+         11
+        ],
+        [
+         1,
+         12
+        ],
+        [
+         1,
+         13
+        ]
+       ]
+      },
+      "symo": {
+       "cat": "C",
+       "max_abs": 8183.8671875,
+       "scale": 13542162638669.053,
+       "rel": 6.04324981604587e-10,
+       "n_diff": 22887,
+       "n": 43056,
+       "worst": [
+        52,
+        19,
+        13
+       ],
+       "n_cols_over": 2021,
+       "cols_over_first10": [
+        [
+         1,
+         4
+        ],
+        [
+         1,
+         5
+        ],
+        [
+         1,
+         6
+        ],
+        [
+         1,
+         7
+        ],
+        [
+         1,
+         8
+        ],
+        [
+         1,
+         9
+        ],
+        [
+         1,
+         10
+        ],
+        [
+         1,
+         11
+        ],
+        [
+         1,
+         12
+        ],
+        [
+         1,
+         13
+        ]
+       ]
+      },
+      "szmo": {
+       "cat": "C",
+       "max_abs": 3738.0725684165955,
+       "scale": 80337761620824.48,
+       "rel": 4.652945878750552e-11,
+       "n_diff": 21475,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        2
+       ],
+       "n_cols_over": 29,
+       "cols_over_first10": [
+        [
+         13,
+         28
+        ],
+        [
+         15,
+         27
+        ],
+        [
+         15,
+         28
+        ],
+        [
+         16,
+         25
+        ],
+        [
+         16,
+         26
+        ],
+        [
+         17,
+         23
+        ],
+        [
+         17,
+         24
+        ],
+        [
+         17,
+         26
+        ],
+        [
+         18,
+         23
+        ],
+        [
+         18,
+         27
+        ]
+       ]
+      },
+      "mo": {
+       "cat": "B",
+       "max_abs": 3.585373633541167e-07,
+       "scale": 1616709.5611678003,
+       "rel": 2.217698045251454e-13,
+       "n_diff": 10239,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        5
+       ],
+       "n_cols_over": 0
+      },
+      "uo": {
+       "cat": "C",
+       "max_abs": 3.2052925418024625e-10,
+       "scale": 0.30009204922233146,
+       "rel": 1.0681031203954801e-09,
+       "n_diff": 23198,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        1
+       ],
+       "n_cols_over": 1040,
+       "cols_over_first10": [
+        [
+         1,
+         30
+        ],
+        [
+         1,
+         35
+        ],
+        [
+         1,
+         36
+        ],
+        [
+         1,
+         37
+        ],
+        [
+         1,
+         38
+        ],
+        [
+         1,
+         39
+        ],
+        [
+         1,
+         45
+        ],
+        [
+         1,
+         46
+        ],
+        [
+         2,
+         6
+        ],
+        [
+         2,
+         30
+        ]
+       ]
+      },
+      "vo": {
+       "cat": "C",
+       "max_abs": 1.5783965801041688e-09,
+       "scale": 0.25974845521571494,
+       "rel": 6.076635099882877e-09,
+       "n_diff": 23010,
+       "n": 43056,
+       "worst": [
+        65,
+        37,
+        1
+       ],
+       "n_cols_over": 1127,
+       "cols_over_first10": [
+        [
+         1,
+         5
+        ],
+        [
+         1,
+         6
+        ],
+        [
+         1,
+         13
+        ],
+        [
+         1,
+         35
+        ],
+        [
+         1,
+         36
+        ],
+        [
+         1,
+         37
+        ],
+        [
+         1,
+         38
+        ],
+        [
+         1,
+         45
+        ],
+        [
+         1,
+         46
+        ],
+        [
+         2,
+         5
+        ]
+       ]
+      },
+      "uod": {
+       "cat": "C",
+       "max_abs": 8.697365466714402e-10,
+       "scale": 0.5761825898129824,
+       "rel": 1.5094807827389224e-09,
+       "n_diff": 22115,
+       "n": 43056,
+       "worst": [
+        65,
+        37,
+        1
+       ],
+       "n_cols_over": 858,
+       "cols_over_first10": [
+        [
+         1,
+         35
+        ],
+        [
+         1,
+         36
+        ],
+        [
+         1,
+         37
+        ],
+        [
+         1,
+         38
+        ],
+        [
+         2,
+         29
+        ],
+        [
+         2,
+         34
+        ],
+        [
+         2,
+         35
+        ],
+        [
+         2,
+         36
+        ],
+        [
+         2,
+         37
+        ],
+        [
+         2,
+         38
+        ]
+       ]
+      },
+      "vod": {
+       "cat": "C",
+       "max_abs": 1.7664660498240004e-09,
+       "scale": 0.35596950130880817,
+       "rel": 4.9624084179379405e-09,
+       "n_diff": 22315,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        1
+       ],
+       "n_cols_over": 883,
+       "cols_over_first10": [
+        [
+         1,
+         6
+        ],
+        [
+         1,
+         30
+        ],
+        [
+         1,
+         35
+        ],
+        [
+         1,
+         36
+        ],
+        [
+         1,
+         37
+        ],
+        [
+         1,
+         38
+        ],
+        [
+         1,
+         39
+        ],
+        [
+         2,
+         6
+        ],
+        [
+         2,
+         34
+        ],
+        [
+         2,
+         35
+        ]
+       ]
+      },
+      "opress": {
+       "cat": "C",
+       "max_abs": 9.157802423942485e-06,
+       "scale": 38253.1214043984,
+       "rel": 2.3940013488388184e-10,
+       "n_diff": 12,
+       "n": 3312,
+       "worst": [
+        65,
+        38
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         65,
+         38
+        ]
+       ]
+      },
+      "mmi": {
+       "cat": "B",
+       "max_abs": 46973.0,
+       "scale": 3.9942616743984826e+17,
+       "rel": 1.176012085063854e-13,
+       "n_diff": 9122,
+       "n": 43056,
+       "worst": [
+        65,
+        38,
+        5
+       ],
+       "n_cols_over": 0
+      },
+      "opbot": {
+       "cat": "B",
+       "max_abs": 2.477318048477173e-07,
+       "scale": 47336151.7254117,
+       "rel": 5.2334589065195645e-15,
+       "n_diff": 1266,
+       "n": 3312,
+       "worst": [
+        1,
+        46
+       ],
+       "n_cols_over": 0
+      },
+      "ogeoz": {
+       "cat": "C",
+       "max_abs": 8.611124258095515e-09,
+       "scale": 42.57861113845249,
+       "rel": 2.02240609260241e-10,
+       "n_diff": 1940,
+       "n": 3312,
+       "worst": [
+        65,
+        38
+       ],
+       "n_cols_over": 20,
+       "cols_over_first10": [
+        [
+         1,
+         46
+        ],
+        [
+         33,
+         45
+        ],
+        [
+         38,
+         45
+        ],
+        [
+         39,
+         45
+        ],
+        [
+         40,
+         45
+        ],
+        [
+         41,
+         45
+        ],
+        [
+         42,
+         45
+        ],
+        [
+         43,
+         45
+        ],
+        [
+         44,
+         45
+        ],
+        [
+         45,
+         45
+        ]
+       ]
+      },
+      "kpl": {
+       "cat": "A",
+       "max_abs": 0.0,
+       "scale": 9.0,
+       "rel": 0.0,
+       "n_diff": 0,
+       "n": 3312,
+       "worst": null,
+       "n_cols_over": 0
+      },
+      "vonp": {
+       "cat": "C",
+       "max_abs": 1.5053989305124915e-10,
+       "scale": 0.01719892790565209,
+       "rel": 8.752864938853379e-09,
+       "n_diff": 10,
+       "n": 13,
+       "worst": [
+        1
+       ],
+       "n_cols_over": 1
+      },
+      "must": {
+       "cat": "B",
+       "max_abs": 4.9233436584472656e-05,
+       "scale": 1188854150.825385,
+       "rel": 4.141251182938747e-14,
+       "n_diff": 41,
+       "n": 156,
+       "worst": [
+        4,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "g0mst": {
+       "cat": "B",
+       "max_abs": 65536.0,
+       "scale": 4.5743471885680024e+20,
+       "rel": 1.432685305649395e-16,
+       "n_diff": 10,
+       "n": 156,
+       "worst": [
+        4,
+        7
+       ],
+       "n_cols_over": 0
+      },
+      "s0mst": {
+       "cat": "B",
+       "max_abs": 0.01953125,
+       "scale": 194796243500264.56,
+       "rel": 1.0026502384771846e-16,
+       "n_diff": 17,
+       "n": 156,
+       "worst": [
+        2,
+        10
+       ],
+       "n_cols_over": 0
+      }
+     },
+     "ice_after_advsi_vs_ffadv_out": {
+      "rsi": {
+       "cat": "B",
+       "max_abs": 2.829958489769524e-13,
+       "scale": 1.0,
+       "rel": 2.829958489769524e-13,
+       "n_diff": 166,
+       "n": 3312,
+       "worst": [
+        65,
+        38
+       ],
+       "n_cols_over": 0
+      },
+      "msi": {
+       "cat": "C",
+       "max_abs": 1.4306292399623999e-06,
+       "scale": 3538.730947863419,
+       "rel": 4.0427748281518024e-10,
+       "n_diff": 159,
+       "n": 3312,
+       "worst": [
+        65,
+        37
+       ],
+       "n_cols_over": 3,
+       "cols_over_first10": [
+        [
+         65,
+         37
+        ],
+        [
+         65,
+         38
+        ],
+        [
+         66,
+         38
+        ]
+       ]
+      },
+      "snowi": {
+       "cat": "B",
+       "max_abs": 2.7333690866271354e-13,
+       "scale": 201.386595292853,
+       "rel": 1.3572745905219343e-15,
+       "n_diff": 145,
+       "n": 3312,
+       "worst": [
+        20,
+        38
+       ],
+       "n_cols_over": 0
+      },
+      "hsi": {
+       "cat": "C",
+       "max_abs": 0.01620139554142952,
+       "scale": 646113353.4088777,
+       "rel": 2.5075159731572434e-11,
+       "n_diff": 894,
+       "n": 13248,
+       "worst": [
+        65,
+        37,
+        3
+       ],
+       "n_cols_over": 3,
+       "cols_over_first10": [
+        [
+         65,
+         37
+        ],
+        [
+         65,
+         38
+        ],
+        [
+         66,
+         38
+        ]
+       ]
+      },
+      "ssi": {
+       "cat": "C",
+       "max_abs": 7.167385718265251e-08,
+       "scale": 4.7711717781091005,
+       "rel": 1.5022275557443485e-08,
+       "n_diff": 721,
+       "n": 13248,
+       "worst": [
+        65,
+        37,
+        3
+       ],
+       "n_cols_over": 3,
+       "cols_over_first10": [
+        [
+         65,
+         37
+        ],
+        [
+         65,
+         38
+        ],
+        [
+         66,
+         38
+        ]
+       ]
+      }
+     },
+     "ice_at_advsi_entry_vs_ffadv_in": {
+      "rsi": {
+       "cat": "B",
+       "max_abs": 2.220446049250313e-16,
+       "scale": 1.0,
+       "rel": 2.220446049250313e-16,
+       "n_diff": 11,
+       "n": 3312,
+       "worst": [
+        7,
+        8
+       ],
+       "n_cols_over": 0
+      },
+      "msi": {
+       "cat": "C",
+       "max_abs": 1.4306292115406904e-06,
+       "scale": 3538.627163122852,
+       "rel": 4.0428933187698553e-10,
+       "n_diff": 28,
+       "n": 3312,
+       "worst": [
+        65,
+        38
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         65,
+         38
+        ]
+       ]
+      },
+      "snowi": {
+       "cat": "B",
+       "max_abs": 6.039613253960852e-14,
+       "scale": 201.3866006672166,
+       "rel": 2.9990144497950356e-16,
+       "n_diff": 33,
+       "n": 3312,
+       "worst": [
+        29,
+        9
+       ],
+       "n_cols_over": 0
+      },
+      "hsi": {
+       "cat": "C",
+       "max_abs": 0.016201388090848923,
+       "scale": 646095043.5617663,
+       "rel": 2.5075858811011108e-11,
+       "n_diff": 408,
+       "n": 13248,
+       "worst": [
+        65,
+        38,
+        3
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         65,
+         38
+        ]
+       ]
+      },
+      "ssi": {
+       "cat": "C",
+       "max_abs": 7.167385707163021e-08,
+       "scale": 4.771170656541946,
+       "rel": 1.5022279065485798e-08,
+       "n_diff": 211,
+       "n": 13248,
+       "worst": [
+        65,
+        38,
+        3
+       ],
+       "n_cols_over": 1,
+       "cols_over_first10": [
+        [
+         65,
+         38
+        ]
+       ]
+      }
+     },
+     "dynsi_vs_real": {
+      "odmui": {
+       "cat": "B",
+       "max_abs": 1.2112932878949323e-10,
+       "scale": 159.44854462887332,
+       "rel": 7.596766033294909e-13,
+       "n_diff": 445,
+       "n": 3312,
+       "worst": [
+        72,
+        45
+       ],
+       "n_cols_over": 0
+      },
+      "odmvi": {
+       "cat": "B",
+       "max_abs": 2.4205706883329015e-11,
+       "scale": 167.2276538131929,
+       "rel": 1.4474703394672266e-13,
+       "n_diff": 476,
+       "n": 3312,
+       "worst": [
+        1,
+        45
+       ],
+       "n_cols_over": 0
+      },
+      "ustar": {
+       "cat": "B",
+       "max_abs": 1.1773351391020093e-14,
+       "scale": 0.013396125468458465,
+       "rel": 8.788624306886916e-13,
+       "n_diff": 418,
+       "n": 482,
+       "worst": [
+        482
+       ],
+       "n_cols_over": 0
+      }
+     },
+     "riverf_vs_real": {
+      "oflowo": {
+       "cat": "B",
+       "max_abs": 1.942890293094024e-16,
+       "scale": 0.5923806803572518,
+       "rel": 3.279800232381497e-16,
+       "n_diff": 11,
+       "n": 3312,
+       "worst": [
+        41,
+        38
+       ],
+       "n_cols_over": 0
+      },
+      "oeflowo": {
+       "cat": "B",
+       "max_abs": 4.001776687800884e-11,
+       "scale": 64256.70762729202,
+       "rel": 6.227796031835894e-16,
+       "n_diff": 46,
+       "n": 3312,
+       "worst": [
+        47,
+        30
+       ],
+       "n_cols_over": 0
+      }
+     },
+     "next_step_entry_records_vs_our_state": {
+      "ocean.tg1": {
+       "cat": "C",
+       "max_abs": 5.882689890768233e-10,
+       "scale": 29.643255485380458,
+       "rel": 1.984495223093656e-11,
+       "n_tiles": 2095
+      },
+      "ocean.sss": {
+       "cat": "C",
+       "max_abs": 7.504112886635994e-10,
+       "scale": 40.89100798232141,
+       "rel": 1.835149891604599e-11,
+       "n_tiles": 2095
+      },
+      "ocean.tr4": {
+       "cat": "C",
+       "max_abs": 0.06388092041015625,
+       "scale": 8405911034.949143,
+       "rel": 7.59952373330617e-12,
+       "n_tiles": 2095
+      },
+      "ocean.ptype": {
+       "cat": "B",
+       "max_abs": 2.757793993168889e-13,
+       "scale": 1.0,
+       "rel": 2.757793993168889e-13,
+       "n_tiles": 2659
+      },
+      "lake.tg1": {
+       "cat": "B",
+       "max_abs": 1.5276668818842154e-13,
+       "scale": 31.76038517682959,
+       "rel": 4.809975928751351e-15,
+       "n_tiles": 564
+      },
+      "lake.tr4": {
+       "cat": "B",
+       "max_abs": 1.811981201171875e-05,
+       "scale": 8643484675.433275,
+       "rel": 2.0963549647076167e-15,
+       "n_tiles": 564
+      },
+      "lake.mwl": {
+       "cat": "B",
+       "max_abs": 0.015625,
+       "scale": 6.060904537317831e+16,
+       "rel": 2.5779980370577866e-19,
+       "n_tiles": 564
+      },
+      "lake.gml": {
+       "cat": "B",
+       "max_abs": 6272.0,
+       "scale": 2.0938999279622087e+21,
+       "rel": 2.9953675991115458e-18,
+       "n_tiles": 564
+      },
+      "ice.tg1": {
+       "cat": "B",
+       "max_abs": 4.2454928461665986e-13,
+       "scale": 45.78107074283414,
+       "rel": 9.273467783256517e-15,
+       "n_tiles": 783
+      },
+      "ice.tg2": {
+       "cat": "B",
+       "max_abs": 3.979039320256561e-13,
+       "scale": 32.77494194660164,
+       "rel": 1.2140492351563534e-14,
+       "n_tiles": 783
+      },
+      "ice.tr4": {
+       "cat": "B",
+       "max_abs": 2.765655517578125e-05,
+       "scale": 5566789756.301009,
+       "rel": 4.968133589826523e-15,
+       "n_tiles": 783
+      },
+      "ice.snow": {
+       "cat": "B",
+       "max_abs": 6.394884621840902e-14,
+       "scale": 274.29843238222315,
+       "rel": 2.3313602510603864e-16,
+       "n_tiles": 783
+      },
+      "ice.msi2": {
+       "cat": "C",
+       "max_abs": 1.4306292115406904e-06,
+       "scale": 3538.730947863419,
+       "rel": 4.0427747478356953e-10,
+       "n_tiles": 783
+      },
+      "ice.ssi1": {
+       "cat": "B",
+       "max_abs": 2.220446049250313e-16,
+       "scale": 0.34550680344230883,
+       "rel": 6.426634807557626e-16,
+       "n_tiles": 783
+      },
+      "ice.ssi2": {
+       "cat": "B",
+       "max_abs": 2.498001805406602e-16,
+       "scale": 0.5786642623462441,
+       "rel": 4.3168413326204707e-16,
+       "n_tiles": 783
+      },
+      "ice.flag_dsws": {
+       "cat": "A",
+       "max_abs": 0.0,
+       "scale": 1.0,
+       "rel": 0.0,
+       "n_tiles": 783
+      },
+      "ice.ptype": {
+       "cat": "B",
+       "max_abs": 2.757793993168889e-13,
+       "scale": 0.9999999997231148,
+       "rel": 2.757793993932481e-13,
+       "n_tiles": 783
+      },
+      "ice.tgo": {
+       "cat": "C",
+       "max_abs": 1.6794032831057848e-10,
+       "scale": 1.8835854587670762,
+       "rel": 8.915991973122677e-11,
+       "n_tiles": 783
+      },
+      "tiles.ocean+lake": {
+       "n": 2659
+      },
+      "tiles.ice": {
+       "n": 783
+      },
+      "tileset.ocean_mismatch": {
+       "n": 0.0
+      },
+      "tileset.ice_mismatch": {
+       "n": 0.0
+      },
+      "landice.tg1": {
+       "cat": "B",
+       "max_abs": 1.509903313490213e-13,
+       "scale": 58.45476030095817,
+       "rel": 2.583028834121253e-15,
+       "n_tiles": 346
+      },
+      "landice.tg2": {
+       "cat": "B",
+       "max_abs": 7.105427357601002e-15,
+       "scale": 68.85251894598667,
+       "rel": 1.0319778370309237e-16,
+       "n_tiles": 346
+      },
+      "landice.snow": {
+       "cat": "B",
+       "max_abs": 2.842170943040401e-14,
+       "scale": 91.64490372978254,
+       "rel": 3.1012864080479784e-16,
+       "n_tiles": 346
+      }
+     },
+     "note": "records of step it0+1 are the SURFACE-entry state AFTER PRECIP_*/MELT_SI of step it0+1; our state is advanced through the same stages of step it0+1 with the real PREC/EPREC of step it0+1 (D164/D170 method, row k=1)"
+    },
+    "surface_c2_categories": {
+     "ocean_exit_vs_ffo_tag14": {
+      "C": 13,
+      "B": 8,
+      "A": 1
+     },
+     "ice_after_advsi_vs_ffadv_out": {
+      "B": 2,
+      "C": 3
+     },
+     "ice_at_advsi_entry_vs_ffadv_in": {
+      "B": 2,
+      "C": 3
+     },
+     "dynsi_vs_real": {
+      "B": 3
+     },
+     "riverf_vs_real": {
+      "B": 2
+     },
+     "next_step_entry_records_vs_our_state": {
+      "C": 5,
+      "B": 15,
+      "A": 1
+     }
+    },
+    "seconds_surface_c2_compare": 7.299298612168059,
+    "tile_mask_check": {
+     "mismatch_ocean_type": 0,
+     "mismatch_ice_type": 0,
+     "mask_ocean_tiles": 2709,
+     "mask_ice_tiles": 783,
+     "template_ocean_slots": 2709,
+     "template_ice_slots": 783
+    },
+    "n_slp_exp_branch_cells": 0,
+    "host_template": {
+     "Nw": 2731,
+     "Nl": 346,
+     "Ne": 753,
+     "max_substeps": 11
+    }
+   }
+  }
+ ],
+ "server_run": null,
+ "recorded_inputs_registry": {
+  "summary": {
+   "n_declared": 27,
+   "n_inputs_declared": 20,
+   "n_inputs_read": 8,
+   "n_comparison_only_read": 0,
+   "bytes_inputs_read_total": 278073136,
+   "undeclared_read_attempts": [],
+   "sentence": "8 recorded inputs read of 20 declared, 278073136 bytes read in total; every one is listed with source file and size"
+  },
+  "items": [
+   {
+    "name": "sitea",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_a.bin",
+    "declared_size_bytes": null,
+    "description": "hidden/PBL start state, PDSIG, PEK (D180: step 0 only used for start)",
+    "role": "input",
+    "origin": "D174 \"First-step atmosphere state\"; D180 sitea",
+    "read_count": 1,
+    "bytes_read": 39770528,
+    "size_bytes": 39770528,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "siter",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_r.bin",
+    "declared_size_bytes": null,
+    "description": "SRHR/TRHR/COSZ1 and the radiation-step state (radiation output recorded)",
+    "role": "input",
+    "origin": "D180 siter; D174 \"Radiation itself\"",
+    "read_count": 1,
+    "bytes_read": 16056608,
+    "size_bytes": 16056608,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "s1",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s1.bin",
+    "declared_size_bytes": null,
+    "description": "start state of the step (step 0 only)",
+    "role": "input",
+    "origin": "D180 s1",
+    "read_count": 1,
+    "bytes_read": 33994368,
+    "size_bytes": 33994368,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "ci",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffc_cse_in_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "non-dynamic CONDSE entry fields (cloud/precip carry, ground fields, tuning)",
+    "role": "input",
+    "origin": "D174 \"CONDSE entry non-state fields\"; D180 ci",
+    "read_count": 1,
+    "bytes_read": 85753752,
+    "size_bytes": 85753752,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "co",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffc_cse_out_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "CONDSE exit; read for RADIA cloud masking on radiation steps / stage references",
+    "role": "input",
+    "origin": "D180 co",
+    "read_count": 1,
+    "bytes_read": 77884440,
+    "size_bytes": 77884440,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "sited",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_d.bin",
+    "declared_size_bytes": null,
+    "description": "real dissip-stage state (reference only)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "sitee",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffa_step_<it>_e.bin",
+    "declared_size_bytes": null,
+    "description": "real end-of-step state (reference only)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "s3",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s3.bin",
+    "declared_size_bytes": null,
+    "description": "real state after dynamics (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "s4",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_state_<it>_s4.bin",
+    "declared_size_bytes": null,
+    "description": "real dynamics exports (stage reference; dpdx.. used by isolated stages)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ps",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/post_surface_<it>",
+    "declared_size_bytes": null,
+    "description": "real post-surface state (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "fi",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_filt_<it>_in.bin",
+    "declared_size_bytes": null,
+    "description": "real filter input (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "fo",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffd_filt_<it>_out.bin",
+    "declared_size_bytes": null,
+    "description": "real filter output (stage reference)",
+    "role": "comparison_only",
+    "origin": "",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "surface_records",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/ffp_<it>.bin, ffs_<it>.bin, ffl_<it>.bin, ffg_<it>.bin, fft_<it>.bin",
+    "declared_size_bytes": null,
+    "description": "SURFACE tile (ffp/ffs), land-ice (ffl), land forcing + Ent exports (ffg), recorded GHY outputs (fft) templates",
+    "role": "input",
+    "origin": "D174 table rows 1-16; D180 section 3",
+    "read_count": 1,
+    "bytes_read": 24123264,
+    "size_bytes": 24123264,
+    "stages": [
+     "surface"
+    ]
+   },
+   {
+    "name": "ctx_static",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/<restart>, geometry and constants files of make_ctx(date)",
+    "declared_size_bytes": null,
+    "description": "restart-derived static data, dynamics geometry, CONDSE/filter constants for the date",
+    "role": "input",
+    "origin": "D180 \"CONDSE module constants and geometry (make_cfg)\"",
+    "read_count": 1,
+    "bytes_read": 0,
+    "size_bytes": 0,
+    "stages": [
+     "setup"
+    ]
+   },
+   {
+    "name": "surface_restart_for_melt_si",
+    "source_file": "ff_data/_pristine_restarts/<restart>.nc + ocean geometry (surface_loop.init_surface_state)",
+    "declared_size_bytes": null,
+    "description": "sea-ice, lake and ocean-derived exchange state (GTEMP, SSS, MLHC) at step 0 for MELT_SI",
+    "role": "input",
+    "origin": "D186",
+    "read_count": 1,
+    "bytes_read": 490176,
+    "size_bytes": 490176,
+    "stages": [
+     "record_load"
+    ]
+   },
+   {
+    "name": "live_radiation_packet",
+    "source_file": "ff_data/nov26_day/rsv_n26_<it>_in.bin",
+    "declared_size_bytes": null,
+    "description": "real-server variant only: RQT, KLIQ and the 21 surface fields of the radiation packet (D185 practice)",
+    "role": "input",
+    "origin": "D186",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ent_exports",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffg cols 3-6 and per-iteration Ent exports (ent=record)",
+    "role": "input",
+    "origin": "D171/D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "trup_in_rad",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffs col 80 / ffl col 14 (TRUP_in_rad of land)",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "mmst",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "init_STRAITS MMST start state",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "advsi_geometry",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "5 static ADVSI geometry vectors",
+    "role": "input",
+    "origin": "D166/D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "irrigation_demand",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "ffg cols 147,148 (reconstructed from the recorded actual flux)",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "radiation_packet_surface_side",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "20-field surface side of the radiation packet (until drv_radpacket is accepted)",
+    "role": "input",
+    "origin": "D174/D176",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "mdrya_dh2o_ca",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "MDRYA / dH2O / Ca constants per date",
+    "role": "input",
+    "origin": "D174/D178",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "seeds0",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "SEEDS[0] of the first step (later seeds computed by drv_rng)",
+    "role": "input",
+    "origin": "D174 section 2",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "ag2og_ig2og",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "AG2OG/IG2OG items of the replay ocean chain",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "straits_start",
+    "source_file": "/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data/nov26/(see D174 inventory)",
+    "declared_size_bytes": null,
+    "description": "straits start state",
+    "role": "input",
+    "origin": "D174",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   },
+   {
+    "name": "surface_init",
+    "source_file": "ff_data/nov26: ffc_cse_in (FLAKE...), ffp (coriolis), ffl2 (lake depth), ffo_geom.bin, ffo_state_<it0> tag 0 (MMST), restart nc (ocean, ice, lake, land ice, ADVSI rsix/rsiy), advsi_dumps/nov26/ffadv_in_<it0> (ADVSI geometry)",
+    "declared_size_bytes": null,
+    "description": "statics and initial state of the surface (surface_loop.load_statics, init_surface_state, make_static_all, V2State)",
+    "role": "input",
+    "origin": "D187/D190; D174 items mmst, advsi_geometry, straits_start",
+    "read_count": 0,
+    "bytes_read": 0,
+    "size_bytes": null,
+    "stages": []
+   }
+  ]
+ },
+ "io_audit": [
+  {
+   "file": "ff_data/nov26/ffd_aflux_geom.bin",
+   "bytes": 34840,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffd_avrx_consts.bin",
+   "bytes": 2952,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffd_sdrag_consts.bin",
+   "bytes": 2944,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffd_glue_consts.bin",
+   "bytes": 2046752,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffd_qdyn_geom.bin",
+   "bytes": 26920,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffc_cse_consts.txt",
+   "bytes": 455,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffc_cse_geom.bin",
+   "bytes": 80404,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffd_filt_consts.bin",
+   "bytes": 83696,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffo_geom.bin",
+   "bytes": 160544,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffc_cse_in_33312.bin",
+   "bytes": 85756956,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffp_33312.bin",
+   "bytes": 11312224,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffl2_33312.bin",
+   "bytes": 203520,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffo_state_33312.bin",
+   "bytes": 91052568,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/advsi_dumps/nov26/ffadv_in_33312.bin",
+   "bytes": 478768,
+   "first_read_in": "setup"
+  },
+  {
+   "file": "ff_data/nov26/ffa_step_33312_r.bin",
+   "bytes": 16057256,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffd_state_33312_s1.bin",
+   "bytes": 33994400,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffa_step_33312_a.bin",
+   "bytes": 39771932,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffc_cse_out_33312.bin",
+   "bytes": 77886924,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffs_33312.bin",
+   "bytes": 5028480,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffl_33312.bin",
+   "bytes": 332160,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/fft_33312.bin",
+   "bytes": 2028800,
+   "first_read_in": "step"
+  },
+  {
+   "file": "ff_data/nov26/ffg_33312.bin",
+   "bytes": 5421600,
+   "first_read_in": "step"
+  }
+ ],
+ "state_groups_bytes": null
+}

@@ -1,0 +1,316 @@
+{
+ "strict": 0,
+ "rebuild_log": [
+  {
+   "substep": 2,
+   "cells": [
+    [
+     64,
+     19
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 0.000261274522294741,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     63,
+     17
+    ]
+   ],
+   "nsub": [
+    13
+   ],
+   "max_abs_change": {
+    "edts": 1.204229960194425e-08,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 1,
+   "cells": [
+    [
+     63,
+     17
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 1.5559457722247316e-08,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 1,
+   "cells": [
+    [
+     42,
+     21
+    ]
+   ],
+   "nsub": [
+    14
+   ],
+   "max_abs_change": {
+    "edts": 0.00027769910106911766,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     42,
+     21
+    ]
+   ],
+   "nsub": [
+    14
+   ],
+   "max_abs_change": {
+    "edts": 11.506833080239836,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     42,
+     21
+    ]
+   ],
+   "nsub": [
+    13
+   ],
+   "max_abs_change": {
+    "edts": 0.0018009890336827539,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     40,
+     21
+    ]
+   ],
+   "nsub": [
+    13
+   ],
+   "max_abs_change": {
+    "edts": 0.0006654851858556299,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     40,
+     21
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 41.84236038559263,
+    "ecnc": 0.018309876402014234,
+    "elai": 1.947533919017041,
+    "ebet": 0.5624339084143216,
+    "nsub": 1.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     40,
+     21
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 0.0012614834374105044,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    14
+   ],
+   "max_abs_change": {
+    "edts": 10.513740723447548,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 1,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    14
+   ],
+   "max_abs_change": {
+    "edts": 0.0030133917526029563,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    15
+   ],
+   "max_abs_change": {
+    "edts": 0.00293425749823939,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 1,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    13
+   ],
+   "max_abs_change": {
+    "edts": 13.184236126384036,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 5.074584539378989,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  },
+  {
+   "substep": 2,
+   "cells": [
+    [
+     41,
+     21
+    ]
+   ],
+   "nsub": [
+    12
+   ],
+   "max_abs_change": {
+    "edts": 0.0005851555266858099,
+    "ecnc": 0.0,
+    "elai": 0.0,
+    "ebet": 0.0,
+    "nsub": 0.0,
+    "dt": 0.0
+   }
+  }
+ ],
+ "mismatch": [
+  {
+   "row": 110,
+   "cell": [
+    40,
+    21
+   ],
+   "recomputed": 12,
+   "recorded": 13
+  }
+ ]
+}

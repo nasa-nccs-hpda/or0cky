@@ -1,0 +1,46 @@
+# D203 (2026-10-08): the nov26 54-step day on HEAD 10707bb (D202 gusti fix): all 54 steps finite; C1 bitwise steps 0-19; step-0 C1/C2 on three dates unchanged versus D199 (93976f0). Section 9 pass rule: NOT MET
+
+Owner: G. Tamkin. Written by a Claude Code agent (subagent D203). Status: DRAFT; nothing committed or pushed. Review by: before the next day run.
+New files only: `d203_day.py` (copy of `d200_day.py`, names changed), this entry, `scoping/d203_results/`. No tracked file edited (0 modified tracked files in the run headers), SOCRATES/RADIA untouched, no tolerance or threshold changed, full test suite NOT run.
+Code under test: HEAD 10707bb (D199 elhx fix + D202 gusti fix). Conditions as D195/D200: `taskset -c 0-2,6-7`, `OMP_NUM_THREADS=1`, `clouds_jax_env`, no compile cache, scratch TMPDIR/D189_SHIM_DIR, libimf host callbacks, jax 0.5.3, CPU, shared node (load 1-2), nit fix on, `--nit-strict 0`, radiation REPLAYED from the real records (the scorer's fixed sentence "radiation computed by the original Fortran" does not apply), `d193_day.main` unchanged, daily ocean/ice/lake/land updates not applied (D196 gap unchanged). One run of each number. Two job chains ran concurrently on the same cores; timings are not results.
+
+## 1. Result in one paragraph
+Demonstrated: the day runs 54 of 54 steps and the end state is finite in T U V Q P QCL QCI at EVERY step (checked on the saved per-step files), flags 0 at every step, deltam finite at the day boundary (step 48). Against the 5 real members (`multiday_score.py` unchanged): T 54/0/0, U 53/1/0, V 54/0/0, Q 40/14/0, P 54/0/0, QCL 50/3/1, QCI 49/5/0 (within/near/beyond). Worst ratio steps >= 3: 1.12 (QCI, step 8); worst over ALL steps: 2.84 (QCL, step 1). **ACCEPTANCE section 9 (never beyond 2x over ALL steps) is NOT MET** because of QCL step 1 = 2.84 (ours 1.15e-6 against the largest member, the known one-bistable-cell case of D197, not touched here). "Within at every step": NOT MET (14 Q, 5 QCI, 3 QCL, 1 U near-steps). The scorer's line "never beyond 2x (steps >= 3 only): True" is not a pass. The D200 NaN (from step 39) is gone. Step-0 C1/C2 on nov26, dec01, jan01 are identical to D199 in every verdict and category count.
+
+## 2. Task 1a: the day (`d203_results/score.md|json`, `per_step.txt`, `d203_day.log`, `d193_run.json`, `d203_nit.json`)
+| field | within / near / beyond | worst ratio steps >= 3 (step) | worst ratio all steps (step) | near steps | D195 (54 steps) | D200 (finite 0-38) |
+|---|---|---|---|---|---|---|
+| T | 54/0/0 | 0.94 (41) | 0.94 (41) | - | 54/0/0 | 38/1/0 |
+| U | 53/1/0 | 1.03 (5) | 1.03 (5) | 5 | 53/1/0 | 35/4/0 |
+| V | 54/0/0 | 0.93 (10) | 0.93 (10) | - | 54/0/0 | 36/3/0 |
+| Q | 40/14/0 | 1.05 (46) | 1.05 (46) | 40-53 | 41/13/0 | 29/10/0 |
+| P | 54/0/0 | 1.00 (21) | 1.00 (21) | - | 54/0/0 | 35/4/0 |
+| QCL | 50/3/1 | 1.01 (14) | 2.84 (1) | 2, 13, 14; beyond 1 | 47/6/1 | 36/2/1 |
+| QCI | 49/5/0 | 1.12 (8) | 1.12 (8) | 7, 8, 9, 46, 47 | 54/0/0 | 36/3/0 |
+All 54 per-step ratios of the 7 fields and the per-step finite check are in `per_step.txt` (finite: yes at 0-53). Q is near (ratio 1.00-1.05) at every step 40-53 (a slow drift to just above the member spread; worst 1.05); the other near cases are 1.00-1.12. QCL step 1 = 2.84 as in D193/D195/D200/D202 (D197).
+Run: 54 steps, flags 0 every step; step 0 cold 457.5 s (126 compiles), steady steps about 15-20 s, sum of the logged per-step walls 2107 s (D195 2128 s, D200 2658 s: the NaN steps of D200 were slow; this node was shared by two chains); SURFACE rebuilds at 14 steps including step 0 (`d203_nit.json` rebuild_log has 15 entries); tile-mask mismatch [0,0] at every step except steps 48-53 (54 slots at step 48, the day-boundary step, then 3-4 slots; this is the D196 missing-daily-update signature, same as D195's 54-cell case; not analysed further here). nit mismatches reported (non-strict): ONE, row 110, cell (40,21), recomputed 12 against recorded 13 (D200: 6; D195: 4). No NaN anywhere, no stop-model flag.
+Comparison to the D202 45-step gusti-fix run: same classes for the common steps by construction (same code, D202 had Q 40/5/0, QCL 41/3/1, QCI 42/3/0 over 45 steps); the added steps 45-53 add 9 near-Q steps and 2 near-QCI steps (46, 47), none beyond.
+
+## 3. Task 1b: C1 against the NumPy chain (`d193_ref_day.py` unchanged, regenerated with the HEAD land code; `d203_c1.json`, `d203_ref.log`)
+Steps 0-19: A (bitwise) on every array at every step (step 0: 559/559; steps 1-19: 570/570; B, C, D = 0). The reference ABORTED while building step 20 (it 33332) in `build_batch_nit`: `AssertionError(110, 12, 13)` (cell (40,21) row 110, recomputed nit 12 against recorded 13; the same cell/row that the port reports as its one non-strict mismatch). So the last bitwise step is 19; nothing is claimed for steps 20-53 (D200: last bitwise step 18, abort at 19; D195 old code: 22). The reference does not run past the nit rule by design; this is port against reference with the same recorded inputs and says nothing about the real model.
+
+## 4. Task 2: step-0 C1/C2 on three dates (`d191_run.py DATE OUT REF --runs 1`, new NumPy references `d187_ref_numpy.py` made on HEAD; `d203_results/<date>_asm.json|.log`, `step0_d203_vs_d199.txt`)
+| date | gate verdict | gate categories | end-30 (A/B/C/D) | C1 |
+|---|---|---|---|---|
+| nov26 | MET with named exception columns (EGCM, W2GCM at (25,16); worst W2GCM 3.11e-12, EGCM 1.27e-12) | B 11, C 2, A 1 | 2/25/3/0 (LMONINPBL 5.4e-10, 7 cols) | 559/559 A |
+| dec01 | MET (worst W2GCM 4.1e-13, EGCM 3.4e-13, PBLHT 3.1e-13) | B 13, A 1 | 2/27/1/0 (LMONINPBL 5.7e-11, 17 cols) | 559/559 A |
+| jan01 | MET (worst W2GCM 6.3e-13, PBLHT 4.3e-13, EGCM 4.0e-13) | B 13, A 1 | 2/26/2/0 (USTARPBL 3.0e-12 2 cols, LMONINPBL 6.7e-10 32 cols) | 559/559 A |
+Change versus 93976f0 (D199): NONE in any verdict, category count, worst-field value or surface-C2 category (the whole `step0_d203_vs_d199.txt` pair lists are identical line for line). Additionally, 549 of the 559 stored assembled-step arrays (all float arrays; the 10 others are not float and were not compared by my check) are bitwise equal to the D199 arrays on each date. Expected: at step 0 the recorded gusti equals the PBL gusti (D202), so the one-line fix is inert there. Header of every run: git head 10707bb, 0 modified tracked files, no compile cache.
+
+## 5. Demonstrated / hypothesis / not done
+Demonstrated: all of sections 1-4 (measured in this session; raw files in `d203_results/`). The D202 fix removes the D200 NaN in the full 54-step day: the same driver and configuration, D200 non-finite from step 39, D203 finite at all 54.
+Hypotheses (not demonstrated): that the gusti inconsistency was the only cause of the D200 runaway (this run only shows the day is finite with the fix; no bisection of other contributors, and one run, with chaotic sensitivity: a different but equally valid trajectory might differ); that the Q near-class drift at steps 40-53 and the QCI near steps 46-47 are ordinary trajectory divergence (not analysed; D200 vs D195 growth was ordinary chaos by D200's own reading); that the GHY `gdtm` schedule matters for a longer or different day (D202 run3 was compatible but is not applied).
+Limits / not done: radiation replayed, not computed; daily ocean/ice/lake/land updates not applied (D196); nit non-strict (one mismatch reported, 12 vs 13); one run; C1 only steps 0-19; no GPU; no test suite run (not asked); nothing committed; no tolerance changed, no exception granted. The day-acceptance verdict stays NOT MET (QCL step 1 = 2.84 beyond; "within at every step" False).
+Scratch (not in repo): `scratchpad/d203/out/ours_d193/step_<it>.npz` (54), `final/`, `refn/`; the 24 GB per-step C1 arrays were deleted after the reference run.
+
+## 6. Reproduce
+`taskset -c 0-2,6-7 env OMP_NUM_THREADS=1 TMPDIR=<s> D189_SHIM_DIR=<s> python d203_day.py OUT --c1dir C1 --nit-strict 0`; `... python d193_ref_day.py REF C1 54` (aborts at step 20); `... python multiday_score.py --ours OUT/ours_d193 --nsteps 54 --cache members.json --md score.md --json score.json`; per date `... python d187_ref_numpy.py DATE REFN` then `... python d191_run.py DATE FINAL REFN --runs 1`.
+Files: `fullfidelity/d203_day.py`, `fullfidelity/scoping/D203_DAY_AFTER_GUSTI_ENTRY.md`, `fullfidelity/scoping/d203_results/{score.md,score.json,per_step.txt,d203_c1.json,d203_ref.log,d203_day.log,d193_run.json,d203_nit.json,step0_d203_vs_d199.txt,nov26_asm.json,dec01_asm.json,jan01_asm.json,nov26.log,dec01.log,jan01.log}`.
+
+## Parent-session check (2026-10-08)
+Re-read the 54 saved states: all finite (T U V Q P QCL QCI). Re-scored with `multiday_score.py`: the table equals the agent's (T 54/0/0, U 53/1/0, V 54/0/0, Q 40/14/0, P 54/0/0, QCL 50/3/1, QCI 49/5/0; worst ratio steps >= 3 is QCI 1.12 at step 8; all steps 2.84 QCL step 1). Section 9 NOT MET; the scorer line "never beyond at steps >= 3: True" and the "floor ~1e-9" text are not a pass (see 8a649f7). Step-0 verdicts read in `step0_d203_vs_d199.txt`: nov26 identical to D199 (MET with named exception columns, C1 559/559). C1 is claimed for steps 0-19 only. Tests (unit, suite) not run by the agent; the parent ran test_land_qg_elhx and test_jax_surface after the D202 edit only.

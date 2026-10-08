@@ -1,0 +1,24 @@
+nov26 D203 gate MET with named exception columns {'B': 11, 'C': 2, 'A': 1} end30 {'A': 2, 'B': 25, 'C': 3, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '3.11e-12', 'C'), ('EGCM', '1.27e-12', 'C'), ('PBLHT', '1.92e-13', 'B')]
+    end30 not-B/A [('EGCM', '1.27e-12', 'C', 1), ('W2GCM', '3.11e-12', 'C', 1), ('LMONINPBL', '5.37e-10', 'C', 7)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 13, 'B': 8, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 2, 'C': 3}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 2, 'C': 3}, 'dynsi_vs_real': {'B': 3}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 5, 'B': 15, 'A': 1}}
+nov26 D199 gate MET with named exception columns {'B': 11, 'C': 2, 'A': 1} end30 {'A': 2, 'B': 25, 'C': 3, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '3.11e-12', 'C'), ('EGCM', '1.27e-12', 'C'), ('PBLHT', '1.92e-13', 'B')]
+    end30 not-B/A [('EGCM', '1.27e-12', 'C', 1), ('W2GCM', '3.11e-12', 'C', 1), ('LMONINPBL', '5.37e-10', 'C', 7)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 13, 'B': 8, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 2, 'C': 3}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 2, 'C': 3}, 'dynsi_vs_real': {'B': 3}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 5, 'B': 15, 'A': 1}}
+dec01 D203 gate MET {'B': 13, 'A': 1} end30 {'A': 2, 'B': 27, 'C': 1, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '4.08e-13', 'B'), ('EGCM', '3.41e-13', 'B'), ('PBLHT', '3.14e-13', 'B')]
+    end30 not-B/A [('LMONINPBL', '5.71e-11', 'C', 17)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 13, 'B': 8, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 5}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 5}, 'dynsi_vs_real': {'B': 3}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 3, 'B': 17, 'A': 1}}
+dec01 D199 gate MET {'B': 13, 'A': 1} end30 {'A': 2, 'B': 27, 'C': 1, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '4.08e-13', 'B'), ('EGCM', '3.41e-13', 'B'), ('PBLHT', '3.14e-13', 'B')]
+    end30 not-B/A [('LMONINPBL', '5.71e-11', 'C', 17)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 13, 'B': 8, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 5}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 5}, 'dynsi_vs_real': {'B': 3}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 3, 'B': 17, 'A': 1}}
+jan01 D203 gate MET {'B': 13, 'A': 1} end30 {'A': 2, 'B': 26, 'C': 2, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '6.34e-13', 'B'), ('PBLHT', '4.31e-13', 'B'), ('EGCM', '3.97e-13', 'B')]
+    end30 not-B/A [('USTARPBL', '2.99e-12', 'C', 2), ('LMONINPBL', '6.71e-10', 'C', 32)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 12, 'B': 9, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 4, 'C': 1}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 4, 'C': 1}, 'dynsi_vs_real': {'C': 2, 'B': 1}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 10, 'B': 10, 'A': 1}}
+jan01 D199 gate MET {'B': 13, 'A': 1} end30 {'A': 2, 'B': 26, 'C': 2, 'D': 0} C1 {'A': 559, 'B': 0, 'C': 0, 'D': 0}
+    worst gate [('W2GCM', '6.34e-13', 'B'), ('PBLHT', '4.31e-13', 'B'), ('EGCM', '3.97e-13', 'B')]
+    end30 not-B/A [('USTARPBL', '2.99e-12', 'C', 2), ('LMONINPBL', '6.71e-10', 'C', 32)]
+    surface_c2 {'ocean_exit_vs_ffo_tag14': {'C': 12, 'B': 9, 'A': 1}, 'ice_after_advsi_vs_ffadv_out': {'B': 4, 'C': 1}, 'ice_at_advsi_entry_vs_ffadv_in': {'B': 4, 'C': 1}, 'dynsi_vs_real': {'C': 2, 'B': 1}, 'riverf_vs_real': {'B': 2}, 'next_step_entry_records_vs_our_state': {'C': 10, 'B': 10, 'A': 1}}
