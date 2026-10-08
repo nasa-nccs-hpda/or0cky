@@ -22,7 +22,10 @@ def test_header_complete(monkeypatch):
     assert 'OMP_NUM_THREADS' in h['thread_env'] and 'XLA_FLAGS' in h['thread_env']
     assert h['jax']['version'] and h['jax']['backend'] and h['jax']['devices']
     assert h['compile_cache']['cache_set'] is False
-    assert len(h['git']['head']) == 40 and isinstance(h['git']['modified_tracked_files'], int)
+    # a clean `git archive` export (used for the batch regression) has no .git: the header then has an empty head
+    import subprocess
+    in_repo = subprocess.run(['git', 'rev-parse', '--git-dir'], capture_output=True, cwd=os.path.dirname(os.path.abspath(__file__))).returncode == 0
+    assert (len(h['git']['head']) == 40 if in_repo else h['git']['head'] in ('', None)) and isinstance(h['git']['modified_tracked_files'], int)
     assert isinstance(h['libimf']['available'], bool)
     assert h['versions']['python'] and h['versions']['numpy'] == np.__version__
     assert h['timestamp_utc']
