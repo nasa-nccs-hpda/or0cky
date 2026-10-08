@@ -6,6 +6,7 @@
 #   MODE=smoke  sbatch gpu/run_gpu_job.sbatch     # gpu/smoke_test_env.py (about 1 minute): is JAX with CUDA in the container?
 #   MODE=probe  sbatch gpu/run_gpu_job.sbatch     # gpu/gpu_probe.py: devices, float64 timing, device math functions vs NumPy
 #   MODE=bench  sbatch gpu/run_gpu_job.sbatch     # your manual command: torch.distributed.run benchmark_all.py
+#   MODE=step   sbatch --time=3:00:00 gpu/run_gpu_job.sbatch   # the assembled coupled step; command in gpu/step_command.txt; optional GPU_KEEP_ALGSIMP=1
 #   MODE=atm    sbatch gpu/run_gpu_job.sbatch     # the JAX atmosphere step, 6 steps of nov26 (needs the data: gpu/DATA_SUBSET_6STEP.md)
 #   CMD="..."   MODE=custom sbatch gpu/run_gpu_job.sbatch
 # Results land in gpu_runs/<jobid>/ ; fold them back with:  python gpu/collect_gpu_results.py gpu_runs/<jobid>
@@ -34,6 +35,8 @@ MODE="${MODE:-bench}"
 export FF_DATA="${FF_DATA:-$PROJ/ff_data}"
 export MODELE_PROD_INPUT="${MODELE_PROD_INPUT:-$PROJ/modelE2_planet_2.0/ModelE_Support/prod_input_files}"
 # no Intel libimf in the container unless the owner copies it and sets INTEL_LIBIMF_DIR (then bitwise-with-Fortran results are possible)
+# GPU option: GPU_KEEP_ALGSIMP=1 lets XLA keep the algebraic simplifier (faster kernels; bitwise equality with the CPU is impossible on the GPU anyway, see the probe)
+[ "${GPU_KEEP_ALGSIMP:-0}" = "1" ] && export CLOUDS_JAX_KEEP_ALGSIMP=1
 unset JAX_COMPILATION_CACHE_DIR CLOUDS_JAX_CACHE     # a warm compile cache changed results (D175): never for validated runs
 
 case "$MODE" in
@@ -41,6 +44,10 @@ case "$MODE" in
   probe) CMD="python -u $PROJ/gpu/gpu_probe.py" ;;
   bench) CMD="python -u -m torch.distributed.run $PROJ/benchmark_all.py" ;;     # exactly the manual command
   atm)   CMD="cd $PROJ/fullfidelity && OMP_NUM_THREADS=1 python -u jax_atm_step_run.py jax $OUT/atm 6 nov26" ;;
+  step)   # the assembled coupled step (stage S6/S7): the command lives in gpu/step_command.txt (first non-comment line; $PROJ and $OUT are expanded)
+          CMD="$(grep -v '^#' "$PROJ/gpu/step_command.txt" | grep -v '^[[:space:]]*$' | head -1)"
+          [ -n "$CMD" ] || { echo "gpu/step_command.txt has no command yet" >&2; exit 2; }
+          CMD="$(eval echo \"$CMD\")" ;;
   custom) CMD="${CMD:?set CMD}" ;;
   *) echo "unknown MODE=$MODE" >&2; exit 2 ;;
 esac

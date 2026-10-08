@@ -1,0 +1,3 @@
+# Command for MODE=step of run_gpu_job.sbatch: ONE command line (the first line that is not a comment). $PROJ = the project directory, $OUT = gpu_runs/<jobid>.
+# To be filled in when the assembled step (D191) is verified: its runner, the date, the number of steps, and the output directory $OUT/step.
+# Example shape (NOT valid yet):  cd $PROJ/fullfidelity && OMP_NUM_THREADS=1 python -u <runner>.py nov26 $OUT/step
