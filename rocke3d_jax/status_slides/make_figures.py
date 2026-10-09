@@ -131,11 +131,11 @@ def fig_perf(out):
 
 def fig_day(out):
     f = ["T", "U", "V", "Q", "P", "QCL", "QCI"]
-    within = [54, 53, 54, 40, 54, 50, 49]
-    near = [0, 1, 0, 14, 0, 3, 5]
+    within = [54, 54, 54, 42, 52, 52, 37]
+    near = [0, 0, 0, 12, 2, 1, 17]
     beyond = [0, 0, 0, 0, 0, 1, 0]
-    r_ge3 = [0.94, 1.03, 0.93, 1.05, 1.00, 1.01, 1.12]
-    r_all = [0.94, 1.03, 0.93, 1.05, 1.00, 2.84, 1.12]
+    r_ge3 = [0.94, 0.89, 0.97, 1.03, 1.04, 0.95, 1.69]
+    r_all = [0.94, 0.89, 0.97, 1.03, 1.04, 2.83, 1.69]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.6, 3.7), dpi=200)
     fig.subplots_adjust(left=0.05, right=0.99, top=0.84, bottom=0.14, wspace=0.18)
     y = list(range(len(f)))
@@ -146,7 +146,7 @@ def fig_day(out):
         a1.text(55, i, "%d / %d / %d" % (within[i], near[i], beyond[i]), va="center", fontsize=8.5, color=INK)
     a1.set_yticks(y); a1.set_yticklabels(f, fontsize=9); a1.invert_yaxis()
     a1.set_xlim(0, 72); a1.set_xlabel("steps of 54 (within / near / beyond)", fontsize=8.5)
-    a1.set_title("Steps per class, nov26 day, assembled step (D203, after the gusti fix)", fontsize=10, color=INK, loc="left")
+    a1.set_title("Steps per class, nov26 day, assembled step (D209, current defaults)", fontsize=10, color=INK, loc="left")
     a1.legend(fontsize=8, frameon=False, loc="lower right", ncol=3, bbox_to_anchor=(1.0, -0.32))
     a2.axvline(1, color=GREEN, lw=1, ls="--"); a2.axvline(2, color=ORANGE, lw=1.4)
     a2.text(2.03, -0.55, "2x: pass rule (ACCEPTANCE s9)", color=ORANGE, fontsize=8, va="center")
@@ -155,8 +155,8 @@ def fig_day(out):
         a2.plot([r_ge3[i], r_all[i]], [i, i], color=MUTED, lw=1.5)
         a2.plot(r_ge3[i], i, "o", color=GREEN, ms=6)
         a2.plot(r_all[i], i, "D", color=(ORANGE if r_all[i] > 2 else GREEN), ms=6)
-    a2.text(2.92, 5.0, "2.84 (step 1)", fontsize=8.5, color=ORANGE, va="center")
-    a2.text(1.14, 6.42, "1.12", fontsize=8, color=INK, va="center")
+    a2.text(2.92, 5.0, "2.83 (step 1)", fontsize=8.5, color=ORANGE, va="center")
+    a2.text(1.74, 6.42, "1.69", fontsize=8, color=INK, va="center")
     a2.set_yticks(y); a2.set_yticklabels(f, fontsize=9); a2.invert_yaxis()
     a2.set_xlim(0.6, 3.4); a2.set_ylim(6.6, -0.9)
     a2.set_xlabel("worst ratio ours / largest member distance (circle: steps >= 3, diamond: all steps)", fontsize=8.2)

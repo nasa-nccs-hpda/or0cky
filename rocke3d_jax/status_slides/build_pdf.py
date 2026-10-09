@@ -34,19 +34,19 @@ def P(name):
 @slide
 def s_glance(n):
     p = P("glance")
-    y = header(p, "ROCKE-3D -> JAX | AT A GLANCE | status 2026-10-08 (HEAD ec36779, ledger through D198)",
+    y = header(p, "ROCKE-3D -> JAX | AT A GLANCE | status 2026-10-09 (ledger through D213)",
                "Where the project stands",
                "Goal: rewrite NASA GISS's ROCKE-3D (Fortran GCM) in Python/JAX, checked against the real Fortran, for GPU use. "
                "Configuration P2SAoM40 (72x46 grid, 40 layers, dynamic ocean). Every card says what is met and what is not.", 24)
     cards = [
         (ORANGE, "NOT MET", "One-day criterion (nov26, 54 steps)",
-         "ACCEPTANCE s9: never beyond 2x the largest real-member distance at every step. QCL at step 1 is 2.84x (one bistable cell, D197). Steps >= 3: worst ratio 1.12. 54 steps finite after the D199+D202 land fixes. D197, D203."),
+         "ACCEPTANCE s9: never beyond 2x the largest real-member distance at every step. QCL at step 1 is 2.84x (one bistable cell, D197). Steps >= 3: worst ratio 1.69 (QCI, inside the run-to-run spread). Two days run. D197, D207, D213."),
         (AMBER, "MET / PARTLY MET", "One coupled step vs real Fortran (C2, step 0)",
          "nov26 MET with one named column (25,16); dec01 and jan01 PARTLY MET (worst EGCM 9.9e-9 and 7.6e-9 of scale). Needs the libimf callback. D191."),
         (GREEN, "18.8 s", "Steady step on CPU, was 44.3 s",
          "99 jit executions (was 262), eager dispatches 490 (was ~15,700). Only 1.2-1.4x faster than the NumPy chain on the same cores. HYBRID step. D187, D191."),
         (GREEN, "558 / 558", "C1: bitwise vs our NumPy chain",
-         "Step 0 on nov26, dec01, jan01 (category A). On the day: bitwise steps 0-19 (the NumPy reference aborts at step 20). D191, D203."),
+         "Step 0 on nov26, dec01, jan01 (category A). On the day: bitwise through step 47 with the computed GHY schedule; the NumPy chain has no daily_LAKE. D191, D204, D206."),
         (GREEN, "3,056 passed", "Last batch regression (a89e117)",
          "6 skipped, 1 known failure (export artifact: test asserts a git HEAD; fixed afterwards, not re-run). README_START_HERE handoff."),
         (ORANGE, "No GPU result", "GPU runner built, validated on CPU only",
@@ -88,13 +88,14 @@ def s_stoplight(n):
     rows = [
         (GREEN, "Component ports vs the Fortran (Track B)", "validated rung by rung, D4-D145"),
         (GREEN, "One coupled step vs the real Fortran (C2)", "step 0 MET on nov26, dec01, jan01 (D199); hybrid"),
-        (GREEN, "JAX step equals the NumPy chain (C1)", "bitwise: 559/559 arrays at step 0; nov26 steps 0-19"),
-        (GREEN, "Regression suite", "3,059 passed, 6 skipped, 0 failed (fd53982: gusti fix, D203)"),
+        (GREEN, "JAX step equals the NumPy chain (C1)", "bitwise: 561/561 at step 0; nov26 steps 0-47 (D206)"),
+        (GREEN, "Regression suite", "3,611 passed, 6 skipped; 12 day-2 test cases excluded, fixed file 219 passed (15baa26)"),
         (AMBER, "Device-resident assembled step", "99 jit executions, 18.8 s/step; hybrid, not end-to-end JAX"),
-        (AMBER, "Radiation (SOCRATES)", "replayed or Fortran callback; accepted exception, not ported"),
+        (AMBER, "Radiation (SOCRATES)", "Fortran server callback works (D210/D212); not ported"),
         (RED_, "GPU assembled step", "runs on the A100 (step 0 OK) but NaN from step 1 (surface stage); cause unknown"),
-        (RED_, "One model day vs 5 real members (ACCEPTANCE s9)", "NOT MET: QCL step 1 = 2.84x (D203); all 54 steps finite after the land fixes"),
-        (RED_, "Daily lake update at the day boundary", "missing (D196): lake-tile mismatches at step 48"),
+        (GREEN, "Second model day (steps 54-107)", "real records made (D207); day 2 never beyond 2x of the members"),
+        (RED_, "One model day vs 5 real members (ACCEPTANCE s9)", "NOT MET: QCL step 1 = 2.83x in every run (systematic); rest inside the spread (D213)"),
+        (GREEN, "Daily lake update at the day boundary", "ported, bitwise vs the compiled Fortran (D205, D208)"),
         (MUTED, "Months-long run and its criterion", "not started; criterion not defined"),
     ]
     yy = y + 32
@@ -109,12 +110,12 @@ def s_stoplight(n):
     p.text(x2 + 14, y + 8, colw - 24, "Outstanding items and their next action", 11, VIOLET, True)
     items = [
         ("GPU NaN at step 1 (surface stage)", "owner: JAX_DEBUG_NANS=1 run on Discover; CPU control with the simplifier on is finite"),
-        ("Day-boundary lake update", "owner: record the boundary values (approximation) or port daily_LAKE (~500 lines)"),
+        ("Replayed inputs in the step", "Ent exports, land forcing, tile radiation columns, PBL templates (D212 list); tile radiation columns next"),
         ("QCL step 1 exceedance (2.84x)", "one bistable cell (D197); owner may relax s9 later (dated, both statuses)"),
         ("Free-running comparison", "compute Ent and land forcing instead of replaying the real records"),
         ("Radiation and SOCRATES", "135-295 h port estimate; only if the owner lifts the rule (D1-D6)"),
         ("Multi-month criterion", "define it; use the 8-member JAN1950 leave-one-out scoring"),
-        ("Nit schedule and C1 beyond step 19", "port the Fortran gdtm loop (D202 prototype); NumPy reference aborts at step 20"),
+        ("NumPy reference beyond day 1", "give the NumPy chain a daily_LAKE so C1 holds across the boundary"),
         ("Housekeeping", "owner: close extra sessions; decide where ANN4099 lives; push when batches pass"),
     ]
     yy = y + 32
@@ -124,8 +125,8 @@ def s_stoplight(n):
         p.text(x2 + 30, yy + 12, colw - 44, note, 8.4, MUTED, maxh=24)
         yy += 39
     banner(p, MARGIN, y + 362, W - 2 * MARGIN, 36,
-           "Honest status: the single step matches the real Fortran at step 0 on three dates, but the step is a hybrid and the one-day statistical test is not passed yet.", AMBER, 9.4)
-    footer(p, n, "README_START_HERE.md; ACCEPTANCE_CRITERIA.md s9; D187, D191, D195, D196, D199, D200; SOCRATES_PORT_PLAN.md; gpu/DISCOVER_RUN.md")
+           "Honest status: step 0 matches the real Fortran on three dates and two model days run, but the step is a hybrid with replayed inputs and the one-day statistical test is not passed (QCL step 1).", AMBER, 9.4)
+    footer(p, n, "README_START_HERE.md; ACCEPTANCE_CRITERIA.md s9; D187, D191, D199, D203-D213; SOCRATES_PORT_PLAN.md; gpu/DISCOVER_RUN.md")
     return p
 
 
@@ -333,24 +334,53 @@ def s_stage_share(n):
 
 # ------------------------------------------------------------------ 10
 @slide
+def s_configs(n):
+    p = P("configs")
+    y = header(p, "FINDINGS | CONFIGURATIONS, TWO DAYS AND THE SPREAD", "Which differences between our runs mean something (D207, D209-D213)", None, 22)
+    rows = [["Run (54 steps, nov26)", "T", "U", "V", "Q", "P", "QCL", "QCI", "worst ratio steps >= 3"],
+            ["D209 replayed radiation (default)", "54/0/0", "54/0/0", "54/0/0", "42/12/0", "52/2/0", "52/1/1", "37/17/0", "QCI 1.69"],
+            ["D210 server radiation (Fortran callback)", "54/0/0", "54/0/0", "53/1/0", "54/0/0", "52/2/0", "52/1/1", "49/5/0", "QCI 1.08"],
+            ["D212 server + own surface fields, seed, COSZ", "54/0/0", "53/1/0", "54/0/0", "54/0/0", "51/3/0", ("41/12/1", ORANGE), "42/12/0", ("QCL 1.41", ORANGE)],
+            ["D213 spread (control, p1, p2, p3), within min..max", "53..54", "53..54", "54", "42..49", "52..54", "50..52", "37..52", "QCI 1.07..1.84"],
+            ["Day 2 (steps 54-107), replayed radiation", "54/0/0", "54/0/0", "54/0/0", "17/37/0", "54/0/0", "53/1/0", "52/2/0", "QCI 1.10"]]
+    hh = p.table(MARGIN, y, [250, 62, 62, 62, 70, 62, 64, 70, W - 2 * MARGIN - 702], rows, 8.2, maxh=170, bold_cols=(0,))
+    yy = y + hh + 10
+    cw = (W - 2 * MARGIN - 12) / 2
+    card(p, MARGIN, yy, cw, 150, GREEN)
+    p.text(MARGIN + 14, yy + 8, cw - 24, "What the spread says", 10.5, INK, True)
+    p.bullets(MARGIN + 14, yy + 28, cw - 26, [
+        "One-ulp perturbations like the real members' move our QCI within-count from 37 to 52 and Q from 42 to 49: the D209 vs D210 differences are inside that spread.",
+        "QCL at step 1 is 2.83..2.92 in EVERY run and configuration: systematic, not noise.",
+        "D210/D212 Q = 54 and D212 QCL = 41/12/1 lie outside a 3-run range, which underestimates the spread: single unconfirmed results."], 9.6, maxh=120)
+    card(p, MARGIN + cw + 12, yy, cw, 150, AMBER)
+    p.text(MARGIN + cw + 26, yy + 8, cw - 24, "Conditions and limits", 10.5, INK, True)
+    p.bullets(MARGIN + cw + 26, yy + 28, cw - 26, [
+        "HYBRID. Ent exports, land forcing, tile radiation columns and PBL templates are replayed from the real records; radiation is replayed, or computed by the unmodified Fortran server (D210, D212).",
+        "Day 2 reuses the same member runs (perturbed at step 0): its floor is a continuation, not a fresh perturbation. Replayed records pull both days toward the real trajectory.",
+        "ACCEPTANCE s9 stays NOT MET (QCL step 1). Tables are single runs; n = 3-4 realisations."], 9.6, maxh=120)
+    footer(p, n, "D207 (day 2), D209, D210, D212, D213 (spread table), ACCEPTANCE s9")
+    return p
+
+
+@slide
 def s_day(n):
     p = P("day")
     y = header(p, "FINDINGS | THE 54-STEP DAY", "One model day (nov26) vs five real members: NOT MET under ACCEPTANCE s9", None, 22)
     p.image(MARGIN - 4, y - 4, W - 2 * MARGIN + 8, 176, os.path.join(IMG, "day_score.png"))
     yy = y + 174
-    rows = [["Field", "within / near / beyond D203 (D195)", "worst ratio steps >= 3", "worst ratio all steps", "near steps", "beyond"],
-            ["T", "54/0/0 (54/0/0)", "0.94 (step 41)", "0.94", "-", "-"], ["U", "53/1/0 (53/1/0)", "1.03 (5)", "1.03", "5", "-"],
-            ["V", "54/0/0 (54/0/0)", "0.93 (10)", "0.93", "-", "-"], ["Q", "40/14/0 (41/13/0)", "1.05 (46)", "1.05", "40-53", "-"],
-            ["P", "54/0/0 (54/0/0)", "1.00 (21)", "1.00", "-", "-"],
-            ["QCL", "50/3/1 (47/6/1)", "1.01 (14)", ("2.84 (step 1)", ORANGE), "2, 13, 14", ("step 1", ORANGE)],
-            ["QCI", "49/5/0 (54/0/0)", "1.12 (8)", "1.12", "7, 8, 9, 46, 47", "-"]]
+    rows = [["Field", "within / near / beyond D209 (D203)", "worst ratio steps >= 3", "worst ratio all steps", "near steps", "beyond"],
+            ["T", "54/0/0 (54/0/0)", "0.94 (step 15)", "0.94", "-", "-"], ["U", "54/0/0 (53/1/0)", "0.89 (21)", "0.89", "-", "-"],
+            ["V", "54/0/0 (54/0/0)", "0.97 (10)", "0.97", "-", "-"], ["Q", "42/12/0 (40/14/0)", "1.03 (46)", "1.03", "40-53 (12)", "-"],
+            ["P", "52/2/0 (54/0/0)", "1.04 (33)", "1.04", "2", "-"],
+            ["QCL", "52/1/1 (50/3/1)", "0.95 (9)", ("2.83 (step 1)", ORANGE), "1", ("step 1", ORANGE)],
+            ["QCI", "37/17/0 (49/5/0)", "1.69 (47)", "1.69", "17 steps", "-"]]
     hh = p.table(MARGIN, yy, [50, 190, 140, 140, 150, W - 2 * MARGIN - 670], rows, 7.8, maxh=140, bold_cols=(0,))
     yy += hh + 6
     banner(p, MARGIN, yy, W - 2 * MARGIN, 66,
            "Status: NOT MET (owner decision 2026-10-08, ACCEPTANCE s9). The only field beyond 2x is QCL at step 1 (ours 1.15e-6 vs largest member distance 4.06e-7). "
-           "All 54 steps are finite since the D202 land fix (before it the day was NaN from step 39). 'Within at every step' also fails (U, Q, QCL, QCI near at some steps). The earlier claim of a ~1e-9 floor at steps < 3 was wrong (correction 8a649f7); no exception clause is recorded.", ORANGE, 8.8)
-    p.text(MARGIN, yy + 72, W - 2 * MARGIN, "Conditions: HYBRID; radiation REPLAYED (not computed); libimf host callback; Ent, land forcing, template columns recorded; ocean/ice/land daily updates not applied; nit_strict=False after step 22; one start state; five members. D195 (before the D199/D202 land fixes) in brackets.", 7.8, MUTED, maxh=24)
-    footer(p, n, "D203 (score.md/json, parent re-score), D195 s4, ACCEPTANCE s9, correction 8a649f7, D197")
+           "All 54 steps are finite since the D202 land fix. QCL step 1 (2.83) is systematic in every run; the other fields vary within the run-to-run spread (next slide). 'Within at every step' also fails (Q, P, QCL, QCI near at some steps). The earlier claim of a ~1e-9 floor at steps < 3 was wrong (correction 8a649f7); no exception clause is recorded.", ORANGE, 8.8)
+    p.text(MARGIN, yy + 72, W - 2 * MARGIN, "Conditions: HYBRID; radiation REPLAYED (not computed); libimf host callback; Ent, land forcing, template columns recorded; ocean/ice/land daily updates not applied; nit_strict=False after step 22; one start state; five members. D203 (before the computed GHY schedule, D204) in brackets.", 7.8, MUTED, maxh=24)
+    footer(p, n, "D209 (score.md/json, parent re-score), D203, D213 (spread), ACCEPTANCE s9, correction 8a649f7, D197")
     return p
 
 
