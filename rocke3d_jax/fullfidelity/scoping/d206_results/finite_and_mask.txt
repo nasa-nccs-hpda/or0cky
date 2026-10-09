@@ -1,0 +1,7 @@
+finite check, 54 steps x 7 fields: non-finite = []
+tile_mask_mismatch per step (nonzero only): {53: [1, 0]}
+steps 48..53: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 0]]
+flags_sum per step all zero: True  stage_rebuilt at steps [0, 48]
+wall steady median 14.858336401870474 step48 104.0454480170738 step0 455.7933004470542
+daily rec step 48: {"deltam": -3.456079866737127e-11, "smass": 5.11747063382544e+18, "mdryanow": 10034.007535702849, "snoage_change_recorded": 14.040496067079882, "ch4ox_dm_i_spread_rel": 4.657215476599067e-13, "daily_lake": {"n_flake_changed": 631, "max_abs_dflake": 0.004921102086161648, "n_rsi_changed": 284, "n_dmwldf_pos": 752, "counters": {"cells_visited": 753, "new_flake_ne_flake": 717, "expand": 338, "shrink": 0, "have_lake": 631, "no_lake": 86, "crunch": 20, "layer_entrain": 259, "layer_new": 6, "layer_scale": 366, "dont_saturate": 0, "saturate_solve": 436, "ice_dump": 0}, "seconds": {"total": 3.645845277
+nit mismatch file: []

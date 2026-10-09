@@ -1,0 +1,4 @@
+lake cells 636 FLAKE changed record 632 ours 631 both 631
+FLAKE ours vs record 33360: max abs 0.000162, cells >1e-6: 77
+FEARTH max abs vs record 0.000162 FLAND 0.000162
+lake RSI end of step 48 vs record 33361 entry: max 0.00217, cells>1e-3: 2

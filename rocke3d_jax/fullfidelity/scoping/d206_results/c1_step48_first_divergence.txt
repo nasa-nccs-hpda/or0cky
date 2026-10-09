@@ -1,0 +1,74 @@
+steps 0-47 all category A: True | last fully bitwise step: 47
+step 48 {'A': 384, 'B': 0, 'C': 49, 'D': 139}
+step 49 {'A': 78, 'B': 0, 'C': 34, 'D': 460}
+step 53 {'A': 59, 'B': 0, 'C': 13, 'D': 500}
+GROUP surface n not-A = 19
+    ('EGCM', {'cat': 'D', 'max_abs': 0.009836954111910323, 'scale': 9.144763088635926, 'rel': 0.0010756926140748876, 'n_diff': 34095, 'n': 132480, 'worst': [1, 65, 34], 'n_co
+    ('LMONINPBL', {'cat': 'D', 'max_abs': 5897.027355567014, 'scale': 107777.97334716261, 'rel': 0.054714587521256824, 'n_diff': 1181, 'n': 3312, 'worst': [48, 39], 'n_cols_o
+    ('PBLHT', {'cat': 'D', 'max_abs': 0.7484824836902817, 'scale': 4000.0, 'rel': 0.00018712062092257042, 'n_diff': 1178, 'n': 3312, 'worst': [24, 23], 'n_cols_over': 1175, '
+    ('PBLPTOP', {'cat': 'D', 'max_abs': 0.07058279124873934, 'scale': 1022.9558787295515, 'rel': 6.89988617460206e-05, 'n_diff': 1183, 'n': 3312, 'worst': [24, 23], 'n_cols_o
+    ('Q', {'cat': 'D', 'max_abs': 7.622486197164657e-07, 'scale': 0.019109723804540252, 'rel': 3.9887997728955355e-05, 'n_diff': 24288, 'n': 132480, 'worst': [24, 23, 1], 'n_
+    ('QMOM', {'cat': 'D', 'max_abs': 2.991955312279734e-08, 'scale': 0.014667961269734152, 'rel': 2.039789482164321e-06, 'n_diff': 1143, 'n': 1192320, 'worst': [1, 22, 20, 1]
+    ('QSAVG', {'cat': 'D', 'max_abs': 5.94878358589207e-05, 'scale': 0.01953125949390191, 'rel': 0.0030457757154623904, 'n_diff': 1183, 'n': 3312, 'worst': [22, 21], 'n_cols_
+    ('T', {'cat': 'C', 'max_abs': 0.0001414608663310446, 'scale': 457.3453571320421, 'rel': 3.0930863104881776e-07, 'n_diff': 45579, 'n': 132480, 'worst': [50, 40, 1], 'n_col
+    ('T1AA', {'cat': 'D', 'max_abs': 0.0001414608663310446, 'scale': 44.41020705214651, 'rel': 3.1853232786089267e-06, 'n_diff': 1183, 'n': 3312, 'worst': [50, 40], 'n_cols_o
+    ('TMOM', {'cat': 'C', 'max_abs': 2.016327775744564e-06, 'scale': 46.720996949638575, 'rel': 4.315677976473835e-08, 'n_diff': 6157, 'n': 1192320, 'worst': [2, 65, 34, 1], 
+    ('TSAVG', {'cat': 'D', 'max_abs': 1.3487817505064754, 'scale': 307.8945424792911, 'rel': 0.0043806614422118055, 'n_diff': 1181, 'n': 3312, 'worst': [64, 33], 'n_cols_over
+    ('U', {'cat': 'D', 'max_abs': 0.003381025415030159, 'scale': 93.8670269358061, 'rel': 3.601930864756566e-05, 'n_diff': 33289, 'n': 132480, 'worst': [63, 33, 1], 'n_cols_o
+GROUP dissip n not-A = 20
+    ('EGCM', {'cat': 'D', 'max_abs': 0.009836954111910323, 'scale': 9.144763088635926, 'rel': 0.0010756926140748876, 'n_diff': 34095, 'n': 132480, 'worst': [1, 65, 34], 'n_co
+    ('KEA_NEW', {'cat': 'D', 'max_abs': 0.026030007516908427, 'scale': 4323.340633647971, 'rel': 6.020808842662182e-06, 'n_diff': 39689, 'n': 132480, 'worst': [64, 33, 1], 'n
+    ('LMONINPBL', {'cat': 'D', 'max_abs': 5897.027355567014, 'scale': 107777.97334716261, 'rel': 0.054714587521256824, 'n_diff': 1181, 'n': 3312, 'worst': [48, 39], 'n_cols_o
+    ('PBLHT', {'cat': 'D', 'max_abs': 0.7484824836902817, 'scale': 4000.0, 'rel': 0.00018712062092257042, 'n_diff': 1178, 'n': 3312, 'worst': [24, 23], 'n_cols_over': 1175, '
+    ('PBLPTOP', {'cat': 'D', 'max_abs': 0.07058279124873934, 'scale': 1022.9558787295515, 'rel': 6.89988617460206e-05, 'n_diff': 1183, 'n': 3312, 'worst': [24, 23], 'n_cols_o
+    ('Q', {'cat': 'D', 'max_abs': 7.622486197164657e-07, 'scale': 0.019109723804540252, 'rel': 3.9887997728955355e-05, 'n_diff': 24288, 'n': 132480, 'worst': [24, 23, 1], 'n_
+    ('QMOM', {'cat': 'D', 'max_abs': 2.991955312279734e-08, 'scale': 0.014667961269734152, 'rel': 2.039789482164321e-06, 'n_diff': 1143, 'n': 1192320, 'worst': [1, 22, 20, 1]
+    ('QSAVG', {'cat': 'D', 'max_abs': 5.94878358589207e-05, 'scale': 0.01953125949390191, 'rel': 0.0030457757154623904, 'n_diff': 1183, 'n': 3312, 'worst': [22, 21], 'n_cols_
+    ('T', {'cat': 'C', 'max_abs': 0.00014059178369763004, 'scale': 457.3453632599146, 'rel': 3.074083504323845e-07, 'n_diff': 48659, 'n': 132480, 'worst': [50, 40, 1], 'n_col
+    ('T1AA', {'cat': 'D', 'max_abs': 0.0001414608663310446, 'scale': 44.41020705214651, 'rel': 3.1853232786089267e-06, 'n_diff': 1183, 'n': 3312, 'worst': [50, 40], 'n_cols_o
+    ('TMOM', {'cat': 'C', 'max_abs': 2.016327775744564e-06, 'scale': 46.720996949638575, 'rel': 4.315677976473835e-08, 'n_diff': 6157, 'n': 1192320, 'worst': [2, 65, 34, 1], 
+    ('TSAVG', {'cat': 'D', 'max_abs': 1.3487817505064754, 'scale': 307.8945424792911, 'rel': 0.0043806614422118055, 'n_diff': 1181, 'n': 3312, 'worst': [64, 33], 'n_cols_over
+GROUP filter n not-A = 30
+    ('EGCM', {'cat': 'D', 'max_abs': 0.009836954111910323, 'scale': 9.144763088635926, 'rel': 0.0010756926140748876, 'n_diff': 34095, 'n': 132480, 'worst': [1, 65, 34], 'n_co
+    ('KEA_NEW', {'cat': 'D', 'max_abs': 0.026030007516908427, 'scale': 4323.340633647971, 'rel': 6.020808842662182e-06, 'n_diff': 39689, 'n': 132480, 'worst': [64, 33, 1], 'n
+    ('LMONINPBL', {'cat': 'D', 'max_abs': 5897.027355567014, 'scale': 107777.97334716261, 'rel': 0.054714587521256824, 'n_diff': 1181, 'n': 3312, 'worst': [48, 39], 'n_cols_o
+    ('MA', {'cat': 'D', 'max_abs': 0.08478137174631684, 'scale': 563.8353066132485, 'rel': 0.000150365489269495, 'n_diff': 56304, 'n': 132480, 'worst': [12, 42, 27], 'n_cols_
+    ('MASUM', {'cat': 'D', 'max_abs': 1.359762769930967, 'scale': 10571.605482397168, 'rel': 0.0001286240554658528, 'n_diff': 2448, 'n': 3312, 'worst': [42, 27], 'n_cols_over
+    ('P', {'cat': 'D', 'max_abs': 0.13334717567749976, 'scale': 886.8203490395018, 'rel': 0.00015036548926952966, 'n_diff': 2448, 'n': 3312, 'worst': [42, 27], 'n_cols_over':
+    ('PBLHT', {'cat': 'D', 'max_abs': 0.7484824836902817, 'scale': 4000.0, 'rel': 0.00018712062092257042, 'n_diff': 1178, 'n': 3312, 'worst': [24, 23], 'n_cols_over': 1175, '
+    ('PBLPTOP', {'cat': 'D', 'max_abs': 0.07058279124873934, 'scale': 1022.9558787295515, 'rel': 6.89988617460206e-05, 'n_diff': 1183, 'n': 3312, 'worst': [24, 23], 'n_cols_o
+    ('PDSIG', {'cat': 'D', 'max_abs': 0.008314212392356524, 'scale': 55.29335509598813, 'rel': 0.00015036548926942886, 'n_diff': 56304, 'n': 132480, 'worst': [12, 42, 27], 'n
+    ('PEDN', {'cat': 'D', 'max_abs': 0.1333471756772724, 'scale': 1036.820349039502, 'rel': 0.00012861164983963096, 'n_diff': 56304, 'n': 135792, 'worst': [1, 42, 27], 'n_col
+    ('PEK', {'cat': 'D', 'max_abs': 0.00029175352162802426, 'scale': 7.2973823333485, 'rel': 3.998057225187889e-05, 'n_diff': 56304, 'n': 135792, 'worst': [1, 42, 27], 'n_col
+    ('PK', {'cat': 'D', 'max_abs': 0.0002903395596618452, 'scale': 7.275882482519165, 'rel': 3.9904377284735845e-05, 'n_diff': 56304, 'n': 132480, 'worst': [1, 42, 27], 'n_co
+GROUP surf n not-A = 59
+    ('atm/gtemp', {'cat': 'D', 'max_abs': 0.09645331144383462, 'scale': 31.824316292958677, 'rel': 0.0030308054556752724, 'n_diff': 2034, 'n': 3312, 'worst': [21, 25], 'n_col
+    ('atm/gtemp2', {'cat': 'D', 'max_abs': 0.06323071893501364, 'scale': 31.481185224195443, 'rel': 0.0020085240909677223, 'n_diff': 2064, 'n': 3312, 'worst': [67, 16], 'n_co
+    ('atm/gtempr', {'cat': 'D', 'max_abs': 0.09645331144383817, 'scale': 304.97431629295863, 'rel': 0.0003162669978778968, 'n_diff': 1561, 'n': 3312, 'worst': [21, 25], 'n_co
+    ('atm/mlhc', {'cat': 'D', 'max_abs': 17346167.811920844, 'scale': 51886672.19638002, 'rel': 0.3343087362833617, 'n_diff': 1928, 'n': 3312, 'worst': [64, 33], 'n_cols_over
+    ('atm/sss', {'cat': 'D', 'max_abs': 0.0003268045788544782, 'scale': 40.89199412395507, 'rel': 7.99189635662771e-06, 'n_diff': 1298, 'n': 3312, 'worst': [64, 34], 'n_cols_
+    ('ice/hsi', {'cat': 'D', 'max_abs': 5066386.404712737, 'scale': 645176744.912557, 'rel': 0.007852710818644588, 'n_diff': 2617, 'n': 13248, 'worst': [4, 39, 3], 'n_cols_ov
+    ('ice/msi', {'cat': 'D', 'max_abs': 28.548628949381737, 'scale': 3531.6017853681933, 'rel': 0.008083762180566842, 'n_diff': 584, 'n': 3312, 'worst': [4, 39], 'n_cols_over
+    ('ice/pond_melt', {'cat': 'C', 'max_abs': 1.5159078454729524e-06, 'scale': 95.81159348760332, 'rel': 1.5821757997053768e-08, 'n_diff': 16, 'n': 3312, 'worst': [65, 34], '
+    ('ice/rsi', {'cat': 'D', 'max_abs': 0.1597078767144342, 'scale': 1.0, 'rel': 0.1597078767144342, 'n_diff': 548, 'n': 3312, 'worst': [44, 37], 'n_cols_over': 292, 'cols_ov
+    ('ice/snowi', {'cat': 'D', 'max_abs': 1.3362939287314894, 'scale': 287.8506299701851, 'rel': 0.004642317193712238, 'n_diff': 604, 'n': 3312, 'worst': [4, 39], 'n_cols_ove
+    ('ice/ssi', {'cat': 'C', 'max_abs': 1.8039086002730187e-08, 'scale': 4.7821513970032345, 'rel': 3.772169574981356e-09, 'n_diff': 1134, 'n': 13248, 'worst': [10, 41, 4], '
+    ('lake/gml', {'cat': 'D', 'max_abs': 2.267940761280717e+16, 'scale': 2.0927239234066147e+21, 'rel': 1.0837266855481241e-05, 'n_diff': 665, 'n': 3312, 'worst': [24, 22], '
+GROUP land n not-A = 60
+    ('dyn_next/dzsn', {'cat': 'C', 'max_abs': 1.0194924376927261e-08, 'scale': 1.9059728428738787, 'rel': 5.348934752687804e-09, 'n_diff': 1018, 'n': 6024, 'worst': [391, 1, 
+    ('dyn_next/fr_snow', {'cat': 'C', 'max_abs': 4.577687884310677e-08, 'scale': 0.95, 'rel': 4.818618825590187e-08, 'n_diff': 145, 'n': 1506, 'worst': [358, 1], 'n_cols_over
+    ('dyn_next/hsn', {'cat': 'C', 'max_abs': 9.443278055638075, 'scale': 334416039.07059383, 'rel': 2.8238113464541807e-08, 'n_diff': 1058, 'n': 4518, 'worst': [668, 1, 2], '
+    ('dyn_next/ht', {'cat': 'C', 'max_abs': 15.502611943287775, 'scale': 272026949.0226481, 'rel': 5.6989250509871643e-08, 'n_diff': 4074, 'n': 10542, 'worst': [668, 1, 2], '
+    ('dyn_next/w', {'cat': 'C', 'max_abs': 6.9494926618896e-09, 'scale': 0.7983932948451602, 'rel': 8.704347477313647e-09, 'n_diff': 3295, 'n': 10542, 'worst': [425, 2, 1], '
+    ('dyn_next/wsn', {'cat': 'C', 'max_abs': 1.613129073027575e-09, 'scale': 0.9498592063896582, 'rel': 1.6982822950771353e-09, 'n_diff': 1033, 'n': 4518, 'worst': [391, 1, 1
+    ('evap_max_ij', {'cat': 'C', 'max_abs': 6.550015046948195e-13, 'scale': 2.97430053132689e-06, 'rel': 2.2022035022890284e-07, 'n_diff': 559, 'n': 753, 'worst': [358], 'n_c
+    ('fr_sat_ij', {'cat': 'D', 'max_abs': 1.0703211212437225e-05, 'scale': 1.0, 'rel': 1.0703211212437225e-05, 'n_diff': 470, 'n': 753, 'worst': [191], 'n_cols_over': 1})
+    ('ghy/ae0', {'cat': 'D', 'max_abs': 24.13246180925853, 'scale': 222882.76834265573, 'rel': 0.00010827423756760658, 'n_diff': 735, 'n': 753, 'worst': [668], 'n_cols_over':
+    ('ghy/aeruns', {'cat': 'D', 'max_abs': 0.02149607874389403, 'scale': 8212.380391425437, 'rel': 2.617521074198917e-06, 'n_diff': 162, 'n': 753, 'worst': [134], 'n_cols_ove
+    ('ghy/aerunu', {'cat': 'C', 'max_abs': 8.087984497251455e-06, 'scale': 20269.30952622158, 'rel': 3.990261477229088e-10, 'n_diff': 331, 'n': 753, 'worst': [356], 'n_cols_o
+    ('ghy/aevap', {'cat': 'D', 'max_abs': 8.929624252612678e-06, 'scale': 0.24961353415056056, 'rel': 3.57737984160208e-05, 'n_diff': 728, 'n': 753, 'worst': [425], 'n_cols_o
+
+step 48 not-A group counts: {'surface': 19, 'dissip': 20, 'filter': 30, 'surf': 59, 'land': 60}
+step 48 groups fully A (of dyn condse radia X surface dissip filter surf land): ['dyn', 'condse', 'radia', 'X']
+surf ['atm/gtemp', 'atm/gtemp2', 'atm/gtempr', 'atm/mlhc', 'atm/sss', 'ice/hsi', 'ice/msi', 'ice/pond_melt', 'ice/rsi', 'ice/snowi', 'ice/ssi', 'lake/gml', 'lake/mldlk', 'lake/mwl', 'lake/tlake', 'li/snowli', 'li/tlandi', 'ocean/dh3d', 'ocean/dzgdp', 'ocean/g0m', 'ocean/g0mst', 'ocean/gdn', 'ocean/gup', 'ocean/gxmo', 'ocean/gxmst', 'ocean/gymo', 'ocean/gzmo', 'ocean/gzmst', 'ocean/mmi', 'ocean/mo', 'ocean/must', 'ocean/odhsi', 'ocean/odmsi', 'ocean/odssi', 'ocean/ogeoz', 'ocean/opbot', 'ocean/opress', 'ocean/s0m', 'ocean/s0mst', 'ocean/sdn', 'ocean/smu', 'ocean/smv', 'ocean/smw', 'ocean/sup', 'ocean/sxmo', 'ocean/sxmst', 'ocean/symo', 'ocean/szmo', 'ocean/szmst', 'ocean/uo', 'ocean/uod', 'ocean/vbar', 'ocean/vo', 'ocean/vod', 'ocean/vonp', 'v2/rsix', 'v2/rsiy', 'v2/usi', 'v2/vsi']
+land ['dyn_next/dzsn', 'dyn_next/fr_snow', 'dyn_next/hsn', 'dyn_next/ht', 'dyn_next/w', 'dyn_next/wsn', 'evap_max_ij', 'fr_sat_ij', 'ghy/ae0', 'ghy/aeruns', 'ghy/aerunu', 'ghy/aevap', 'ghy/alhg', 'ghy/aruns', 'ghy/arunu', 'ghy/ashg', 'ghy/dzsn', 'ghy/evap_max_ij', 'ghy/fice', 'ghy/fr_sat_ij', 'ghy/fr_snow', 'ghy/hsn', 'ghy/ht', 'ghy/tbcs', 'ghy/tp', 'ghy/tsns', 'ghy/w', 'ghy/wsn', 'patch/dq1', 'patch/dth1', 'patch/qsavg', 'patch/tsavg', 'patch/uflux1', 'patch/vflux1', 'pbl/ch', 'pbl/cm', 'pbl/cq', 'pbl/e', 'pbl/khs', 'pbl/kms', 'pbl/kqs', 'pbl/lmonin', 'pbl/psi', 'pbl/q', 'pbl/qfluxs', 'pbl/qsrf', 'pbl/t', 'pbl/tfluxs', 'pbl/tsv', 'pbl/u', 'pbl/ufluxs', 'pbl/us', 'pbl/ustar', 'pbl/v', 'pbl/vfluxs', 'pbl/vs', 'pbl/w2_1', 'pbl/ws', 'pbl/ws0', 'rho']
