@@ -8,7 +8,10 @@ Wraps jax_ocean.oadvt2_dev / oadvtx2_dev so each call also reports, for the heat
   x1 y z x2   non-finite counts of (rm, rx, ry, rz, mass) after each of the four sweeps
 The first non-zero entry in call order is the culprit. Diagnostic only (libm mode, radiation replayed, hybrid).
 """
+import os
 import sys
+import threading
+import numpy as np
 import gpu_step_run as G
 import jax
 import jax.numpy as jnp
@@ -18,6 +21,8 @@ import oadvt_jax as OJ
 DATE = sys.argv[1] if len(sys.argv) > 1 else 'nov26'
 C = G.C
 cp = C.Coupled(DATE)
+_CAP_LOCK = threading.Lock()
+_CAP_DONE = []
 PROBE = []                      # tracers of the CURRENT trace only; read back inside the same trace by the stage wrapper
 
 
@@ -37,8 +42,18 @@ def oadvtx2_probe(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
     PROBE.append(('xpre lane_true', jnp.sum(lane).astype(jnp.int64)))
     PROBE.append(('xpre mass_in_nonfinite', nf(mm)))
     PROBE.append(('xpre mu_in_nonfinite', nf(mu)))
-    return OJ._x_sweep(rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']),
-                       1.0 if qlimit else 0.0)
+    args = (rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']), 1.0 if qlimit else 0.0)
+    if os.environ.get('XSWEEP_CAPTURE'):          # save the inputs of the FIRST x sweep (G0M, x1) for gpu_xsweep_probe.py; run on the CPU
+        def _save(*a):
+            with _CAP_LOCK:                       # callbacks may run concurrently; write once, atomically (a plain exists() test raced and wrote a corrupt file)
+                if _CAP_DONE:
+                    return
+                _CAP_DONE.append(1)
+                p = os.environ['XSWEEP_CAPTURE']
+                np.savez(p + '.tmp.npz', **{n_: np.asarray(v) for n_, v in zip(('rm', 'rx', 'ry', 'rz', 'mm', 'mudt', 'nc', 'lane_pass', 'lmu_l', 'lmm_l', 'rxlimit'), a)})
+                os.replace(p + '.tmp.npz', p)
+        jax.debug.callback(_save, *args)
+    return OJ._x_sweep(*args)
 
 
 def oadvt2_probe(Ko, mmi, rm, rx, ry, rz, dt, qlimit, smu, smv, smw):
