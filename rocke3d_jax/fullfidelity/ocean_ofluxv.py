@@ -24,8 +24,11 @@ GRAV = 9.80665
 _ze_np = np.zeros(LMO + 1)
 for _l in range(1, LMO + 1):
     _ze_np[_l] = _ze_np[_l - 1] + DZO_L13[_l - 1]
-ZE = jnp.asarray(_ze_np)                                  # 0..LMO
-DZO = jnp.asarray(np.concatenate([[0.0], DZO_L13]))       # 0..LMO, DZO[0] unused
+# This module is first imported lazily from inside jit traces (jax_ocean.stage_dynamics); a plain jnp.asarray at import time then yields a
+# TRACER that escapes the trace (UnexpectedTracerError on the next trace; seen on the Discover GPU, jax 0.6.1, job 58799715). Force concrete arrays.
+with jax.ensure_compile_time_eval():
+    ZE = jnp.asarray(_ze_np)                                  # 0..LMO
+    DZO = jnp.asarray(np.concatenate([[0.0], DZO_L13]))       # 0..LMO, DZO[0] unused
 
 
 def _m_active_mask(lmm, l_idx):

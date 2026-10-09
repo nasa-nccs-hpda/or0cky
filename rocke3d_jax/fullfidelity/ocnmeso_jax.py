@@ -11,7 +11,8 @@ import jax.numpy as jnp
 from odhorz_ff import geomo_dyn_arrays
 from ocnmeso_ff import IM, JM, LMO, GRAV, MESO_DIFFUSIVITY_CONST
 
-_DXYPO = jnp.asarray(geomo_dyn_arrays()[-1])
+with jax.ensure_compile_time_eval():   # imported lazily inside jit traces (jax_ocean): a plain jnp.asarray here becomes an escaped tracer (D214)
+    _DXYPO = jnp.asarray(geomo_dyn_arrays()[-1])
 
 
 def _active(lmm):
