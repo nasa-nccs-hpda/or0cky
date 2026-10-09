@@ -40,13 +40,13 @@ def s_glance(n):
                "Configuration P2SAoM40 (72x46 grid, 40 layers, dynamic ocean). Every card says what is met and what is not.", 24)
     cards = [
         (ORANGE, "NOT MET", "One-day criterion (nov26, 54 steps)",
-         "ACCEPTANCE s9: never beyond 2x the largest real-member distance at every step. QCL at step 1 is 2.84x (one bistable cell, D197). Steps >= 3: worst ratio 1.13. D193, D195, D197."),
+         "ACCEPTANCE s9: never beyond 2x the largest real-member distance at every step. QCL at step 1 is 2.84x (one bistable cell, D197). Steps >= 3: worst ratio 1.12. 54 steps finite after the D199+D202 land fixes. D197, D203."),
         (AMBER, "MET / PARTLY MET", "One coupled step vs real Fortran (C2, step 0)",
          "nov26 MET with one named column (25,16); dec01 and jan01 PARTLY MET (worst EGCM 9.9e-9 and 7.6e-9 of scale). Needs the libimf callback. D191."),
         (GREEN, "18.8 s", "Steady step on CPU, was 44.3 s",
          "99 jit executions (was 262), eager dispatches 490 (was ~15,700). Only 1.2-1.4x faster than the NumPy chain on the same cores. HYBRID step. D187, D191."),
         (GREEN, "558 / 558", "C1: bitwise vs our NumPy chain",
-         "Step 0 on nov26, dec01, jan01 (category A). On the day: bitwise steps 0-22 (the NumPy reference aborts at step 23). D191, D195."),
+         "Step 0 on nov26, dec01, jan01 (category A). On the day: bitwise steps 0-19 (the NumPy reference aborts at step 20). D191, D203."),
         (GREEN, "3,056 passed", "Last batch regression (a89e117)",
          "6 skipped, 1 known failure (export artifact: test asserts a git HEAD; fixed afterwards, not re-run). README_START_HERE handoff."),
         (ORANGE, "No GPU result", "GPU runner built, validated on CPU only",
@@ -88,12 +88,12 @@ def s_stoplight(n):
     rows = [
         (GREEN, "Component ports vs the Fortran (Track B)", "validated rung by rung, D4-D145"),
         (GREEN, "One coupled step vs the real Fortran (C2)", "step 0 MET on nov26, dec01, jan01 (D199); hybrid"),
-        (GREEN, "JAX step equals the NumPy chain (C1)", "bitwise: 559/559 arrays at step 0; nov26 steps 0-22"),
-        (GREEN, "Regression suite", "3,059 passed, 6 skipped, 0 failed"),
+        (GREEN, "JAX step equals the NumPy chain (C1)", "bitwise: 559/559 arrays at step 0; nov26 steps 0-19"),
+        (GREEN, "Regression suite", "3,059 passed, 6 skipped, 0 failed (fd53982: gusti fix, D203)"),
         (AMBER, "Device-resident assembled step", "99 jit executions, 18.8 s/step; hybrid, not end-to-end JAX"),
         (AMBER, "Radiation (SOCRATES)", "replayed or Fortran callback; accepted exception, not ported"),
-        (AMBER, "GPU", "smoke and probe passed on A100; assembled step not yet run"),
-        (RED_, "One model day vs 5 real members (ACCEPTANCE s9)", "NOT MET: QCL step 1 = 2.84x (D195, old land code); rerun in progress"),
+        (RED_, "GPU assembled step", "runs on the A100 (step 0 OK) but NaN from step 1 (surface stage); cause unknown"),
+        (RED_, "One model day vs 5 real members (ACCEPTANCE s9)", "NOT MET: QCL step 1 = 2.84x (D203); all 54 steps finite after the land fixes"),
         (RED_, "Daily lake update at the day boundary", "missing (D196): lake-tile mismatches at step 48"),
         (MUTED, "Months-long run and its criterion", "not started; criterion not defined"),
     ]
@@ -108,13 +108,13 @@ def s_stoplight(n):
     card(p, x2, y, colw, 352, VIOLET)
     p.text(x2 + 14, y + 8, colw - 24, "Outstanding items and their next action", 11, VIOLET, True)
     items = [
-        ("Rerun the 54-step day on the D199 land code", "D200 running; verify the score, refresh the deck"),
+        ("GPU NaN at step 1 (surface stage)", "owner: JAX_DEBUG_NANS=1 run on Discover; CPU control with the simplifier on is finite"),
         ("Day-boundary lake update", "owner: record the boundary values (approximation) or port daily_LAKE (~500 lines)"),
-        ("GPU practice run on Discover", "owner: pull, move the coupled6b tarball, MODE=step, paste back"),
+        ("QCL step 1 exceedance (2.84x)", "one bistable cell (D197); owner may relax s9 later (dated, both statuses)"),
         ("Free-running comparison", "compute Ent and land forcing instead of replaying the real records"),
         ("Radiation and SOCRATES", "135-295 h port estimate; only if the owner lifts the rule (D1-D6)"),
         ("Multi-month criterion", "define it; use the 8-member JAN1950 leave-one-out scoring"),
-        ("Day-criterion relaxation", "owner may relax s9 later only to advance to the GPU run, dated, both statuses shown"),
+        ("Nit schedule and C1 beyond step 19", "port the Fortran gdtm loop (D202 prototype); NumPy reference aborts at step 20"),
         ("Housekeeping", "owner: close extra sessions; decide where ANN4099 lives; push when batches pass"),
     ]
     yy = y + 32
@@ -338,19 +338,19 @@ def s_day(n):
     y = header(p, "FINDINGS | THE 54-STEP DAY", "One model day (nov26) vs five real members: NOT MET under ACCEPTANCE s9", None, 22)
     p.image(MARGIN - 4, y - 4, W - 2 * MARGIN + 8, 176, os.path.join(IMG, "day_score.png"))
     yy = y + 174
-    rows = [["Field", "within / near / beyond D195 (D193)", "worst ratio steps >= 3", "worst ratio all steps", "near steps", "beyond"],
-            ["T", "54/0/0 (54/0/0)", "0.94 (step 41)", "0.94", "-", "-"], ["U", "53/1/0 (53/1/0)", "1.02 (4)", "1.02", "4", "-"],
-            ["V", "54/0/0 (54/0/0)", "0.90 (8)", "0.90", "-", "-"], ["Q", "41/13/0 (43/11/0)", "1.05 (47)", "1.05", "41-53", "-"],
-            ["P", "54/0/0 (53/1/0)", "0.98 (37)", "0.98", "-", "-"],
-            ["QCL", "47/6/1 (49/4/1)", "1.13 (21)", ("2.84 (step 1)", ORANGE), "2, 13, 14, 18, 20, 21", ("step 1", ORANGE)],
-            ["QCI", "54/0/0 (54/0/0)", "0.98 (8)", "0.98", "-", "-"]]
+    rows = [["Field", "within / near / beyond D203 (D195)", "worst ratio steps >= 3", "worst ratio all steps", "near steps", "beyond"],
+            ["T", "54/0/0 (54/0/0)", "0.94 (step 41)", "0.94", "-", "-"], ["U", "53/1/0 (53/1/0)", "1.03 (5)", "1.03", "5", "-"],
+            ["V", "54/0/0 (54/0/0)", "0.93 (10)", "0.93", "-", "-"], ["Q", "40/14/0 (41/13/0)", "1.05 (46)", "1.05", "40-53", "-"],
+            ["P", "54/0/0 (54/0/0)", "1.00 (21)", "1.00", "-", "-"],
+            ["QCL", "50/3/1 (47/6/1)", "1.01 (14)", ("2.84 (step 1)", ORANGE), "2, 13, 14", ("step 1", ORANGE)],
+            ["QCI", "49/5/0 (54/0/0)", "1.12 (8)", "1.12", "7, 8, 9, 46, 47", "-"]]
     hh = p.table(MARGIN, yy, [50, 190, 140, 140, 150, W - 2 * MARGIN - 670], rows, 7.8, maxh=140, bold_cols=(0,))
     yy += hh + 6
     banner(p, MARGIN, yy, W - 2 * MARGIN, 66,
            "Status: NOT MET (owner decision 2026-10-08, ACCEPTANCE s9). The only field beyond 2x is QCL at step 1 (ours 1.15e-6 vs largest member distance 4.06e-7). "
-           "'Within at every step' also fails (U, Q, QCL near at some steps). The earlier claim of a ~1e-9 floor at steps < 3 was wrong (correction 8a649f7); no exception clause is recorded.", ORANGE, 8.8)
-    p.text(MARGIN, yy + 72, W - 2 * MARGIN, "Conditions: HYBRID; radiation REPLAYED (not computed); libimf host callback; Ent, land forcing, template columns recorded; ocean/ice/land daily updates not applied; nit_strict=False after step 22; one start state; five members. D193 table in brackets, newer D195 used.", 7.8, MUTED, maxh=24)
-    footer(p, n, "D195 s4 (score.md/json), D193 s4, ACCEPTANCE s9, correction note after D195, D197")
+           "All 54 steps are finite since the D202 land fix (before it the day was NaN from step 39). 'Within at every step' also fails (U, Q, QCL, QCI near at some steps). The earlier claim of a ~1e-9 floor at steps < 3 was wrong (correction 8a649f7); no exception clause is recorded.", ORANGE, 8.8)
+    p.text(MARGIN, yy + 72, W - 2 * MARGIN, "Conditions: HYBRID; radiation REPLAYED (not computed); libimf host callback; Ent, land forcing, template columns recorded; ocean/ice/land daily updates not applied; nit_strict=False after step 22; one start state; five members. D195 (before the D199/D202 land fixes) in brackets.", 7.8, MUTED, maxh=24)
+    footer(p, n, "D203 (score.md/json, parent re-score), D195 s4, ACCEPTANCE s9, correction 8a649f7, D197")
     return p
 
 
@@ -365,8 +365,8 @@ def s_diag(n):
          "54 lake cells (FOCEAN = 0) lose their open-water tile because daily_LAKE (LAKES.f:2492) is not applied at the day boundary (FLAKE changes in 632 of 636 lake cells at 47->48). Our NumPy chain has the same omission. Level-2 fix is a ~500-line port, not started."),
         (ORANGE, "D197 (explained, still NOT MET)", "QCL step 1, ratio 2.84",
          "One bistable cell (31,12,15) holds 96.8% of the squared error. 1-ulp PK differences from the dynamics exit flip a stratiform threshold; 1 of 8 random 1-ulp draws reproduces it exactly. CLOUDS port from real inputs is category A/B; the NumPy chain has the same value. Without that cell the ratio is 0.51. Does not relax the criterion."),
-        (AMBER, "Correction 8a649f7", "Noise floor at steps < 3",
-         "D192/D193/D195 said ~1e-9; wrong for the whole-column rms: largest member distance at k=0,1,2 is QCL 2.9e-7 / 4.1e-7 / 7.6e-7 (T 1.0e-4 / 2.5e-4 / 6.4e-4)."),
+        (GREEN, "D199 -> D203 (fixed)", "Land runaway, NaN at step 39",
+         "D199 (land humidity uses the current substep's elhx) fixed dec01/jan01 at step 0 but sent the nov26 day to NaN (cell 41,20). D201: the elhx switch alone decides finite vs NaN. D202: GHY must receive the PBL's gusti (GHY_DRV.f:1267), not the recorded one. After that all 54 steps are finite; QCL step 1 (2.84x) is unchanged. Mechanism of the original trajectory change is not proven. Correction 8a649f7 (noise floor) stays in force."),
     ]
     cw = (W - 2 * MARGIN - 12) / 2
     hs = [150, 130]
@@ -378,7 +378,7 @@ def s_diag(n):
         p.text(x + 14, yy + 8, cw - 24, t1, 8.5, c, True, True, maxh=14)
         p.text(x + 14, yy + 24, cw - 24, t2, 12, INK, True, maxh=18)
         p.text(x + 14, yy + 46, cw - 24, body, 10.2, INK2, maxh=h - 50)
-    footer(p, n, "D193, D194, D195 s1-3, D196 s1-2, D197 s0 (six lines), correction after D195; ACCEPTANCE s9")
+    footer(p, n, "D193, D194, D195 s1-3, D196 s1-2, D197, D199-D203, correction 8a649f7; ACCEPTANCE s9")
     return p
 
 
@@ -445,16 +445,17 @@ def s_gpu(n):
         "100,000 sequential scan steps: 575 ms on the A100 vs 41 ms on one CPU core: launch-bound, ~5.7 us/step; the probe note calls it 14x slower. Long chains of small ops lose; only wide parallel work wins.",
         "Device exp 6.14%, sin 11.96%, pow(x,0.25) 9.07%, log 0.22% of values differ from NumPy (max 1 ulp)."], 10, maxh=200)
     card(p, MARGIN + cw + 12, y, cw, 250, ORANGE)
-    p.text(MARGIN + cw + 26, y + 8, cw - 24, "What D198 built, and what is NOT known", 10.5, INK, True)
+    p.text(MARGIN + cw + 26, y + 8, cw - 24, "What D198 built, and what the first GPU runs show", 10.5, INK, True)
     p.bullets(MARGIN + cw + 26, y + 28, cw - 26, [
         "gpu_step_run.py runs the ASSEMBLED step in libm mode (no libimf), radiation replayed, no NumPy reference needed; data subset 6b (66 files, 1.58 GB), runbook MODE=step.",
         "On CPU: libm step equals the NumPy libm chain (555 A + 3 B of 558). Against the libimf CPU result: A126 B170 C47 D215: threshold fields flip with ANY different arithmetic (another XLA version: 198 of 558 category D; no CPU flags: 208).",
-        "NOT run on a GPU. Unknown: whether JAX 0.6.1 CUDA runs it, compile and step time (CPU: cold 513-572 s, steady 10-14 s), callbacks inside while loops, memory.",
-        "Expected: ~99 jit executions, ~490 eager dispatches, 176 QUS callbacks per step: launch-bound, possibly slower than the CPU."], 10, maxh=215)
+        "RUN on the A100 (jobs 58786705, 58788593, 58789387): step 0 finite, within the CPU libimf-vs-libm spread (T 7e-7, Q 2e-4). Cold 726-768 s (655-689 s compile). Steps >= 1: NaN from the surface stage (land/ice/lake/ocean); atmosphere phase 1 is clean; error flags did not catch it.",
+        "A CPU control with the simplifier on is finite; cause on the GPU not known yet (JAX_DEBUG_NANS run pending). The 13.1 s step was a repeat of step 0; steps 2-5 took 25 s (NaN steps), the CPU 10-19 s.",
+        "99 jit executions, ~490 eager dispatches, 176 QUS callbacks per step: launch-bound; the step is not faster on the GPU so far."], 10, maxh=215)
     y += 262
     banner(p, MARGIN, y, W - 2 * MARGIN, 52,
            "Honest label for any future GPU result: libm mode, radiation replayed, recorded inputs, HYBRID, not bitwise to CPU or Fortran; judged at rounding-level categories for one step and statistically beyond. It must not be used for a C2 / fidelity claim (D198 parent check).", AMBER, 8.8)
-    footer(p, n, "gpu/DISCOVER_RUN.md (smoke 58776063, probe 58778982); D198 s1-3, s6; Track A GPU numbers (kernels 2.3-6.3x, chain 4.2x) are in STATUS.md and are reduced-scope")
+    footer(p, n, "gpu/DISCOVER_RUN.md (smoke 58776063, probe 58778982, step jobs 58786705/58788593/58789387); D198 s1-3, s6; Track A GPU numbers (kernels 2.3-6.3x, chain 4.2x) are in STATUS.md and are reduced-scope")
     return p
 
 
