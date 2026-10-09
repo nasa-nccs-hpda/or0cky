@@ -1,0 +1,9 @@
+ffpt_ctrl vs ffa_step_e over 108 steps: mismatching (field,step) = 0 ; all end states finite: True
+boundary 33360 fields changed between end of 33359 and start of 33360 : ['HDR', 'Q', 'MA', 'PEDN', 'PMID', 'PK', 'PDSIG', 'PEK', 'P']
+    MA max|d| 2.0463630789890885e-12 n changed 76176 of 132480
+    Q max|d| 2.7370115161893128e-06 n changed 49399 of 132480
+    P max|d| 4.092726157978177e-12 n changed 3312 of 3312
+boundary 33408 fields changed between end of 33407 and start of 33408 : ['HDR', 'Q', 'MA', 'PEDN', 'PMID', 'PK', 'PDSIG', 'PEK', 'P']
+    MA max|d| 2.7284841053187847e-12 n changed 76176 of 132480
+    Q max|d| 4.197251202670699e-06 n changed 49399 of 132480
+    P max|d| 5.002220859751105e-12 n changed 3312 of 3312

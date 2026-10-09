@@ -1,0 +1,36 @@
+== ctrl
+
+real	11m31.411s
+user	7m9.585s
+sys	1m18.341s
+rc=0
+== p1
+
+real	7m31.953s
+user	6m55.945s
+sys	0m21.293s
+rc=0
+== p2
+
+real	7m16.412s
+user	6m49.935s
+sys	0m16.464s
+rc=0
+== p3
+
+real	7m30.596s
+user	6m55.244s
+sys	0m21.606s
+rc=0
+== p4
+
+real	7m15.951s
+user	6m49.871s
+sys	0m16.205s
+rc=0
+== p5
+
+real	7m13.981s
+user	6m48.992s
+sys	0m15.731s
+rc=0
