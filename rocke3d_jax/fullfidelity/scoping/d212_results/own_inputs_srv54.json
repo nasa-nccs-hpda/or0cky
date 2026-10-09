@@ -1,0 +1,2584 @@
+{
+ "surf_fields": "computed",
+ "seed": "computed",
+ "cosz": "computed",
+ "check_packet": false,
+ "log": [
+  {
+   "kind": "seed_cosz",
+   "itime": 33312,
+   "seed_used": -588724193,
+   "seed_recorded": -588724193,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33312,
+   "fields": {
+    "RSI": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "ZSI": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 783,
+     "scale": 3.960865963793302,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "SNOWI": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 274.2817557247503,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "POND_MELT": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 404.41581046334903,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 2731,
+     "scale": 305.06238132050385,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR2": {
+     "max": 5.684341886080802e-14,
+     "ndiff": 2,
+     "n": 783,
+     "scale": 273.15000000000003,
+     "cat": "B",
+     "rms": 2.2711944395599636e-15
+    },
+    "GTEMPR3": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 346,
+     "scale": 271.0113941500661,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR4": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 753,
+     "scale": 307.98109442370367,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "TSAVG": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 307.67269204046374,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "WSAVG": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 18.350775658763258,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "SNOWLI": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 346,
+     "scale": 91.64472623421004,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "ZSNOWI": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 783,
+     "scale": 0.9142725190825011,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "BARESW": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 753,
+     "scale": 0.941422103957317,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FRSNOW[0]": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 496,
+     "scale": 0.9423952858472995,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FRSNOW[1]": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 752,
+     "scale": 0.9505863440407578,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "SNOWD[0]": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 753,
+     "scale": 1.2372097151766266,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "SNOWD[1]": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 753,
+     "scale": 3.9143989077244066,
+     "cat": "A",
+     "rms": 0.0
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33313,
+   "seed_used": -1926582497,
+   "seed_recorded": -1926582497,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33314,
+   "seed_used": 1510345625,
+   "seed_recorded": 1510345625,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33315,
+   "seed_used": -1200702461,
+   "seed_recorded": -1200702461,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33316,
+   "seed_used": -1761932579,
+   "seed_recorded": -1761932579,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33317,
+   "seed_used": 1129930407,
+   "seed_recorded": 1129930407,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33317,
+   "fields": {
+    "RSI": {
+     "max": 8.030602627329131e-08,
+     "ndiff": 679,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "C",
+     "rms": 1.864394202992488e-09
+    },
+    "ZSI": {
+     "max": 5.033157790546028e-08,
+     "ndiff": 747,
+     "n": 783,
+     "scale": 3.960161586226999,
+     "cat": "C",
+     "rms": 1.8503697903910862e-09
+    },
+    "SNOWI": {
+     "max": 0.0002313791980412816,
+     "ndiff": 761,
+     "n": 3170,
+     "scale": 274.31837410688297,
+     "cat": "C",
+     "rms": 4.125638610669886e-06
+    },
+    "POND_MELT": {
+     "max": 6.129821057410112e-06,
+     "ndiff": 23,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "C",
+     "rms": 1.4941143954882483e-07
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.00038496475786953255,
+     "ndiff": 579,
+     "n": 3170,
+     "scale": 404.4150626061384,
+     "cat": "C",
+     "rms": 7.069839937477425e-06
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.002220309380220442,
+     "ndiff": 2612,
+     "n": 2731,
+     "scale": 304.3981823226383,
+     "cat": "D",
+     "rms": 5.4093761273381646e-05
+    },
+    "GTEMPR2": {
+     "max": 7.987249625784898e-05,
+     "ndiff": 772,
+     "n": 783,
+     "scale": 273.15000000000003,
+     "cat": "C",
+     "rms": 3.62781359859905e-06
+    },
+    "GTEMPR3": {
+     "max": 0.00015643045782098852,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 271.0320890868679,
+     "cat": "C",
+     "rms": 1.0957000834782029e-05
+    },
+    "GTEMPR4": {
+     "max": 0.023901671033513594,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 315.4838326799652,
+     "cat": "D",
+     "rms": 0.0010875685694390486
+    },
+    "TSAVG": {
+     "max": 0.20731908116641762,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 309.8053476855609,
+     "cat": "D",
+     "rms": 0.006726708315741511
+    },
+    "WSAVG": {
+     "max": 0.1713173317246488,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 17.964703858381554,
+     "cat": "D",
+     "rms": 0.004797092476433556
+    },
+    "SNOWLI": {
+     "max": 0.00021498567002709024,
+     "ndiff": 343,
+     "n": 346,
+     "scale": 91.64554279133792,
+     "cat": "D",
+     "rms": 1.1570985369534253e-05
+    },
+    "ZSNOWI": {
+     "max": 7.712639934487342e-07,
+     "ndiff": 761,
+     "n": 783,
+     "scale": 0.9143945803562765,
+     "cat": "C",
+     "rms": 2.7670606490105982e-08
+    },
+    "BARESW": {
+     "max": 0.0009566025117578869,
+     "ndiff": 374,
+     "n": 753,
+     "scale": 0.9464254181697618,
+     "cat": "D",
+     "rms": 4.351012944878836e-05
+    },
+    "FRSNOW[0]": {
+     "max": 7.776222746801176e-07,
+     "ndiff": 169,
+     "n": 496,
+     "scale": 0.9423832966507412,
+     "cat": "C",
+     "rms": 4.780674140252479e-08
+    },
+    "FRSNOW[1]": {
+     "max": 1.1140501223749766e-06,
+     "ndiff": 374,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 5.167136073558581e-08
+    },
+    "SNOWD[0]": {
+     "max": 1.2857420942369302e-06,
+     "ndiff": 165,
+     "n": 753,
+     "scale": 1.2480785303620223,
+     "cat": "D",
+     "rms": 4.8036969051884774e-08
+    },
+    "SNOWD[1]": {
+     "max": 1.5844003709020171e-06,
+     "ndiff": 395,
+     "n": 753,
+     "scale": 3.9140287688953883,
+     "cat": "C",
+     "rms": 6.47617601040457e-08
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33318,
+   "seed_used": -724605529,
+   "seed_recorded": -724605529,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33319,
+   "seed_used": -448968479,
+   "seed_recorded": -448968479,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33320,
+   "seed_used": 1215009291,
+   "seed_recorded": 1215009291,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33321,
+   "seed_used": 39893925,
+   "seed_recorded": 39893925,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33322,
+   "seed_used": 477879343,
+   "seed_recorded": 477879343,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33322,
+   "fields": {
+    "RSI": {
+     "max": 2.063756893261673e-06,
+     "ndiff": 698,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 4.7991925693845215e-08
+    },
+    "ZSI": {
+     "max": 1.2085483586110612e-06,
+     "ndiff": 778,
+     "n": 784,
+     "scale": 3.959465944732565,
+     "cat": "C",
+     "rms": 4.978817435878576e-08
+    },
+    "SNOWI": {
+     "max": 0.005921309946771203,
+     "ndiff": 767,
+     "n": 3170,
+     "scale": 274.34238194966434,
+     "cat": "D",
+     "rms": 0.00013082765748614444
+    },
+    "POND_MELT": {
+     "max": 0.0008120424038486895,
+     "ndiff": 33,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 1.981358537002688e-05
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.08965960761872083,
+     "ndiff": 623,
+     "n": 3170,
+     "scale": 404.4142666202695,
+     "cat": "D",
+     "rms": 0.00164305068885527
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.025766488161195866,
+     "ndiff": 2668,
+     "n": 2731,
+     "scale": 304.6253146405262,
+     "cat": "D",
+     "rms": 0.0006701385531902017
+    },
+    "GTEMPR2": {
+     "max": 0.00468765455934772,
+     "ndiff": 765,
+     "n": 784,
+     "scale": 273.15,
+     "cat": "D",
+     "rms": 0.00018850930948334757
+    },
+    "GTEMPR3": {
+     "max": 0.0007179766598710557,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 271.041351885895,
+     "cat": "D",
+     "rms": 5.3616879015188806e-05
+    },
+    "GTEMPR4": {
+     "max": 0.4318242581671825,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 317.81278514948804,
+     "cat": "D",
+     "rms": 0.01672818167493427
+    },
+    "TSAVG": {
+     "max": 0.43495810619697295,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 312.15048661966154,
+     "cat": "D",
+     "rms": 0.02185217769166219
+    },
+    "WSAVG": {
+     "max": 0.6086067650542368,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 17.8460820415523,
+     "cat": "D",
+     "rms": 0.02400095578760541
+    },
+    "SNOWLI": {
+     "max": 0.00583306601959066,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64610408526069,
+     "cat": "D",
+     "rms": 0.0003259778940201794
+    },
+    "ZSNOWI": {
+     "max": 1.9737699822552912e-05,
+     "ndiff": 767,
+     "n": 784,
+     "scale": 0.9144746064988811,
+     "cat": "D",
+     "rms": 8.76899677425836e-07
+    },
+    "BARESW": {
+     "max": 0.004016013758214809,
+     "ndiff": 408,
+     "n": 753,
+     "scale": 0.9353644811015432,
+     "cat": "D",
+     "rms": 0.00032847659786651613
+    },
+    "FRSNOW[0]": {
+     "max": 0.00018202649922172132,
+     "ndiff": 170,
+     "n": 496,
+     "scale": 0.9423710843593119,
+     "cat": "D",
+     "rms": 8.650191233249071e-06
+    },
+    "FRSNOW[1]": {
+     "max": 0.00037262814380811804,
+     "ndiff": 374,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 1.3786063500659232e-05
+    },
+    "SNOWD[0]": {
+     "max": 0.00025564224295528126,
+     "ndiff": 164,
+     "n": 753,
+     "scale": 1.257438551604805,
+     "cat": "D",
+     "rms": 9.495458678253236e-06
+    },
+    "SNOWD[1]": {
+     "max": 0.00024629934401761144,
+     "ndiff": 395,
+     "n": 753,
+     "scale": 3.913858569375191,
+     "cat": "D",
+     "rms": 9.600929846027764e-06
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33323,
+   "seed_used": 830604079,
+   "seed_recorded": 830604079,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33324,
+   "seed_used": -850864855,
+   "seed_recorded": -850864855,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33325,
+   "seed_used": -941695213,
+   "seed_recorded": -941695213,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33326,
+   "seed_used": 1745144685,
+   "seed_recorded": 1745144685,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33327,
+   "seed_used": 193224887,
+   "seed_recorded": 193224887,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33327,
+   "fields": {
+    "RSI": {
+     "max": 4.0887394946176325e-06,
+     "ndiff": 709,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 1.9184444643463758e-07
+    },
+    "ZSI": {
+     "max": 2.189296399557339e-06,
+     "ndiff": 779,
+     "n": 784,
+     "scale": 3.9586445977321807,
+     "cat": "C",
+     "rms": 1.6916384755430037e-07
+    },
+    "SNOWI": {
+     "max": 0.014571471664964974,
+     "ndiff": 767,
+     "n": 3170,
+     "scale": 275.25550549102184,
+     "cat": "D",
+     "rms": 0.00042416459805409007
+    },
+    "POND_MELT": {
+     "max": 0.0039462280955504525,
+     "ndiff": 38,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.00010214271227136533
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.3717269056561321,
+     "ndiff": 635,
+     "n": 3170,
+     "scale": 404.4134396393247,
+     "cat": "D",
+     "rms": 0.006642516135450815
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.07324913373281561,
+     "ndiff": 2692,
+     "n": 2731,
+     "scale": 305.0138817770553,
+     "cat": "D",
+     "rms": 0.0019542053863585147
+    },
+    "GTEMPR2": {
+     "max": 0.026506899693288233,
+     "ndiff": 762,
+     "n": 784,
+     "scale": 273.15000000000003,
+     "cat": "D",
+     "rms": 0.0009920189074162106
+    },
+    "GTEMPR3": {
+     "max": 0.010822927641044089,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 270.9685619739925,
+     "cat": "D",
+     "rms": 0.0007092495016517547
+    },
+    "GTEMPR4": {
+     "max": 0.8065530459691672,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 316.7072951019887,
+     "cat": "D",
+     "rms": 0.04235714706118328
+    },
+    "TSAVG": {
+     "max": 1.4906614863576806,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 313.1376673793015,
+     "cat": "D",
+     "rms": 0.045938294458910636
+    },
+    "WSAVG": {
+     "max": 0.6528045942318306,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 17.998293505742975,
+     "cat": "D",
+     "rms": 0.041861015427865356
+    },
+    "SNOWLI": {
+     "max": 0.014553184542762665,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64635684878213,
+     "cat": "D",
+     "rms": 0.001090734000282719
+    },
+    "ZSNOWI": {
+     "max": 4.8571572216549175e-05,
+     "ndiff": 767,
+     "n": 784,
+     "scale": 0.9175183516367394,
+     "cat": "D",
+     "rms": 2.843051739641843e-06
+    },
+    "BARESW": {
+     "max": 0.02148389570391873,
+     "ndiff": 432,
+     "n": 753,
+     "scale": 0.9353030225395456,
+     "cat": "D",
+     "rms": 0.0009695997534453945
+    },
+    "FRSNOW[0]": {
+     "max": 0.0020181354658694306,
+     "ndiff": 173,
+     "n": 496,
+     "scale": 0.9423587215654209,
+     "cat": "D",
+     "rms": 0.00012967048784678505
+    },
+    "FRSNOW[1]": {
+     "max": 0.001646483638114482,
+     "ndiff": 374,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 6.962275142306891e-05
+    },
+    "SNOWD[0]": {
+     "max": 0.00029941127109947563,
+     "ndiff": 164,
+     "n": 753,
+     "scale": 1.2675100524237153,
+     "cat": "D",
+     "rms": 1.5726660098523186e-05
+    },
+    "SNOWD[1]": {
+     "max": 0.0005928513039073768,
+     "ndiff": 397,
+     "n": 753,
+     "scale": 3.9134646362474186,
+     "cat": "D",
+     "rms": 2.377450066759608e-05
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33328,
+   "seed_used": -17389641,
+   "seed_recorded": -17389641,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33329,
+   "seed_used": -1394093967,
+   "seed_recorded": -1394093967,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33330,
+   "seed_used": 2136654619,
+   "seed_recorded": 2136654619,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33331,
+   "seed_used": 1238653493,
+   "seed_recorded": 1238653493,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33332,
+   "seed_used": 369298495,
+   "seed_recorded": 369298495,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33332,
+   "fields": {
+    "RSI": {
+     "max": 3.0234903638848287e-05,
+     "ndiff": 709,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 1.164439726047035e-06
+    },
+    "ZSI": {
+     "max": 3.8916656566190255e-05,
+     "ndiff": 778,
+     "n": 784,
+     "scale": 3.9578291577283053,
+     "cat": "D",
+     "rms": 3.828207845112308e-06
+    },
+    "SNOWI": {
+     "max": 0.08108315549345946,
+     "ndiff": 769,
+     "n": 3170,
+     "scale": 276.6766822261875,
+     "cat": "D",
+     "rms": 0.002409418188221224
+    },
+    "POND_MELT": {
+     "max": 0.035623521654201795,
+     "ndiff": 40,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.0007730823315523193
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.2545364397491259,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.4125939480762,
+     "cat": "D",
+     "rms": 0.004727335118071651
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.08810484221021397,
+     "ndiff": 2700,
+     "n": 2731,
+     "scale": 304.6179443557761,
+     "cat": "D",
+     "rms": 0.00301128488883842
+    },
+    "GTEMPR2": {
+     "max": 0.02557067843429195,
+     "ndiff": 768,
+     "n": 784,
+     "scale": 273.15000000000003,
+     "cat": "D",
+     "rms": 0.0016581722061049268
+    },
+    "GTEMPR3": {
+     "max": 0.043656861012664194,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 271.2272088802955,
+     "cat": "D",
+     "rms": 0.0025020802823166968
+    },
+    "GTEMPR4": {
+     "max": 2.489077988834538,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 310.79560340930533,
+     "cat": "D",
+     "rms": 0.11520006071111938
+    },
+    "TSAVG": {
+     "max": 1.3189751446037121,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 312.16243594503015,
+     "cat": "D",
+     "rms": 0.06906711509797163
+    },
+    "WSAVG": {
+     "max": 2.0179284460099947,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 17.859727635384647,
+     "cat": "D",
+     "rms": 0.08444667911187924
+    },
+    "SNOWLI": {
+     "max": 0.08192098553490723,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64632989662705,
+     "cat": "D",
+     "rms": 0.006407297967909045
+    },
+    "ZSNOWI": {
+     "max": 0.00027027718497818487,
+     "ndiff": 769,
+     "n": 784,
+     "scale": 0.922255607420625,
+     "cat": "D",
+     "rms": 1.614962824095154e-05
+    },
+    "BARESW": {
+     "max": 0.015427664996352453,
+     "ndiff": 450,
+     "n": 753,
+     "scale": 0.9352508480667726,
+     "cat": "D",
+     "rms": 0.0011533474886269105
+    },
+    "FRSNOW[0]": {
+     "max": 0.01320007210425056,
+     "ndiff": 170,
+     "n": 496,
+     "scale": 0.9423463498155359,
+     "cat": "D",
+     "rms": 0.0006715936365701467
+    },
+    "FRSNOW[1]": {
+     "max": 0.0012845172993956044,
+     "ndiff": 374,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 5.494617168323244e-05
+    },
+    "SNOWD[0]": {
+     "max": 0.0005769510518707222,
+     "ndiff": 165,
+     "n": 753,
+     "scale": 1.2778091825756785,
+     "cat": "D",
+     "rms": 3.207369313245173e-05
+    },
+    "SNOWD[1]": {
+     "max": 0.0012406536002212004,
+     "ndiff": 398,
+     "n": 753,
+     "scale": 3.91352603869582,
+     "cat": "D",
+     "rms": 5.889383179450064e-05
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33333,
+   "seed_used": 1799189311,
+   "seed_recorded": 1799189311,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33334,
+   "seed_used": -53126471,
+   "seed_recorded": -53126471,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33335,
+   "seed_used": 1074617891,
+   "seed_recorded": 1074617891,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33336,
+   "seed_used": -1543993347,
+   "seed_recorded": -1543993347,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33337,
+   "seed_used": 1550057159,
+   "seed_recorded": 1550057159,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33337,
+   "fields": {
+    "RSI": {
+     "max": 0.0001479550483709513,
+     "ndiff": 709,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 4.352285450836549e-06
+    },
+    "ZSI": {
+     "max": 0.000291759015707882,
+     "ndiff": 776,
+     "n": 783,
+     "scale": 3.956989751531555,
+     "cat": "D",
+     "rms": 1.588965713656264e-05
+    },
+    "SNOWI": {
+     "max": 0.15893536963989163,
+     "ndiff": 768,
+     "n": 3170,
+     "scale": 278.21756422760285,
+     "cat": "D",
+     "rms": 0.0036684675594932767
+    },
+    "POND_MELT": {
+     "max": 0.02231393048491981,
+     "ndiff": 42,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.0005539100880051826
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.47770018422416705,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.41173058894117,
+     "cat": "D",
+     "rms": 0.008819563638128112
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.23550930100003598,
+     "ndiff": 2705,
+     "n": 2731,
+     "scale": 303.9142728141337,
+     "cat": "D",
+     "rms": 0.0062990671860207416
+    },
+    "GTEMPR2": {
+     "max": 0.09172637684918072,
+     "ndiff": 769,
+     "n": 783,
+     "scale": 273.15,
+     "cat": "D",
+     "rms": 0.003716604579911892
+    },
+    "GTEMPR3": {
+     "max": 0.03089572996944412,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 272.0322745108879,
+     "cat": "D",
+     "rms": 0.0022189578341703276
+    },
+    "GTEMPR4": {
+     "max": 2.094098660935856,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 311.9170253041352,
+     "cat": "D",
+     "rms": 0.16788368485542612
+    },
+    "TSAVG": {
+     "max": 1.3833115991753857,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 307.8826349286845,
+     "cat": "D",
+     "rms": 0.08234524173352036
+    },
+    "WSAVG": {
+     "max": 3.9479341692073926,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 17.91205478802271,
+     "cat": "D",
+     "rms": 0.11400578300517984
+    },
+    "SNOWLI": {
+     "max": 0.1590685283656228,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.65379431923337,
+     "cat": "D",
+     "rms": 0.008962220709365342
+    },
+    "ZSNOWI": {
+     "max": 0.0005297845654662625,
+     "ndiff": 768,
+     "n": 783,
+     "scale": 0.9273918807586762,
+     "cat": "D",
+     "rms": 2.4604365976480173e-05
+    },
+    "BARESW": {
+     "max": 0.017306120854775342,
+     "ndiff": 465,
+     "n": 753,
+     "scale": 0.9352136305566375,
+     "cat": "D",
+     "rms": 0.0014482480078881425
+    },
+    "FRSNOW[0]": {
+     "max": 0.01899708541387768,
+     "ndiff": 169,
+     "n": 496,
+     "scale": 0.9423340892380844,
+     "cat": "D",
+     "rms": 0.0009164459939097416
+    },
+    "FRSNOW[1]": {
+     "max": 0.0012672754369201789,
+     "ndiff": 375,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 8.922259160426224e-05
+    },
+    "SNOWD[0]": {
+     "max": 0.0011169865287050662,
+     "ndiff": 164,
+     "n": 753,
+     "scale": 1.2852340935431728,
+     "cat": "D",
+     "rms": 5.063726644417649e-05
+    },
+    "SNOWD[1]": {
+     "max": 0.0019331956454238797,
+     "ndiff": 396,
+     "n": 753,
+     "scale": 3.9129473982836966,
+     "cat": "D",
+     "rms": 0.00010178284789814935
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33338,
+   "seed_used": 792888775,
+   "seed_recorded": 792888775,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33339,
+   "seed_used": -1203203071,
+   "seed_recorded": -1203203071,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33340,
+   "seed_used": 339791915,
+   "seed_recorded": 339791915,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33341,
+   "seed_used": -917080891,
+   "seed_recorded": -917080891,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33342,
+   "seed_used": 1114593359,
+   "seed_recorded": 1114593359,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33342,
+   "fields": {
+    "RSI": {
+     "max": 0.0012832200791677581,
+     "ndiff": 710,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 2.3200138898346297e-05
+    },
+    "ZSI": {
+     "max": 0.001198439424819231,
+     "ndiff": 775,
+     "n": 784,
+     "scale": 3.956133758351552,
+     "cat": "D",
+     "rms": 5.404054195919578e-05
+    },
+    "SNOWI": {
+     "max": 0.3228182012437344,
+     "ndiff": 768,
+     "n": 3170,
+     "scale": 280.0530157055836,
+     "cat": "D",
+     "rms": 0.007653706665671551
+    },
+    "POND_MELT": {
+     "max": 0.05950502011053871,
+     "ndiff": 51,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.0014725666840054697
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.28406606236467447,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.4108489820975,
+     "cat": "D",
+     "rms": 0.00743565004174701
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.2291256470244889,
+     "ndiff": 2706,
+     "n": 2731,
+     "scale": 304.1509632112661,
+     "cat": "D",
+     "rms": 0.008669940318913874
+    },
+    "GTEMPR2": {
+     "max": 0.15461616506837572,
+     "ndiff": 772,
+     "n": 784,
+     "scale": 273.15,
+     "cat": "D",
+     "rms": 0.007706560670604651
+    },
+    "GTEMPR3": {
+     "max": 0.02324773381792511,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 272.78240104982143,
+     "cat": "D",
+     "rms": 0.0027415128234287386
+    },
+    "GTEMPR4": {
+     "max": 1.202653732943645,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 313.9595902108275,
+     "cat": "D",
+     "rms": 0.14871614487978413
+    },
+    "TSAVG": {
+     "max": 1.6046525435124863,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 309.22743253390644,
+     "cat": "D",
+     "rms": 0.09721657058954905
+    },
+    "WSAVG": {
+     "max": 2.123267449909995,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 18.240165624761268,
+     "cat": "D",
+     "rms": 0.11579261006488345
+    },
+    "SNOWLI": {
+     "max": 0.3278062871232237,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64613243814021,
+     "cat": "D",
+     "rms": 0.019803845218321212
+    },
+    "ZSNOWI": {
+     "max": 0.001076060670812451,
+     "ndiff": 768,
+     "n": 784,
+     "scale": 0.9335100523519454,
+     "cat": "D",
+     "rms": 5.130056621974375e-05
+    },
+    "BARESW": {
+     "max": 0.015656627162812686,
+     "ndiff": 468,
+     "n": 753,
+     "scale": 0.9446121322752907,
+     "cat": "D",
+     "rms": 0.001585385281159244
+    },
+    "FRSNOW[0]": {
+     "max": 0.05853257896610509,
+     "ndiff": 170,
+     "n": 496,
+     "scale": 0.9423219034855541,
+     "cat": "D",
+     "rms": 0.002655605847031299
+    },
+    "FRSNOW[1]": {
+     "max": 0.0037688733200824664,
+     "ndiff": 376,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 0.00017162260609872312
+    },
+    "SNOWD[0]": {
+     "max": 0.0022658870956257515,
+     "ndiff": 163,
+     "n": 753,
+     "scale": 1.2917891749926245,
+     "cat": "D",
+     "rms": 0.00010321310023463681
+    },
+    "SNOWD[1]": {
+     "max": 0.005393610546439803,
+     "ndiff": 397,
+     "n": 753,
+     "scale": 3.9126631244372403,
+     "cat": "D",
+     "rms": 0.0002440942462118576
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33343,
+   "seed_used": -1219625137,
+   "seed_recorded": -1219625137,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33344,
+   "seed_used": -244016055,
+   "seed_recorded": -244016055,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33345,
+   "seed_used": 1608202547,
+   "seed_recorded": 1608202547,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33346,
+   "seed_used": 806305933,
+   "seed_recorded": 806305933,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33347,
+   "seed_used": 130627799,
+   "seed_recorded": 130627799,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33347,
+   "fields": {
+    "RSI": {
+     "max": 0.0001209241228659376,
+     "ndiff": 706,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 5.569190747832827e-06
+    },
+    "ZSI": {
+     "max": 0.0022116579820914417,
+     "ndiff": 779,
+     "n": 785,
+     "scale": 3.9552812826489228,
+     "cat": "D",
+     "rms": 0.00011401418635522602
+    },
+    "SNOWI": {
+     "max": 0.247228570657839,
+     "ndiff": 770,
+     "n": 3170,
+     "scale": 281.8909886119611,
+     "cat": "D",
+     "rms": 0.008204846735414021
+    },
+    "POND_MELT": {
+     "max": 0.16000326665671594,
+     "ndiff": 58,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.003841079495683258
+    },
+    "FLAG_DSWS": {
+     "max": 1.0,
+     "ndiff": 1,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 0.0177611208331347
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.26146700161707814,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.40994341742464,
+     "cat": "D",
+     "rms": 0.007181590343969973
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.24763873724515406,
+     "ndiff": 2709,
+     "n": 2731,
+     "scale": 305.4744278012697,
+     "cat": "D",
+     "rms": 0.010044374920731597
+    },
+    "GTEMPR2": {
+     "max": 0.18797377967723605,
+     "ndiff": 773,
+     "n": 785,
+     "scale": 273.15,
+     "cat": "D",
+     "rms": 0.010019726341738982
+    },
+    "GTEMPR3": {
+     "max": 0.03953377222109111,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 273.004520970922,
+     "cat": "D",
+     "rms": 0.0037941448070186097
+    },
+    "GTEMPR4": {
+     "max": 2.5366947884169235,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 315.0810360394576,
+     "cat": "D",
+     "rms": 0.17158049371420006
+    },
+    "TSAVG": {
+     "max": 1.5635659419880312,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 310.3789941110484,
+     "cat": "D",
+     "rms": 0.09152523328973672
+    },
+    "WSAVG": {
+     "max": 1.4407406632580804,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 18.512261261051876,
+     "cat": "D",
+     "rms": 0.09935347800656788
+    },
+    "SNOWLI": {
+     "max": 0.25048547355294204,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64629557897173,
+     "cat": "D",
+     "rms": 0.016125169096817393
+    },
+    "ZSNOWI": {
+     "max": 0.0008240952355261233,
+     "ndiff": 770,
+     "n": 785,
+     "scale": 0.9396366287065371,
+     "cat": "D",
+     "rms": 5.4959657925111324e-05
+    },
+    "BARESW": {
+     "max": 0.03508764489199562,
+     "ndiff": 468,
+     "n": 753,
+     "scale": 0.965245091585593,
+     "cat": "D",
+     "rms": 0.002581277293208328
+    },
+    "FRSNOW[0]": {
+     "max": 0.034203806182183216,
+     "ndiff": 170,
+     "n": 496,
+     "scale": 0.9423098032662929,
+     "cat": "D",
+     "rms": 0.0016677450462691558
+    },
+    "FRSNOW[1]": {
+     "max": 0.002603965733899538,
+     "ndiff": 376,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 0.00012159376624341231
+    },
+    "SNOWD[0]": {
+     "max": 0.002908603620530581,
+     "ndiff": 163,
+     "n": 753,
+     "scale": 1.2943939637156299,
+     "cat": "D",
+     "rms": 0.00013844712290731617
+    },
+    "SNOWD[1]": {
+     "max": 0.0048786313795164404,
+     "ndiff": 397,
+     "n": 753,
+     "scale": 3.9128827421290504,
+     "cat": "D",
+     "rms": 0.00025203246233695736
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33348,
+   "seed_used": -1148977193,
+   "seed_recorded": -1148977193,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33349,
+   "seed_used": 1443402641,
+   "seed_recorded": 1443402641,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33350,
+   "seed_used": 1893644603,
+   "seed_recorded": 1893644603,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33351,
+   "seed_used": 771754837,
+   "seed_recorded": 771754837,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33352,
+   "seed_used": -797851553,
+   "seed_recorded": -797851553,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33352,
+   "fields": {
+    "RSI": {
+     "max": 0.0008914185898738491,
+     "ndiff": 708,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 1.9011152315212212e-05
+    },
+    "ZSI": {
+     "max": 0.002655725974310519,
+     "ndiff": 781,
+     "n": 787,
+     "scale": 3.9544395251868787,
+     "cat": "D",
+     "rms": 0.00013364104764696834
+    },
+    "SNOWI": {
+     "max": 0.3563720433255071,
+     "ndiff": 772,
+     "n": 3170,
+     "scale": 283.4867919070519,
+     "cat": "D",
+     "rms": 0.010310061908225157
+    },
+    "POND_MELT": {
+     "max": 0.14601368409145543,
+     "ndiff": 64,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.0036483930272644674
+    },
+    "FLAG_DSWS": {
+     "max": 1.0,
+     "ndiff": 2,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 0.025118017965166415
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.23461992953428212,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.4090302803249,
+     "cat": "D",
+     "rms": 0.006370214736403008
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.2816661128097735,
+     "ndiff": 2709,
+     "n": 2731,
+     "scale": 305.8620189202698,
+     "cat": "D",
+     "rms": 0.011178436939801847
+    },
+    "GTEMPR2": {
+     "max": 0.38694928769382386,
+     "ndiff": 771,
+     "n": 787,
+     "scale": 273.15,
+     "cat": "D",
+     "rms": 0.016675693056042846
+    },
+    "GTEMPR3": {
+     "max": 0.09992410513791583,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 272.83970611704007,
+     "cat": "D",
+     "rms": 0.0069365546155547965
+    },
+    "GTEMPR4": {
+     "max": 1.5305248744287496,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 313.57457219284044,
+     "cat": "D",
+     "rms": 0.14886085889074505
+    },
+    "TSAVG": {
+     "max": 1.6959644748909,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 311.1094367649517,
+     "cat": "D",
+     "rms": 0.10249696837064609
+    },
+    "WSAVG": {
+     "max": 1.9844459697066803,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 18.451612360728227,
+     "cat": "D",
+     "rms": 0.10573943339046307
+    },
+    "SNOWLI": {
+     "max": 0.3152243742908638,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64661829337312,
+     "cat": "D",
+     "rms": 0.022607648724113416
+    },
+    "ZSNOWI": {
+     "max": 0.0011879068110850488,
+     "ndiff": 772,
+     "n": 787,
+     "scale": 0.9449559730235063,
+     "cat": "D",
+     "rms": 6.89735029923569e-05
+    },
+    "BARESW": {
+     "max": 0.04281351500059416,
+     "ndiff": 468,
+     "n": 753,
+     "scale": 0.9878497204165761,
+     "cat": "D",
+     "rms": 0.0030995005633754243
+    },
+    "FRSNOW[0]": {
+     "max": 0.022973348998678034,
+     "ndiff": 169,
+     "n": 496,
+     "scale": 0.9422978032617868,
+     "cat": "D",
+     "rms": 0.0014230900978927559
+    },
+    "FRSNOW[1]": {
+     "max": 0.005203959258509028,
+     "ndiff": 376,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 0.00025073541447091254
+    },
+    "SNOWD[0]": {
+     "max": 0.09947507112379027,
+     "ndiff": 163,
+     "n": 753,
+     "scale": 1.2932015851674352,
+     "cat": "D",
+     "rms": 0.0036296951754702716
+    },
+    "SNOWD[1]": {
+     "max": 0.004386096970485476,
+     "ndiff": 396,
+     "n": 753,
+     "scale": 3.912246393578849,
+     "cat": "D",
+     "rms": 0.00021711481885526796
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33353,
+   "seed_used": 1214555999,
+   "seed_recorded": 1214555999,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33354,
+   "seed_used": -1548772903,
+   "seed_recorded": -1548772903,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33355,
+   "seed_used": 2146005059,
+   "seed_recorded": 2146005059,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33356,
+   "seed_used": -1522404067,
+   "seed_recorded": -1522404067,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33357,
+   "seed_used": 491065063,
+   "seed_recorded": 491065063,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33357,
+   "fields": {
+    "RSI": {
+     "max": 0.00043421491556216996,
+     "ndiff": 709,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 1.4693328402481068e-05
+    },
+    "ZSI": {
+     "max": 0.003266721498594749,
+     "ndiff": 779,
+     "n": 787,
+     "scale": 3.9536025193500506,
+     "cat": "D",
+     "rms": 0.00018068658434163467
+    },
+    "SNOWI": {
+     "max": 0.3937044139154864,
+     "ndiff": 774,
+     "n": 3170,
+     "scale": 286.0172549223062,
+     "cat": "D",
+     "rms": 0.014258311639823535
+    },
+    "POND_MELT": {
+     "max": 0.1283142449172896,
+     "ndiff": 66,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.0035566459767988946
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "DLAKE": {
+     "max": 0.2674062028897559,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.4081150378341,
+     "cat": "D",
+     "rms": 0.007122205468205269
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FEARTH": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "GTEMPR1": {
+     "max": 0.30705704537928113,
+     "ndiff": 2713,
+     "n": 2731,
+     "scale": 305.4291988836844,
+     "cat": "D",
+     "rms": 0.012105424217202246
+    },
+    "GTEMPR2": {
+     "max": 0.437241545975553,
+     "ndiff": 774,
+     "n": 787,
+     "scale": 273.15000000000003,
+     "cat": "D",
+     "rms": 0.018676479836178025
+    },
+    "GTEMPR3": {
+     "max": 0.06936795662906547,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 272.2176622317593,
+     "cat": "D",
+     "rms": 0.007970921827827503
+    },
+    "GTEMPR4": {
+     "max": 1.2730527165377339,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 310.3743915838836,
+     "cat": "D",
+     "rms": 0.12673573639144325
+    },
+    "TSAVG": {
+     "max": 1.3431086963380494,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 310.68627807405875,
+     "cat": "D",
+     "rms": 0.10175465344776884
+    },
+    "WSAVG": {
+     "max": 2.2396482742354316,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 18.45084093165666,
+     "cat": "D",
+     "rms": 0.10514054991552754
+    },
+    "SNOWLI": {
+     "max": 0.43648316260134834,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64694261411209,
+     "cat": "D",
+     "rms": 0.026625757312817338
+    },
+    "ZSNOWI": {
+     "max": 0.0013123480463849146,
+     "ndiff": 774,
+     "n": 787,
+     "scale": 0.9533908497410207,
+     "cat": "D",
+     "rms": 9.538698305688642e-05
+    },
+    "BARESW": {
+     "max": 0.039874337830579476,
+     "ndiff": 467,
+     "n": 753,
+     "scale": 0.9999999999999999,
+     "cat": "D",
+     "rms": 0.0034500137309404965
+    },
+    "FRSNOW[0]": {
+     "max": 0.014991938279930311,
+     "ndiff": 171,
+     "n": 496,
+     "scale": 0.9422858966366635,
+     "cat": "D",
+     "rms": 0.0009737383382953265
+    },
+    "FRSNOW[1]": {
+     "max": 0.00242535404397648,
+     "ndiff": 376,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 0.00018435819406329912
+    },
+    "SNOWD[0]": {
+     "max": 0.0010334983548457993,
+     "ndiff": 163,
+     "n": 753,
+     "scale": 1.2909367036144004,
+     "cat": "D",
+     "rms": 8.00724916332957e-05
+    },
+    "SNOWD[1]": {
+     "max": 0.003993133801593163,
+     "ndiff": 397,
+     "n": 753,
+     "scale": 3.912371414495175,
+     "cat": "D",
+     "rms": 0.0002154469342741244
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33358,
+   "seed_used": 927733223,
+   "seed_recorded": 927733223,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33359,
+   "seed_used": 210816801,
+   "seed_recorded": 210816801,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33360,
+   "seed_used": 548765259,
+   "seed_recorded": 548765259,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33361,
+   "seed_used": -1599463963,
+   "seed_recorded": -1599463963,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33362,
+   "seed_used": -1266989969,
+   "seed_recorded": -1266989969,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "surface",
+   "itime": 33362,
+   "fields": {
+    "RSI": {
+     "max": 0.0029707790256363886,
+     "ndiff": 712,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 7.468230691007553e-05
+    },
+    "ZSI": {
+     "max": 0.003462534695579611,
+     "ndiff": 783,
+     "n": 788,
+     "scale": 3.9527697433585818,
+     "cat": "D",
+     "rms": 0.00021794924770518652
+    },
+    "SNOWI": {
+     "max": 0.5761534622679392,
+     "ndiff": 775,
+     "n": 3170,
+     "scale": 288.29282730172935,
+     "cat": "D",
+     "rms": 0.018914293350953675
+    },
+    "POND_MELT": {
+     "max": 0.2619519715280987,
+     "ndiff": 68,
+     "n": 3170,
+     "scale": 95.81159348760332,
+     "cat": "D",
+     "rms": 0.006124478137641554
+    },
+    "FLAG_DSWS": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAKE": {
+     "max": 0.0001333433198988012,
+     "ndiff": 632,
+     "n": 3170,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 4.903541619674005e-06
+    },
+    "DLAKE": {
+     "max": 0.058659953630774364,
+     "ndiff": 636,
+     "n": 3170,
+     "scale": 404.40717176714224,
+     "cat": "D",
+     "rms": 0.002054497735835427
+    },
+    "FLICE": {
+     "max": 0.0,
+     "ndiff": 0,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "A",
+     "rms": 0.0
+    },
+    "FLAND": {
+     "max": 0.00013334331989878212,
+     "ndiff": 632,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 4.903541619673048e-06
+    },
+    "FEARTH": {
+     "max": 0.00013334331989878212,
+     "ndiff": 632,
+     "n": 3170,
+     "scale": 1.0,
+     "cat": "D",
+     "rms": 4.903541619673048e-06
+    },
+    "GTEMPR1": {
+     "max": 0.37960313364766307,
+     "ndiff": 2717,
+     "n": 2731,
+     "scale": 304.8311706094574,
+     "cat": "D",
+     "rms": 0.013691506745056932
+    },
+    "GTEMPR2": {
+     "max": 0.3764881165581926,
+     "ndiff": 777,
+     "n": 788,
+     "scale": 273.15000000000003,
+     "cat": "D",
+     "rms": 0.018033071165668567
+    },
+    "GTEMPR3": {
+     "max": 0.14956214266754841,
+     "ndiff": 346,
+     "n": 346,
+     "scale": 271.41868040112354,
+     "cat": "D",
+     "rms": 0.0121771380356647
+    },
+    "GTEMPR4": {
+     "max": 0.851685508596006,
+     "ndiff": 753,
+     "n": 753,
+     "scale": 310.2434297958007,
+     "cat": "D",
+     "rms": 0.09961769486503536
+    },
+    "TSAVG": {
+     "max": 0.9623934285683617,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 307.1098318136363,
+     "cat": "D",
+     "rms": 0.09466702579143793
+    },
+    "WSAVG": {
+     "max": 0.8751292646816329,
+     "ndiff": 3170,
+     "n": 3170,
+     "scale": 18.616129182957152,
+     "cat": "D",
+     "rms": 0.09794220954870735
+    },
+    "SNOWLI": {
+     "max": 0.6197434464982905,
+     "ndiff": 344,
+     "n": 346,
+     "scale": 91.64713615923482,
+     "cat": "D",
+     "rms": 0.04126595935980745
+    },
+    "ZSNOWI": {
+     "max": 0.0019205115408931217,
+     "ndiff": 775,
+     "n": 788,
+     "scale": 0.9609760910057645,
+     "cat": "D",
+     "rms": 0.00012645482010228328
+    },
+    "BARESW": {
+     "max": 0.03659566750933119,
+     "ndiff": 530,
+     "n": 753,
+     "scale": 0.9994345530488976,
+     "cat": "D",
+     "rms": 0.0029319619794176454
+    },
+    "FRSNOW[0]": {
+     "max": 0.015556330197097665,
+     "ndiff": 173,
+     "n": 496,
+     "scale": 0.9422742010467613,
+     "cat": "D",
+     "rms": 0.0013275936206118455
+    },
+    "FRSNOW[1]": {
+     "max": 0.0031866219108119265,
+     "ndiff": 376,
+     "n": 752,
+     "scale": 0.95,
+     "cat": "D",
+     "rms": 0.000272525286543754
+    },
+    "SNOWD[0]": {
+     "max": 0.002532910764091678,
+     "ndiff": 164,
+     "n": 753,
+     "scale": 1.2879280610496089,
+     "cat": "D",
+     "rms": 0.00013848980671238068
+    },
+    "SNOWD[1]": {
+     "max": 0.0042174715301915855,
+     "ndiff": 397,
+     "n": 753,
+     "scale": 3.9118571690721415,
+     "cat": "D",
+     "rms": 0.00026801667841347133
+    }
+   }
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33363,
+   "seed_used": 384985967,
+   "seed_recorded": 384985967,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33364,
+   "seed_used": -1949346967,
+   "seed_recorded": -1949346967,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  },
+  {
+   "kind": "seed_cosz",
+   "itime": 33365,
+   "seed_used": 580453203,
+   "seed_recorded": 580453203,
+   "seed_equal": true,
+   "cosz_max_abs_vs_recorded": 0.0,
+   "cosz_n_unequal": 0
+  }
+ ]
+}

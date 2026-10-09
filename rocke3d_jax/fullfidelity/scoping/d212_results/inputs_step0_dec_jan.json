@@ -1,0 +1,308 @@
+{
+ "dec01": {
+  "it0": 33552,
+  "seed": {
+   "n": 6,
+   "all_s0_equal": true,
+   "all_seed_equal": true,
+   "bad": []
+  },
+  "cosz1": {
+   "n": 6,
+   "max": 0.0,
+   "n_unequal": 0,
+   "bad_steps": []
+  },
+  "surface": {
+   "RSI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "SNOWI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 281.10193391762334,
+    "cat": "A"
+   },
+   "POND_MELT": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 95.81159348760332,
+    "cat": "A"
+   },
+   "FLAG_DSWS": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "ZSI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 783,
+    "scale": 3.9391364792219616,
+    "cat": "A"
+   },
+   "ZSNOWI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 783,
+    "scale": 0.9370064463920778,
+    "cat": "A"
+   },
+   "GTEMPR2": {
+    "max": 2.842170943040401e-14,
+    "ndiff": 4,
+    "n": 783,
+    "scale": 273.15,
+    "cat": "B"
+   },
+   "FLAKE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 0.95,
+    "cat": "A"
+   },
+   "DLAKE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 404.3634684360894,
+    "cat": "A"
+   },
+   "FLICE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "FLAND": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "FEARTH": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "GTEMPR1": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 2730,
+    "scale": 305.7566896215817,
+    "cat": "A"
+   },
+   "GTEMPR3": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 346,
+    "scale": 271.27234110522323,
+    "cat": "A"
+   },
+   "SNOWLI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 346,
+    "scale": 91.64968203861473,
+    "cat": "A"
+   },
+   "GTEMPR4": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 753,
+    "scale": 308.5451996262343,
+    "cat": "A"
+   },
+   "BARESW": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 753,
+    "scale": 0.9789876399707984,
+    "cat": "A"
+   },
+   "SNOWD": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 1506,
+    "scale": 3.8697825542660143,
+    "cat": "A"
+   },
+   "FRSNOW_bare(fb>0)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 496,
+    "scale": 0.9420232755542439,
+    "cat": "A"
+   },
+   "FRSNOW_bare(fb=0)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 257,
+    "scale": 0.9445647648236988,
+    "cat": "A"
+   },
+   "FRSNOW_veg(fv>0)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 752,
+    "scale": 0.9501098594256495,
+    "cat": "A"
+   },
+   "FRSNOW_veg(fv=0)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 1,
+    "scale": 0.7040628378712265,
+    "cat": "A"
+   },
+   "TSAVG(restart)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 308.11835246625486,
+    "cat": "A"
+   },
+   "WSAVG(restart)": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 22.61474791921041,
+    "cat": "A"
+   },
+   "jax:RSI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "jax:SNOWI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 281.10193391762334,
+    "cat": "A"
+   },
+   "jax:POND_MELT": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 95.81159348760332,
+    "cat": "A"
+   },
+   "jax:FLAG_DSWS": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "jax:ZSI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 783,
+    "scale": 3.9391364792219616,
+    "cat": "A"
+   },
+   "jax:ZSNOWI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 783,
+    "scale": 0.9370064463920778,
+    "cat": "A"
+   },
+   "jax:GTEMPR2": {
+    "max": 2.842170943040401e-14,
+    "ndiff": 4,
+    "n": 783,
+    "scale": 273.15,
+    "cat": "B"
+   },
+   "jax:FLAKE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 0.95,
+    "cat": "A"
+   },
+   "jax:DLAKE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 404.3634684360894,
+    "cat": "A"
+   },
+   "jax:FLICE": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "jax:FLAND": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "jax:FEARTH": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 3170,
+    "scale": 1.0,
+    "cat": "A"
+   },
+   "jax:GTEMPR1": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 2730,
+    "scale": 305.7566896215817,
+    "cat": "A"
+   },
+   "jax:GTEMPR3": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 346,
+    "scale": 271.27234110522323,
+    "cat": "A"
+   },
+   "jax:SNOWLI": {
+    "max": 0.0,
+    "ndiff": 0,
+    "n": 346,
+    "scale": 91.64968203861473,
+    "cat": "A"
+   }
+  }
+ },
+ "jan01": {
+  "it0": 17520,
+  "seed": {
+   "n": 6,
+   "all_s0_equal": true,
+   "all_seed_equal": true,
+   "bad": []
+  },
+  "cosz1": {
+   "n": 6,
+   "max": 0.0,
+   "n_unequal": 0,
+   "bad_steps": []
+  },
+  "surface": "no recorded radiation packet at step 0 (radiation steps of this date start at it ['rsv_n26_17522_in.bin'])"
+ }
+}
