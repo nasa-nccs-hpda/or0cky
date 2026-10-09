@@ -146,17 +146,97 @@ class Coupled:
         self.K2, self.static2 = P2.make_consts(self.ctx)
         self.j3 = P2.make_unit(self.static2)
         # ---- J2 jits (D190 split variant: 5 executions)
-        K = self.K
-        self.pre = jax.jit(lambda S, mi, me, inp: PT.surface_pre_dev(K, S, mi, me, inp))
-        self.pa = jax.jit(lambda S1, mid, acc, srfp, itime, V: PT.post_a(K, S1, mid, acc, srfp, itime, V))
-        self.oa = jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='a'))
-        self.ob = jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b'))
-        self.pb = jax.jit(lambda S1, c, oc, V: PT.post_b(K, S1, c, oc, V))
-        self.mask_check = jax.jit(self._mask_check)
+        self._build_jits()
         self.writeback = jax.jit(self._writeback, static_argnums=(3,))
         self._stage_cache = None
         self.ocean_keys = list(self.SS0['ocean'].keys())
+        self._last_ghy = None             # D205: (ffg rows of the substep 2 of the last step, their flat cells) for the DMWLDF of the day-boundary lake update
+        self.daily_lake_info = None
         self.setup_seconds = time.perf_counter() - t0
+
+    def _build_jits(self, only=None):
+        """The jitted functions of the surface half; they close over the statics self.K (compile-time constants).  `only` = names to (re)build (default all).
+        D205: after the lake fractions change only 'pre' and 'pa' are rebuilt: the ocean stages (oa, ob: K keys focean, dxypo, oc, valid) and post_b (adv, is_ocean,
+        valid_ocean) read no lake fraction, and re-tracing `ob` raises jax UnexpectedTracerError (ocean_ofluxv builds module-level jnp constants (ZE, DZO) at its first
+        import, which happens inside the first trace of `ob`; D205 run 1)."""
+        K = self.K
+        mk = dict(pre=lambda: jax.jit(lambda S, mi, me, inp: PT.surface_pre_dev(K, S, mi, me, inp)),
+                  pa=lambda: jax.jit(lambda S1, mid, acc, srfp, itime, V: PT.post_a(K, S1, mid, acc, srfp, itime, V)),
+                  oa=lambda: jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='a')),
+                  ob=lambda: jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b')),
+                  pb=lambda: jax.jit(lambda S1, c, oc, V: PT.post_b(K, S1, c, oc, V)))
+        for name in (only or tuple(mk)):
+            setattr(self, name, mk[name]())
+        self.mask_check = jax.jit(self._mask_check)
+
+    def daily_lake_update(self, state, log=print):
+        """D205: the end-of-day lake update daily_LAKE (LAKES.f:2492; daily_lake.py, bitwise equal to the compiled Fortran on the nov26 case and on 12 stress cases) applied to
+        the state at the day boundary (call between the last step of a day and the first of the next, after DAILY_ATMDYN).  ONE declared host round trip: the lake, ice and
+        atmosphere-grid lake exports (device -> host), the soil water of the last land step (for DMWLDF, GHY_DRV.f:4054) -> NumPy daily_lake -> device.  Then the lake
+        fractions FLAKE/FLAND/FEARTH of the statics change: self.st / the geometry / K / Kb / static181 / melt_geo are rebuilt and the jitted functions and the SURFACE
+        stage cache are dropped (recompiled at the next step).  NOT applied (declared, in self.daily_lake_info['not_applied']): the GHY water/heat transfer for the changed
+        lake fraction (GHY_DRV.f:4531, uses DMWLDF, DGML, svflake - returned in the info), FSF/TRSURF reset (RESET_SURF_FLUXES, radiation is replayed), MDWNIMP/EDWNIMP
+        (daily_LI), the soil-moisture bookkeeping of daily_EARTH.  Returns (new state, info)."""
+        import daily_lake as DL
+        import ghy_ref as GR
+        import jax_static as JST
+        t0 = time.perf_counter()
+        sf = state['surf']
+        host = lambda d, ks: {k: np.array(np.asarray(d[k]), dtype=np.float64, copy=True) for k in ks}    # noqa: E731
+        ice = host(sf['ice'], ('rsi', 'msi', 'snowi', 'hsi'))
+        lake = host(sf['lake'], ('mwl', 'gml', 'tlake', 'mldlk'))
+        assert self._last_ghy is not None and state['land_prev'] is not None, 'daily_lake_update needs a completed land step'
+        rows, ecells = self._last_ghy
+        w = np.asarray(state['land_prev']['dyn_next']['w'], dtype=np.float64)
+        geo = self.st['geo']
+        fearth0, fland0 = np.array(self.st['fearth'], copy=True), np.array(self.st['fland'], copy=True)
+        dm = DL.water_deficit(rows, w, ecells, fearth0, GR.THM[0, :])
+        topo = JST.topography()
+        hlake, tn = DL.lake_statics(topo, np.asarray(geo['flake']), np.asarray(self.st['axyp']))
+        Sin = dict(flake=np.array(geo['flake'], copy=True), fearth=fearth0, fland=fland0, **ice, **lake)
+        out = DL.daily_lake(Sin, np.asarray(self.st['flice']), np.asarray(geo['focean']), tn, hlake, np.asarray(self.st['axyp']), dm,
+                            valid=np.asarray(geo['valid']))
+        dflake = out['flake'] - geo['flake']
+        info = dict(counters=out['counters'], pow=out['pow'], n_flake_changed=int((dflake != 0).sum()), max_abs_dflake=float(np.abs(dflake).max()),
+                    n_rsi_changed=int((out['rsi'] != ice['rsi']).sum()), n_dmwldf_pos=int((dm > 0).sum()),
+                    reset_surf_fluxes=len(out['reset_surf_fluxes']), dmwldf=out['dmwldf'], dgml=out['dgml'], svflake=out['svflake'],
+                    mdwnimp=out['mdwnimp'], edwnimp=out['edwnimp'],
+                    not_applied=['GHY dfrac water/heat transfer (GHY_DRV.f:4531)', 'RESET_SURF_FLUXES (FSF/TRSURF)', 'MDWNIMP/EDWNIMP into daily_LI', 'daily_EARTH'])
+        # ---- device state
+        newice = dict(sf['ice'])
+        for k in ('rsi', 'msi', 'snowi', 'hsi'):
+            newice[k] = jnp.asarray(out[k], dtype=sf['ice'][k].dtype)
+        newlake = dict(sf['lake'])
+        for k in ('mwl', 'gml', 'tlake', 'mldlk'):
+            newlake[k] = jnp.asarray(out[k], dtype=sf['lake'][k].dtype)
+        atm = dict(sf['atm'])
+        for k, v in (('gtemp', out['gtemp']), ('gtempr', out['gtempr']), ('mlhc', out['mlhc'])):
+            m = np.isfinite(v)
+            if k in atm and m.any():
+                atm[k] = jnp.where(jnp.asarray(m), jnp.asarray(np.where(m, v, 0.0), dtype=atm[k].dtype), atm[k])
+        surf = dict(sf, ice=newice, lake=newlake, atm=atm)
+        # ---- statics: the lake fractions (FOCEAN, FLICE do not change)
+        st = self.st
+        st['fland'], st['fearth'] = out['fland'], out['fearth']
+        st['geo'] = L.make_geo(st['ctx'], out['flake'])
+        t1 = time.perf_counter()
+        self.K, self.Kb = PT.make_static_all(st, self.date, self.it0)
+        self.Kbd = U.to_dev(self.Kb)
+        s181 = dict(self.static181)
+        fl = np.asarray(out['flake'], dtype=np.float64)
+        s181.update(flake=fl, fland=np.asarray(out['fland']), fearth=np.asarray(out['fearth']), fwater=np.asarray(st['geo']['fwater']), is_lake=fl > 0)
+        self.static181 = s181
+        self.sp181 = S181.static_pytree(s181)
+        self.melt_geo = M.geo_device(st['geo'])
+        self._build_jits(only=('pre', 'pa'))
+        self._stage_cache = None
+        info['seconds'] = dict(total=time.perf_counter() - t0, statics_rebuild=time.perf_counter() - t1)
+        self.daily_lake_info = info
+        new = dict(state)
+        new['surf'] = surf
+        log(f"  daily_LAKE at the day boundary: {info['n_flake_changed']} cells with FLAKE changed (max |dFLAKE| {info['max_abs_dflake']:.3e}), {info['n_rsi_changed']} RSI changed, "
+            f"DMWLDF>0 in {info['n_dmwldf_pos']} cells, counters {info['counters']}")
+        return new, info
 
     # ------------------------------------------------------------------------------------------------ small jitted helpers
     @staticmethod
@@ -225,6 +305,7 @@ class Coupled:
             reg_fn = ph.reg.guard_function('surface_records', A.surface_records, stage='surface')
             recs = reg_fn(R)
             tpl, host = JS.build_template(recs)
+            self._last_ghy = (host['nit_rows'][1], host['ecells'])
             g1 = recs['g1']
             irrig = np.zeros((IM, JM))
             irrig[g1[:, 0].astype(int) - 1, g1[:, 1].astype(int) - 1] = g1[:, 147]

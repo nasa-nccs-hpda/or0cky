@@ -1,0 +1,33 @@
+{
+ "counters": {
+  "cells_visited": 753,
+  "new_flake_ne_flake": 718,
+  "expand": 338,
+  "shrink": 0,
+  "have_lake": 632,
+  "no_lake": 86,
+  "crunch": 20,
+  "layer_entrain": 262,
+  "layer_new": 8,
+  "layer_scale": 362,
+  "dont_saturate": 0,
+  "saturate_solve": 435,
+  "ice_dump": 0
+ },
+ "pow": "libimf",
+ "n_flake_changed": 632,
+ "max_abs_dflake": 0.00491127371723788,
+ "n_rsi_changed": 285,
+ "n_dmwldf_pos": 752,
+ "reset_surf_fluxes": 632,
+ "not_applied": [
+  "GHY dfrac water/heat transfer (GHY_DRV.f:4531)",
+  "RESET_SURF_FLUXES (FSF/TRSURF)",
+  "MDWNIMP/EDWNIMP into daily_LI",
+  "daily_EARTH"
+ ],
+ "seconds": {
+  "total": 2.9607604530174285,
+  "statics_rebuild": 2.8347674089018255
+ }
+}
