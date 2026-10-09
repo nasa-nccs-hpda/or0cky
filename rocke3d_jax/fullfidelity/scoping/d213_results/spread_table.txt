@@ -1,0 +1,89 @@
+within/near/beyond ; worst ratio steps>=3 (step) ; worst all (step)
+ctrl
+  T    54/0/0  k3 0.94@15  all 0.94@15  step1 0.42
+  U    54/0/0  k3 0.89@21  all 0.89@21  step1 0.07
+  V    54/0/0  k3 0.97@10  all 0.97@10  step1 0.05
+  Q    42/12/0  k3 1.03@46  all 1.03@46  step1 0.28
+  P    52/2/0  k3 1.04@33  all 1.04@33  step1 0.00
+  QCL  52/1/1  k3 0.95@9  all 2.83@1  step1 2.83
+  QCI  37/17/0  k3 1.69@47  all 1.69@47  step1 0.11
+p1
+  T    53/1/0  k3 1.09@3  all 1.09@3  step1 0.62
+  U    53/1/0  k3 0.85@29  all 1.29@1  step1 1.29
+  V    54/0/0  k3 0.85@28  all 0.85@28  step1 0.37
+  Q    49/5/0  k3 1.01@48  all 1.01@48  step1 0.78
+  P    54/0/0  k3 1.00@52  all 1.00@52  step1 0.00
+  QCL  50/3/1  k3 1.07@21  all 2.89@1  step1 2.89
+  QCI  41/13/0  k3 1.84@41  all 1.84@41  step1 0.11
+p2
+  T    53/1/0  k3 1.11@3  all 1.11@3  step1 0.73
+  U    53/1/0  k3 0.91@22  all 1.41@1  step1 1.41
+  V    54/0/0  k3 0.90@19  all 0.90@19  step1 0.48
+  Q    47/7/0  k3 1.01@51  all 1.03@1  step1 1.03
+  P    54/0/0  k3 0.99@32  all 1.00@2  step1 0.02
+  QCL  50/3/1  k3 1.04@18  all 2.92@1  step1 2.92
+  QCI  52/2/0  k3 1.07@8  all 1.85@2  step1 0.64
+p3
+  T    54/0/0  k3 0.94@53  all 0.94@53  step1 0.42
+  U    54/0/0  k3 0.89@21  all 0.89@21  step1 0.07
+  V    54/0/0  k3 0.97@10  all 0.97@10  step1 0.05
+  Q    42/12/0  k3 1.03@46  all 1.03@46  step1 0.28
+  P    52/2/0  k3 1.04@33  all 1.04@33  step1 0.00
+  QCL  52/1/1  k3 0.95@9  all 2.83@1  step1 2.83
+  QCI  37/17/0  k3 1.69@42  all 1.69@42  step1 0.11
+D210 server rad
+  T    54/0/0  k3 0.97@49  all 0.97@49  step1 0.41
+  U    54/0/0  k3 0.96@29  all 0.96@29  step1 0.07
+  V    53/1/0  k3 1.03@7  all 1.03@7  step1 0.05
+  Q    54/0/0  k3 1.00@19  all 1.00@19  step1 0.27
+  P    52/2/0  k3 1.01@52  all 1.01@52  step1 0.00
+  QCL  52/1/1  k3 0.99@53  all 2.83@1  step1 2.83
+  QCI  49/5/0  k3 1.08@45  all 1.08@45  step1 0.11
+D212 ctl54
+  T    54/0/0  k3 0.97@49  all 0.97@49  step1 0.41
+  U    54/0/0  k3 0.96@29  all 0.96@29  step1 0.07
+  V    53/1/0  k3 1.03@7  all 1.03@7  step1 0.05
+  Q    54/0/0  k3 1.00@19  all 1.00@19  step1 0.27
+  P    52/2/0  k3 1.01@52  all 1.01@52  step1 0.00
+  QCL  52/1/1  k3 0.99@53  all 2.83@1  step1 2.83
+  QCI  49/5/0  k3 1.08@45  all 1.08@45  step1 0.11
+D212 srv54 (server+own fields)
+  T    54/0/0  k3 0.97@46  all 0.97@46  step1 0.40
+  U    53/1/0  k3 1.01@29  all 1.01@29  step1 0.07
+  V    54/0/0  k3 0.99@28  all 0.99@28  step1 0.05
+  Q    54/0/0  k3 0.99@23  all 0.99@23  step1 0.27
+  P    51/3/0  k3 1.05@6  all 1.05@6  step1 0.00
+  QCL  41/12/1  k3 1.41@8  all 2.83@1  step1 2.83
+  QCI  42/12/0  k3 1.18@47  all 1.18@47  step1 0.13
+
+SPREAD over ctrl,p1,p2,p3 (min..max)
+T    within 53..54 ([54, 53, 53, 54])  step1 ratio 0.42..0.73  worst k3 0.94..1.11 beyond [0, 0, 0, 0]
+U    within 53..54 ([54, 53, 53, 54])  step1 ratio 0.07..1.41  worst k3 0.85..0.91 beyond [0, 0, 0, 0]
+V    within 54..54 ([54, 54, 54, 54])  step1 ratio 0.05..0.48  worst k3 0.85..0.97 beyond [0, 0, 0, 0]
+Q    within 42..49 ([42, 49, 47, 42])  step1 ratio 0.28..1.03  worst k3 1.01..1.03 beyond [0, 0, 0, 0]
+P    within 52..54 ([52, 54, 54, 52])  step1 ratio 0.00..0.02  worst k3 0.99..1.04 beyond [0, 0, 0, 0]
+QCL  within 50..52 ([52, 50, 50, 52])  step1 ratio 2.83..2.92  worst k3 0.95..1.07 beyond [1, 1, 1, 1]
+QCI  within 37..52 ([37, 41, 52, 37])  step1 ratio 0.11..0.64  worst k3 1.07..1.84 beyond [0, 0, 0, 0]
+
+Other configs inside the spread? (within-count, step1, k3)
+D210 server rad T within 54 IN step1 0.41 OUT k3 0.97 IN
+D210 server rad U within 54 IN step1 0.07 OUT k3 0.96 OUT
+D210 server rad V within 53 OUT step1 0.05 OUT k3 1.03 OUT
+D210 server rad Q within 54 OUT step1 0.27 OUT k3 1.00 OUT
+D210 server rad P within 52 IN step1 0.00 IN k3 1.01 IN
+D210 server rad QCL within 52 IN step1 2.83 IN k3 0.99 IN
+D210 server rad QCI within 49 IN step1 0.11 IN k3 1.08 IN
+D212 ctl54 T within 54 IN step1 0.41 OUT k3 0.97 IN
+D212 ctl54 U within 54 IN step1 0.07 OUT k3 0.96 OUT
+D212 ctl54 V within 53 OUT step1 0.05 OUT k3 1.03 OUT
+D212 ctl54 Q within 54 OUT step1 0.27 OUT k3 1.00 OUT
+D212 ctl54 P within 52 IN step1 0.00 IN k3 1.01 IN
+D212 ctl54 QCL within 52 IN step1 2.83 IN k3 0.99 IN
+D212 ctl54 QCI within 49 IN step1 0.11 IN k3 1.08 IN
+D212 srv54 (server+own fields) T within 54 IN step1 0.40 OUT k3 0.97 IN
+D212 srv54 (server+own fields) U within 53 IN step1 0.07 OUT k3 1.01 OUT
+D212 srv54 (server+own fields) V within 54 IN step1 0.05 OUT k3 0.99 OUT
+D212 srv54 (server+own fields) Q within 54 OUT step1 0.27 OUT k3 0.99 OUT
+D212 srv54 (server+own fields) P within 51 OUT step1 0.00 IN k3 1.05 OUT
+D212 srv54 (server+own fields) QCL within 41 OUT step1 2.83 OUT k3 1.41 OUT
+D212 srv54 (server+own fields) QCI within 42 IN step1 0.13 IN k3 1.18 IN
