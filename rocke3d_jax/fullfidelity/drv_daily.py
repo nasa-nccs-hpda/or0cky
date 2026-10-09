@@ -327,3 +327,36 @@ def updtype_check(ff=None, daydir="nov26_day", it=33360):
         d = np.abs(got - ref)[i, j]
         res[name] = dict(max_abs=float(d.max()), n_diff=int((got[i, j] != ref[i, j]).sum()), n=int(len(i)))
     return res
+
+
+# ------------------------------------------------------------------------------------------------------------------ D209: the assembled-step boundary
+def daily_on_state_computed(state, dev, ctx_imf, it, dh2o=None, snoage_source="carry"):
+    """D209: the day boundary of the assembled device-resident step (same state layout and same ONE declared host round trip as
+    d193_day.daily_on_state) with ALL THREE constants COMPUTED, none read from a record:
+      MDRYA   = mdrya()                                 (PSF*MB2KG, bitwise equal to the real dump)
+      ch4ox   = ch4ox_dm(year, month of `it`)           (dH2O file + GHG table; |diff| to the record-derived DM 3.6e-20 abs on max 8.3e-8)
+      SNOAGE  = snoage_age(carry SNOAGE, imaxj)         (types 1-3, 1 + .98*snoage; bitwise vs the CONDSE entry record, D178 snoage_check)
+    `dev` is accepted for signature compatibility and not read.  snoage_source 'carry' ages the carried SNOAGE (the end state of the previous step).
+    Returns (new state, report dict)."""
+    import jax.numpy as jnp
+    import atm_day_open_loop as OL
+    S = state["S"]
+    h = {k: np.array(np.asarray(S[k]), copy=True) for k in ("MA", "MASUM", "Q")}
+    rep = OL.apply_daily(h, ctx_imf, mdrya())
+    rep["mdrya"] = mdrya()
+    yr, month = date_of_itime(it)
+    dm = ch4ox_dm(yr, month, dh2o)
+    rep["ch4ox_year_month"] = (yr, month)
+    OL.apply_ch4ox(h, ctx_imf, dm)
+    S2 = dict(S)
+    for k in ("MA", "MASUM", "PEDN", "PMID", "PK", "PDSIG", "P", "PEK", "Q"):
+        S2[k] = jnp.asarray(h[k])
+    carry = dict(state["carry"])
+    if "SNOAGE" in carry:
+        old = np.asarray(carry["SNOAGE"])
+        new = snoage_age(old, ctx_imf.imaxj)
+        rep["snoage_max_change_computed"] = float(np.abs(new - old).max())
+        carry["SNOAGE"] = jnp.asarray(new)
+    out = dict(state)
+    out["S"], out["carry"] = S2, carry
+    return out, rep

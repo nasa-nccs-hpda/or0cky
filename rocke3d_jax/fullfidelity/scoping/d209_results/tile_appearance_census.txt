@@ -1,0 +1,28 @@
+{"1": [60, 114], "2": [8, 2], "3": [0, 0], "4": [0, 0]}
+{'step': 1, 'it': 33313, 'type': 1, 'new': 0, 'vanished': 50, 'new_cells': []}
+{'step': 9, 'it': 33321, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(22, 34)]}
+{'step': 11, 'it': 33323, 'type': 1, 'new': 0, 'vanished': 2, 'new_cells': []}
+{'step': 17, 'it': 33329, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 18, 'it': 33330, 'type': 1, 'new': 1, 'vanished': 1, 'new_cells': [(30, 6)]}
+{'step': 18, 'it': 33330, 'type': 2, 'new': 1, 'vanished': 1, 'new_cells': [(16, 34)]}
+{'step': 22, 'it': 33334, 'type': 2, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 23, 'it': 33335, 'type': 1, 'new': 1, 'vanished': 0, 'new_cells': [(29, 6)]}
+{'step': 28, 'it': 33340, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(20, 34)]}
+{'step': 31, 'it': 33343, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 32, 'it': 33344, 'type': 1, 'new': 0, 'vanished': 2, 'new_cells': []}
+{'step': 32, 'it': 33344, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(51, 34)]}
+{'step': 34, 'it': 33346, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 35, 'it': 33347, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 37, 'it': 33349, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 37, 'it': 33349, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(50, 35)]}
+{'step': 38, 'it': 33350, 'type': 1, 'new': 1, 'vanished': 0, 'new_cells': [(31, 6)]}
+{'step': 39, 'it': 33351, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(55, 33)]}
+{'step': 45, 'it': 33357, 'type': 1, 'new': 1, 'vanished': 0, 'new_cells': [(31, 7)]}
+{'step': 47, 'it': 33359, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 47, 'it': 33359, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(20, 38)]}
+{'step': 48, 'it': 33360, 'type': 1, 'new': 54, 'vanished': 0, 'new_cells': [(67, 41), (48, 38), (62, 40), (7, 39), (40, 40), (1, 40), (18, 40), (52, 40)]}
+{'step': 49, 'it': 33361, 'type': 1, 'new': 0, 'vanished': 51, 'new_cells': []}
+{'step': 51, 'it': 33363, 'type': 1, 'new': 1, 'vanished': 0, 'new_cells': [(28, 6)]}
+{'step': 52, 'it': 33364, 'type': 1, 'new': 0, 'vanished': 1, 'new_cells': []}
+{'step': 53, 'it': 33365, 'type': 1, 'new': 1, 'vanished': 1, 'new_cells': [(31, 7)]}
+{'step': 53, 'it': 33365, 'type': 2, 'new': 1, 'vanished': 0, 'new_cells': [(51, 35)]}
