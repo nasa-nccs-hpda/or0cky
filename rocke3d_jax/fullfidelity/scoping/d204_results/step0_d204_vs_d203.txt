@@ -1,0 +1,6 @@
+nov26 float arrays 549 bitwise equal 392 not equal 157 max scaled diff 1.39e-11 surf/ocean/szmo only in d204: ['land/ghy/nit_exhausted', 'land/ghy/nit_gdtm'] only in d203: []
+   not equal (top5): [('surf/ocean/szmo', 1.3864051530500316e-11), ('land/ghy/ashg', 1.1924355515744215e-11), ('land/pbl/w2_1', 4.55082011486818e-12), ('land/ghy/ae0', 2.3010287018220834e-12), ('dissip/LMONINPBL', 2.1210167347753013e-12)]
+dec01 float arrays 549 bitwise equal 376 not equal 173 max scaled diff 4.95e-10 surf/ocean/gzmo only in d204: ['land/ghy/nit_exhausted', 'land/ghy/nit_gdtm'] only in d203: []
+   not equal (top5): [('surf/ocean/gzmo', 4.947625309724247e-10), ('surf/ocean/szmo', 2.667609144788262e-10), ('dissip/LMONINPBL', 1.680449677494607e-11), ('filter/LMONINPBL', 1.680449677494607e-11), ('surface/LMONINPBL', 1.680449677494607e-11)]
+jan01 float arrays 549 bitwise equal 386 not equal 163 max scaled diff 1.40e-10 land/ghy/ashg only in d204: ['land/ghy/nit_exhausted', 'land/ghy/nit_gdtm'] only in d203: []
+   not equal (top5): [('land/ghy/ashg', 1.4019324231017363e-10), ('land/pbl/lmonin', 7.65194949935985e-12), ('dissip/LMONINPBL', 7.496690732556765e-12), ('filter/LMONINPBL', 7.496690732556765e-12), ('surface/LMONINPBL', 7.496690732556765e-12)]

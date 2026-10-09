@@ -30,6 +30,7 @@ measurements. Every other bounded loop in this module (hydra's bisection, tridia
 stays a small Python unroll deliberately -- those are 2-6 iterations of a small body, not 11
 iterations of a huge one, so they don't hit the same problem.
 """
+import os
 import jax
 jax.config.update("jax_enable_x64", True)  # float64 required to match ghy_ref.py's Fortran-derived ops
 import jax.numpy as jnp
@@ -1534,3 +1535,196 @@ def retp(static, w, ht, wsn, hsn):
     cond_tsn1 = (wsn0 > 1e-6) & ((hsn0 + wsn0 * FSN) < 0.0) & ibv_active
     tsn1 = jnp.where(cond_tsn1, (hsn0 + wsn0 * FSN) / (wsn0_safe * SHI), 0.0)
     return dict(tp=tp, fice=fice, tsn1=tsn1)
+
+
+# ====================================================================================================== D204: GHY sub-iteration schedule computed from the state
+# The Fortran (GHY.f:2389-2416) derives the sub-iteration schedule from the CURRENT state: `do while (dtr > 0): hydra; xklh; gdtm(dtm); dts = dtr if dtm >= dtr
+# else min(dtm, dtr/2)` (gdtm GHY.f:3057-3145; stability limit 0.5*ak2/xk2).  `advnc` above replays the schedule (nsub, dts) RECORDED from the real run.
+# `advnc_gdtm` (from the D202 prototype d202_fix.advnc_gdtm, JAX, batched) computes it.  It has the signature of `advnc`; `ent_dts` and `n_substeps` are accepted
+# but not used.  The Ent exports (cnc, betadl, lai) of iteration i are those of recorded iteration min(i, W0-1) (the batches pad with the last record; for
+# iterations beyond the 11 the ffg writer can hold this is an ASSUMPTION, the same as ghy_ref_nit.advnc_full).  The loop is capped at `GDTM_WIDTH` iterations:
+# the last lane then takes the remainder dtr in one step and `nit_exhausted` flags it (the Fortran would stop the model there).
+# Extra outputs: nit_gdtm (iterations per cell), nit_exhausted.
+GDTM_WIDTH = 40
+
+
+def _ep(tp, forcing):
+    rho3 = forcing["rho"] / RHOW
+    vq = forcing["gusti"] * forcing["qprime"]
+    qb = qsat(tp[:, 1, 0] + TFRZ, LHE, forcing["pres"])
+    qv = qsat(tp[:, 0, 1] + TFRZ, LHE, forcing["pres"])
+    epb = rho3 * forcing["ch"] * (forcing["vs"] * (qb - forcing["qs"]) - vq)
+    epv = rho3 * forcing["ch"] * (forcing["vs"] * (qv - forcing["qs"]) - vq)
+    return epb, epv
+
+
+def gdtm(static, forcing, w, fice, tp, d, xkh, fw, evapb, epb, evapvw, evapvd, epv):
+    """GHY.f gdtm (giss_LSM/GHY.f:3057), batched; mirrors ghy_ref.GhyColumn.gdtm."""
+    kmask = static["kmask"]
+    ibv_active = jnp.stack([static["process_bare"], static["process_vege"]], axis=-1)       # (N,2)
+    act = kmask[:, :, None] & ibv_active[:, None, :]                                        # (N,NGM,2)
+    dz = static["dz"]
+    dz_s = jnp.where(dz > 0.0, dz, 1.0)[:, :, None]
+    dqdt = dqsatdt(forcing["ts"], LHE) * qsat(forcing["ts"], LHE, forcing["pres"])
+    dldz2 = jnp.max(jnp.where(act, d[:, 1:, :] / dz_s ** 2, 0.0), axis=(1, 2))
+    dtm = 1.0 / (dldz2 + 1e-12)
+    dtm = jnp.where(static["q"][:, 3, 0] > 0.0, jnp.minimum(dtm, 450.0), dtm)
+    ak1 = (static["shc"][:, 1:, :] + ((1.0 - fice[:, 1:, :]) * SHW + fice[:, 1:, :] * SHI) * w[:, 1:, :]) / dz_s
+    t1 = 0.5 * ak1 * dz_s ** 2 / (xkh[:, 1:, :] + 1e-12)
+    dtm = jnp.minimum(dtm, jnp.min(jnp.where(act, t1, jnp.inf), axis=(1, 2)))
+    cna = forcing["ch"] * forcing["vs"]
+    rho3 = 0.001 * forcing["rho"]
+    betas0 = jnp.where(epb <= 0.0, 1.0, evapb / jnp.where(epb <= 0.0, 1.0, epb))
+    betas1 = jnp.where(epv <= 0.0, 1.0, (evapvw * fw + evapvd * (1.0 - fw)) / jnp.where(epv <= 0.0, 1.0, epv))
+    for ibv, betas in ((0, betas0), (1, betas1)):
+        k = 1 - ibv
+        xk2 = SHA * forcing["rho"] * cna + betas * rho3 * cna * ELH * dqdt + 8.0 * STBO * (tp[:, k, ibv] + TFRZ) ** 3
+        ak2 = static["shc"][:, k, ibv] + ((1.0 - fice[:, k, ibv]) * SHW + fice[:, k, ibv] * SHI) * w[:, k, ibv]
+        dtm = jnp.where(ibv_active[:, ibv], jnp.minimum(dtm, 0.5 * ak2 / (xk2 + 1e-12)), dtm)
+    return dtm
+
+
+def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11):
+    W = max(int(max_substeps), GDTM_WIDTH)
+    W0 = ent_dts.shape[1]
+    N = dynamic0["w"].shape[0]
+    fb, fv = forcing["fb"], forcing["fv"]
+    static = dict(static0, process_bare=fb > 0.0, process_vege=fv > 0.0, fb=fb, fv=fv, sl=static0["sl"])
+    w0 = dynamic0["w"]; ht0 = dynamic0["ht"]; nsn0 = dynamic0["nsn"]; dzsn0 = dynamic0["dzsn"]
+    wsn0 = dynamic0["wsn"]; hsn0 = dynamic0["hsn"]; fr_snow0 = dynamic0["fr_snow"]
+    reth0 = reth(static, w0, nsn0, wsn0, fr_snow0, snowm)
+    retp0 = retp(static, w0, ht0, wsn0, hsn0)
+    one = jnp.ones(N)
+    init_carry = dict(
+        w=w0, ht=ht0, nsn=nsn0, dzsn=dzsn0, wsn=wsn0, hsn=hsn0, fr_snow=fr_snow0,
+        theta=reth0["theta"], fice=retp0["fice"], tp=retp0["tp"], tsn1=retp0["tsn1"],
+        fw=reth0["fw"], fd=reth0["fd"], fm=reth0["fm"], fw0=reth0["fw0"], fd0=reth0["fd0"],
+        abetad=jnp.zeros(N), snsh_tot_carry=jnp.zeros((N, 2)), evap_tot_carry=jnp.zeros((N, 2)),
+        acc=accm_zero(N),
+        dtr=900.0 * one,
+        nit=jnp.zeros(N, dtype=jnp.int32), exhausted=jnp.zeros(N, dtype=bool),
+        epb=one, epv=one, evapb=one, evapvw=one, evapvd=one)
+    # `dt` of the template is the total time of the recorded schedule (sum of recorded dts, 900 s for the cells it covers); the Fortran loop runs over the
+    # whole DTsrc/2 = 900 s, as ghy_ref_nit.advnc_full does (dt=900)
+    dt_run = 900.0 * one
+
+    def _gather(a, i):
+        j = jnp.minimum(i, W0 - 1)
+        return a[:, j]
+
+    def _substep_body(carry, i):
+        w, ht, nsn, dzsn, wsn, hsn, fr_snow = (carry["w"], carry["ht"], carry["nsn"], carry["dzsn"], carry["wsn"], carry["hsn"], carry["fr_snow"])
+        theta, fice, tp, tsn1 = carry["theta"], carry["fice"], carry["tp"], carry["tsn1"]
+        fw, fd, fm, fw0, fd0 = carry["fw"], carry["fd"], carry["fm"], carry["fw0"], carry["fd0"]
+        acc = carry["acc"]
+        dtr = carry["dtr"]
+        active_i = dtr > 0.0
+        cnc = jnp.where(static["process_vege"], _gather(ent_cnc, i), 0.0)
+        betadl = jnp.where(static["process_vege"][:, None], _gather(ent_betadl, i), 0.0)
+        lai = jnp.where(static["process_vege"], _gather(ent_lai, i), 0.0)
+        hydra_out = hydra(static, theta, fice)
+        _z = jnp.zeros_like(forcing["pr"])
+        irrig2 = jnp.stack([_z, forcing["irrig"] if "irrig" in forcing else _z], axis=-1)
+        htirrig2 = jnp.stack([_z, forcing["htirrig"] if "htirrig" in forcing else _z], axis=-1)
+        xklh_out = xklh(static, w, fice, theta)
+        # ---- the Fortran time step (GHY.f:2408-2415)
+        dtm = gdtm(static, forcing, w, fice, tp, hydra_out["d"], xklh_out["xkh"], fw, carry["evapb"], carry["epb"], carry["evapvw"], carry["evapvd"], carry["epv"])
+        last_lane = i == (W - 1)
+        full = (dtm >= dtr) | last_lane
+        dts = jnp.where(full, dtr, jnp.minimum(dtm, dtr * 0.5))
+        dtr_new = jnp.where(full, 0.0, dtr - dts)
+        dts = jnp.where(active_i, dts, 1.0)
+        evap_out = evap_limits(static, w, theta, hydra_out["d"], tp, fice, tsn1, nsn, wsn, fr_snow, dt_run, forcing["pr"], betadl, cnc, forcing["ch"],
+                                 forcing["vs"], forcing["rho"], forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"], forcing["qm1"], lai, fm)
+        epb, epv = _ep(tp, forcing)
+        fw_i, fd_i = evap_out["fw"], evap_out["fd"]
+        drip_out = drip_from_canopy(static, w, forcing["htpr"], forcing["htprs"], forcing["pr"], forcing["prs"], evap_out["evapvw"], fw_i, fm, fr_snow, fd0, dts, tp)
+        sh_out = sensible_heat(tp, tsn1, forcing["ts"], forcing["vs"], forcing["ch"], forcing["rho"], forcing["gusti"], forcing["tprime"])
+        snow_out = snow(static, tp, sh_out["snshs"], forcing["srht"], forcing["trht"], drip_out["drips"], drip_out["dripw"], drip_out["htdrips"],
+                          drip_out["htdripw"], evap_out["devapbs_dt"], evap_out["devapvs_dt"], sh_out["dsnsh_dt"], evap_out["evap_min"], dts, static["dz"],
+                          dzsn, wsn, hsn, nsn, fr_snow, evap_out["evapbs"], evap_out["evapvs"], fm)
+        f_out = fl(static, hydra_out["h"], hydra_out["xk"])
+        flg_out = flg(static, f_out["f"], snow_out["flmlt"], snow_out["flmlt_scale"], drip_out["dripw"], drip_out["drips"], evap_out["evapb"],
+                        evap_out["evapvg"], snow_out["fr_snow"], forcing["pr"], evap_out["evapvw"], snow_out["evapbs"], snow_out["evapvs"], evap_out["evapvd"],
+                        fw_i, fd_i, fm, irrig2)
+        runoff_out = runoff(static, w, flg_out["f"], f_out["xinfc"], drip_out["dripw"], drip_out["dripw_scale"], evap_out["evapb"], evap_out["evapvg"],
+                              snow_out["fr_snow"], forcing["pr"], hydra_out["xku"], static["sl"])
+        fllmt_out = fllmt(static, w, flg_out["f"], runoff_out["rnff"], runoff_out["rnf"], evap_out["evapdl"], snow_out["fr_snow"], fm, dts)
+        flh_out = flh(static, xklh_out["xkhm"], tp, fllmt_out["f"], forcing["geothermal_heat"])
+        flhg_out = flhg(static, flh_out["fh"], tp, snow_out["fhsng"], snow_out["fhsng_scale"], drip_out["htdripw"], drip_out["htdrips"], evap_out["evapb"],
+                          evap_out["evapvg"], evap_out["evapvw"], evap_out["evapvd"], sh_out["snshg"], sh_out["snshv"], snow_out["snshs"], snow_out["thrmsn"],
+                          snow_out["fr_snow"], forcing["srht"], forcing["trht"], forcing["htpr"], fw_i, fd_i, fm, htirrig2)
+        apply_out = apply_fluxes(static, w, ht, fllmt_out["f"], flhg_out["fh"], flg_out["fc"], flhg_out["fch"], fllmt_out["rnf"], fllmt_out["rnff"], tp,
+                                   evap_out["evapdl"], snow_out["fr_snow"], fm, dts)
+        acc_new = accm(acc, static, tp, flhg_out["thrm_tot"], flhg_out["snsh_tot"], flg_out["evap_tot"], fllmt_out["rnf"], fllmt_out["rnff"], fllmt_out["f"],
+                         flhg_out["fh"], forcing["srht"], forcing["trht"], forcing["htpr"], dts)
+        w_new, ht_new = apply_out["w"], apply_out["ht"]
+        nsn_new, dzsn_new = snow_out["nsn"], snow_out["dzsn"]
+        wsn_new, hsn_new, fr_snow_new = snow_out["wsn"], snow_out["hsn"], snow_out["fr_snow"]
+        reth_new = reth(static, w_new, nsn_new, wsn_new, fr_snow_new, snowm)
+        retp_new = retp(static, w_new, ht_new, wsn_new, hsn_new)
+        S = lambda new, old: _sel(active_i, new, old)
+        new_carry = dict(
+            w=S(w_new, w), ht=S(ht_new, ht), nsn=S(nsn_new, nsn), dzsn=S(dzsn_new, dzsn), wsn=S(wsn_new, wsn), hsn=S(hsn_new, hsn),
+            fr_snow=S(fr_snow_new, fr_snow), theta=S(reth_new["theta"], theta), fice=S(retp_new["fice"], fice), tp=S(retp_new["tp"], tp),
+            tsn1=S(retp_new["tsn1"], tsn1), fw=S(reth_new["fw"], fw), fd=S(reth_new["fd"], fd), fm=S(reth_new["fm"], fm),
+            fw0=S(reth_new["fw0"], fw0), fd0=S(reth_new["fd0"], fd0), abetad=S(evap_out["abetad"], carry["abetad"]),
+            snsh_tot_carry=S(flhg_out["snsh_tot"], carry["snsh_tot_carry"]), evap_tot_carry=S(flg_out["evap_tot"], carry["evap_tot_carry"]),
+            acc={k: S(acc_new[k], acc[k]) for k in acc},
+            dtr=jnp.where(active_i, dtr_new, dtr), nit=carry["nit"] + active_i.astype(jnp.int32),
+            exhausted=carry["exhausted"] | (active_i & last_lane & (dtm < dtr)),
+            epb=S(epb, carry["epb"]), epv=S(epv, carry["epv"]), evapb=S(evap_out["evapb"], carry["evapb"]),
+            evapvw=S(evap_out["evapvw"], carry["evapvw"]), evapvd=S(evap_out["evapvd"], carry["evapvd"]))
+        return new_carry, None
+
+    # lax.while_loop: runs only as many iterations as the slowest cell needs (all lanes are masked by `dtr > 0`, so the result is bitwise the same as running
+    # the fixed W lanes of a scan, which the D202 prototype did); the last lane (i == W-1) is still forced to finish, as before.
+    def _cond(c):
+        return (c["i"] < W) & jnp.any(c["carry"]["dtr"] > 0.0)
+
+    def _body(c):
+        new_carry, _ = _substep_body(c["carry"], c["i"])
+        return dict(carry=new_carry, i=c["i"] + 1)
+
+    final_carry = jax.lax.while_loop(_cond, _body, dict(carry=init_carry, i=jnp.zeros((), dtype=jnp.int32)))["carry"]
+    acc = final_carry["acc"]
+    final = accm_final(acc, static, fb, fv, final_carry["snsh_tot_carry"], final_carry["evap_tot_carry"], dt_run, forcing["rho"], forcing["ch"], forcing["ts"],
+                         forcing["gusti"], forcing["tprime"], forcing["vs"])
+    rows = jnp.arange(N)
+    last = jnp.clip(final_carry["nit"] - 1, 0, W0 - 1)
+    pv = static["process_vege"]
+    hyd_f = hydra(static, final_carry["theta"], final_carry["fice"])
+    ev_f = evap_limits(static, final_carry["w"], final_carry["theta"], hyd_f["d"], final_carry["tp"], final_carry["fice"], final_carry["tsn1"],
+                         final_carry["nsn"], final_carry["wsn"], final_carry["fr_snow"], dt_run, forcing["pr"],
+                         jnp.where(pv[:, None], ent_betadl[rows, last], 0.0), jnp.where(pv, ent_cnc[rows, last], 0.0), forcing["ch"], forcing["vs"],
+                         forcing["rho"], forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"], forcing["qm1"],
+                         jnp.where(pv, ent_lai[rows, last], 0.0), final_carry["fm"])
+    bad = jnp.isnan(ev_f["evap_max_out"])
+    return dict(w=final_carry["w"], ht=final_carry["ht"], nsn=final_carry["nsn"], dzsn=final_carry["dzsn"], wsn=final_carry["wsn"], hsn=final_carry["hsn"],
+                fr_snow=final_carry["fr_snow"], tp=final_carry["tp"], fice=final_carry["fice"], tbcs=final["tbcs"], tsns=final["tsns"], ashg=acc["ashg"],
+                alhg=acc["alhg"], aevap=final["aevap"], aruns=final["aruns"], arunu=final["arunu"], aeruns=acc["aeruns"], aerunu=acc["aerunu"], ae0=acc["ae0"],
+                abetad=final_carry["abetad"], evap_max_ij=jnp.where(bad, 0.0, ev_f["evap_max_out"]), fr_sat_ij=jnp.where(bad, 0.0, ev_f["fr_sat"]),
+                nit_gdtm=final_carry["nit"], nit_exhausted=final_carry["exhausted"])
+
+
+# the schedule switch: 'computed' (advnc_gdtm, the Fortran loop) or 'recorded' (advnc, replay of the recorded nit/dts).  Environment variable
+# ROCKE_GHY_SCHEDULE selects the default at import; set_schedule() changes it for code that looks at `schedule()` when it BUILDS (not inside a running jit).
+_SCHEDULE = os.environ.get("ROCKE_GHY_SCHEDULE", "computed")   # D204: default = computed (validated on real records, scoping/D204_GDTM_ENTRY.md); "recorded" = the old replay
+
+
+def set_schedule(mode):
+    global _SCHEDULE
+    assert mode in ("computed", "recorded"), mode
+    _SCHEDULE = mode
+
+
+def schedule():
+    return _SCHEDULE
+
+
+def advnc_sched(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11, mode=None):
+    """advnc (recorded nit/dts replay) or advnc_gdtm (schedule computed from the state), by `mode` (default: the module switch, read at trace time)."""
+    m = mode or _SCHEDULE
+    if m == "computed":
+        return advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=max_substeps)
+    return advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=max_substeps)

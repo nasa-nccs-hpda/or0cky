@@ -1,0 +1,1027 @@
+{
+ "date": "nov26",
+ "n": 54,
+ "header": {
+  "timestamp_utc": "2026-10-09T04:55:32+00:00",
+  "timestamp_local": "2026-10-09T00:55:32-04:00",
+  "host": {
+   "hostname": "forest204",
+   "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+   "machine": "x86_64",
+   "cpu_count_visible": 12
+  },
+  "core_affinity": {
+   "cores": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "n_cores": 5,
+   "pid": 1194909
+  },
+  "thread_env": {
+   "OMP_NUM_THREADS": "1",
+   "MKL_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null,
+   "NUMEXPR_NUM_THREADS": null,
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "TF_NUM_INTRAOP_THREADS": null,
+   "XLA_PYTHON_CLIENT_PREALLOCATE": null
+  },
+  "xla_flags": {
+   "XLA_FLAGS": "--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover",
+   "documented_flags_present": true,
+   "required": [
+    "--xla_cpu_max_isa=AVX",
+    "--xla_disable_hlo_passes=algsimp"
+   ],
+   "jax_imported_before_harness": true
+  },
+  "jax": {
+   "version": "0.5.3",
+   "backend": "cpu",
+   "devices": [
+    "TFRT_CPU_0"
+   ],
+   "x64_enabled": true,
+   "jaxlib_version": "0.5.3"
+  },
+  "compile_cache": {
+   "checked": [
+    "JAX_COMPILATION_CACHE_DIR",
+    "CLOUDS_JAX_CACHE",
+    "jax.config.jax_compilation_cache_dir"
+   ],
+   "cache_set": false
+  },
+  "git": {
+   "head": "11a8b4c716bc0454ee016996c6fce5a1c15f85cd",
+   "branch": "full-fidelity-port",
+   "modified_tracked_files": 4,
+   "modified_tracked_list": [
+    "rocke3d_jax/fullfidelity/ghy_jax.py",
+    "rocke3d_jax/fullfidelity/jax_coupled.py",
+    "rocke3d_jax/fullfidelity/jax_surface.py",
+    "rocke3d_jax/fullfidelity/land_chain.py"
+   ],
+   "untracked_entries": 26
+  },
+  "libimf": {
+   "available": true,
+   "search_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+  },
+  "versions": {
+   "python": "3.10.16",
+   "python_full": "3.10.16 (main, Dec 11 2024, 16:24:50) [GCC 11.2.0]",
+   "numpy": "2.2.4",
+   "executable": "/home/gtamkin/.conda/envs/graphcast-env/bin/python"
+  },
+  "argv": [
+   "d193_ref_day.py",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d204/ref",
+   "/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/170e1eae-6e03-4e76-bfe8-7e8523bf7a9a/scratchpad/d204/c1",
+   "54"
+  ],
+  "sentences": {
+   "radiation": "radiation computed by the original Fortran (hybrid component)",
+   "libimf": "libimf math functions provided by a host callback to the original build's runtime"
+  },
+  "extra": {
+   "task": "D193 NumPy libimf chain reference (closed surface), one day",
+   "date": "nov26"
+  }
+ },
+ "steps": [
+  {
+   "k": 0,
+   "itime": 33312,
+   "wall": 205.74296405212954,
+   "daily": null,
+   "c1_total": {
+    "A": 561,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 561,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 1,
+   "itime": 33313,
+   "wall": 44.999533304944634,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 2,
+   "itime": 33314,
+   "wall": 25.33213136298582,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 3,
+   "itime": 33315,
+   "wall": 27.93672147905454,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 4,
+   "itime": 33316,
+   "wall": 34.69122983282432,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 5,
+   "itime": 33317,
+   "wall": 29.531205364037305,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 6,
+   "itime": 33318,
+   "wall": 25.393833670997992,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 7,
+   "itime": 33319,
+   "wall": 23.59236939600669,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 8,
+   "itime": 33320,
+   "wall": 25.14543118700385,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 9,
+   "itime": 33321,
+   "wall": 54.65496263210662,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 10,
+   "itime": 33322,
+   "wall": 24.658227073028684,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 11,
+   "itime": 33323,
+   "wall": 46.21231404598802,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 12,
+   "itime": 33324,
+   "wall": 24.392873518168926,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 13,
+   "itime": 33325,
+   "wall": 24.39648209908046,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 14,
+   "itime": 33326,
+   "wall": 22.683663812931627,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 15,
+   "itime": 33327,
+   "wall": 25.99253466888331,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 16,
+   "itime": 33328,
+   "wall": 26.681712610879913,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 17,
+   "itime": 33329,
+   "wall": 43.78253758116625,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 18,
+   "itime": 33330,
+   "wall": 22.729644533945248,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 19,
+   "itime": 33331,
+   "wall": 21.580588337033987,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 20,
+   "itime": 33332,
+   "wall": 22.685632358072326,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 21,
+   "itime": 33333,
+   "wall": 22.97858030581847,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 22,
+   "itime": 33334,
+   "wall": 49.787336360896006,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 23,
+   "itime": 33335,
+   "wall": 23.189426400931552,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 24,
+   "itime": 33336,
+   "wall": 23.610721830977127,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 25,
+   "itime": 33337,
+   "wall": 22.433610843960196,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 26,
+   "itime": 33338,
+   "wall": 23.350178287830204,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 27,
+   "itime": 33339,
+   "wall": 23.899322588928044,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 28,
+   "itime": 33340,
+   "wall": 27.72516782185994,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 29,
+   "itime": 33341,
+   "wall": 25.698267986997962,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 30,
+   "itime": 33342,
+   "wall": 23.225361781893298,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 31,
+   "itime": 33343,
+   "wall": 23.712134347995743,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 32,
+   "itime": 33344,
+   "wall": 30.63741291803308,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 33,
+   "itime": 33345,
+   "wall": 24.699161185882986,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 34,
+   "itime": 33346,
+   "wall": 44.313329620985314,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 35,
+   "itime": 33347,
+   "wall": 45.27634889213368,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 36,
+   "itime": 33348,
+   "wall": 23.76341274101287,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 37,
+   "itime": 33349,
+   "wall": 31.858613691059873,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 38,
+   "itime": 33350,
+   "wall": 24.549379535019398,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 39,
+   "itime": 33351,
+   "wall": 31.615603825077415,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 40,
+   "itime": 33352,
+   "wall": 24.121971752960235,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 41,
+   "itime": 33353,
+   "wall": 23.643441250780597,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 42,
+   "itime": 33354,
+   "wall": 23.64449602481909,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 43,
+   "itime": 33355,
+   "wall": 23.437175043160096,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 44,
+   "itime": 33356,
+   "wall": 23.293637096881866,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 45,
+   "itime": 33357,
+   "wall": 23.084653561003506,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 46,
+   "itime": 33358,
+   "wall": 23.432484624907374,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 47,
+   "itime": 33359,
+   "wall": 25.375799383036792,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 48,
+   "itime": 33360,
+   "wall": 45.044321215944365,
+   "daily": {
+    "deltam": -3.456079866737127e-11,
+    "smass": 5.11747063382544e+18,
+    "mdryanow": 10034.007535702849
+   },
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 49,
+   "itime": 33361,
+   "wall": 26.042652770178393,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 50,
+   "itime": 33362,
+   "wall": 25.40728660696186,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 51,
+   "itime": 33363,
+   "wall": 44.77300066896714,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 52,
+   "itime": 33364,
+   "wall": 25.974697427125648,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  },
+  {
+   "k": 53,
+   "itime": 33365,
+   "wall": 32.65930936182849,
+   "daily": null,
+   "c1_total": {
+    "A": 572,
+    "B": 0,
+    "C": 0,
+    "D": 0
+   },
+   "n_arrays": 572,
+   "not_A": {},
+   "keys_on_one_side_only": [
+    "land/p4_ij"
+   ]
+  }
+ ],
+ "taskset": [
+  0,
+  1,
+  2,
+  6,
+  7
+ ]
+}

@@ -229,6 +229,8 @@ def nit_rebuild(tpl, host, prec, eprec, precss, strict=True):
     nit == ffnit of build_batch_nit is NOT caught.  Returns (tpl, n_cells, n_device_to_host_arrays)."""
     import ghy_advnc_test as AT
     hits = host.get('nit_hit')
+    if J.schedule() == 'computed':
+        return tpl, 0, 0            # D204: the GHY schedule is computed from the state (ghy_jax.advnc_gdtm); the recorded/rebuilt edts/nsub are not used
     if hits is None or not any(len(h) for h in hits):
         return tpl, 0, 0
     P, E, Ps = (np.asarray(x) for x in jax.device_get((prec, eprec, precss)))      # the declared device->host read (1 jax.device_get call, 3 arrays)
@@ -263,7 +265,7 @@ def nit_rebuild(tpl, host, prec, eprec, precss, strict=True):
 
 def _ghy_batch(g, AT, batch=None):
     """Host part of land_chain.run_ghy: the recorded batch (Ent exports, forcing, start state), conditioned as D135/D136 (all recorded data)."""
-    (s0, d0, f, edts, ecnc, ebet, elai, ns, dt, snowm, wsc, shc, refs) = (batch or AT.build_batch)(g)
+    (s0, d0, f, edts, ecnc, ebet, elai, ns, dt, snowm, wsc, shc, refs) = (batch or (AT.build_batch_recorded if J.schedule() == 'computed' else AT.build_batch))(g)
     f = dict(f)
     pr = np.maximum(f["pr"], 0.0)
     prs = np.minimum(np.maximum(f["prs"], 0.0), pr)
@@ -390,7 +392,7 @@ def _land(p4, out, gb, dyn, q1_land, ma1_land, trup, max_substeps):
     d0 = dict(gb['dyn0'])
     if dyn is not None:
         d0.update(dyn)
-    ghy = J.advnc(gb['static'], d0, forcing, gb['edts'], gb['ecnc'], gb['ebet'], gb['elai'], gb['nsub'], gb['dt'], gb['snowm'],
+    ghy = J.advnc_sched(gb['static'], d0, forcing, gb['edts'], gb['ecnc'], gb['ebet'], gb['elai'], gb['nsub'], gb['dt'], gb['snowm'],
                   max_substeps=max_substeps)
     rcdmws = out["cm"] * out["ws"] * rho
     dlw = DT * (trup - STBO * _pow4(ghy["tbcs"] + TF))

@@ -102,7 +102,29 @@ def test_whole_stage_c1_bitwise_vs_numpy(world):
 DAYDIR, IT_NIT = 'nov26_day', 33319          # step 7 of the nov26 day: first step with a cell of ffnit 12, cell (64,19)
 
 
-def test_nit_rule_ffnit_gt_11_uses_our_precipitation():
+@pytest.fixture
+def recorded_schedule():
+    """D204: the production default is the computed GHY schedule (nit_rebuild is then a no-op); the D195 rule below belongs to the old recorded-schedule path."""
+    import ghy_jax as GJ
+    old = GJ.schedule()
+    GJ.set_schedule('recorded')
+    yield
+    GJ.set_schedule(old)
+
+
+def test_nit_rebuild_is_noop_with_computed_schedule():
+    import ghy_jax as GJ
+    old = GJ.schedule()
+    GJ.set_schedule('computed')
+    try:
+        sentinel = {'ghy': object()}
+        out, n, ntr = JS.nit_rebuild(sentinel, {'nit_hit': [np.array([0]), np.array([1])]}, None, None, None)
+        assert out is sentinel and n == 0 and ntr == 0
+    finally:
+        GJ.set_schedule(old)
+
+
+def test_nit_rule_ffnit_gt_11_uses_our_precipitation(recorded_schedule):
     import ghy_advnc_test as AT
     import os.path as op
     if not op.exists(f'{A.FF}/{DAYDIR}/ffg_{IT_NIT}.bin') and not op.exists(f'{A.FF}/{DAYDIR}/ffg_{IT_NIT}'):
