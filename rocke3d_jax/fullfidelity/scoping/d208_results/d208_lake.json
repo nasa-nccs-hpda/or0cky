@@ -1,0 +1,39 @@
+{
+ "counters": {
+  "cells_visited": 753,
+  "new_flake_ne_flake": 717,
+  "expand": 338,
+  "shrink": 0,
+  "have_lake": 631,
+  "no_lake": 86,
+  "crunch": 20,
+  "layer_entrain": 259,
+  "layer_new": 6,
+  "layer_scale": 366,
+  "dont_saturate": 0,
+  "saturate_solve": 436,
+  "ice_dump": 0
+ },
+ "pow": "libimf",
+ "n_flake_changed": 631,
+ "max_abs_dflake": 0.004921102086161648,
+ "n_rsi_changed": 284,
+ "n_dmwldf_pos": 752,
+ "reset_surf_fluxes": 633,
+ "not_applied": [
+  "RESET_SURF_FLUXES (FSF/TRSURF)",
+  "MDWNIMP/EDWNIMP into daily_LI",
+  "daily_EARTH",
+  "atmlnd fr_snow_rad / set_new_ghy_cells_outputs (radiation replayed)"
+ ],
+ "land_fractions": {
+  "n_shrunk": 293,
+  "n_expanded": 338,
+  "new_cell_rows": [],
+  "n_changed_cells_without_land_row": 0
+ },
+ "seconds": {
+  "total": 3.4017364538740367,
+  "statics_rebuild": 3.260188456159085
+ }
+}

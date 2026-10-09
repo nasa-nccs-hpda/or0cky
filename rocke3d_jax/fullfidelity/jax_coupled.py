@@ -152,6 +152,7 @@ class Coupled:
         self.ocean_keys = list(self.SS0['ocean'].keys())
         self._last_ghy = None             # D205: (ffg rows of the substep 2 of the last step, their flat cells) for the DMWLDF of the day-boundary lake update
         self.daily_lake_info = None
+        self._land3 = None                # D208: underwater-fraction soil state (w, ht of GHY ibv = 3) carried across day boundaries (first boundary: from the recorded rows)
         self.setup_seconds = time.perf_counter() - t0
 
     def _build_jits(self, only=None):
@@ -169,14 +170,17 @@ class Coupled:
             setattr(self, name, mk[name]())
         self.mask_check = jax.jit(self._mask_check)
 
-    def daily_lake_update(self, state, log=print):
+    def daily_lake_update(self, state, log=print, land_fractions=True):
         """D205: the end-of-day lake update daily_LAKE (LAKES.f:2492; daily_lake.py, bitwise equal to the compiled Fortran on the nov26 case and on 12 stress cases) applied to
         the state at the day boundary (call between the last step of a day and the first of the next, after DAILY_ATMDYN).  ONE declared host round trip: the lake, ice and
         atmosphere-grid lake exports (device -> host), the soil water of the last land step (for DMWLDF, GHY_DRV.f:4054) -> NumPy daily_lake -> device.  Then the lake
         fractions FLAKE/FLAND/FEARTH of the statics change: self.st / the geometry / K / Kb / static181 / melt_geo are rebuilt and the jitted functions and the SURFACE
         stage cache are dropped (recompiled at the next step).  NOT applied (declared, in self.daily_lake_info['not_applied']): the GHY water/heat transfer for the changed
         lake fraction (GHY_DRV.f:4531, uses DMWLDF, DGML, svflake - returned in the info), FSF/TRSURF reset (RESET_SURF_FLUXES, radiation is replayed), MDWNIMP/EDWNIMP
-        (daily_LI), the soil-moisture bookkeeping of daily_EARTH.  Returns (new state, info)."""
+        (daily_LI), the soil-moisture bookkeeping of daily_EARTH.  Returns (new state, info).
+        D208: with land_fractions=True (default) the GHY transfer IS applied (GHY_DRV.f:4367 update_land_fractions, daily_land_fractions.py, bitwise equal to the compiled
+        Fortran subroutine; vs the real step-48 entry record: scoping/D208_LAND_FRACTIONS_ENTRY.md) to land_prev['dyn_next'] w, ht, fr_snow; the underwater-fraction state
+        (ibv = 3, not carried by the land chain) comes from the recorded rows of the last step at the first boundary and from self._land3 afterwards."""
         import daily_lake as DL
         import ghy_ref as GR
         import jax_static as JST
@@ -202,6 +206,35 @@ class Coupled:
                     reset_surf_fluxes=len(out['reset_surf_fluxes']), dmwldf=out['dmwldf'], dgml=out['dgml'], svflake=out['svflake'],
                     mdwnimp=out['mdwnimp'], edwnimp=out['edwnimp'],
                     not_applied=['GHY dfrac water/heat transfer (GHY_DRV.f:4531)', 'RESET_SURF_FLUXES (FSF/TRSURF)', 'MDWNIMP/EDWNIMP into daily_LI', 'daily_EARTH'])
+        # ---- D208: the land half of the daily lake update (water/heat between the lake and the soil fractions)
+        land_new = state['land_prev']
+        if land_fractions:
+            import daily_land_fractions as DLF
+            lp = state['land_prev']
+            dyn = lp['dyn_next']
+            ii, jj = (ecells % IM).astype(int), (ecells // IM).astype(int)
+            wd, hd = np.asarray(dyn['w'], dtype=np.float64), np.asarray(dyn['ht'], dtype=np.float64)
+            if self._land3 is None:
+                self._land3 = dict(w=np.stack([r[8:29].reshape(7, 3, order='F')[:, 2] for r in rows]), ht=np.stack([r[29:50].reshape(7, 3, order='F')[:, 2] for r in rows]))
+            w7 = np.concatenate([wd[:, :7, :2], self._land3['w'][:, :, None]], axis=2)
+            h7 = np.concatenate([hd[:, :7, :2], self._land3['ht'][:, :, None]], axis=2)
+            dz_r, q_r, fv_r = DLF.rows_from_ffg(rows)
+            SL = dict(w=w7, ht=h7, fr_snow=np.asarray(dyn['fr_snow'], dtype=np.float64), dz=dz_r, q=q_r, fv=fv_r,
+                      fearth=out['fearth'][ii, jj], flake=out['flake'][ii, jj], svflake=out['svflake'][ii, jj], focean=np.asarray(geo['focean'])[ii, jj],
+                      dmwldf=out['dmwldf'][ii, jj], dgml=out['dgml'][ii, jj], byaxyp=1.0 / np.asarray(self.st['axyp'])[ii, jj])
+            lout, linfo = DLF.update_land_fractions(SL, GR.THM[0, :])
+            self._land3 = dict(w=lout['w'][:, :, 2].copy(), ht=lout['ht'][:, :, 2].copy())
+            wn, hn = np.array(wd, copy=True), np.array(hd, copy=True)
+            wn[:, :7, :2], hn[:, :7, :2] = lout['w'][:, :, :2], lout['ht'][:, :, :2]
+            conv = lambda new, old: jnp.asarray(new, dtype=old.dtype) if hasattr(old, 'devices') else np.asarray(new, dtype=old.dtype)    # noqa: E731
+            dyn_n = dict(dyn, w=conv(wn, dyn['w']), ht=conv(hn, dyn['ht']), fr_snow=conv(lout['fr_snow'], dyn['fr_snow']))
+            land_new = dict(lp, dyn_next=dyn_n)
+            chg = (out['flake'] != out['svflake'])
+            rowmask = np.zeros(chg.shape, bool)
+            rowmask[ii, jj] = True
+            info['land_fractions'] = dict(n_shrunk=linfo['n_shrunk'], n_expanded=linfo['n_expanded'], new_cell_rows=linfo['new_cell_rows'].tolist(),
+                                          n_changed_cells_without_land_row=int((chg & ~rowmask & (out['fearth'] > 0) & (np.asarray(geo['focean']) < 1)).sum()))
+            info['not_applied'] = [x for x in info['not_applied'] if 'GHY dfrac' not in x] + ['atmlnd fr_snow_rad / set_new_ghy_cells_outputs (radiation replayed)']
         # ---- device state
         newice = dict(sf['ice'])
         for k in ('rsi', 'msi', 'snowi', 'hsi'):
@@ -234,8 +267,10 @@ class Coupled:
         self.daily_lake_info = info
         new = dict(state)
         new['surf'] = surf
+        new['land_prev'] = land_new
         log(f"  daily_LAKE at the day boundary: {info['n_flake_changed']} cells with FLAKE changed (max |dFLAKE| {info['max_abs_dflake']:.3e}), {info['n_rsi_changed']} RSI changed, "
-            f"DMWLDF>0 in {info['n_dmwldf_pos']} cells, counters {info['counters']}")
+            f"DMWLDF>0 in {info['n_dmwldf_pos']} cells, counters {info['counters']}"
+            + (f"; land fractions: {info['land_fractions']['n_shrunk']} shrunk, {info['land_fractions']['n_expanded']} expanded rows" if 'land_fractions' in info else ''))
         return new, info
 
     # ------------------------------------------------------------------------------------------------ small jitted helpers

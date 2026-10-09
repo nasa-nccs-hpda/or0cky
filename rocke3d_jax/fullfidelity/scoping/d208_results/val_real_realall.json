@@ -1,0 +1,249 @@
+{
+ "n_rows": 753,
+ "n_shrunk": 293,
+ "n_expanded": 339,
+ "port_vs_fortran": {
+  "w": [
+   0.0,
+   0,
+   15813
+  ],
+  "ht": [
+   0.0,
+   0,
+   15813
+  ],
+  "fr_snow": [
+   0.0,
+   0,
+   1506
+  ]
+ },
+ "new_cell_rows": [],
+ "vs_real": {
+  "w1": {
+   "real_changed_cells": 293,
+   "port_changed_cells": 293,
+   "changed_both": 293,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 0.0,
+   "max_abs_err_without": 0.0002367736489750638,
+   "max_real_change": 0.0002367736489750638,
+   "cells_err_with_gt_1em9_rel": 0,
+   "cells_err_without_gt_1em9_rel": 293,
+   "cells_nearer": 293,
+   "cells_farther": 0,
+   "cells_equal": 460,
+   "median_rel_err_changed_with": 0.0,
+   "median_rel_err_changed_without": 1.0
+  },
+  "w2": {
+   "real_changed_cells": 293,
+   "port_changed_cells": 293,
+   "changed_both": 293,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 0.0,
+   "max_abs_err_without": 0.0002477664956597181,
+   "max_real_change": 0.0002477664956597181,
+   "cells_err_with_gt_1em9_rel": 0,
+   "cells_err_without_gt_1em9_rel": 293,
+   "cells_nearer": 293,
+   "cells_farther": 0,
+   "cells_equal": 460,
+   "median_rel_err_changed_with": 0.0,
+   "median_rel_err_changed_without": 1.0
+  },
+  "w3": {
+   "real_changed_cells": 301,
+   "port_changed_cells": 301,
+   "changed_both": 301,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 0.0,
+   "max_abs_err_without": 3.726505627929533e-05,
+   "max_real_change": 3.726505627929533e-05,
+   "cells_err_with_gt_1em9_rel": 0,
+   "cells_err_without_gt_1em9_rel": 65,
+   "cells_nearer": 301,
+   "cells_farther": 0,
+   "cells_equal": 452,
+   "median_rel_err_changed_with": 0.0,
+   "median_rel_err_changed_without": 1.0
+  },
+  "ht1": {
+   "real_changed_cells": 293,
+   "port_changed_cells": 293,
+   "changed_both": 293,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 0.0,
+   "max_abs_err_without": 28833.203589714132,
+   "max_real_change": 28833.203589714132,
+   "cells_err_with_gt_1em9_rel": 0,
+   "cells_err_without_gt_1em9_rel": 293,
+   "cells_nearer": 293,
+   "cells_farther": 0,
+   "cells_equal": 460,
+   "median_rel_err_changed_with": 0.0,
+   "median_rel_err_changed_without": 1.0
+  },
+  "ht2": {
+   "real_changed_cells": 293,
+   "port_changed_cells": 293,
+   "changed_both": 293,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 0.0,
+   "max_abs_err_without": 26149.38224650547,
+   "max_real_change": 26149.38224650547,
+   "cells_err_with_gt_1em9_rel": 0,
+   "cells_err_without_gt_1em9_rel": 293,
+   "cells_nearer": 293,
+   "cells_farther": 0,
+   "cells_equal": 460,
+   "median_rel_err_changed_with": 0.0,
+   "median_rel_err_changed_without": 1.0
+  },
+  "ht3": {
+   "real_changed_cells": 339,
+   "port_changed_cells": 339,
+   "changed_both": 339,
+   "port_only": 0,
+   "real_only": 0,
+   "max_abs_err_with": 61856.20743085444,
+   "max_abs_err_without": 5203077.395571992,
+   "max_real_change": 5203077.395571992,
+   "cells_err_with_gt_1em9_rel": 93,
+   "cells_err_without_gt_1em9_rel": 339,
+   "cells_nearer": 338,
+   "cells_farther": 1,
+   "cells_equal": 414,
+   "median_rel_err_changed_with": 1.4478334348897023e-08,
+   "median_rel_err_changed_without": 1.0
+  },
+  "fr_snow1": {
+   "real_changed": 294,
+   "port_changed": 294,
+   "both": 294,
+   "max_err_with": 0.0,
+   "max_err_without": 0.0003053114851816474,
+   "nearer": 294,
+   "farther": 0,
+   "equal": 459
+  },
+  "fr_snow2": {
+   "real_changed": 364,
+   "port_changed": 364,
+   "both": 364,
+   "max_err_with": 0.0,
+   "max_err_without": 0.0035783393604981173,
+   "nearer": 364,
+   "farther": 0,
+   "equal": 389
+  }
+ },
+ "heat_per_m3": {
+  "n": 327,
+  "median_rel_diff": 4.4774662993172377e-07,
+  "p90": 0.0005604601867706463,
+  "max": 1.0000001051845548
+ },
+ "worst_w3": [
+  [
+   20,
+   44,
+   0.0,
+   0.13036854595665726
+  ],
+  [
+   57,
+   43,
+   0.0,
+   0.1303685459566572
+  ],
+  [
+   40,
+   43,
+   0.0,
+   0.13036854595665745
+  ],
+  [
+   32,
+   43,
+   0.0,
+   0.1303685459566572
+  ],
+  [
+   23,
+   43,
+   0.0,
+   0.13036854595665717
+  ]
+ ],
+ "worst_ht3": [
+  [
+   57,
+   23,
+   61856.20743085444,
+   114073321.22152124
+  ],
+  [
+   41,
+   21,
+   23901.063647270203,
+   84653701.43008126
+  ],
+  [
+   39,
+   24,
+   11523.50097746402,
+   100844522.83805303
+  ],
+  [
+   39,
+   23,
+   9671.172399453819,
+   87501198.26372215
+  ],
+  [
+   39,
+   22,
+   8938.845133572817,
+   103136731.43964607
+  ]
+ ],
+ "worst_w1": [
+  [
+   20,
+   44,
+   0.0,
+   0.11460878576342037
+  ],
+  [
+   57,
+   43,
+   0.0,
+   0.07237487333536975
+  ],
+  [
+   40,
+   43,
+   0.0,
+   0.12299437415965128
+  ],
+  [
+   32,
+   43,
+   0.0,
+   0.053738827038673005
+  ],
+  [
+   23,
+   43,
+   0.0,
+   0.0432333532609399
+  ]
+ ]
+}

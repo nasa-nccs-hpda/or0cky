@@ -1,0 +1,35 @@
+{
+ "w": {
+  "real_changed": 293,
+  "ours_changed": 293,
+  "both": 291,
+  "median_rel_increment_error": 0.0008867850539527629,
+  "p90": 0.03687436048489773,
+  "max": 1.0,
+  "frac_cells_within_1pct": 0.8225255972696246,
+  "rms_real_increment": 8.696774212529698e-06,
+  "rms_increment_error": 1.7981403259773358e-07
+ },
+ "ht": {
+  "real_changed": 293,
+  "ours_changed": 293,
+  "both": 291,
+  "median_rel_increment_error": 0.0010902266832477437,
+  "p90": 0.03682268039126882,
+  "max": 1.0,
+  "frac_cells_within_1pct": 0.8054607508532423,
+  "rms_real_increment": 1014.8296536421473,
+  "rms_increment_error": 19.71272786093501
+ },
+ "fr_snow": {
+  "real_changed": 364,
+  "ours_changed": 363,
+  "both": 363,
+  "median_rel_increment_error": 0.0008513231488715698,
+  "p90": 0.025034494696521848,
+  "max": 3.1049845827728406,
+  "frac_cells_within_1pct": 0.8131868131868132,
+  "rms_real_increment": 0.00010281105136608951,
+  "rms_increment_error": 2.13872926633139e-06
+ }
+}
