@@ -1,0 +1,12 @@
+ocean ice cells present 855 max|d| 0.10513586041648715 n>1e-3 102 n>0.1 1 n>1 0 | absent cells max|d| 0.8092608584353762
+   argmax present (np.int64(21), np.int64(33)) ours 7.049424375926653 rec 6.9442885155101655
+land ice cells present 417 max|d| 0.048210700199266654 n>1e-3 10 n>0.1 0 n>1 0 | absent cells max|d| 0.8092608584353762
+   argmax present (np.int64(35), np.int64(4)) ours 8.623702788962706 rec 8.671913489161973
+land cells present 753 max|d| 0.10513586041648715 n>1e-3 61 n>0.1 1 n>1 0 | absent cells max|d| 0.8092608584353762
+   argmax present (np.int64(21), np.int64(33)) ours 7.049424375926653 rec 6.9442885155101655
+ocean ice cells present 859 max|d| 0.1790612538828098 n>1e-3 257 n>0.1 5 n>1 0 | absent cells max|d| 13.319297930409238
+   argmax present (np.int64(21), np.int64(5)) ours 6.038378063861901 rec 6.217439317744711
+land ice cells present 417 max|d| 0.03885678645510815 n>1e-3 49 n>0.1 0 n>1 0 | absent cells max|d| 13.319297930409238
+   argmax present (np.int64(35), np.int64(4)) ours 4.747194901962528 rec 4.786051688417636
+land cells present 753 max|d| 0.1559176750800475 n>1e-3 137 n>0.1 4 n>1 0 | absent cells max|d| 13.319297930409238
+   argmax present (np.int64(21), np.int64(33)) ours 6.258272733989814 rec 6.102355058909766

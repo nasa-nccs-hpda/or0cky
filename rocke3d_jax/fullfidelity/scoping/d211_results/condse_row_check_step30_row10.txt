@@ -1,0 +1,7 @@
+SNOAGE max abs diff 0.0 n!= 0
+PREC max abs diff 0.0 n!= 0
+EPREC max abs diff 0.0 n!= 0
+PRECSS max abs diff 0.0 n!= 0
+T max abs diff 0.0 n!= 0
+Q max abs diff 0.0 n!= 0
+cell(32,10) SNOAGE port [13.94009317 13.94009317 13.94009317] rec [13.94009317 13.94009317 13.94009317] PREC port 1.5973696346094561 rec 1.5973696346094561 EPREC 0.0 0.0 rec entry SNOAGE [13.94009317 13.94009317 13.94009317]
