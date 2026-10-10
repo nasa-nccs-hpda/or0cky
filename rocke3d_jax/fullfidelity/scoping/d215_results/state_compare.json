@@ -1,0 +1,70 @@
+{
+ "run_ens1": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [],
+  "n_differ": 0,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "run_ens2": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "run_ens3": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "run_pris1": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "run_pris2": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "run_pris3": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ },
+ "../real54": {
+  "n_numeric_vars": 257,
+  "nonfinite": 0,
+  "vars_differing_from_ens1": [
+   "cputime"
+  ],
+  "n_differ": 1,
+  "itime": 33366,
+  "itimee": 33366
+ }
+}

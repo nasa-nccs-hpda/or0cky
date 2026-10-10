@@ -1,0 +1,5 @@
+ 17:00:14 up 24 days,  8:53,  6 users,  load average: 9.23, 6.99, 7.06
+PSR %CPU COMMAND
+  2 12.5 claude
+  2 10.1 claude
+  5  2.6 claude

@@ -1,0 +1,763 @@
+ ARG -i
+ ARG I
+ Num MPI Processes:            1
+ Using standard Earth orbit
+ Fixed orbital parameters from year   1850.00000000000       CE:
+ Fixed orbital params from year =    1850.00000000000       CE:
+   Eccentricity:  1.676429465128236E-002
+   Obliquity (degs):   23.4592765450604     
+   Longitude at periapsis (degs from ve):   280.326871404745     
+----------------------------------------------------------|
+  Calendar for Year: 2000                                 |
+  Calendar year length (sec):        31536000.0000        |
+                                                          |
+ Full Name   Abbr | # days  | 1st day | mid day | lst day |
+----------------------------------------------------------|
+ January     JAN  |      31 |       1 |      16 |      31 |
+ February    FEB  |      28 |      32 |      45 |      59 |
+ March       MAR  |      31 |      60 |      75 |      90 |
+ April       APR  |      30 |      91 |     106 |     120 |
+ May         MAY  |      31 |     121 |     136 |     151 |
+ June        JUN  |      30 |     152 |     167 |     181 |
+ July        JUL  |      31 |     182 |     197 |     212 |
+ August      AUG  |      31 |     213 |     228 |     243 |
+ September   SEP  |      30 |     244 |     259 |     273 |
+ October     OCT  |      31 |     274 |     289 |     304 |
+ November    NOV  |      30 |     305 |     320 |     334 |
+ December    DEC  |      31 |     335 |     350 |     365 |
+----------------------------------------------------------|
+  
+johannes kepler birthday......12-27-1571
+vernal equinox................03-21
+winter solstice...............12-22
+summer solstice...............06-22
+autumnal equinox..............09-23
+  
+GEOM_B:   Rank  I_0H   I_0   I_1  I_1H   J_0H   J_0  J_0S  J_1S   J_1  J_1H   QSP  QNP
+GEOM_B:      0     1     1    72    72      1     1     2    45    46    46    T    T
+ GEOMO:   Rank  I_0H   I_0   I_1  I_1H   J_0H   J_0  J_0S  J_1S   J_1  J_1H
+ GEOMO:      0     1     1    72    72      1     1     2    45    46    46
+0                                        GISS CLIMATE MODEL
+
+0P2SAoM40 (ROCKE-3D, based on P2SAoM40 template)                                                                                     
+
+0RESTART DISK READ, UNIT 1, Time=      33312 P2SAoM40 (ROCKE-3D, based on P2SAoM40 template)                                 
+
+ Diag. acc. period:           1  month(s)
+ Read from unit           51 : 
+ Specific Volume (m**3/kg), G:-2-40 (4E3 J/kg), S:0-40 (1E-3), P:0-39 (2E6 Pa)  
+  
+ Read from unit           51 : 
+ Temperature (C), G:-2-40 (4E3 J/kg), S:0-40 (1E-3), P:0-39 (2E6 Pa)            
+  
+ Read from unit           51 : 
+ Specific Heat Capacity (J/kg*C), G:-2-40 (4E3 J/kg), S:0-40 (1E-3)             
+  
+ Read from unit           51 : 
+ Specific Enthalpy (J/kg), G:-2-40 (4E3 J/kg), S:0-40 (1E-3), P:0-39 (2E6 Pa)   
+  
+ Read from unit           51 : 
+ Thermal Expansion Coef. (kg/m**3/C), G:-2-40 (4E3 J/kg), S:0-40 (1E-3), P:0-39 
+ (
+ Read from unit           51 : 
+ Saline Expansion Coef. (kg/m**3/PSU),G:-2-40 (4E3 J/kg), S:0-40 (1E-3), P:0-39 
+ (
+ Minimum J with some ocean:           4
+ Levels for  LSDRAG =          37 ->          40
+ Levels for LPSDRAG =          37 ->          40  near poles
+ C_SDRAG coefficients:  2.000000000000000E-004  2.000000000000000E-004
+  2.000000000000000E-004  2.000000000000000E-004  2.000000000000000E-004
+  2.000000000000000E-004  2.000000000000000E-004  2.000000000000000E-004
+  2.000000000000000E-004  2.000000000000000E-004  2.000000000000000E-004
+  2.000000000000000E-004  2.000000000000000E-004
+ Maximum level for LSCOND calculations (MAXCTOP mb):           29
+ LOW CLOUDS IN LAYERS 1- 9   MID LEVEL CLOUDS IN LAYERS 10-14   HIGH CLOUDS IN LAYERS 15-40
+ Read ISCCP:ISCCP Look up tables: tautab(0:255), invtau(-20:45000)
+
+ Global-Mean Greenhouse Gas Mixing Ratios used in CMIP6 runs
+ obtained using: https://pcmdi.llnl.gov/search/input4mips
+          CO2      N2O      CH4     CFC-11   CFC-12   others
+ Year     ppm      ppm      ppm       ppb      ppb      ppb
+    1  277.137 0.267283 0.653536 0.000000 0.000000 0.032110
+ 1849  284.2070    0.2730    0.8082    0.0000    0.0000    0.0321
+ 1850  284.3170    0.2730    0.8082    0.0000    0.0000    0.0321
+ 1851  284.4510    0.2731    0.8084    0.0000    0.0000    0.0321
+ read GHG table for years           1  -         2014
+0GSFC-2D H2O from CH4 oxidation: zonal means in kg/(km^3*year)  if CH4=1740ppmv
+ Height z(km)=16*log10(1000/P(mb))             T. Hall, Eric Fleming, C.Jackman
+           1 - January
+           2 - February
+           3 - March
+           4 - April
+           5 - May
+           6 - June
+           7 - July
+           8 - August
+           9 - September
+          10 - October
+          11 - November
+          12 - December
+ CALL WRITER(KW,0) :  PAGE 1/2  CONTROL PARAMS   DEFINITIONS
+
+ CONTROL PARAMTER      DEFAULT  PARAMETER DESCRIPTION
+          KUVFAC = 0     0      ON/OFF UV Mult Factor
+          KSNORM = 0     0      Norm S0 when KUVFAC=1
+          KWTRAB = 0     0      WRITER: Qab,Qex,Qsc,g
+          KPGRAD = 1     1      Pole-to-Pole GHG Grad
+          KLATZ0 = 1     1      Use GHG VDist Lat Dep
+          KCLDEM = 1     1      Use TopCloud Scat Cor
+          KANORM = 0     0      Use SGP Atmo Col Norm
+          KFPCO2 = 0     0      1=MOD CO2PROF: FPXCO2
+          KPFOZO = 0     0      1=MOD O3 PROF: FPXOZO
+          KSIALB = 0     0      Schramm"s ocn ice alb
+          KORDER = 0     0      WRITER k-d spec order
+          KUFH2O = 1     1      Col Absorber Scal H2O
+          KUFCO2 = 1     1      Col Absorber Scal CO2
+          KCSELF = 1     1      H2O Cont Self-Broaden
+          KCFORN = 1     1      H2O Con Foreign-Broad
+
+ CONTROL PARAMTER    DEFAULT       SNOW/ICE FACTORS
+          AGEXPF =   0.200      SNOWAGE XPFACTOR SH EARTH
+           SH O  =   0.200         "       "     "  OCICE
+           SH L  =   0.200         "       "     "  LDICE
+           NH E  =   0.200         "       "     NH EARTH
+           NH O  =   0.200         "       "     "  OCICE
+           NH L  =   0.200         "       "     "  LDICE
+          ALBDIF =   0.350      SNOW/ICE ALBDIF  SH EARTH
+           SH O  =   0.350         "       "     "  OCICE
+           SH L  =   0.350         "       "     "  LDICE
+           NH E  =   0.350         "       "     NH EARTH
+           NH O  =   0.350         "       "     "  OCICE
+           NH L  =   0.350         "       "     "  LDICE
+0CONTROL PARAMTER    VALUE                 DEFAULT
+          REFF0  =   0.300                 0.300         
+          VEFF0  =   0.350                 0.350         
+          AVSCAT = 0.01560                 0.01560       
+          ANSCAT = 0.00000                 0.00020       
+          AVFOAM = 0.21970                 0.21970       
+          ANFOAM = 0.15140                 0.15140       
+
+          UV Solar Flux Spectral Partitions and Factors
+          UVWAVL = 0.29500 0.31000 0.36600
+          UVFACT = 0.98011 0.99467 0.99795
+
+  GHGAS         PPMV80    PPGRAD
+    H2O       0.0000000   0.00000
+    CO2     338.7050037   0.00000
+     O3       0.0000000   0.00000
+     O2  209476.0000000   0.00000
+    NO2       0.0000000   0.00000
+    N2O       0.3009650   0.01000
+    CH4       1.5849410   0.09000
+ CCL3P1       0.0001661   0.06000
+ CCL2P2       0.0003022   0.06000
+     N2       0.0000000   0.00000
+  CFC-Y       0.0002114   0.06000
+  CFC-Z       0.0000000   0.06000
+ spec.hum in rad.equ.layers:  2.999991000027000E-006  2.999991000027000E-006  2.999991000027000E-006
+ In read_attr:
+ attribute BCdalbsnname not found for variable global
+ In read_attr:
+ attribute O3name not found for variable global
+ In read_attr:
+ attribute SSAname not found for variable global
+ In read_attr:
+ attribute SULname not found for variable global
+ In read_attr:
+ attribute NITname not found for variable global
+ In read_attr:
+ attribute OCAname not found for variable global
+ In read_attr:
+ attribute BCAname not found for variable global
+ In read_attr:
+ attribute BCBname not found for variable global
+ In read_attr:
+ attribute DUSTname not found for variable global
+ Named river file read
+ In read_attr:
+ attribute ever_br_earlyname not found for variable global
+ In read_attr:
+ attribute ever_br_latename not found for variable global
+ In read_attr:
+ attribute ever_nd_earlyname not found for variable global
+ In read_attr:
+ attribute ever_nd_latename not found for variable global
+ In read_attr:
+ attribute cold_br_earlyname not found for variable global
+ In read_attr:
+ attribute cold_br_latename not found for variable global
+ In read_attr:
+ attribute drought_brname not found for variable global
+ In read_attr:
+ attribute decid_ndname not found for variable global
+ In read_attr:
+ attribute cold_shrubname not found for variable global
+ In read_attr:
+ attribute arid_shrubname not found for variable global
+ In read_attr:
+ attribute c3_grass_pername not found for variable global
+ In read_attr:
+ attribute c4_grassname not found for variable global
+ In read_attr:
+ attribute c3_grass_annname not found for variable global
+ In read_attr:
+ attribute c3_grass_arctname not found for variable global
+ In read_attr:
+ attribute crops_herbname not found for variable global
+ In read_attr:
+ attribute crops_woodyname not found for variable global
+ initializing Ent N_DEPTH            6  N_PFT           16  N_SOILCOV 
+           2  N_OTHER            0  N_COVERTYPES           18
+ In read_attr:
+ attribute irrigation_per_m2name not found for variable global
+  read REGIONS from unit           51 : 
+ REGIONS FOR MODEL II                                                           
+  
+ JET WIND LEVEL FOR DIAG 20
+ LEVELS FOR WIND WAVE POWER DIAG  L850=  6 L300= 18 L50= 29
+ Geopotential height diagnostics at (mb): 
+ 1000.000  925.000  850.000  700.000  600.000  500.000  400.000  300.000  250.000  200.000  150.000  100.000   70.000   50.000   30.000   20.000   10.000    5.000    1.000    0.500
+ Number of AJ diagnostics defined: kajmax=          85
+ Number of AJL diagnostics defined: kajlmax=          61
+ Number of ASJL diagnostics defined: kasjlmax=           5
+ Number of AIJ diagnostics: KAIJ,Kused=        1660         546
+ Number of Wave diagnostics defined: kwavemax=          12
+ Number of AGC diagnostics defined: kagcmax=         100
+ Number of AIJL diagnostics defined: kaijlmax=          22
+ Number of AIJK diagnostics defined: kaijkmax=          15
+ Number of Diurn diagnostics defined: kaddmax=          58
+ Number of IJHC diagnostics defined: kijhcmax=          13
+ IM,JM,LM,LS1=  72  46  40  24
+ PLbot=   984.000000000000        964.000000000000        942.000000000000     
+   917.000000000000        890.000000000000        860.000000000000     
+   825.000000000000        785.000000000000        740.000000000000     
+   692.000000000000        642.000000000000        591.000000000000     
+   539.000000000000        489.000000000000        441.000000000000     
+   396.000000000000        354.000000000000        316.000000000000     
+   282.000000000000        251.000000000000        223.000000000000     
+   197.000000000000        173.000000000000        150.000000000000     
+   128.000000000000        108.000000000000        90.0000000000000     
+   73.0000000000000        57.0000000000000        43.0000000000000     
+   31.0000000000000        20.0000000000000        10.0000000000000     
+   5.62000000000000        3.16000000000000        1.78000000000000     
+   1.00000000000000       0.562000000000000       0.316000000000000     
+  0.178000000000000       0.100000000000000     
+ &INPUTZ
+ ISTART  =          10,
+ IRANDI  =           0,
+ IWRITE  =           0,
+ JWRITE  =           0,
+ ITWRITE =          23,
+ QCHECK  = F,
+ KDIAG   = 12*0,           9,
+ TIMEE   =           0,
+ HOURE   =           3,
+ DATEE   =          27,
+ MONTHE  =          11,
+ YEARE   =        1950,
+ IYEAR1  =        1949,
+ HOURI   =           0,
+ DATEI   =           1,
+ MONTHI  =          12,
+ YEARI   =        1949
+ /
+ &&PARAMETERS
+ kocean =            1
+ obottom_drag =            1
+ ocoastal_drag =            1
+ otide =            0
+ variable_lk =            1
+ init_flake =            1
+ meso_diffusivity_const =    800.000000000000     
+ ocean_fkph =   0.600000000000000     
+ x_sdrag =   2.000000000000000E-003  2.000000000000000E-004
+ c_sdrag =   2.000000000000000E-004
+ p_sdrag =    1.00000000000000     
+ pp_sdrag =    1.00000000000000     
+ p_csdrag =    1.00000000000000     
+ wc_jdrag =    30.0000000000000     
+ ang_sdrag =            1
+ solar_spec = 
+ sun                                                                            
+                                                  
+ spectral_file_lw = 
+ sp_lw_ga7/sp_lw_ga7_dsa                                                        
+                                                  
+ spectral_file_sw = 
+ sp_sw_ga7/sp_sw_ga7_dsa                                                        
+                                                  
+ aer_opt_prop_lw = 
+ sp_lw_ga7/aer_lw_ga7.nc                                                        
+                                                  
+ aer_opt_prop_sw = 
+ sp_sw_ga7/aer_sw_ga7.nc                                                        
+                                                  
+ aer_opt_prop_diag = 
+ sp_diag/aer_diag_std.nc                                                        
+                                                  
+ fs8opx =    1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.50000000000000     
+   1.50000000000000        1.00000000000000        1.00000000000000     
+ ft8opx =    1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+   1.00000000000000        1.30000000000000        1.00000000000000     
+ u00a =   0.695000000000000     
+ u00b =   0.600000000000000     
+ wmu_multiplier =    1.00000000000000     
+ wmui_multiplier =   1.000000000000000E-003
+ radiusl_multiplier =    1.01000000000000     
+ radiusi_multiplier =    1.00000000000000     
+ use_vmp =            1
+ h2obych4 =    1.00000000000000     
+ master_yr =         1850
+ volc_yr =           -1
+ od_cdncx =   0.000000000000000E+000
+ cc_cdncx =   0.000000000000000E+000
+ dalbsnx =    1.00000000000000     
+ madvol =            2
+ dtsrc =    1800.00000000000     
+ dt =    450.000000000000     
+ dt_xufilter =    450.000000000000     
+ dt_xvfilter =    450.000000000000     
+ dt_yvfilter =   0.000000000000000E+000
+ dt_yufilter =   0.000000000000000E+000
+ nisurf =            2
+ nrad =            5
+ taero_aod_diag =            2
+ aer_rad_forc =            0
+ cloud_rad_forc =            1
+ subdd = 
+                                                                                
+                                                  
+ nsubdd =            0
+ kcopy =            1
+ krsf =           12
+ isccp_diags =            1
+ nda5d =           13
+ nda5s =           13
+ ndaa =           13
+ nda5k =           13
+ nda4 =           48
+ nssw =            2
+ ndisk =         1440
+ _file_aic = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/NCARIC.72x46.D7712010_ext.nc       
+ _file_gic = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/GIC.E046D3M20A.1DEC1955.ext_1.nc   
+ _file_oic = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/OIC4X5LD.Z12.gas1.CLEV94.DEC01.nc  
+ _file_oftab = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/OFTABLE_NEW                        
+ _file_kbasin = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/KB4X513.OCN.gas1.nc                
+ _file_topo_oc = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/OZ72X46N_gas.1_nocasp.nc           
+ _file_ostraits = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/OSTRAITS_72x46.nml                 
+ _file_topo = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/Z72X46N_gas.1_nocasp.nc            
+ _file_rvr = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/RD_modelE_M.nc                     
+ _file_namervr = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/RD_modelE_M.names.txt              
+ _file_cdn = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/CD4X500S.ext.nc                    
+ _file_veg = 
+ VEG                                                                            
+                                                  
+ _file_laimax = 
+ LAIMAX                                                                         
+                                                  
+ _file_hiteent = 
+ HITEent                                                                        
+                                                  
+ _file_lai = 
+ LAI                                                                            
+                                                  
+ _file_crops = 
+ CROPS                                                                          
+                                                  
+ _file_irrig = 
+ IRRIG                                                                          
+                                                  
+ _file_soil = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/S72x460098M.ext.nc                 
+ _file_top_index = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/top_index_72x46_a.ij.ext.nc        
+ _file_soil_textures = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/soil_textures_top30cm              
+ _file_soilcarb_global = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/soilcarb_top30cm_4x5.nc            
+ _file_glmelt = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/GLMELT_4X5.OCN.nc                  
+ _file_radn1 = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/sgpgxg.table8                      
+ _file_radn3 = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/miescatpar.abcdv2                  
+ _file_rh_qg_mie = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/oct2003.relhum.nr.Q633G633.table   
+ _file_radn7 = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/STRATAER.VOL.1850-2014_CMIP6_hdr   
+ _file_radn8 = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/cloud.epsilon4.72x46               
+ _file_isccp = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/ISCCP.tautables                    
+ _file_ghg = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/GHG.CMIP6.1-2014.txt               
+ _file_dh2o = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/dH2O_by_CH4_monthly                
+ _file_bcdalbsn = 
+ BCdalbsn                                                                       
+                                                  
+ _file_dustaer = 
+ DUSTaer                                                                        
+                                                  
+ _file_taero_sul = 
+ TAero_SUL                                                                      
+                                                  
+ _file_taero_ssa = 
+ TAero_SSA                                                                      
+                                                  
+ _file_taero_nit = 
+ TAero_NIT                                                                      
+                                                  
+ _file_taero_oca = 
+ TAero_OCA                                                                      
+                                                  
+ _file_taero_bca = 
+ TAero_BCA                                                                      
+                                                  
+ _file_taero_bcb = 
+ TAero_BCB                                                                      
+                                                  
+ _file_o3file = 
+ O3file                                                                         
+                                                  
+ _file_ox_ref = 
+ Ox_ref                                                                         
+                                                  
+ _file_msu_wts = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/MSU_SSU_RSS_weights.txt            
+ _file_reg = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/pro
+ d_input_files/REG4X5                             
+ planetname = 
+ Earth                                                                          
+                                                  
+ obliquity =    23.4400000000000     
+ eccentricity =   1.670000000000000E-002
+ longitudeatperiapsis =    282.900000000000     
+ siderealorbitalperiod =    31536000.0000000     
+ siderealrotationperiod =    86163.9344262295     
+ meandistance =    1.00000000000000     
+ hourangleoffset =   0.000000000000000E+000
+ eot = 
+ F                                                                              
+                                                  
+ nhc =            1
+ uodrag =            0
+ geotherm_landx =   0.000000000000000E+000
+ hc_t_lapse_rate =   8.000000379979610E-003
+ ocean_use_qus =            0
+ ocean_use_opgfq =            0
+ ocean_use_tdmix =            0
+ ocean_use_gmscz =            0
+ ocean_kmeso_bg =    100.000000000000     
+ geotherm_ocnx =   0.000000000000000E+000
+ init_topog_related =            1
+ nmonav =            1
+ niprnt =            0
+ irand =    832739605
+ make_timeaxis =            0
+ snow_ice =            1
+ nocean =            1
+ ocean_use_tdiss =            0
+ ij_debug =            0           1
+ im =           72
+ jm =           46
+ lm =           40
+ ls1 =           24
+ prather_limits =            0
+ nfiltr =            1
+ mfiltr =            1
+ do_polefix =            1
+ use_unr_drag =            0
+ lmcm =           23
+ isc =            0
+ do_blu00 =            0
+ l_uniform_ghg =            0
+ kcldep =            4
+ i_cloud_ice_size_scheme =            1
+ l_cloud =            1
+ volc_mean =         1850        2014
+ ksolar =            2
+ ksialb =            0
+ kzsnow =            1
+ snoage_def =            0
+ nradfrc =            1
+ rad_interact_aer =            0
+ clim_interact_chem =            0
+ rad_forc_lev =            0
+ cloud_aer_o3_rad_forc =            1
+ chl_from_obio =            0
+ chl_from_seawifs =            0
+ kfpco2 =            0
+ apply_offline_dq_to_nint =            0
+ ozone_use_ppm_interp =            1
+ use_sol_ox_cycle =            0
+ power_law_lakes =            0
+ small_lake_evap =            0
+ cael_lakes =            0
+ snow_cover_same_as_rad =            0
+ ghy_default_data =            0
+ land_co2_bc_flag =            1
+ sbgc_spinup =            0
+ init_ent =            0
+ ent_io_plain_array =            1
+ do_soilresp =            1
+ do_phenology_activegrowth =            0
+ do_structuralgrowth =            0
+ do_frost_hardiness =            1
+ do_patchdynamics =            0
+ do_init_geo =            0
+ reset_canopy_ic =            0
+ reset_snow_ic =            0
+ keep_params =            0
+ glmelt_on =            1
+ calc_wspdf =            0
+ roughl_from_file =            0
+ skin_effect =            1
+ ndasf =            1
+ ijdd =           21          34          17          33          22          34
+          17          31
+ adiurn_dust =            0
+ lh_diags =            0
+ ngrids =            2
+ ndigits_year =            4
+ oi_ustar0 =   1.000000000000000E-003
+ silmfac =   1.000000000000000E-007
+ minicetemperature =   -100.000000000000     
+ oc_salt_mean =   -999.000000000000     
+ dto =    450.000000000000     
+ plbot =    984.000000000000        964.000000000000     
+   942.000000000000        917.000000000000        890.000000000000     
+   860.000000000000        825.000000000000        785.000000000000     
+   740.000000000000        692.000000000000        642.000000000000     
+   591.000000000000        539.000000000000        489.000000000000     
+   441.000000000000        396.000000000000        354.000000000000     
+   316.000000000000        282.000000000000        251.000000000000     
+   223.000000000000        197.000000000000        173.000000000000     
+   150.000000000000        128.000000000000        108.000000000000     
+   90.0000000000000        73.0000000000000        57.0000000000000     
+   43.0000000000000        31.0000000000000        20.0000000000000     
+   10.0000000000000        5.62000000000000        3.16000000000000     
+   1.78000000000000        1.00000000000000       0.562000000000000     
+  0.316000000000000       0.178000000000000       0.100000000000000     
+ mfix =   0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000   224.337566855144     
+   203.943242595586        183.548918336027        173.351756206248     
+   163.154594076469        142.760269816910        122.365945557351     
+   112.168783427572        101.971621297793        44.6635701284333     
+   25.0850188392570        14.0720837390954        7.95378646122784     
+   4.46635701284332        2.50850188392570        1.40720837390954     
+  0.795378646122784     
+ mfrac =   2.398081534772182E-002  2.637889688249400E-002
+  2.997601918465228E-002  3.237410071942446E-002  3.597122302158273E-002
+  4.196642685851319E-002  4.796163069544365E-002  5.395683453237410E-002
+  5.755395683453238E-002  5.995203836930456E-002  6.115107913669065E-002
+  6.235011990407674E-002  5.995203836930456E-002  5.755395683453238E-002
+  5.395683453237410E-002  5.035971223021583E-002  4.556354916067146E-002
+  4.076738609112710E-002  3.717026378896882E-002  3.357314148681055E-002
+  3.117505995203837E-002  2.877697841726619E-002  2.757793764988009E-002
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000  0.000000000000000E+000
+ wmax =    200.000000000000     
+ vsdragl =    1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        1.00000000000000     
+ u00wtrx =    1.00000000000000     
+ u00ice =   0.700000000000000     
+ maxctop =    50.0000000000000     
+ hrmax =    1000.00000000000     
+ ricldx =    1.00000000000000     
+ rwcldox =    1.00000000000000     
+ funio_denominator =    22.0000000000000     
+ autoconv_multiplier =    1.00000000000000     
+ entrainment_cont1 =   0.400000000000000     
+ entrainment_cont2 =   0.600000000000000     
+ orb_par =   1.670000000000000E-002   23.4400000000000     
+   282.900000000000     
+ cldx =    1.00000000000000     
+ h2o_ppm =   -1.00000000000000     
+ co2_ppm =   -1.00000000000000     
+ ch4_ppm =   -1.00000000000000     
+ epscon =   0.000000000000000E+000
+ co2x =    1.00000000000000     
+ o2x =    1.00000000000000     
+ no2x =    1.00000000000000     
+ n2ox =    1.00000000000000     
+ ch4x =    1.00000000000000     
+ cfc11x =    1.00000000000000     
+ cfc12x =    1.00000000000000     
+ n2cx =    1.00000000000000     
+ xghgx =    1.00000000000000     
+ yghgx =    2.00000000000000     
+ so2x =   0.000000000000000E+000
+ o3x =    1.00000000000000     
+ planet_s0 =    1360.67000000000     
+ fttaer =    1.00000000000000     
+ fstaer =    1.00000000000000     
+ aermix =    1.00000000000000        1.00000000000000     
+   1.00000000000000        1.00000000000000        2.50000000000000     
+   2.50000000000000        1.89999997615814        1.00000000000000     
+   1.00000000000000        2.50000000000000        1.89999997615814     
+   2.50000000000000        1.89999997615814     
+ refdry =   0.150000005960464        1.00000000000000     
+  0.300000011920929       0.200000002980232       7.999999821186066E-002
+  7.999999821186066E-002   1.00000000000000        1.00000000000000     
+ rhfix =   -1.00000000000000     
+ fonoff =    1.00000000000000     
+ ptliso =   0.000000000000000E+000
+ snoage_fac_max =   0.500000000000000     
+ ref_mult =    1.00000000000000     
+ river_fac =    1.00000000000000     
+ lake_rise_max =    100.000000000000     
+ lake_ice_max =    5.00000000000000     
+ snow_cover_coef =   0.150000000000000     
+ wsn_max =    2.00000000000000     
+ land_co2_bc =    280.000000000000     
+ mingroundtemperature =   -150.000000000000     
+ maxgroundtemperature =    130.000000000000     
+ top_dev_mean =    100.000000000000     
+ roughl_lice =  -1.000000000000000E+030
+ roughl_bare_soil =  -1.000000000000000E+030
+ glmelt_fac_nh =    1.00000000000000     
+ glmelt_fac_sh =    1.00000000000000     
+ xcdpbl =    1.00000000000000     
+ lldd =   -79.9000015258789        40.4000015258789       -97.5000000000000     
+   36.4000015258789       -74.0000000000000        40.7999992370605     
+  -95.4000015258789        29.7999992370605     
+ seaice_thermo = 
+ BP                                                                             
+                                                  
+ solar_spec_dir = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/ste
+ llar_spectra                                     
+ spectral_dir = 
+ /panfs/ccds02/nobackup/people/gtamkin/dev/modelE2_planet_2.0/ModelE_Support/spe
+ ctral_files                                      
+ namdd = 
+ PITT                                                                           
+                                                  
+ SGPL                                                                           
+                                                  
+ NYCC                                                                           
+                                                  
+ HOUS                                                                           
+                                                  
+ &&END_PARAMETERS
+ IDACC=  1200   240   800    88    25    88    93    93    50  1200   240     1
+0NASA/GISS Climate Model (re)started           Year 1950 NOV  26, Hr  0      Internal clock: DTsrc-steps since 1/1/1949     33312
+---------- Main Loop, itime=    33312 day=1950-11-26
+ Atmospheric mass added in DAILY_ATMDYN is = -3.274180926382542E-011
+ In read_attr:
+ attribute cropsname not found for variable global
+---------- Main Loop, itime=    33360 day=1950-11-27
+ Time spent in the main loop in seconds:   199.158299999999     
+0Restart file written on fort.2                                             Year 1950 NOV  27, Hr  3  Internal clock time:   33366
+
+
+
+
+
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+
+
+ PROGRAM TERMINATED NORMALLY - Internal clock time:   33366
+
+
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+
+-------------------------------------------------------------------------------------------------------
+        Name         Inclusi  Inclusive   Exclusive  Trips   Maximum   MAX   Minimum   MIN   Average
+                        %      min/day     min/day           seconds         seconds         seconds
+-------------------------------------------------------------------------------------------------------
+main                  100.00     0.00999     0.00080      1  17.269300    0  17.269300    0  17.269300
+Main Loop              92.02     0.00919     0.00011     54   0.076200    0   0.038300    0   0.044948
+ Atm. Dynamics          7.71     0.00077     0.00077     54   0.472600    0   0.254000    0   0.308865
+ MELT_SI()              0.01     0.00000     0.00000    108   0.000200    0   0.000000    0   0.000128
+ CONDSE()              13.71     0.00137     0.00137     54   0.570300    0   0.495100    0   0.549502
+ RADIA()               59.10     0.00590     0.00590     54  12.052500    0   0.000700    0   2.368815
+ Surface                7.75     0.00077     0.00000     54   0.002100    0   0.001600    0   0.001828
+  Precip                0.00     0.00000     0.00000      0   0.000000    0   0.000000    0   0.000000
+  SURFACE()             7.71     0.00077     0.00072     54   0.315100    0   0.244400    0   0.289715
+ DYNSI()                0.08     0.00001     0.00001     54   0.003400    0   0.002700    0   0.003109
+ UNDERICE()             0.02     0.00000     0.00000    108   0.000600    0   0.000000    0   0.000303
+ GROUND_SI()            0.14     0.00001     0.00001    108   0.005700    0   0.000300    0   0.002826
+ GROUND_LI()            0.00     0.00000     0.00000     54   0.000200    0   0.000000    0   0.000093
+ GROUND_LK()            0.01     0.00000     0.00000     54   0.000400    0   0.000200    0   0.000333
+ RIVERF()               0.01     0.00000     0.00000     54   0.000400    0   0.000100    0   0.000226
+ OCEANS                 2.05     0.00020     0.00018     54   0.084600    0   0.062700    0   0.073009
+ Daily                  0.57     0.00006     0.00006      1   1.230500    0   1.230500    0   1.230500
+ Diagnostics            0.01     0.00000     0.00000    162   0.000400    0   0.000000    0   0.000152
+PRECIP_LK()             0.28     0.00003     0.00003     54   0.011800    0   0.009600    0   0.011030
+SURFACE_LANDICE()       0.17     0.00002     0.00002    108   0.003800    0   0.002900    0   0.003443
+-------------------------------------------------------------------------------------------------------
+ WARNING: defined in rundeck but not used: subdd = 
+                                                                                
+                                                  
+
+
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+
+  Program terminated due to the following reason:
+  >>  Terminated normally (reached maximum time)  <<
+
+ ************************************************************************************************************************************
+ ************************************************************************************************************************************
+
