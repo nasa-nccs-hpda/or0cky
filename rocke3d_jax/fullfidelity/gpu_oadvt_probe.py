@@ -53,6 +53,8 @@ def oadvtx2_probe(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
                 np.savez(p + '.tmp.npz', **{n_: np.asarray(v) for n_, v in zip(('rm', 'rx', 'ry', 'rz', 'mm', 'mudt', 'nc', 'lane_pass', 'lmu_l', 'lmm_l', 'rxlimit'), a)})
                 os.replace(p + '.tmp.npz', p)
         jax.debug.callback(_save, *args)
+    if os.environ.get('ROCKE_XSWEEP_BARRIER') == '1':
+        return jax.lax.optimization_barrier(OJ._x_sweep(*jax.lax.optimization_barrier(args[:-1]), args[-1]))
     return OJ._x_sweep(*args)
 
 

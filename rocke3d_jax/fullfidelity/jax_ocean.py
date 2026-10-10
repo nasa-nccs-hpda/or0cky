@@ -635,8 +635,11 @@ def oadvtx2_dev(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
            jax.ShapeDtypeStruct((LMO + 1, JM + 1), jnp.bool_))
     lmu1, lmm1 = Ko['x_lmu1'], Ko['x_lmm1']
     snap, ncour, lane = jax.pure_callback(lambda a, b: _xpre_np(a, b, dt, lmu1, lmm1), shp, mm, mu)
-    return _x_sweep(rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']),
-                    1.0 if qlimit else 0.0)
+    args = (rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']), 1.0 if qlimit else 0.0)
+    if os.environ.get('ROCKE_XSWEEP_BARRIER') == '1':      # D214 experiment: stop XLA fusing/reordering across the sweep (GPU NaN, job 58812322); default off
+        out = lax.optimization_barrier(_x_sweep(*lax.optimization_barrier(args[:-1]), args[-1]))
+        return out
+    return _x_sweep(*args)
 
 
 def oadvt2_dev(Ko, mmi, rm, rx, ry, rz, dt, qlimit, smu, smv, smw):
