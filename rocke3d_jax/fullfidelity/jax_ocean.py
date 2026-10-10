@@ -636,7 +636,10 @@ def oadvtx2_dev(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
     lmu1, lmm1 = Ko['x_lmu1'], Ko['x_lmm1']
     snap, ncour, lane = jax.pure_callback(lambda a, b: _xpre_np(a, b, dt, lmu1, lmm1), shp, mm, mu)
     args = (rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']), 1.0 if qlimit else 0.0)
-    if os.environ.get('ROCKE_XSWEEP_BARRIER') == '1':      # D214 experiment: stop XLA fusing/reordering across the sweep (GPU NaN, job 58812322); default off
+    _bar = os.environ.get('ROCKE_XSWEEP_BARRIER')       # '1' force on, '0' force off, unset: on for a non-CPU backend
+    if _bar == '1' or (_bar is None and jax.default_backend() != 'cpu'):
+        # D214: without a barrier the XLA GPU program makes NaN in this sweep inside the ocean stage-b jit (jobs 58801352, 58812322; the sweep alone is clean);
+        # with it 6 steps of nov26 are finite (job 58813296). Bitwise neutral on the CPU. Cause inside XLA not identified.
         out = lax.optimization_barrier(_x_sweep(*lax.optimization_barrier(args[:-1]), args[-1]))
         return out
     return _x_sweep(*args)
