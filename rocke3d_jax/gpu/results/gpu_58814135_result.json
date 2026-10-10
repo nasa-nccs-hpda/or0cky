@@ -1,0 +1,890 @@
+{
+ "header": {
+  "task": "D198 assembled coupled step, libm mode, replayed radiation",
+  "date": "nov26",
+  "steps": 6,
+  "backend": "gpu",
+  "devices": [
+   "cuda:0"
+  ],
+  "x64": true,
+  "xla_flags": "",
+  "cpu_flags_applied": false,
+  "python": "3.11.11",
+  "versions": {
+   "jax": "0.6.1",
+   "jaxlib": "0.6.1",
+   "numpy": "1.26.4",
+   "netCDF4": "1.7.2",
+   "scipy": "1.15.3",
+   "mpmath": "1.3.0"
+  },
+  "host": "warpa003",
+  "cores": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "omp_num_threads": "1",
+  "git_head": "unknown",
+  "libimf_available_on_host": false,
+  "libimf_used": false,
+  "libimf_ops": {
+   "requested": "libm",
+   "effective": "libm",
+   "libimf_available": false,
+   "fallback_allowed": false,
+   "traced": false,
+   "libimf_dir": "/panfs/ccds02/app/modules/intel/platform/x86_64/rhel/8.6/2020Update4/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin"
+  },
+  "libimf_fused": {
+   "mode": "libm",
+   "backend": null,
+   "libimf_available": false
+  },
+  "ff_data": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/ff_data",
+  "modelE_prod_input": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/modelE2_planet_2.0/ModelE_Support/prod_input_files",
+  "labels": [
+   "LIBM MODE: exp/pow from the XLA backend (gpu); no Intel libimf, no libimf host callback",
+   "RADIATION REPLAYED from the real record (not computed; no Fortran callback in this result)",
+   "RECORDED inputs: Ent exports, land forcing, tile radiation columns, CONDSE entry set, SURFACE templates (uploaded every step)",
+   "GPU result: NOT BITWISE with the CPU / Fortran (device exp/pow differ by 1 ulp in 6-12 % of values); judge at rounding level and statistically",
+   "HYBRID step, not end-to-end JAX: host callbacks for QUS, the CONDSE pole columns and the OADVT2 pre-pass; host template build"
+  ],
+  "time_utc": "2026-10-10T20:32:17Z"
+ },
+ "labels": [
+  "LIBM MODE: exp/pow from the XLA backend (gpu); no Intel libimf, no libimf host callback",
+  "RADIATION REPLAYED from the real record (not computed; no Fortran callback in this result)",
+  "RECORDED inputs: Ent exports, land forcing, tile radiation columns, CONDSE entry set, SURFACE templates (uploaded every step)",
+  "GPU result: NOT BITWISE with the CPU / Fortran (device exp/pow differ by 1 ulp in 6-12 % of values); judge at rounding level and statistically",
+  "HYBRID step, not end-to-end JAX: host callbacks for QUS, the CONDSE pole columns and the OADVT2 pre-pass; host template build"
+ ],
+ "date": "nov26",
+ "steps": [
+  {
+   "k": 0,
+   "itime": 33312,
+   "step_seconds": 678.9029395938851,
+   "jit_executions": 99,
+   "eager_primitive_dispatches": 492,
+   "xla_compilations": 114,
+   "xla_compile_seconds": 610.7358634471893,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": true,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 249541376,
+    "seconds": 0.4842060343362391
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.15943513344973326,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.07067390764132142,
+    "bytes": 460832
+   },
+   "phase1_seconds": 303.1638786001131,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 142.5178,
+    "condse_entry": 0.3315,
+    "condse_setup": 0.6339,
+    "condse_mstcnv": 147.3611,
+    "condse_post": 11.8231,
+    "radia": 0.445,
+    "flag_read": 0.0006,
+    "template_build": 1.595,
+    "melt_si_dev": 0.4495,
+    "carry_writeback": 0.0815,
+    "tile_mask_check": 0.3881,
+    "surface_pre": 3.1024,
+    "nit_rebuild": 0.0002,
+    "template_apply": 2.4435,
+    "surface_tiles_land": 87.4329,
+    "tile_acc": 0.4233,
+    "post_a": 44.7543,
+    "ocean_a": 35.72,
+    "ocean_b": 178.7843,
+    "post_b": 14.4819,
+    "dissip_filter": 5.9978,
+    "state_assembly": 0.0404
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 142.5178,
+    "condse_entry": 0.3315,
+    "condse_setup": 0.6339,
+    "condse_mstcnv": 147.3611,
+    "condse_post": 11.8231,
+    "radia": 0.445
+   },
+   "label": "cold (includes compilation)",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.0033832937479019165,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step0.npz",
+   "n_arrays": 561
+  },
+  {
+   "k": 1,
+   "itime": 33313,
+   "step_seconds": 16.130456566810608,
+   "jit_executions": 96,
+   "eager_primitive_dispatches": 490,
+   "xla_compilations": 2,
+   "xla_compile_seconds": 2.713902711868286,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": false,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 247636480,
+    "seconds": 0.48390027647837996
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.15936661325395107,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.0649472288787365,
+    "bytes": 460832
+   },
+   "phase1_seconds": 8.2092847651802,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 142.7677,
+    "condse_entry": 0.7324,
+    "condse_setup": 0.746,
+    "condse_mstcnv": 154.009,
+    "condse_post": 12.5928,
+    "radia": 0.4714,
+    "flag_read": 0.0009,
+    "template_build": 2.0805,
+    "melt_si_dev": 0.4502,
+    "carry_writeback": 0.0827,
+    "tile_mask_check": 0.3886,
+    "surface_pre": 3.1043,
+    "nit_rebuild": 0.0004,
+    "template_apply": 5.2462,
+    "surface_tiles_land": 87.4884,
+    "tile_acc": 0.425,
+    "post_a": 44.8583,
+    "ocean_a": 35.7367,
+    "ocean_b": 183.2151,
+    "post_b": 14.4861,
+    "dissip_filter": 6.0078,
+    "state_assembly": 0.0406
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 0.2499,
+    "condse_entry": 0.4009,
+    "condse_setup": 0.1121,
+    "condse_mstcnv": 6.6479,
+    "condse_post": 0.7698,
+    "radia": 0.0264
+   },
+   "label": "steady",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.0035533816553652287,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step1.npz",
+   "n_arrays": 572
+  },
+  {
+   "k": 2,
+   "itime": 33314,
+   "step_seconds": 12.129058951046318,
+   "jit_executions": 96,
+   "eager_primitive_dispatches": 490,
+   "xla_compilations": 0,
+   "xla_compile_seconds": 0.0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": false,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 276209920,
+    "seconds": 0.5054379436187446
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.16304095555096865,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.036841018591076136,
+    "bytes": 460832
+   },
+   "phase1_seconds": 7.396722585894167,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 143.03,
+    "condse_entry": 0.7346,
+    "condse_setup": 0.842,
+    "condse_mstcnv": 160.3586,
+    "condse_post": 13.2548,
+    "radia": 0.4938,
+    "flag_read": 0.0013,
+    "template_build": 2.5283,
+    "melt_si_dev": 0.4509,
+    "carry_writeback": 0.0838,
+    "tile_mask_check": 0.3891,
+    "surface_pre": 3.1062,
+    "nit_rebuild": 0.0006,
+    "template_apply": 5.2491,
+    "surface_tiles_land": 87.5317,
+    "tile_acc": 0.4263,
+    "post_a": 44.954,
+    "ocean_a": 35.7479,
+    "ocean_b": 187.3233,
+    "post_b": 14.4892,
+    "dissip_filter": 6.0166,
+    "state_assembly": 0.0408
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 0.2623,
+    "condse_entry": 0.0023,
+    "condse_setup": 0.096,
+    "condse_mstcnv": 6.3496,
+    "condse_post": 0.662,
+    "radia": 0.0224
+   },
+   "label": "steady",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.003572522196918726,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step2.npz",
+   "n_arrays": 572
+  },
+  {
+   "k": 3,
+   "itime": 33315,
+   "step_seconds": 11.944498635828495,
+   "jit_executions": 96,
+   "eager_primitive_dispatches": 490,
+   "xla_compilations": 0,
+   "xla_compile_seconds": 0.0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": false,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 257160960,
+    "seconds": 0.49318462423980236
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.16400310350582004,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.037772768177092075,
+    "bytes": 460832
+   },
+   "phase1_seconds": 7.189524072222412,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 143.2859,
+    "condse_entry": 0.7365,
+    "condse_setup": 0.9371,
+    "condse_mstcnv": 166.4994,
+    "condse_post": 13.9252,
+    "radia": 0.5169,
+    "flag_read": 0.0016,
+    "template_build": 3.0017,
+    "melt_si_dev": 0.4514,
+    "carry_writeback": 0.085,
+    "tile_mask_check": 0.3896,
+    "surface_pre": 3.1078,
+    "nit_rebuild": 0.0008,
+    "template_apply": 5.252,
+    "surface_tiles_land": 87.5746,
+    "tile_acc": 0.4277,
+    "post_a": 45.0493,
+    "ocean_a": 35.7592,
+    "ocean_b": 191.4294,
+    "post_b": 14.4924,
+    "dissip_filter": 6.0253,
+    "state_assembly": 0.041
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 0.2559,
+    "condse_entry": 0.0019,
+    "condse_setup": 0.0951,
+    "condse_mstcnv": 6.1408,
+    "condse_post": 0.6704,
+    "radia": 0.0231
+   },
+   "label": "steady",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.0035705119371414185,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step3.npz",
+   "n_arrays": 572
+  },
+  {
+   "k": 4,
+   "itime": 33316,
+   "step_seconds": 11.896786974277347,
+   "jit_executions": 96,
+   "eager_primitive_dispatches": 490,
+   "xla_compilations": 0,
+   "xla_compile_seconds": 0.0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": false,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 281924608,
+    "seconds": 0.49782896135002375
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.16410512290894985,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.038182852789759636,
+    "bytes": 460832
+   },
+   "phase1_seconds": 7.17293587885797,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 143.5341,
+    "condse_entry": 0.7384,
+    "condse_setup": 1.0325,
+    "condse_mstcnv": 172.6323,
+    "condse_post": 14.5947,
+    "radia": 0.5399,
+    "flag_read": 0.002,
+    "template_build": 3.4339,
+    "melt_si_dev": 0.4519,
+    "carry_writeback": 0.0861,
+    "tile_mask_check": 0.3901,
+    "surface_pre": 3.1091,
+    "nit_rebuild": 0.0009,
+    "template_apply": 5.2549,
+    "surface_tiles_land": 87.618,
+    "tile_acc": 0.4291,
+    "post_a": 45.1452,
+    "ocean_a": 35.7704,
+    "ocean_b": 195.5451,
+    "post_b": 14.4955,
+    "dissip_filter": 6.0341,
+    "state_assembly": 0.0412
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 0.2482,
+    "condse_entry": 0.0019,
+    "condse_setup": 0.0953,
+    "condse_mstcnv": 6.1329,
+    "condse_post": 0.6694,
+    "radia": 0.023
+   },
+   "label": "steady",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.0035909218713641167,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step4.npz",
+   "n_arrays": 572
+  },
+  {
+   "k": 5,
+   "itime": 33317,
+   "step_seconds": 11.85987889720127,
+   "jit_executions": 97,
+   "eager_primitive_dispatches": 490,
+   "xla_compilations": 0,
+   "xla_compile_seconds": 0.0,
+   "jit_by_stage": {
+    "template_build": 0,
+    "melt_si_dev": 1,
+    "carry_writeback": 1,
+    "surface_pre": 1,
+    "tile_mask_check": 1,
+    "nit_rebuild": 0,
+    "template_apply": 1,
+    "surface_tiles_land": 5,
+    "tile_acc": 1,
+    "post_a": 1,
+    "ocean_a": 1,
+    "ocean_b": 1,
+    "post_b": 1,
+    "dissip_filter": 1,
+    "state_assembly": 0
+   },
+   "flags": {
+    "aadvt_bad": 0,
+    "advecm_exc2": 0,
+    "handoff_error": 0,
+    "lscond_vmp": 0,
+    "mstcnv_negative_cloud": 0,
+    "qdynam_do_z_extra": 0,
+    "qdynam_err": 0,
+    "sdrag_bad": 0,
+    "subsid_error": 0
+   },
+   "stage_rebuilt": false,
+   "host_template": {
+    "Nw": 2731,
+    "Nl": 346,
+    "Ne": 753,
+    "max_substeps": 11
+   },
+   "nit_rebuild": {
+    "cells": 0,
+    "device_to_host_arrays": 0
+   },
+   "libimf_callbacks": {
+    "libimf_ops": {
+     "calls": 0,
+     "elements": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    },
+    "libimf_fused": {
+     "calls": 0,
+     "lanes": 0,
+     "bytes_in": 0,
+     "bytes_out": 0,
+     "seconds": 0.0
+    }
+   },
+   "qus_callbacks": {
+    "calls": 176,
+    "bytes": 259065856,
+    "seconds": 0.5083703533746302
+   },
+   "oadvt2_prepass_callbacks": {
+    "calls": 4,
+    "seconds": 0.16133934166282415,
+    "bytes_in": 3074176,
+    "bytes_out": 1560776
+   },
+   "pole_callbacks": {
+    "calls": 2,
+    "seconds": 0.03731943294405937,
+    "bytes": 460832
+   },
+   "phase1_seconds": 7.234889060258865,
+   "stage_seconds_cumulative": {
+    "record_load": 0.0,
+    "dyn": 143.7957,
+    "condse_entry": 0.7403,
+    "condse_setup": 1.1272,
+    "condse_mstcnv": 178.7982,
+    "condse_post": 15.2655,
+    "radia": 0.5771,
+    "flag_read": 0.0025,
+    "template_build": 3.7689,
+    "melt_si_dev": 0.4525,
+    "carry_writeback": 0.0872,
+    "tile_mask_check": 0.3906,
+    "surface_pre": 3.1105,
+    "nit_rebuild": 0.0011,
+    "template_apply": 5.2578,
+    "surface_tiles_land": 87.6619,
+    "tile_acc": 0.4305,
+    "post_a": 45.2408,
+    "ocean_a": 35.7816,
+    "ocean_b": 199.6585,
+    "post_b": 14.4986,
+    "dissip_filter": 6.0426,
+    "state_assembly": 0.0414
+   },
+   "phase1_stage_seconds": {
+    "melt_si": 0.0,
+    "dyn": 0.2616,
+    "condse_entry": 0.0019,
+    "condse_setup": 0.0948,
+    "condse_mstcnv": 6.1659,
+    "condse_post": 0.6708,
+    "radia": 0.0372
+   },
+   "label": "steady",
+   "nonfinite": {
+    "filter/T": 0,
+    "filter/U": 0,
+    "filter/V": 0,
+    "filter/Q": 0,
+    "filter/P": 0,
+    "surf/ocean/mo": 0,
+    "surf/ocean/g0m": 0,
+    "surf/ocean/s0m": 0,
+    "surf/ocean/must": 0,
+    "surf/ocean/uo": 0,
+    "surf/ocean/opress": 0
+   },
+   "seconds_device_to_host_snapshot": 0.0035627223551273346,
+   "npz": "/gpfsm/dnb34/gtamkin/dev/or0cky_port/rocke3d_jax/gpu_runs/58814135/step/nov26_libm_step5.npz",
+   "n_arrays": 572
+  }
+ ],
+ "setup_seconds": 6.876826494932175,
+ "repeats": [],
+ "summary": {
+  "backend": "gpu",
+  "devices": [
+   "cuda:0"
+  ],
+  "steps": 6,
+  "first_step_seconds_with_compile": 678.9029395938851,
+  "steady_step_seconds": [
+   16.130456566810608,
+   12.129058951046318,
+   11.944498635828495,
+   11.896786974277347,
+   11.85987889720127
+  ],
+  "steady_mean_seconds": 12.792136005032807,
+  "total_process_seconds": 758.623306680005,
+  "libimf_callbacks_total": 0,
+  "labels": [
+   "LIBM MODE: exp/pow from the XLA backend (gpu); no Intel libimf, no libimf host callback",
+   "RADIATION REPLAYED from the real record (not computed; no Fortran callback in this result)",
+   "RECORDED inputs: Ent exports, land forcing, tile radiation columns, CONDSE entry set, SURFACE templates (uploaded every step)",
+   "GPU result: NOT BITWISE with the CPU / Fortran (device exp/pow differ by 1 ulp in 6-12 % of values); judge at rounding level and statistically",
+   "HYBRID step, not end-to-end JAX: host callbacks for QUS, the CONDSE pole columns and the OADVT2 pre-pass; host template build"
+  ]
+ }
+}

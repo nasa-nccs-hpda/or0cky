@@ -46,3 +46,21 @@ All JAX numbers: configuration P2SAoM40, nov26 (1950-11-26), libimf host callbac
 2. A non-replay JAX day (server radiation, own-state inputs) timed with the cold compile reported separately, plus a per-stage blocked run to split device, callbacks, transfers and template work.
 3. Radiation share of the Fortran step from its own timers, to bound the best case with the radiation kept as a callback.
 4. A finite GPU multi-step run (blocked on the D214 NaN) in the same non-replay mode.
+
+## 7. Per-stage breakdown of the steady step, GPU (A100) against the CPU (measured 2026-10-10)
+GPU: Discover job 58814135, code `0fde729`, `--steps 6 --save all --timed` (device blocked after each stage), libm mode, radiation replayed, nov26 steps 0-5, all finite (`gpu/results/gpu_58814135_result.json`). Mean of steps 2-5: wall 11.96 s; the stage seconds sum to 11.95 s.
+CPU: the 2-step `--timed` check of the same runner (4 cores, jax 0.5.3, libimf host callback, shared node), step 1 minus step 0 of the cumulative stage seconds; wall 12.1 s. One run each: indicative.
+| stage | GPU s (share) | CPU s | note |
+|---|---|---|---|
+| condse_mstcnv (cloud-base loop and event block, libm exp/pow, QUS callback) | **6.20 (51.8%)** | 4.94 | sequential loops; GPU 1.3x slower |
+| ocean_b (dynamics, straits, odiff, meso: OADVT2 sweeps, per-strait loops) | **4.11 (34.4%)** | 0.59 | GPU about 7x slower than the CPU |
+| condse_post | 0.67 (5.6%) | 0.72 | |
+| template_build (host) | 0.42 (3.5%) | 0.76 | |
+| dyn | 0.26 (2.1%) | 1.01 | GPU about 4x faster |
+| post_a | 0.10 | 0.02 | |
+| condse_setup | 0.10 | 0.61 | |
+| surface_tiles_land | 0.04 | 0.59 | |
+| radia (replay) | 0.03 | 0.02 | |
+| ocean_a, dissip_filter, others | 0.02 | 0.7 | template_apply on the CPU 1.81 s, about 0 on the GPU |
+Host callbacks inside the step on the GPU (steady step 3): QUS 176 calls 257 MB 0.50 s, OADVT2 pre-pass 4 calls 0.17 s, pole columns 2 calls 0.04 s, libimf 0 (libm mode): under 0.8 s together.
+**Reading (hypothesis where marked):** two stages are 86% of the GPU step. Both are sequential loops (the cloud-base loop; the ocean tracer sweeps and per-strait loops), which the A100 probe found launch-bound (about 5.7 microseconds per sequential step). The ocean stage is 7x slower on the GPU than on the CPU, so it is the largest single opportunity (hypothesis: restructure the ocean sweeps into fewer, wider kernels or leave the ocean on the CPU); `dyn`, the part that is genuinely parallel, is 4x faster on the GPU. Reaching the Fortran's 3.5 s per step needs both stages to fall from 10.3 s to about 1-2 s.
