@@ -322,7 +322,7 @@ def main():
             out, state, arrays, sr = run_step(cp, k, state, rec, dev, sr, A_.timed)
         out['label'] = 'cold (includes compilation)' if k == 0 else 'steady'
         _ea = end_arrays(arrays)    # cheap (~0.06 s): every step reports non-finite counts, since the error flags do not catch NaN
-        out['nonfinite'] = {kk: int((~np.isfinite(_ea[kk])).sum()) for kk in ('filter/T', 'filter/U', 'filter/V', 'filter/Q', 'filter/P') if kk in _ea}
+        out['nonfinite'] = {kk: int((~np.isfinite(_ea[kk])).sum()) for kk in ('filter/T', 'filter/U', 'filter/V', 'filter/Q', 'filter/P', 'surf/ocean/mo', 'surf/ocean/g0m', 'surf/ocean/s0m', 'surf/ocean/must', 'surf/ocean/uo', 'surf/ocean/opress') if kk in _ea}
         print(f'[step {k}] non-finite counts in the end state: {out["nonfinite"]}' + ('   <-- NaN/Inf PRESENT' if any(out['nonfinite'].values()) else ''), flush=True)
         save = A_.save == 'all' or (A_.save == 'last' and k == A_.steps - 1) or (A_.save == 'first-last' and k in (0, A_.steps - 1))
         refp = None
