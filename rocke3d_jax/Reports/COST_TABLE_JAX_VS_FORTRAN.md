@@ -30,12 +30,12 @@ All JAX numbers: configuration P2SAoM40, nov26 (1950-11-26), libimf host callbac
 | quantity | value | source and caveat |
 |---|---|---|
 | instrumented real model, 54 steps | 5 min 23 s with 6 jobs running concurrently = about 6.0 s per step per job | D150; heavy per-step dump I/O; node load unknown |
-| real month, ctrl run | 85 min for JAN1950 | README ensemble row; if 31 days x 48 steps = 1,488 steps this is about 3.4 s per step; core count, MPI layout and I/O NOT recorded in the entries I read |
+| real month, ctrl run | 85 min 42 s real, 84 min 41 s user, 20 s sys for JAN1950 (`ff_data/ens_jan1950/ctrl/run.time`) | user is 99% of real, so the run used ONE core. One model day is 54 steps (86,400 s / 1,600 s), so 31 days = 1,674 steps and the cost is **about 3.07 s per step on one core** (derived by me; assumes January has 31 days and the step is 1,600 s). I/O of a normal run included |
 
 ## 5. What the numbers say, and what they cannot say
 * Day cost without compile, server (non-replay) hybrid: about 22.4 s per step; with the cold compile counted: 1,653 s per day.
-* Fortran: about 3.4-6.0 s per step (two inconsistent sources) or about 184-323 s per day.
-* So the hybrid on the CPU is about **3.7x slower (against 6.0 s) to 6.6x slower (against 3.4 s) per step**, and 5-9x slower per day with the compile counted. These ratios are indicative only: different cores, shared nodes, the Fortran figure comes from other conditions.
+* Fortran: about 3.07 s per step on ONE core (real month, run.time) or 6.0 s per job in the instrumented concurrent run (D150); about 166 s per day at 3.07 s.
+* So the hybrid on the CPU (5 cores, non-replay, 22.4 s per step) is about **7.3x slower per step than ONE Fortran core**, and about 10x slower per day with the cold compile counted (1,653 s against 166 s). The replay step is about 4-6x slower (12-19 s against 3.07 s). The Fortran figure comes from another run at another time on another node: indicative, not matched.
 * **GPU:** 3 valid-looking runs on the A100 (jobs 58786705, 58788593, 58789387, all replay mode): cold 716-768 s (648-689 s compile), steady 13.1 s on a repeat of step 0, 16.6 s at step 1 and about 25 s at steps 2-5. These runs are NOT valid evidence: the ocean state is already NaN at the end of step 0 (D214 findings), so the step time includes NaN-contaminated work and the result makes no fidelity claim.
 * **Not measured:** Fortran time on the same node and cores for the same steps; the device-versus-host split of the non-replay step; the radiation share of a real Fortran step (so the best case with the radiation callback kept is unknown); the effect of removing the libimf callback (speed was never measured without it); any multi-step GPU run that is finite; a compile cache.
 * **Science side:** the same-scientific-work condition is not met: the one-day criterion (ACCEPTANCE s9) is NOT MET on every run (QCL step 1 = 2.83 and near steps), part of the inputs are still recorded (Ent, land forcing, template columns), and the GPU run is not valid. A speedup claim cannot be made until both sides hold.
