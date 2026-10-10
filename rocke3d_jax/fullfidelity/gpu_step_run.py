@@ -275,6 +275,9 @@ def run_step(cp, k, state, rec, dev, sr, timed):
                    qus_callbacks=dict(md.QUS), oadvt2_prepass_callbacks=dict(JO.XPRE_STATS),
                    pole_callbacks=dict(calls=hp.calls - p0[0], seconds=hp.seconds - p0[1], bytes=hp.bytes - p0[2]),
                    phase1_seconds=info.get('phase1_seconds'))
+        # D214: per-stage times (only meaningful with --timed, which blocks after each stage). Cumulative over the steps so far; subtract consecutive steps.
+        out['stage_seconds_cumulative'] = {nm: round(v['seconds'], 4) for nm, v in sr._st.items()}
+        out['phase1_stage_seconds'] = {nm: round(float(v), 4) for nm, v in (info.get('phase1_stage_seconds') or {}).items()}
     finally:
         ct.stop_listening()
     return out, new, arrays, sr
