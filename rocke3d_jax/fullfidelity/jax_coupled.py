@@ -396,6 +396,33 @@ class Coupled:
         R = rec_next['R']
         self._tpl_prefetch[id(R)] = self._tpl_pool.submit(self._build_tpl, R)
 
+    def _own_cse_in(self, it, dev):
+        """D221 (ROCKE_CSE_IN_OWN=1): the three CONDSE entry fields that the device CONDSE reads and the chain does not produce, from our own state:
+        FLAND/FEARTH from the statics (updated by daily_LAKE), RNDSS from the LCG chain of the first entry seed (drv_rng, D174).  With
+        ROCKE_CSE_IN_OWN_CHECK=1 the recorded values are still read and the differences are logged in self.cse_in_own_log."""
+        import drv_rng
+        s0 = self.__dict__.setdefault('_cse_s0', {})
+        if not s0:
+            s0[self.it0] = int(round(float(np.asarray(dev['cse_in']['SEEDS'])[0]))) & 0xFFFFFFFF
+        last = max(s0)
+        while last < it:
+            s0[last + 1] = drv_rng.next_seed(s0[last], bool(A.is_radiation_step(last)))
+            last += 1
+        ctx = self.ph.ctx
+        rnd = drv_rng.rndss(s0[it], ctx.imaxj, int(ctx.cfg['lmcld']))
+        own = dict(FLAND=np.asarray(self.st['fland'], dtype=np.float64), FEARTH=np.asarray(self.st['fearth'], dtype=np.float64), RNDSS=rnd)
+        if P1.CSE_IN_OWN_CHECK:
+            mask = np.zeros(rnd.shape, bool)
+            for j in range(rnd.shape[3]):
+                mask[:, :int(ctx.cfg['lmcld']), :int(ctx.imaxj[j]), j] = True
+            rec_ = {k_: np.asarray(dev['cse_in'][k_]) for k_ in own}
+            lg = dict(itime=int(it), FLAND=float(np.abs(own['FLAND'] - rec_['FLAND']).max()), FEARTH=float(np.abs(own['FEARTH'] - rec_['FEARTH']).max()),
+                      RNDSS=float(np.abs(own['RNDSS'] - rec_['RNDSS'])[mask].max()))
+            self.__dict__.setdefault('cse_in_own_log', []).append(lg)
+            print('CSE_IN_OWN_CHECK ' + repr(lg), flush=True)
+        for k_, v in own.items():
+            dev['cse_in'][k_] = jnp.asarray(v)
+
     def step(self, k, state, rec, dev, sr, timed=False, keep=False, server=None, lv=None, io=None):
         """One coupled step from `state` (device pytree).  rec/dev: records of this step (host dict / device dict).  Returns (new state, info, arrays)."""
         it = self.it0 + k
@@ -445,6 +472,8 @@ class Coupled:
         with stage('melt_si_dev'):
             ice_new, melt = M.melt_si(SS['ice'], SS['atm']['gtemp'], SS['atm']['sss'], SS['atm']['mlhc'], self.melt_geo, 1800.0)
             dev['cse_in']['RSI'] = ice_new['rsi']                       # as surface_loop.Loop.pre_cse: our RSI replaces the recorded CONDSE-entry RSI
+            if P1.CSE_IN_OWN:
+                self._own_cse_in(it, dev)
             fin(ice_new)
         hold = state['hold']
         if server is not None and k == 0:

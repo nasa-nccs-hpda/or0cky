@@ -74,6 +74,8 @@ STATE_DYN = ('U', 'V', 'T', 'Q', 'QCL', 'QCI', 'MA', 'PEDN', 'PMID', 'PK', 'P', 
 HIDDEN_ENTRY = ('EGCM', 'W2GCM', 'PBLHT', 'DCLEV', 'PBLPTOP', 'TSAVG', 'QSAVG')
 DYN_TO_ENTRY = ('U', 'V', 'T', 'Q', 'QCL', 'QCI', 'TMOM', 'QMOM', 'PK', 'PMID', 'PEDN', 'PDSIG', 'PMIDOLD', 'GZ', 'MWS', 'PEK')
 CARRY_KEYS = tuple(A.CARRY_KEYS)
+CSE_IN_OWN = os.environ.get('ROCKE_CSE_IN_OWN', '0') == '1'            # D221, default off
+CSE_IN_OWN_CHECK = os.environ.get('ROCKE_CSE_IN_OWN_CHECK', '0') == '1'    # keep reading the record and log own against recorded
 
 
 class ReplayServer:
@@ -164,7 +166,12 @@ class Phase1:
         """All host reads of one step, through the registry (GuardedReal).  Returns a dict of numpy arrays (see keys)."""
         R = self.reg.guard_real(A.Real, stage='record_load')(self.date, itime, A.FF)
         rec = {'R': R}
-        rec['cse_in'] = {k: np.ascontiguousarray(v, dtype=np.float64) for k, v in R.cse_in.items() if hasattr(v, 'shape')}
+        if CSE_IN_OWN and not first and not CSE_IN_OWN_CHECK and getattr(self, '_ci0', None) is not None:
+            rec['cse_in'] = dict(self._ci0)       # D221: the CONDSE entry record is read at the first step only; FLAND/FEARTH/RNDSS/RSI are replaced in jax_coupled
+        else:
+            rec['cse_in'] = {k: np.ascontiguousarray(v, dtype=np.float64) for k, v in R.cse_in.items() if hasattr(v, 'shape')}
+            if first:
+                self._ci0 = rec['cse_in']
         rec['rad'] = {k: np.ascontiguousarray(R.r[k], dtype=np.float64) for k in ('SRHR', 'TRHR', 'COSZ1')}
         if first:
             rec['S0'] = A._native(A.init_state(R))

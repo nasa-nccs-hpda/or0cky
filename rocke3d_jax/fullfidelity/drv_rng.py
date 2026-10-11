@@ -25,3 +25,43 @@ def radia_seed(s0):
 
 def next_seed(s0, radiation_step):
     return jump(s0, N_STEP_RAD if radiation_step else N_STEP_NORAD)
+
+
+_LCG_TAB = {}
+
+
+def _lcg_table(n):
+    """A[k] = 69069**k, C[k] = sum_{m<k} 69069**m (mod 2**32), k = 0..n: x_k = A[k]*x_0 + C[k]."""
+    import numpy as np
+    t = _LCG_TAB.get('t')
+    if t is None or len(t[0]) <= n:
+        a = np.empty(n + 1, dtype=np.uint64)
+        c = np.empty(n + 1, dtype=np.uint64)
+        ak, ck = 1, 0
+        for k in range(n + 1):
+            a[k], c[k] = ak, ck
+            ak, ck = (ak * 69069) % M, (ck * 69069 + 1) % M
+        t = _LCG_TAB['t'] = (a, c)
+    return t
+
+
+def rndss(ix0, imaxj, lmcld, lm=40, im=72, jm=46):
+    """D221: RNDSS(3,LM,IM,JM) of one CONDSE call from its entry seed SEEDS[0], vectorised by LCG jump-ahead; identical to
+    clouds_condse_ff.randu_stream (draw order j, i<IMAXJ(j), L=LMCLD..1, nr=1..3; L>LMCLD stays zero).  -> float64 array."""
+    import numpy as np
+    imaxj = [int(x) for x in imaxj]
+    n = 3 * lmcld * sum(imaxj)
+    a, c = _lcg_table(n)
+    x = (a[1:n + 1] * np.uint64(int(ix0) & (M - 1)) + c[1:n + 1]) & np.uint64(M - 1)       # uint64 product < 2**64
+    s = x.astype(np.int64)
+    s = np.where(s >= (1 << 31), s - M, s)
+    v = (s & ~np.int64(0xFF)).astype(np.float64) * 2.0 ** -32
+    v = np.where(s < 0, 1.0 + v, v)
+    out = np.zeros((3, lm, im, jm))
+    k = 0
+    for j in range(jm):
+        m = imaxj[j]
+        blk = v[k:k + m * lmcld * 3].reshape(m, lmcld, 3)          # (i, draw order L=lmcld-1..0, nr)
+        out[:, :lmcld, :m, j] = np.transpose(blk[:, ::-1, :], (2, 1, 0))
+        k += m * lmcld * 3
+    return out
