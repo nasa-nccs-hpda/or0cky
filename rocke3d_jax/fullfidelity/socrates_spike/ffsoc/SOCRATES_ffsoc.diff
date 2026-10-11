@@ -1,5 +1,5 @@
 --- socrates_orig/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:22.407415666 -0400
-+++ socrates/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:24.130508346 -0400
++++ socrates/src/radiance_core/radiance_calc.F90	2026-10-11 18:14:09.062588918 -0400
 @@ -26,6 +26,7 @@
    USE def_bound,    ONLY: StrBound
    USE def_out,      ONLY: StrOut, allocate_out
@@ -69,7 +69,7 @@
      CALL ereport(RoutineName, ierr, cmessage)
    END IF
 --- socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:22.282647853 -0400
-+++ socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:24.136678807 -0400
++++ socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 18:14:09.088422060 -0400
 @@ -102,6 +102,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -78,15 +78,16 @@
    USE rad_pcf
    USE rad_ccf, ONLY: diffusivity_factor_minor
    USE vectlib_mod, ONLY: exp_v
-@@ -565,6 +566,7 @@
+@@ -565,6 +566,8 @@
  
  
    IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
 +  CALL ffsoc_tic(3)
++  CALL ffsoc_tic(10)
  
    i_abs=index_abs(1)
    
-@@ -834,6 +836,10 @@
+@@ -834,6 +837,10 @@
      END DO
    END IF
  
@@ -97,7 +98,7 @@
  ! The ESFT terms for the major gas in the band are used with
  ! appropriate weighted terms for the minor gases.
    DO iex=1, n_abs_esft(i_abs)
-@@ -901,6 +907,7 @@
+@@ -901,6 +908,7 @@
        END DO
      END DO
  
@@ -105,7 +106,7 @@
      IF (i_cloud == ip_cloud_mcica) THEN
  
  ! DEPENDS ON: mcica_sample
-@@ -1045,11 +1052,15 @@
+@@ -1045,11 +1053,15 @@
  
      END IF
  
@@ -121,7 +122,7 @@
  ! DEPENDS ON: augment_radiance
      CALL augment_radiance(n_profile, n_layer                            &
        , i_angular_integration, i_sph_mode                               &
-@@ -1094,6 +1105,7 @@
+@@ -1094,11 +1106,13 @@
  
  !   After the first call to these routines quantities should be
  !   incremented rather than initialized, until the flag is reset.
@@ -129,3 +130,138 @@
      l_initial=.FALSE.
  
    END DO
+ 
+ 
++  CALL ffsoc_toc(10)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_k_eqv_scl
+--- socrates_orig/src/radiance_core/solve_band_ses.F90	2026-10-11 17:46:22.438417125 -0400
++++ socrates/src/radiance_core/solve_band_ses.F90	2026-10-11 18:14:09.073757651 -0400
+@@ -107,6 +107,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -541,6 +542,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(7)
+ 
+ ! Set the appropriate boundary terms for the total
+ ! upward and downward fluxes.
+@@ -819,6 +821,7 @@
+   END DO
+ 
+ 
++  CALL ffsoc_toc(7)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_ses
+--- socrates_orig/src/radiance_core/solve_band_one_gas.F90	2026-10-11 17:46:22.782682825 -0400
++++ socrates/src/radiance_core/solve_band_one_gas.F90	2026-10-11 18:14:09.078707182 -0400
+@@ -98,6 +98,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -491,6 +492,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(8)
+ 
+ ! The ESFT terms for the first gas in the band alone are used.
+   i_abs=index_abs(1)
+@@ -674,6 +676,7 @@
+   END DO
+ 
+ 
++  CALL ffsoc_toc(8)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_one_gas
+--- socrates_orig/src/radiance_core/solve_band_without_gas.F90	2026-10-11 17:46:23.007639088 -0400
++++ socrates/src/radiance_core/solve_band_without_gas.F90	2026-10-11 18:14:09.083981841 -0400
+@@ -92,6 +92,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -460,6 +461,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(9)
+ 
+ ! Set the appropriate total upward and downward fluxes
+ ! at the boundaries.
+@@ -627,6 +629,7 @@
+   l_initial=.FALSE.
+ 
+ 
++  CALL ffsoc_toc(9)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_without_gas
+--- socrates_orig/src/radiance_core/triple_column.F90	2026-10-11 17:46:22.508109161 -0400
++++ socrates/src/radiance_core/triple_column.F90	2026-10-11 18:25:52.330638009 -0400
+@@ -62,6 +62,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -281,6 +282,21 @@
+   END IF
+ 
+ 
++  CALL ffsoc_arr(40, isolir, 0, 1, ss_prop%tau_clr)
++  CALL ffsoc_arr(40, isolir, 0, 2, ss_prop%omega_clr)
++  CALL ffsoc_arr(40, isolir, 0, 3, ss_prop%tau)
++  CALL ffsoc_arr(40, isolir, 0, 4, ss_prop%omega)
++  CALL ffsoc_arr(40, isolir, 0, 5, ss_prop%tau_clr_noscal)
++  CALL ffsoc_arr(40, isolir, 0, 6, ss_prop%tau_noscal)
++  CALL ffsoc_arr(40, isolir, 0, 7, ss_prop%phase_fnc_clr)
++  CALL ffsoc_arr(40, isolir, 0, 8, ss_prop%phase_fnc)
++  CALL ffsoc_arr(40, isolir, 0, 9, sec_0(1:n_profile))
++  CALL ffsoc_arr(44, isolir, 0, 1, (/ REAL(n_cloud_top, 8), REAL(n_region, 8), REAL(n_cloud_type, 8), REAL(n_layer, 8) /))
++  CALL ffsoc_arr(41, isolir, 0, 1, trans(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 2, reflect(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 3, trans_0_noscal(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 4, trans_0(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 5, source_coeff(1:n_profile, 1:n_layer, :, :))
+   IF (isolir == ip_infra_red) THEN
+ 
+     DO k=1, n_region
+@@ -395,6 +411,9 @@
+       END DO
+     END IF
+ 
++  CALL ffsoc_arr(42, isolir, 0, 1, s_down(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(42, isolir, 0, 2, s_up(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(42, isolir, 0, 3, source_flux_ground(1:n_profile, :))
+ 
+ 
+   SELECT CASE (i_solver)
+@@ -535,7 +554,7 @@
+     CALL ereport(RoutineName, ierr, cmessage)
+ 
+   END SELECT
+-
++  CALL ffsoc_arr(43, isolir, 0, 1, flux_total(1:n_profile, 1:2*n_layer+2))
+ 
+ 
+   IF (l_clear) THEN
