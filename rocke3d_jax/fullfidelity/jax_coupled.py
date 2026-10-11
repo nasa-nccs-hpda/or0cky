@@ -172,14 +172,46 @@ class Coupled:
             return oc
         return ob
 
+    def _k_arg_jit(self, name, fn, K):
+        """ROCKE_STAGE_ARGS=1 (D217): fn(K, *args) jitted with every ARRAY leaf of the statics K as a jit argument (not a compile-time constant), so the program survives the
+        daily_LAKE rebuild of K without recompiling.  The non-array leaves (python numbers, strings) stay closed over; the cached program is reused only while they are equal,
+        otherwise it is rebuilt (never a silent stale constant).  Default (flag off): the program closing over K, as before."""
+        if os.environ.get('ROCKE_STAGE_ARGS', '0') != '1':
+            return jax.jit(lambda *a: fn(K, *a))
+        leaves, treedef = jax.tree_util.tree_flatten(K)
+        idx = [i for i, l in enumerate(leaves) if isinstance(l, (np.ndarray, jax.Array))]
+        arrs = [jnp.asarray(leaves[i]) for i in idx]
+        static = tuple((i, leaves[i]) for i in range(len(leaves)) if i not in set(idx))
+        key = (name, treedef, tuple((a.shape, str(a.dtype)) for a in arrs))
+        if not hasattr(self, '_karg_cache'):
+            self._karg_cache = {}
+        hit = self._karg_cache.get(key)
+        def _same(a, b):             # numbers, strings, bools exactly; the structural objects of the ocean/dyn statics (Geom, counted jit, lambda: rebuilt with K, independent of the lake fractions) by type
+            if isinstance(a, (int, float, str, bool, type(None))) or isinstance(b, (int, float, str, bool, type(None))):
+                return type(a) is type(b) and a == b
+            return type(a) is type(b)
+        same = hit is not None and len(hit[1]) == len(static) and all(i == j and _same(a, b) for (i, a), (j, b) in zip(hit[1], static))
+        if hit is not None and not same:
+            print(f'  _k_arg_jit {name}: non-array statics changed ({[i for (i, a), (_, b) in zip(hit[1], static) if not _same(a, b)][:6]}): program rebuilt', flush=True)
+        if not same:
+            def prog(arrs_, *a, _leaves=list(leaves), _idx=idx, _td=treedef):
+                ls = list(_leaves)
+                for i, v in zip(_idx, arrs_):
+                    ls[i] = v
+                return fn(jax.tree_util.tree_unflatten(_td, ls), *a)
+            hit = (jax.jit(prog), static)
+            self._karg_cache[key] = hit
+        j = hit[0]
+        return lambda *a, _j=j, _arrs=arrs: _j(_arrs, *a)
+
     def _build_jits(self, only=None):
         """The jitted functions of the surface half; they close over the statics self.K (compile-time constants).  `only` = names to (re)build (default all).
         D205: after the lake fractions change only 'pre' and 'pa' are rebuilt: the ocean stages (oa, ob: K keys focean, dxypo, oc, valid) and post_b (adv, is_ocean,
         valid_ocean) read no lake fraction, and re-tracing `ob` raises jax UnexpectedTracerError (ocean_ofluxv builds module-level jnp constants (ZE, DZO) at its first
         import, which happens inside the first trace of `ob`; D205 run 1)."""
         K = self.K
-        mk = dict(pre=lambda: jax.jit(lambda S, mi, me, inp: PT.surface_pre_dev(K, S, mi, me, inp)),
-                  pa=lambda: jax.jit(lambda S1, mid, acc, srfp, itime, V: PT.post_a(K, S1, mid, acc, srfp, itime, V)),
+        mk = dict(pre=lambda: self._k_arg_jit('pre', lambda K_, S, mi, me, inp: PT.surface_pre_dev(K_, S, mi, me, inp), K),
+                  pa=lambda: self._k_arg_jit('pa', lambda K_, S1, mid, acc, srfp, itime, V: PT.post_a(K_, S1, mid, acc, srfp, itime, V), K),
                   oa=lambda: jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='a')),
                   ob=lambda: self._make_ob(K),
                   pb=lambda: jax.jit(lambda S1, c, oc, V: PT.post_b(K, S1, c, oc, V)))
