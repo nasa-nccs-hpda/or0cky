@@ -612,12 +612,21 @@ def odhorz_dev(Ko, dt, H, IO, vbar1, dzgdp1, us1, pg1):
 
 
 # ---- OADVT2 with the X pre-pass as a host callback ------------------------------------------------
+_XPRE_MEMO = {}
+XPRE_LOG = []                 # (event, perf_counter) per host pre-pass callback: enter/exit (profiling)
 XPRE_STATS = {'calls': 0, 'seconds': 0.0, 'bytes_in': 0, 'bytes_out': 0}
 
 
 def _xpre_np(mm, mu, dt, lmu1, lmm1):
     import time as _t
+    XPRE_LOG.append(('enter', _t.perf_counter()))
     from oadvt_vec import _x_prepass
+    if os.environ.get('ROCKE_OCEAN_XPRE_CACHE') == '1':     # PROFILING ONLY: memoise the host function on its inputs (repeat calls do no host work)
+        key = (hash(np.asarray(mm).tobytes()), hash(np.asarray(mu).tobytes()), float(dt))
+        hit = _XPRE_MEMO.get(key)
+        if hit is not None:
+            XPRE_STATS['calls'] += 1
+            return hit
     t0 = _t.perf_counter()
     snap, ncour, lane = _x_prepass(np.asarray(mm), np.asarray(mu), dt, lmu1, lmm1)
     ncour = ncour.astype(np.int64)
@@ -625,6 +634,11 @@ def _xpre_np(mm, mu, dt, lmu1, lmm1):
     XPRE_STATS['seconds'] += _t.perf_counter() - t0
     XPRE_STATS['bytes_in'] += np.asarray(mm).nbytes + np.asarray(mu).nbytes
     XPRE_STATS['bytes_out'] += snap.nbytes + ncour.nbytes + lane.nbytes
+    XPRE_LOG.append(('exit', _t.perf_counter()))
+    XPRE_STATS['ncour_max'] = max(XPRE_STATS.get('ncour_max', 0), int(ncour.max()))
+    XPRE_STATS['lanes'] = int(lane.sum())
+    if os.environ.get('ROCKE_OCEAN_XPRE_CACHE') == '1':
+        _XPRE_MEMO[key] = (snap, ncour, lane)
     return snap, ncour, lane
 
 
@@ -634,7 +648,16 @@ def oadvtx2_dev(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
     shp = (jax.ShapeDtypeStruct((LMO + 1, JM + 1, IM + 1), jnp.float64), jax.ShapeDtypeStruct((LMO + 1, JM + 1), jnp.int64),
            jax.ShapeDtypeStruct((LMO + 1, JM + 1), jnp.bool_))
     lmu1, lmm1 = Ko['x_lmu1'], Ko['x_lmm1']
-    snap, ncour, lane = jax.pure_callback(lambda a, b: _xpre_np(a, b, dt, lmu1, lmm1), shp, mm, mu)
+    _xd = os.environ.get('ROCKE_OCEAN_XPRE_DEV')           # '1' force on, '0' force off, unset: on for a non-CPU backend (the CPU keeps the validated NumPy callback)
+    if _xd == '1' or (_xd is None and jax.default_backend() != 'cpu'):       # D214: the pre-pass on the device (oadvt_xpre_dev, bitwise equal to oadvt_vec._x_prepass in tests/test_oadvt_xpre_dev.py)
+        import oadvt_xpre_dev as _XD
+        snap, ncour, lane = _XD.xpre_dev(mm, mu, dt, jnp.asarray(lmu1))
+    elif os.environ.get('ROCKE_OCEAN_NOXPRE') == '1':        # PROFILING ONLY: skip the host pre-pass (results are WRONG): time without its callback
+        snap, ncour, lane = jnp.zeros(shp[0].shape), jnp.ones(shp[1].shape, jnp.int64), jnp.ones(shp[2].shape, bool)
+    else:
+        snap, ncour, lane = jax.pure_callback(lambda a, b: _xpre_np(a, b, dt, lmu1, lmm1), shp, mm, mu)
+    if OC_SWEEP_STOP == 10:        # profiling: keep the callback alive, skip the sweep
+        return rm, rx, ry, rz, mm + 0.0 * jnp.sum(snap)
     args = (rm, rx, ry, rz, mm, snap[ls, js], ncour[ls, js], lane[ls, js], jnp.asarray(Ko['x_lmu_l']), jnp.asarray(Ko['x_lmm_l']), 1.0 if qlimit else 0.0)
     _bar = os.environ.get('ROCKE_XSWEEP_BARRIER')       # '1' force on, '0' force off, unset: on for a non-CPU backend
     if _bar == '1' or (_bar is None and jax.default_backend() != 'cpu'):
@@ -645,16 +668,42 @@ def oadvtx2_dev(Ko, rm, rx, ry, rz, mm, mu, dt, qlimit):
     return _x_sweep(*args)
 
 
+OC_SWEEP_STOP = int(os.environ.get('ROCKE_OCEAN_SWEEP_STOP', '99'))     # D214 profiling: stop OADVT2 after sweep k (1 x, 2 y, 3 z); read at trace time
+
+
 def oadvt2_dev(Ko, mmi, rm, rx, ry, rz, dt, qlimit, smu, smv, smw):
     from oadvt_jax import oadvty2_jax, oadvtz2_jax
     lmu1, lmv1, lmm1 = Ko['lmu1'], Ko['lmv1'], Ko['lmm1']
+    if OC_SWEEP_STOP == 0:
+        return mmi, rm, rx, ry, rz
     rm, rx, ry, rz, ma = oadvtx2_dev(Ko, rm, rx, ry, rz, mmi, smu, 0.5 * dt, qlimit)
+    if OC_SWEEP_STOP == 1:
+        return ma, rm, rx, ry, rz
     rm, rx, ry, rz, ma = oadvty2_jax(rm, rx, ry, rz, ma, smv, dt, qlimit, lmm1, lmv1)
+    if OC_SWEEP_STOP == 2:
+        return ma, rm, rx, ry, rz
     rm, rx, ry, rz, ma = oadvtz2_jax(rm, rx, ry, rz, ma, smw, dt, qlimit, lmm1)
+    if OC_SWEEP_STOP == 3:
+        return ma, rm, rx, ry, rz
     rm, rx, ry, rz, ma = oadvtx2_dev(Ko, rm, rx, ry, rz, ma, smu, 0.5 * dt, qlimit)
     rm = rm.at[1:IM + 1, JM, 1:].set(rm[1, JM, 1:][None, :])
     rz = rz.at[1:IM + 1, JM, 1:].set(rz[1, JM, 1:][None, :])
     return ma, rm, rx, ry, rz
+
+
+def _dummy_cb(s, tag):
+    """PROFILING (ROCKE_OCEAN_DUMMYCB=1): a trivial host callback depending on s['mo'] whose entry time is logged (XPRE_LOG); result folded into s['mo'] * 0."""
+    if os.environ.get('ROCKE_OCEAN_DUMMYCB') != '1':
+        return s
+    import time as _t
+
+    def host(x, _tag=tag):
+        XPRE_LOG.append(('dummy ' + _tag, _t.perf_counter()))
+        return np.zeros((), np.float64)
+    z = jax.pure_callback(host, jax.ShapeDtypeStruct((), jnp.float64), jnp.sum(s['mo']))
+    s = dict(s)
+    s['mo'] = s['mo'] + 0.0 * z
+    return s
 
 
 OC_STOP = int(os.environ.get('ROCKE_OCEAN_STOP', '99'))      # D214 profiling: stop stage_dynamics after phase k (1 odhorz0, 2 odhorz calls, 3 ofluxv, 4 first OADVT2); read at trace time
@@ -665,6 +714,7 @@ def stage_dynamics(K, Kb, s, fx):
     from ocean_ofluxv import ofluxv_jax
     Ko = K['oc']
     s = run_odhorz0(K, s)
+    s = _dummy_cb(s, 'after odhorz0')
     if OC_STOP == 1:
         return s
     s['smu'] = jnp.zeros_like(s['mo'])
@@ -709,12 +759,14 @@ def stage_dynamics(K, Kb, s, fx):
         st1 = call(main, st1, DTOLF, False)
     for k in ('mo', 'uo', 'vo', 'uod', 'vod', 'opbot'):
         s[k] = main[k]
+    s = _dummy_cb(s, 'after odhorz calls')
     if OC_STOP == 2:
         return s
     s['uo'] = s['uo'].at[IVNP0, JM - 1, :].set(s['vonp'])
     mo, uo, vo, smw = ofluxv_jax(Ko['lmm_f'], Ko['lmu_f'], Ko['lmv_f'], DTOLF, s['opbot'], s['opress'], s['mo'], s['uo'], s['vo'])
     s['mo'], s['uo'], s['vo'] = mo, uo, vo
     s['smw'] = jnp.where(jnp.asarray(Ko['wr']), smw * (jnp.asarray(_DXYPO)[None, :, None] / DTOLF), 0.0)
+    s = _dummy_cb(s, 'after ofluxv')
     if OC_STOP == 3:
         return s
     for r, qk in ((('g0m', 'gxmo', 'gymo', 'gzmo'), False), (('s0m', 'sxmo', 'symo', 'szmo'), True)):

@@ -56,16 +56,26 @@ else:
     names = {1: 'ODHORZ0', 2: '+ five ODHORZ calls (prefilter)', 3: '+ OFLUXV', 4: '+ OADVT2 G0M (heat)', 99: '+ OADVT2 S0M (salt) = whole stage'}
     prev = 0.0
     print('backend', jax.default_backend(), flush=True)
-    for stop in (1, 2, 3, 4, 99):
-        JO.OC_STOP = stop
+    sweeps = {40: 0, 401: 10, 41: 1, 42: 2, 43: 3}
+    names.update({40: '+ OADVT2 G0M: input prep only (before the first callback)', 401: '+ OADVT2 G0M: first callback only (no sweep)', 41: '+ OADVT2 G0M: x sweep 1 only', 42: '+ OADVT2 G0M: x, y', 43: '+ OADVT2 G0M: x, y, z'})
+    for stop in (1, 2, 3, 40, 401, 41, 42, 43, 4, 99):
+        JO.OC_STOP = 4 if stop in sweeps else stop
+        JO.OC_SWEEP_STOP = sweeps.get(stop, 99)
         f = jax.jit(lambda s, fx_, Kb: JO.stage_dynamics(cp.K, Kb, s, fx_))
         ts = []
         for r in range(rep + 1):
+            c0, s0 = JO.XPRE_STATS['calls'], JO.XPRE_STATS['seconds']
+            del JO.XPRE_LOG[:]
             t0 = time.perf_counter()
             out = f(oc, fx, cp.Kbd)
             jax.block_until_ready(out)
             ts.append(time.perf_counter() - t0)
+            t_end = time.perf_counter() - t0
+            tl = [(e, round(t - t0, 3)) for e, t in JO.XPRE_LOG]
+            hc, hs = JO.XPRE_STATS['calls'] - c0, JO.XPRE_STATS['seconds'] - s0
         cur = float(np.mean(ts[1:]))
+        print(f'      callback timeline (s since the call start; call took {t_end:.3f} s): {tl}', flush=True)
+        print(f'      last call: {hc} pre-pass callbacks, host function time {hs:.3f} s ({(hs / hc if hc else 0):.3f} s per callback); max Courant substeps so far {JO.XPRE_STATS.get("ncour_max")}, active lanes {JO.XPRE_STATS.get("lanes")}', flush=True)
         print(f'stop {stop:2d} {names[stop]:40s} cumulative {cur:7.3f} s   delta {cur - prev:7.3f} s   (compile+first {ts[0]:.1f} s)', flush=True)
         prev = cur
     JO.OC_STOP = 99
