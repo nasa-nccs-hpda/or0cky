@@ -18,6 +18,7 @@ cat > "$F" <<EOF
 #SBATCH --mem=24G
 #SBATCH --time=00:$(printf '%02d' "$MIN"):00
 #SBATCH --output=$PROJ/gpu_runs/${NAME}_%j.out
+${V100_EXTRA:+#SBATCH $V100_EXTRA}
 CONDA=/panfs/ccds02/app/modules/anaconda/platform/x86_64/rhel/8.6/3-2022.05/bin/conda
 export FF_DATA="\${FF_DATA:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ff_data}"
 echo "host: \$(hostname)  gpu: \$(nvidia-smi --query-gpu=name --format=csv,noheader)  git: \$(cd $PROJ && git log --oneline -1 | cut -c1-60)  dirty: \$(cd $PROJ && git status --short | grep -v '^??' | wc -l)"
