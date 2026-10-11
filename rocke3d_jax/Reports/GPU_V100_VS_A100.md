@@ -24,6 +24,10 @@ Policy adopted 2026-10-10: iterate on the V100 (jobs submitted from the dev host
 Stage shares now (job 37941486, V100, 1.70 s): condse_mstcnv 0.94 (56%), dyn 0.20, template_build 0.20, condse_post 0.075, condse_setup 0.067, post_a 0.060, ocean_b 0.045, surface_tiles_land 0.037, radia 0.033. Round-based cloud-base loop re-tested without callbacks: 1.78 s vs 0.90 s sequential (identical digest): not used. Finding behind the three fixes: a host callback inside a jit program fires only after the whole device program has finished (first callback at 0.03 s in a short program, 1.0 s in a longer one); a callback alone costs 2 ms; cause not identified.
 Remaining stage shares (job 37941464, V100): ocean_b 1.56 s, condse_mstcnv 0.94, condse_post 0.51, template_build 0.50, dyn 0.19, condse_setup 0.11, other about 0.2. A100 confirmation of this milestone is due (rule 2 and 3 below): the step changed by more than 10%.
 
+| 2026-10-11 | cycle with the REAL Fortran radiation server (`gpu_server_step_run.py`), no prefetch | **3.40-3.57 per step** (cycle average, NRAD = 5) | jobs 37941496 (16 steps: held 1.90 s, radiation 10.25 s of which 8.2 s server -> 3.57), 37941497 (held 1.71, radiation 10.34 -> 3.44), 37941499 (held 1.71, radiation 10.18 -> 3.40): run-to-run noise about 0.1-0.2 s; hybrid (radiation computed, other inputs recorded) |
+| 2026-10-11 | template prefetch (replay scaffolding hidden behind the previous step's device work; opt-in) | **3.33 per step** (cycle average) | job 37941500; end-state digest identical to the run without prefetch (f3ca5c8f083315b874cd); held steps 1.60 s |
+Eager dispatches per step by stage (job 37941498): 770 in total, 294 of them in template_build, the rest 1-2 per stage.
+
 ## When to confirm a milestone on the A100
 Confirm on the A100 (owner submits through Discover) when any of these holds:
 1. **Before any number is reported against the 3.5 s target.** The challenge names the A100; V100 numbers are for iteration only.
