@@ -224,3 +224,9 @@ __marimo__/
 *.bin
 *.mod
 #*.html
+# large local data and run outputs (housekeeping 2026-10-11)
+ff_data/
+gpu_runs/
+modelE2_planet_2.0/
+*.tar
+gpu_slurm_*.out
