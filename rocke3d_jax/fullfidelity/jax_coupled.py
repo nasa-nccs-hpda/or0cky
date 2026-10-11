@@ -103,6 +103,7 @@ STAGES2 = [
                               '(jax_surface.nit_rebuild); a no-op, no transfer, on the other steps'),
     ('radcols', 'JJ', 'D218 (ROCKE_RADCOLS=1, server mode): the radiation-derived template columns (srheat, trhr0, qsol, trup_in_rad of the tiles and the land patch) from OUR radiation state (server output, ice legs), replacing the recorded columns (drv_radcols_dev)'),
     ('radcols_legs', 'JJ', 'D218: RESET_SURF_FLUXES ice legs (b), (c), (F) at the end of the step on the carried FSF/TRSURF'),
+    ('ent_daily', 'NP', 'D219 (ROCKE_ENT_LIVE=1): once per day, at the step whose records carry the end-of-day flag: the Ent state is pulled to the host, the prescribed LAI / albedo update of ent_daily_ff is applied, the Ent arrays are packed and uploaded again'),
     ('template_apply', 'JJ', 'device rewrite of the state columns of the SURFACE templates and of the GHY precipitation forcing (jax_tpl_state)'),
     ('surface_tiles_land', 'JJ/REC', 'SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), '
                                       'land ice, 2 substeps; 5 jit executions'),
@@ -122,6 +123,9 @@ class Coupled:
         self.nit_fix = bool(nit_fix)      # D195: GHY dts of ffnit>11 cells from OUR precipitation (as the NumPy chain); False = D193 behaviour (recorded precipitation)
         self.date = date
         self.it0 = dict(A.DATES)[date]
+        if os.environ.get('ROCKE_ENT_LIVE', '0') == '1':       # D219: Ent computed inside the GHY loop (ent_jax); initial Ent state = the restart of this date
+            import ent_jax as EJ_
+            EJ_.set_restart(f"{A.FF}/_pristine_restarts/fort1_{date}_itime{self.it0}.nc")
         self.log = log
         FX.set_mode('libimf')
         t0 = time.perf_counter()
@@ -513,6 +517,16 @@ class Coupled:
                 tpl, n_nit, n_d2h = JS.nit_rebuild(tpl, host, prec, eprec, precss, strict=self.nit_strict)
                 fin(tpl)
             info['nit_rebuild'] = dict(cells=n_nit, device_to_host_arrays=n_d2h)
+        if os.environ.get('ROCKE_ENT_LIVE', '0') == '1' and state['land_prev'] is not None and 'ent_state' in state['land_prev']['dyn_next'] and bool(host['nit_rows'][0][0, 163] == 1.0):
+            with stage('ent_daily'):
+                import ent_jax as EJ_
+                lp_ = state['land_prev']
+                dn_ = lp_['dyn_next']
+                keys_ = [(int(i_) + 1, int(j_) + 1) for i_, j_ in zip(host['ei'], host['ej'])]
+                jday_ = (it // 48) % 365 + 1
+                ec_, es_ = EJ_.daily_update(keys_, dn_['ent_const'], dn_['ent_state'], jday_)
+                state = dict(state, land_prev=dict(lp_, dyn_next=dict(dn_, ent_const=ec_, ent_state=es_)))
+                info['ent_daily'] = int(jday_)
         with stage('template_apply'):
             lp = state['land_prev']
             tpl_m = apply(tpl, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)

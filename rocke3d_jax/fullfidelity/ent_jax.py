@@ -42,7 +42,15 @@ def pack_cells(cells, keys):
     pat_cell, pat_area, pat_alb, coh_pft, coh_patch, coh_cell = [], [], [], [], [], []
     coh_n, coh_lai, coh_h, coh_fr, coh_sacc = [], [], [], [], []
     for ic, k in enumerate(keys):
-        cell = cells[k]
+        cell = cells.get(k)
+        if cell is None:                                   # land cell without an Ent state (fv = 0): placeholder, one patch without cohorts
+            cell = E.EntCell()
+            cell.heat_capacity = 0.0
+            pp = E.Patch()
+            pp.area, pp.albedo, pp.cohorts, pp.soil_type = 1.0, np.zeros(E.N_BANDS), [], 1
+            cell.patches = [pp]
+            cells = dict(cells)
+            cells[k] = cell
         for p in cell.patches:
             ip = len(pat_cell)
             pat_cell.append(ic)
@@ -306,7 +314,7 @@ def _qsat(TM, LH, PR):
 
 
 def ent_step(const, state, f, dts, update_day, active):
-    N, P, C = const['N'], const['P'], const['C']
+    N, P, C = const['heat_capacity'].shape[0], const['patch_cell'].shape[0], const['cohort_pft'].shape[0]
     cc, cp, pc = const['cohort_cell'], const['cohort_patch'], const['patch_cell']
     pft = const['cohort_pft'] - 1
     # ---- clim_stats
@@ -422,3 +430,69 @@ def ent_step(const, state, f, dts, update_day, active):
               daylength=jnp.where(a[:, None], jnp.stack([state['daylength'][:, 0], dl1], axis=1), state['daylength']),
               fall=jnp.where(a, fall, state['fall']), Sacclim=jnp.where(a[cc], sacc_new, state['Sacclim']))
     return st, out
+
+
+# ----------------------------------------------------------------------------------------------------------- host side: restart cells, daily update (ROCKE_ENT_LIVE)
+REG = {}                    # path of the restart (set_restart), cached host cells, packed batches by key tuple, LAI table
+
+
+def set_restart(path):
+    REG.clear()
+    REG['path'] = path
+
+
+def host_cells():
+    if 'cells' not in REG:
+        REG['cells'] = E.load_restart_cells(REG['path'])
+    return REG['cells']
+
+
+def to_device(const, state):
+    return ({k: jnp.asarray(v) for k, v in const.items() if isinstance(v, np.ndarray)}, {k: jnp.asarray(v) for k, v in state.items()})
+
+
+def packed(keys):
+    """(const, state) of the Ent cells of `keys` (list of 1-based (i, j)) from the restart, as device arrays; memoised"""
+    key = tuple(keys)
+    pk = REG.setdefault('pk', {})
+    if key not in pk:
+        c, s = pack_cells(host_cells(), list(keys))
+        pk[key] = to_device(c, s)
+    return pk[key]
+
+
+def daily_update(keys, const, state, jday):
+    """Day boundary (GHY_DRV daily_earth -> update_vegetation_data): the Ent state is pulled from the device into host EntCells, the prescribed LAI / albedo update of
+    ent_daily_ff is applied, and (const, state) are packed again.  One small host round trip per day."""
+    import ent_daily_ff as D
+    cells = {k: v for k, v in host_cells().items()}
+    c = {k: np.asarray(v) for k, v in const.items()}
+    st = {k: np.asarray(v) for k, v in state.items()}
+    ic = 0
+    for n, k in enumerate(keys):
+        cell = cells.get(k)
+        if cell is None:
+            continue
+        cell.airtemp_10d, cell.par_10d = float(st['airtemp_10d'][n]), float(st['par_10d'][n])
+        cell.gdd, cell.ncd = float(st['gdd'][n]), float(st['ncd'][n])
+        cell.daylength = [float(st['daylength'][n, 0]), float(st['daylength'][n, 1])]
+        cell.fall = int(st['fall'][n])
+    # cohort order of pack_cells: cells in `keys` order, patches, cohorts
+    ic = 0
+    for k in keys:
+        cell = cells.get(k)
+        if cell is None:
+            continue
+        for p in cell.patches:
+            for co in p.cohorts:
+                co.Sacclim = float(st['Sacclim'][ic])
+                ic += 1
+    if 'lai_qty' not in REG:
+        REG['lai_qty'] = D.read_lai_file()
+    la = D.lai_linm2m(REG['lai_qty'], jday)
+    for (ci, cj) in keys:
+        cell = cells.get((ci, cj))
+        if cell is not None:
+            D.daily_update(cell, la[:, cj - 1, ci - 1], D.hemi_of_j(cj), jday)
+    pc, ps = pack_cells(cells, list(keys))
+    return to_device(pc, ps)

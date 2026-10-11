@@ -280,9 +280,16 @@ def _ghy_batch(g, AT, batch=None):
     st["shc"] = st["shc"].at[:, 0, 1].set(jnp.asarray(shc))
     st = J.init_xklh_static(st)
     st["sl"] = jnp.asarray(s0["sl"])
-    return dict(static={k: np.asarray(v) for k, v in st.items()}, dyn0={k: np.asarray(v) for k, v in d0.items()},
-                forcing={k: np.asarray(v) for k, v in f.items()}, edts=np.asarray(edts), ecnc=np.asarray(ecnc), ebet=np.asarray(ebet),
-                elai=np.asarray(elai), nsub=np.asarray(ns), dt=np.asarray(dt), snowm=np.asarray(snowm))
+    out = dict(static={k: np.asarray(v) for k, v in st.items()}, dyn0={k: np.asarray(v) for k, v in d0.items()},
+               forcing={k: np.asarray(v) for k, v in f.items()}, edts=np.asarray(edts), ecnc=np.asarray(ecnc), ebet=np.asarray(ebet),
+               elai=np.asarray(elai), nsub=np.asarray(ns), dt=np.asarray(dt), snowm=np.asarray(snowm))
+    if os.environ.get('ROCKE_ENT_LIVE', '0') == '1':       # D219: the inputs of the Ent call inside the GHY loop (recorded Ca, cosz1, vis_rad, dvis, Qf entry, end-of-day flag) and the initial Ent state
+        import ent_jax as EJ
+        const0, state0 = EJ.packed([(int(r[0]), int(r[1])) for r in g])
+        out['entf'] = dict(Ca=np.asarray(g[:, 3]), cosz1=np.asarray(g[:, 4]), vis=np.asarray(g[:, 5]), dvis=np.asarray(g[:, 6]), qf0=np.asarray(g[:, 7]),
+                           eod=np.asarray(g[:, 163] == 1.0))
+        out['ent0'] = dict(const=const0, state=state0)
+    return out
 
 
 # ====================================================================================================== device: glue ported from NumPy
@@ -392,13 +399,22 @@ def _land(p4, out, gb, dyn, q1_land, ma1_land, trup, max_substeps):
     d0 = dict(gb['dyn0'])
     if dyn is not None:
         d0.update(dyn)
+    ent = None
+    if 'entf' in gb:                                  # D219: Ent computed inside the GHY loop; its state rides in the carried GHY state (dyn0 / dyn_next)
+        es, ec, qf = d0.pop('ent_state', None), d0.pop('ent_const', None), d0.pop('qf', None)
+        if es is None:
+            es, ec, qf = gb['ent0']['state'], gb['ent0']['const'], gb['entf']['qf0']
+        ent = dict(const=ec, state=es, qf0=qf, entf=gb['entf'])
     ghy = J.advnc_sched(gb['static'], d0, forcing, gb['edts'], gb['ecnc'], gb['ebet'], gb['elai'], gb['nsub'], gb['dt'], gb['snowm'],
-                  max_substeps=max_substeps)
+                  max_substeps=max_substeps, ent=ent)
     rcdmws = out["cm"] * out["ws"] * rho
     dlw = DT * (trup - STBO * _pow4(ghy["tbcs"] + TF))
     patch = dict(uflux1=rcdmws * out["us"], vflux1=rcdmws * out["vs"],
                  dth1=-(-ghy["ashg"] + dlw) / (SHA * ma1_land), dq1=ghy["aevap"] / ma1_land, tsavg=tsv, qsavg=qsrf)
-    return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next={k: ghy[k] for k in J_DYN_KEYS},
+    dyn_next = {k: ghy[k] for k in J_DYN_KEYS}
+    if ent is not None:
+        dyn_next.update(ent_state=ghy['ent_state'], ent_const=ent['const'], qf=ghy['qf_exit'])
+    return dict(patch=patch, pbl=out, ghy=ghy, rho=rho, dyn_next=dyn_next,
                 evap_max_ij=ghy["evap_max_ij"], fr_sat_ij=ghy["fr_sat_ij"], elhx=p4[:, 19])
 
 

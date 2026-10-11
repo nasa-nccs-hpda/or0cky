@@ -90,6 +90,12 @@ def _fill_impl(tpl, rs, cosz1, idx, Nw):
         f['srht'] = FSF[3, ei, ej] * cosz1[ei, ej]
         f['trht'] = TRH[ei, ej]
         b['forcing'] = f
+        if 'entf' in b:                                  # inputs of the live Ent call (GHY_DRV.f:1191-1193): cosz1, vis_rad = SRVISSURF*COSZ1*.82 (REAL*4), direct_vis_rad = vis_rad*FSRDIR
+            ef = dict(b['entf'])
+            cz = cosz1[ei, ej]
+            vis = rs['SRVIS'][ei, ej] * cz * DR.F82
+            ef.update(cosz1=cz, vis=vis, dvis=vis * rs['FSRDIR'][ei, ej])
+            b['entf'] = ef
         ghy.append(b)
     out['ghy'] = ghy
     out['trup'] = TRS[3, ei, ej]

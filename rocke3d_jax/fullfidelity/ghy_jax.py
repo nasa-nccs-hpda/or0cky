@@ -37,6 +37,7 @@ import jax.numpy as jnp
 
 import ghy_ref as R   # reuse constants and the once-computed THM/HLM/XKLM/DLM soil tables verbatim
 
+import ent_jax as EJ  # noqa: E402
 TFRZ, SHA, LHE, LHM, RHOW = R.TFRZ, R.SHA, R.LHE, R.LHM, R.RHOW
 STBO, GRAV = R.STBO, R.GRAV
 SHW, SHI, FSN, ELH, SHV, PRFR = R.SHW, R.SHI, R.FSN, R.ELH, R.SHV, R.PRFR
@@ -1584,7 +1585,9 @@ def gdtm(static, forcing, w, fice, tp, d, xkh, fw, evapb, epb, evapvw, evapvd, e
     return dtm
 
 
-def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11):
+def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11, ent=None):
+    # D219: ent = dict(const=<ent_jax const arrays>, state=<Ent state pytree>, qf0=(N,), entf=dict(Ca, cosz1, vis, dvis, eod)) computes the Ent exports INSIDE the sub-iteration loop
+    # (ent_jax.ent_step) instead of reading the recorded ent_cnc / ent_betadl / ent_lai; default None: unchanged behaviour.
     W = max(int(max_substeps), GDTM_WIDTH)
     W0 = ent_dts.shape[1]
     N = dynamic0["w"].shape[0]
@@ -1604,6 +1607,8 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
         dtr=900.0 * one,
         nit=jnp.zeros(N, dtype=jnp.int32), exhausted=jnp.zeros(N, dtype=bool),
         epb=one, epv=one, evapb=one, evapvw=one, evapvd=one)
+    if ent is not None:
+        init_carry.update(est=ent['state'], qf=ent['qf0'], cnc_l=jnp.zeros(N), bet_l=jnp.zeros((N, 6)), lai_l=jnp.zeros(N))
     # `dt` of the template is the total time of the recorded schedule (sum of recorded dts, 900 s for the cells it covers); the Fortran loop runs over the
     # whole DTsrc/2 = 900 s, as ghy_ref_nit.advnc_full does (dt=900)
     dt_run = 900.0 * one
@@ -1619,9 +1624,10 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
         acc = carry["acc"]
         dtr = carry["dtr"]
         active_i = dtr > 0.0
-        cnc = jnp.where(static["process_vege"], _gather(ent_cnc, i), 0.0)
-        betadl = jnp.where(static["process_vege"][:, None], _gather(ent_betadl, i), 0.0)
-        lai = jnp.where(static["process_vege"], _gather(ent_lai, i), 0.0)
+        if ent is None:
+            cnc = jnp.where(static["process_vege"], _gather(ent_cnc, i), 0.0)
+            betadl = jnp.where(static["process_vege"][:, None], _gather(ent_betadl, i), 0.0)
+            lai = jnp.where(static["process_vege"], _gather(ent_lai, i), 0.0)
         hydra_out = hydra(static, theta, fice)
         _z = jnp.zeros_like(forcing["pr"])
         irrig2 = jnp.stack([_z, forcing["irrig"] if "irrig" in forcing else _z], axis=-1)
@@ -1634,6 +1640,24 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
         dts = jnp.where(full, dtr, jnp.minimum(dtm, dtr * 0.5))
         dtr_new = jnp.where(full, 0.0, dtr - dts)
         dts = jnp.where(active_i, dts, 1.0)
+        if ent is not None:                                   # D219: Ent called here (GHY.f: after the time step is known, before evap_limits), as ghy_ent_call
+            pv_ = static["process_vege"]
+            ef = ent['entf']
+            tcan = tp[:, 0, 1]
+            ws_v = static["ws"][:, 1:, 1]
+            w_v = w[:, 1:, 1]
+            smoist = jnp.where(ws_v > 0.0, w_v / jnp.where(ws_v > 0.0, ws_v, 1.0), 0.0)
+            fi_v = carry["fice"][:, 1:, 1]
+            padc = 6 - smoist.shape[1]
+            if padc > 0:
+                smoist, fi_v = (jnp.pad(v, ((0, 0), (0, padc))) for v in (smoist, fi_v))
+            fE = dict(TairC=forcing["ts"] - TFRZ, TcanopyC=tcan, Qf=carry["qf"], P_mbar=forcing["pres"],
+                      Ca=ef["Ca"] * 1.0e-06 * forcing["pres"] * 100.0 / EJ.GASC / (tcan + TFRZ), Ch=forcing["ch"], U=forcing["vs"],
+                      IPARdif=ef["vis"] - ef["dvis"], IPARdir=ef["dvis"], CosZen=ef["cosz1"], fwet=fw, Soilmoist=smoist, fice=fi_v)
+            est2, ex = EJ.ent_step(ent['const'], carry["est"], fE, dts, ef["eod"] & (carry["nit"] == 0), active_i & pv_)
+            cnc = jnp.where(pv_, ex["cnc"], 0.0)
+            betadl = jnp.where(pv_[:, None], ex["betadl"], 0.0)
+            lai = jnp.where(pv_, ex["lai"], 0.0)
         evap_out = evap_limits(static, w, theta, hydra_out["d"], tp, fice, tsn1, nsn, wsn, fr_snow, dt_run, forcing["pr"], betadl, cnc, forcing["ch"],
                                  forcing["vs"], forcing["rho"], forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"], forcing["qm1"], lai, fm)
         epb, epv = _ep(tp, forcing)
@@ -1675,6 +1699,9 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
             exhausted=carry["exhausted"] | (active_i & last_lane & (dtm < dtr)),
             epb=S(epb, carry["epb"]), epv=S(epv, carry["epv"]), evapb=S(evap_out["evapb"], carry["evapb"]),
             evapvw=S(evap_out["evapvw"], carry["evapvw"]), evapvd=S(evap_out["evapvd"], carry["evapvd"]))
+        if ent is not None:
+            qf_new = (flg_out["evap_tot"][:, 1] / (forcing["rho"] / 1000.0 * forcing["ch"]) + forcing["gusti"] * forcing["qprime"]) / forcing["vs"] + forcing["qs"]    # GHY.f:2621
+            new_carry.update(est=est2, qf=S(qf_new, carry["qf"]), cnc_l=S(cnc, carry["cnc_l"]), bet_l=S(betadl, carry["bet_l"]), lai_l=S(lai, carry["lai_l"]))
         return new_carry, None
 
     # lax.while_loop: runs only as many iterations as the slowest cell needs (all lanes are masked by `dtr > 0`, so the result is bitwise the same as running
@@ -1696,15 +1723,17 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
     hyd_f = hydra(static, final_carry["theta"], final_carry["fice"])
     ev_f = evap_limits(static, final_carry["w"], final_carry["theta"], hyd_f["d"], final_carry["tp"], final_carry["fice"], final_carry["tsn1"],
                          final_carry["nsn"], final_carry["wsn"], final_carry["fr_snow"], dt_run, forcing["pr"],
-                         jnp.where(pv[:, None], ent_betadl[rows, last], 0.0), jnp.where(pv, ent_cnc[rows, last], 0.0), forcing["ch"], forcing["vs"],
+                         (jnp.where(pv[:, None], ent_betadl[rows, last], 0.0) if ent is None else final_carry["bet_l"]),
+                         (jnp.where(pv, ent_cnc[rows, last], 0.0) if ent is None else final_carry["cnc_l"]), forcing["ch"], forcing["vs"],
                          forcing["rho"], forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"], forcing["qm1"],
-                         jnp.where(pv, ent_lai[rows, last], 0.0), final_carry["fm"])
+                         (jnp.where(pv, ent_lai[rows, last], 0.0) if ent is None else final_carry["lai_l"]), final_carry["fm"])
     bad = jnp.isnan(ev_f["evap_max_out"])
     return dict(w=final_carry["w"], ht=final_carry["ht"], nsn=final_carry["nsn"], dzsn=final_carry["dzsn"], wsn=final_carry["wsn"], hsn=final_carry["hsn"],
                 fr_snow=final_carry["fr_snow"], tp=final_carry["tp"], fice=final_carry["fice"], tbcs=final["tbcs"], tsns=final["tsns"], ashg=acc["ashg"],
                 alhg=acc["alhg"], aevap=final["aevap"], aruns=final["aruns"], arunu=final["arunu"], aeruns=acc["aeruns"], aerunu=acc["aerunu"], ae0=acc["ae0"],
                 abetad=final_carry["abetad"], evap_max_ij=jnp.where(bad, 0.0, ev_f["evap_max_out"]), fr_sat_ij=jnp.where(bad, 0.0, ev_f["fr_sat"]),
-                nit_gdtm=final_carry["nit"], nit_exhausted=final_carry["exhausted"])
+                nit_gdtm=final_carry["nit"], nit_exhausted=final_carry["exhausted"],
+                **({} if ent is None else dict(ent_state=final_carry["est"], qf_exit=final_carry["qf"])))
 
 
 # the schedule switch: 'computed' (advnc_gdtm, the Fortran loop) or 'recorded' (advnc, replay of the recorded nit/dts).  Environment variable
@@ -1722,9 +1751,10 @@ def schedule():
     return _SCHEDULE
 
 
-def advnc_sched(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11, mode=None):
+def advnc_sched(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=11, mode=None, ent=None):
     """advnc (recorded nit/dts replay) or advnc_gdtm (schedule computed from the state), by `mode` (default: the module switch, read at trace time)."""
     m = mode or _SCHEDULE
     if m == "computed":
-        return advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=max_substeps)
+        return advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=max_substeps, ent=ent)
+    assert ent is None, 'live Ent needs the computed GHY schedule'
     return advnc(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai, n_substeps, dt, snowm, max_substeps=max_substeps)
