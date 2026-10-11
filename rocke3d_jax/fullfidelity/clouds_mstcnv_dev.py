@@ -83,7 +83,7 @@ def _host_adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
 def adv_cb_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
     out = (jax.ShapeDtypeStruct(arr.shape, jnp.float64), jax.ShapeDtypeStruct(mom.shape, jnp.float64),
            jax.ShapeDtypeStruct(ierr.shape, ierr.dtype), jax.ShapeDtypeStruct(lerr.shape, lerr.dtype))
-    return jax.pure_callback(functools.partial(_host_adv_dev, qlimit=qlimit), out, sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr)
+    return jax.pure_callback(functools.partial(_host_adv_dev, qlimit=qlimit), out, sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, vmap_method='sequential')   # sequential: one call per lane of a vmapped round
 
 
 # ---------------------------------------------------------------------------------------------- libimf-fused physics helpers
@@ -1061,11 +1061,9 @@ def _base_dev(K, lmin, S, I):
     return mask, fmp0, fmp2 * k.fmpscale
 
 
-def _event_body(K, lmin, fmp0, fmp2, idxg, idxs, valid, S, Sc, I, aux):
-    nb = idxg.shape[0]
-    Sg, Scg, Ig = _take(S, idxg), _take(Sc, idxg), _take(I, idxg)
-    KC = dict(dcl=aux["dcl"][idxg], dwcu=aux["dwcu"][idxg], pland=aux["pland"][idxg])
-    f0, f2 = fmp0[idxg], fmp2[idxg]
+def _event_compute(K, lmin, f0, f2, valid, Sg, Scg, Ig, KC):
+    """The two cloud-type passes of one event block on the already gathered columns (the middle of the former _event_body, unchanged)."""
+    nb = valid.shape[0]
     V = _init_V(nb, lmin)
 
     def ic_body(ic, c):
@@ -1074,6 +1072,14 @@ def _event_body(K, lmin, fmp0, fmp2, idxg, idxs, valid, S, Sc, I, aux):
         return Sg, Scg, V, err | e
 
     Sg, Scg, V, err = _fori(1, 3, ic_body, (Sg, Scg, V, jnp.zeros((), bool)))
+    return Sg, Scg, err
+
+
+def _event_body(K, lmin, fmp0, fmp2, idxg, idxs, valid, S, Sc, I, aux):
+    Sg, Scg, Ig = _take(S, idxg), _take(Sc, idxg), _take(I, idxg)
+    KC = dict(dcl=aux["dcl"][idxg], dwcu=aux["dwcu"][idxg], pland=aux["pland"][idxg])
+    f0, f2 = fmp0[idxg], fmp2[idxg]
+    Sg, Scg, err = _event_compute(K, lmin, f0, f2, valid, Sg, Scg, Ig, KC)
     return _put(S, Sg, idxs), _put(Sc, Scg, idxs), err
 
 
@@ -1117,6 +1123,77 @@ def _events_device(K, S, Sc, I, aux, lmcm, buckets):
     S, Sc, err, nev = lax.fori_loop(1, lmcm, body, (S, Sc, jnp.zeros((), bool), jnp.zeros(lmcm + 1, I64)))   # outer loop never unrolled (huge body)
     return S, Sc, err, nev
 
+
+
+@functools.partial(jax.jit, static_argnames=("lmcm", "buckets"))
+def _events_rounds(K, S, Sc, I, aux, lmcm, buckets):
+    """D214: the cloud-base loop in ROUNDS instead of 22 sequential LMIN blocks (same per-column order of events, same arithmetic).  Columns are independent, so the
+    only order that matters is the order of the events of ONE column (increasing LMIN, each on the state left by the previous one).  Round r: the base test of
+    every LMIN is evaluated at once on the current state (vmap over LMIN); each column takes its first eligible LMIN after its last processed one; all these
+    events (different LMIN, disjoint columns) run as ONE vmapped event block (lanes = LMIN x width) and are scattered back together.  Rounds continue while any
+    column has a further event (at most the maximum number of events of one column).  Returns (S, Sc, err, n_events_per_lmin)."""
+    N = I["pl"].shape[1]
+    NL = lmcm - 1
+    lms = jnp.arange(1, lmcm, dtype=I64)
+    bk = _buckets_for(N, buckets)
+    bka = jnp.asarray(bk)
+    base_all = jax.vmap(lambda l, S_: _base_dev(K, l, S_, I), in_axes=(0, None))
+
+    def skip(args):
+        S, Sc, *_ = args
+        return S, Sc, jnp.zeros((), bool)
+
+    def make(W):
+        def run(args):
+            S, Sc, sel, fmp0, fmp2 = args
+
+            def one(l, sel_l, f0_l, f2_l):
+                cnt = jnp.sum(sel_l.astype(I64))
+                idxg = jnp.nonzero(sel_l, size=W, fill_value=0)[0]
+                valid = jnp.arange(W) < cnt
+                idxs = jnp.where(valid, idxg, N)
+                Sg, Scg, Ig = _take(S, idxg), _take(Sc, idxg), _take(I, idxg)
+                KC = dict(dcl=aux["dcl"][idxg], dwcu=aux["dwcu"][idxg], pland=aux["pland"][idxg])
+                Sg2, Scg2, e = _event_compute(K, l, f0_l[idxg], f2_l[idxg], valid, Sg, Scg, Ig, KC)
+                return Sg2, Scg2, idxs, e
+
+            Sg2, Scg2, idxs, e = jax.vmap(one)(lms, sel, fmp0, fmp2)
+            flat = lambda a: jnp.moveaxis(a, 0, -2).reshape(a.shape[1:-1] + (NL * a.shape[-1],))   # noqa: E731
+            idf = idxs.reshape(-1)
+            Sn = {n_: S[n_].at[..., idf].set(flat(Sg2[n_]), mode="drop") for n_ in S}
+            Scn = {n_: Sc[n_].at[..., idf].set(flat(Scg2[n_]), mode="drop") for n_ in Sc}
+            return Sn, Scn, jnp.any(e)
+        return run
+
+    branches = [skip] + [make(W) for W in bk]
+
+    def cond(c):
+        return c[5]
+
+    def body(c):
+        S, Sc, err, last, nev, _ = c
+        mask, fmp0, fmp2 = base_all(lms, S)
+        elig = mask & (lms[:, None] > last[None, :])
+        has = jnp.any(elig, axis=0)
+        first = jnp.argmax(elig, axis=0)
+        sel = elig & (jnp.arange(NL)[:, None] == first[None, :]) & has[None, :]
+        cnts = jnp.sum(sel.astype(I64), axis=1)
+        maxc = jnp.max(cnts)
+        bi = jnp.where(maxc == 0, 0, 1 + jnp.searchsorted(bka, maxc, side="left"))
+        S, Sc, e = lax.switch(bi, branches, (S, Sc, sel, fmp0, fmp2))
+        last = jnp.where(has, lms[first], last)
+        return S, Sc, err | e, last, nev.at[lms].add(cnts).at[0].add(1), jnp.any(has)      # nev[0] counts the rounds (diagnostic; nev[1:] as in the LMIN loop)
+
+    init = (S, Sc, jnp.zeros((), bool), jnp.zeros(N, I64), jnp.zeros(lmcm + 1, I64), jnp.ones((), bool))
+    S, Sc, err, _, nev, _ = lax.while_loop(cond, body, init)
+    return S, Sc, err, nev
+
+
+def events(K, S, Sc, I, aux, lmcm, buckets):
+    """Cloud-base loop: ROCKE_MSTCNV_ROUNDS=1 selects the round-based version (default off until validated on the GPU), else the LMIN loop of D189."""
+    if _os.environ.get('ROCKE_MSTCNV_ROUNDS') == '1':
+        return _events_rounds(K, S, Sc, I, aux, lmcm, buckets)
+    return _events_device(K, S, Sc, I, aux, lmcm, buckets)
 
 
 @jax.jit

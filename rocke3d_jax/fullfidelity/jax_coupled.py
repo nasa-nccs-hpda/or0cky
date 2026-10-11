@@ -65,7 +65,7 @@ def mstcnv_new(self, R, stats=None):
     K['fmpscale'] = np.float64(min(1.0, F(self.cfg['dtsrc']) / (F(1.0) * mj.mc.SECONDS_PER_HOUR)))
     Kj = {n_: jnp.asarray(v) for n_, v in K.items()}
     S, Sc, I_, aux = self._mc_setup(Kj, R, lmcm)
-    S, Sc, err, nev = md._events_device(Kj, S, Sc, I_, aux, lmcm, md.BUCKETS)
+    S, Sc, err, nev = md.events(Kj, S, Sc, I_, aux, lmcm, md.BUCKETS)
     if stats is not None:
         stats['events_per_lmin_device'] = nev
         stats['lmin_host_syncs'] = 0

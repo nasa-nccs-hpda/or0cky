@@ -121,7 +121,7 @@ else:
         jax.block_until_ready((S, Sc))
         t['setup'] = time.perf_counter() - t0
         t0 = time.perf_counter()
-        S2, Sc2, err, nev = md._events_device(Kj, S, Sc, I_, aux, lmcm, md.BUCKETS)
+        S2, Sc2, err, nev = md.events(Kj, S, Sc, I_, aux, lmcm, md.BUCKETS)
         jax.block_until_ready((S2, Sc2))
         t['events'] = time.perf_counter() - t0
         t0 = time.perf_counter()
@@ -137,6 +137,7 @@ else:
         h.update(np.ascontiguousarray(np.asarray(leaf)).tobytes())
     print('result digest (sha256 of all output leaves; equal digests = bitwise equal results):', h.hexdigest()[:24])
     nev = np.asarray(nev)
+    print('rounds (round-based loop only; 0 for the LMIN loop):', int(nev[0]))
     print('events per LMIN:', [int(x) for x in nev[1:lmcm]], ' total', int(nev.sum()), ' error flag', bool(err))
     ss = rows[1:]
     print('steady mean: ' + '  '.join(f'{k} {np.mean([x[k] for x in ss]):.3f}' for k in ('setup', 'events', 'post', 'total')))
