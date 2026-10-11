@@ -14,6 +14,13 @@ Policy adopted 2026-10-10: iterate on the V100 (jobs submitted from the dev host
 | one event block at LMIN 3, 32 / 128 / 512 / 1024 columns (s) | 0.529 / 0.555 / 0.607 / 0.659 (58815692) | | |
 | XLA command-buffer / graph flags on the cloud-base stage (s) | 5.63 / 5.63 / 5.57 (58815669) | | |
 
+## Progress log of the optimization work (V100, replay mode, steady steps 2-5)
+| date | change | whole step (s) | note |
+|---|---|---|---|
+| 2026-10-10 | baseline (ocean split in, barrier in) | 9.0 | job 37941449; A100 8.3 (58815361) |
+| 2026-10-11 | QUS subsidence ADV1D (with limiter) on the device (`clouds_adv1d_dev.py`, default on a non-CPU backend) | **3.98** | job 37941464; cloud-base stage alone 6.34 -> 0.89 s; finite at 6 steps; scorer ratio at step 5 in the same range as before (T 0.87, U 0.59, V 0.79, Q 1.07, P 0.63, QCL 0.24, QCI 0.27); bitwise equal to the NumPy callback on the CPU (80 of 80 stage output leaves), 78 of 80 on the V100 |
+Remaining stage shares (job 37941464, V100): ocean_b 1.56 s, condse_mstcnv 0.94, condse_post 0.51, template_build 0.50, dyn 0.19, condse_setup 0.11, other about 0.2. A100 confirmation of this milestone is due (rule 2 and 3 below): the step changed by more than 10%.
+
 ## When to confirm a milestone on the A100
 Confirm on the A100 (owner submits through Discover) when any of these holds:
 1. **Before any number is reported against the 3.5 s target.** The challenge names the A100; V100 numbers are for iteration only.
