@@ -18,6 +18,7 @@ Libm mode (jnp.exp / jnp.power, 'xla' mode of LSCOND); the Intel libimf is not u
 """
 import clouds_jax_env_fast  # noqa: F401  (XLA flags BEFORE jax)
 import functools
+import os
 import numpy as np
 import jax
 jax.config.update("jax_enable_x64", True)
@@ -135,6 +136,22 @@ def pole_call(host, j, A, ms):
     return jax.pure_callback(cb, out_spec, sl, ms)
 
 
+def pole_eager(host, j, A, ms):
+    """D214: the pole column as an explicit host step BETWEEN jitted stages (no host callback inside a jit program: on the GPU such callbacks fire only when the whole
+    program has finished, which made them cost 0.1-0.5 s each).  Same inputs and outputs as pole_call."""
+    sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
+    sl_h, ms_h = jax.device_get((sl, ms))
+    out, msout = host.run(j, sl_h, ms_h)
+    out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
+    return out, {k: jnp.asarray(v) for k, v in msout.items()}
+
+
+def _pole_host_mode():
+    """ROCKE_CONDSE_POLE_HOST: '1' pole columns as host steps between jits, '0' as in-jit callbacks, unset: host steps on a non-CPU backend."""
+    m = os.environ.get('ROCKE_CONDSE_POLE_HOST')
+    return m == '1' or (m is None and jax.default_backend() != 'cpu')
+
+
 # ============================================================================================================== device CONDSE
 class CondseDevice:
     def __init__(self, ctx):
@@ -154,9 +171,12 @@ class CondseDevice:
         self.host = None
         self.out_keys = None
         self._setup = jax.jit(self._setup_fn)
+        self._setup_np = jax.jit(lambda A, ms: self._setup_fn(A, ms, False))
         from types import SimpleNamespace as _NS
         self._mc_setup = jax.jit(lambda K, R, lmcm: mj._setup(_NS(**K), R, lmcm), static_argnums=2)
         self._post = jax.jit(self._post_fn)
+        self._post_a = jax.jit(lambda A, W0, o, ms_s, Xs, Kls: self._post_fn(A, W0, o, ms_s, Xs, Kls, True))
+        self._post_b = jax.jit(self._post_tail)
 
     # ---------------------------------------------------------------- host side bring-up
     def bind(self, A):
@@ -168,7 +188,7 @@ class CondseDevice:
         return self.host
 
     # ---------------------------------------------------------------- unit 1: set-up
-    def _setup_fn(self, A, ms):
+    def _setup_fn(self, A, ms, with_pole=True):
         cfg, I, J, N = self.cfg, self.I, self.J, self.N
         dtsrc, bydtsrc, xmass, bybr = cfg['dtsrc'], cfg['bydtsrc'], cfg['xmass'], cfg['bybr']
         g = lambda a: jnp.transpose(a[I, J, :])            # (IM,JM,LM) -> (LM,N)   # noqa: E731
@@ -203,11 +223,17 @@ class CondseDevice:
                  qcil=qcil, sdl=sdl, wturb=wturb, gzl=gzl, ple=ple, smom=smom, qmom=qmom, um=um, vm=vm, u0=u0, v0=v0, ra=self.ra)
         W0 = dict(pearth=pearth, tsv=tsv, dcl=dcl, pl=pl, ple=ple, plk=plk, airm=airm, byam=byam, dpdt=dpdt, t=t, q=q, sm=sm, qm=qm, smom=smom,
                   qmom=qmom, qcll=qcll, qcil=qcil, sdl=sdl, um=um, vm=vm, u0=u0, v0=v0, tprcp=tprcp)
+        if not with_pole:
+            return R, W0
         # south pole (Fortran order: first)
         Xs, ms_s = pole_call(self.host, 0, A, ms)
         return R, W0, Xs, ms_s
 
     def setup(self, A, ms):
+        if _pole_host_mode():
+            Xs, ms_s = pole_eager(self.host, 0, A, ms)           # south pole first (Fortran order), on the host, before the set-up jit
+            R, W0 = self._setup_np(A, ms)
+            return R, W0, Xs, ms_s
         return self._setup(A, ms)
 
     # ---------------------------------------------------------------- MSTCNV host loop (declared)
@@ -250,7 +276,7 @@ class CondseDevice:
         return o, err_all
 
     # ---------------------------------------------------------------- unit 3: post-processing
-    def _post_fn(self, A, W0, o, ms_s, Xs, Kls):
+    def _post_fn(self, A, W0, o, ms_s, Xs, Kls, until_pole=False):
         cfg, I, J, N = self.cfg, self.I, self.J, self.N
         dtsrc, bydtsrc, bybr, lmcld = cfg['dtsrc'], cfg['bydtsrc'], cfg['bybr'], cfg['lmcld']
         pearth, tsv, dcl, pl, ple, plk, airm, byam = (W0[k] for k in ('pearth', 'tsv', 'dcl', 'pl', 'ple', 'plk', 'airm', 'byam'))
@@ -379,8 +405,13 @@ class CondseDevice:
         # carry for the north pole: the last column's LSCOND arrays
         ms_b = dict(tausslip=Sx['tausslip'][:, -1], csizelip=Sx['csizelip'][:, -1], cldsal=Sx['cldsal'][:, -1], cldsv1=Sx['cldsv1'][:, -1],
                     dqlsc=jnp.zeros(LM), lhp=lhp[:, -1], prebar1=Sx['prebar1'][:, -1])
+        if until_pole:                              # D214: first half of the post unit; the north pole runs on the host, then _post_tail
+            return X, ms_b, flags, dict(prcp=prcp, enrgp=enrgp)
         # ---- poles: south result (already computed in the set-up unit) and north (callback after the batch, with the batch's carry)
         Xn, ms_n = pole_call(self.host, JM - 1, A, ms_b)
+        return self._post_tail(X, Xs, Xn, ms_n, flags, dict(prcp=prcp, enrgp=enrgp))
+
+    def _post_tail(self, X, Xs, Xn, ms_n, flags, extra):
         for k, v in Xs.items():
             if k not in ('UKMNP', 'VKMNP'):
                 X[k] = self._put_pole(X[k], v, 0)
@@ -391,7 +422,7 @@ class CondseDevice:
         X['U'], X['V'], X['UKM'], X['VKM'] = G.avg_replicated_duv_to_vgrid(X['U'], X['V'], X['UKM'], X['VKM'], X['UKMSP'], X['VKMSP'], X['UKMNP'], X['VKMNP'])
         X['UALIJ'], X['VALIJ'] = G.recalc_agrid_uv(X['U'], X['V'], self.agrid)
         # the cloud arrays the radiation packet and the next step's entry read: kept in X
-        return X, ms_n, flags, dict(prcp=prcp, enrgp=enrgp)
+        return X, ms_n, flags, extra
 
     @staticmethod
     def _hand_off(X, I, J, cldmcl, cldssl, svlatl, svlhxl, qclx, qcix, cnvmmrl, cldsal):
@@ -454,6 +485,10 @@ class CondseDevice:
         return arr.at[:, 0, j, :].set(sl) if arr.shape[1:3] == (IM, JM) else arr.at[:, :, 0, j].set(sl)
 
     def post(self, A, W0, o, ms_s, Xs):
+        if _pole_host_mode():
+            X, ms_b, flags, extra = self._post_a(A, W0, o, ms_s, Xs, self.Kls)
+            Xn, ms_n = pole_eager(self.host, JM - 1, A, ms_b)    # north pole on the host between the two halves of the post unit
+            return self._post_b(X, Xs, Xn, ms_n, flags, extra)
         return self._post(A, W0, o, ms_s, Xs, self.Kls)
 
     # ---------------------------------------------------------------- whole CONDSE
