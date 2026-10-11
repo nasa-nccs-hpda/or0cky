@@ -14,8 +14,10 @@ import time
 
 import numpy as np
 
-if sys.argv[1:2] != ['capture']:
-    import clouds_jax_env  # noqa: F401  (the exactness XLA flags must be set BEFORE jax is imported; the CPU results of earlier bench runs were compiled without them)
+import os
+
+if sys.argv[1:2] != ['capture'] and not os.path.exists('/dev/nvidiactl'):      # CPU-only host: set the exactness XLA flags BEFORE jax is imported; NOT on a GPU node (the
+    import clouds_jax_env  # noqa: F401                                      # simplifier-off flag makes the GPU compile explode, gpu_step_run skips it there too)
 
 mode = sys.argv[1]
 
