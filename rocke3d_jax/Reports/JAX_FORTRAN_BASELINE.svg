@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160" role="img" aria-labelledby="title desc">
+  <title id="title">How the ROCKE-3D JAX hybrid baseline relates to Fortran</title>
+  <desc id="desc">Diagram showing a full Fortran reference run supplying restart and recorded comparison data, a JAX GPU run computing its accelerated stages and calling the original Fortran radiation server, with measured timing and explicit limits on performance claims.</desc>
+  <defs>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#2764a5"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#16836b"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#68788a"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #172b43; }
+      .title { font-size: 34px; font-weight: 750; }
+      .subtitle { font-size: 17px; fill: #526579; }
+      .section { font-size: 20px; font-weight: 700; }
+      .heading { font-size: 17px; font-weight: 700; }
+      .body { font-size: 15px; }
+      .small { font-size: 13px; fill: #526579; }
+      .micro { font-size: 12px; fill: #526579; }
+      .white { fill: #ffffff; }
+      .greenText { fill: #126b58; }
+      .amberText { fill: #845b09; }
+      .redText { fill: #963b32; }
+      .card { fill: #ffffff; stroke: #cbd6e2; stroke-width: 1.5; }
+      .blueCard { fill: #edf4fc; stroke: #7fa4d0; stroke-width: 1.7; }
+      .greenCard { fill: #eaf6f1; stroke: #79b9a3; stroke-width: 1.7; }
+      .amberCard { fill: #fff6df; stroke: #d8b75d; stroke-width: 1.7; }
+      .redCard { fill: #fff0ed; stroke: #d88c80; stroke-width: 1.7; }
+      .lineBlue { fill: none; stroke: #2764a5; stroke-width: 3; marker-end: url(#arrowBlue); }
+      .lineGreen { fill: none; stroke: #16836b; stroke-width: 3; marker-end: url(#arrowGreen); }
+      .lineGray { fill: none; stroke: #68788a; stroke-width: 2.5; marker-end: url(#arrowGray); }
+      .dashGray { fill: none; stroke: #8090a1; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrowGray); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1160" fill="#f4f7fb"/>
+  <text x="56" y="62" class="title">How to read the JAX–Fortran baseline</text>
+  <text x="58" y="94" class="subtitle">A hybrid performance test can reuse Fortran as an oracle and as the live radiation component—without porting or rerunning the whole Fortran model every time.</text>
+
+  <rect x="56" y="121" width="1488" height="58" rx="14" fill="#173b63"/>
+  <text x="82" y="157" class="white" font-size="19" font-weight="700">Key idea</text>
+  <text x="196" y="157" class="white" font-size="17">Run the full Fortran model to create the reference once; run JAX for the work being tested; call original Fortran only for the accepted radiation boundary.</text>
+
+  <text x="58" y="220" class="section">1  Reference / oracle: full Fortran, run separately</text>
+  <rect x="58" y="239" width="310" height="146" rx="14" class="blueCard"/>
+  <rect x="58" y="239" width="310" height="38" rx="14" fill="#2764a5"/>
+  <text x="80" y="265" class="white heading">Original ROCKE-3D / Fortran</text>
+  <text x="80" y="307" class="body">
+    <tspan x="80" dy="0">Full reference simulation</tspan>
+    <tspan x="80" dy="23">same P2SAoM40 setup, restart,</tspan>
+    <tspan x="80" dy="23">timestep and requested window</tspan>
+  </text>
+  <text x="80" y="370" class="small">Truth source for reference states and timing</text>
+
+  <path d="M368 310 H438" class="lineBlue"/>
+  <text x="403" y="294" text-anchor="middle" class="micro">run once</text>
+
+  <rect x="449" y="239" width="385" height="146" rx="14" class="card"/>
+  <text x="473" y="270" class="heading">Saved oracle artifacts</text>
+  <text x="473" y="302" class="body">
+    <tspan x="473" dy="0">• restart / initial state</tspan>
+    <tspan x="473" dy="22">• selected step-boundary outputs</tspan>
+    <tspan x="473" dy="22">• comparison fields + Fortran timing</tspan>
+  </text>
+  <text x="473" y="370" class="small">Reusable for many JAX code iterations</text>
+
+  <path d="M834 311 H902" class="dashGray"/>
+  <text x="868" y="294" text-anchor="middle" class="micro">initial state +</text>
+  <text x="868" y="309" text-anchor="middle" class="micro">score references</text>
+
+  <rect x="913" y="239" width="628" height="146" rx="14" class="greenCard"/>
+  <text x="937" y="270" class="heading greenText">JAX GPU run: computes the accelerated stages</text>
+  <text x="937" y="302" class="body">
+    <tspan x="937" dy="0">JAX advances the coupled state on the accelerator between stage boundaries.</tspan>
+    <tspan x="937" dy="23">Recorded restart, static/forcing fields and selected model inputs may be provided</tspan>
+    <tspan x="937" dy="23">as fixtures; list them and distinguish them from physics computed in this run.</tspan>
+  </text>
+  <text x="937" y="370" class="small">This is the JAX implementation under test—not a second full Fortran execution.</text>
+
+  <text x="58" y="428" class="section">2  During a JAX step: one real Fortran component may be called live</text>
+  <rect x="58" y="448" width="360" height="178" rx="14" class="greenCard"/>
+  <text x="82" y="480" class="heading greenText">JAX-computed stages</text>
+  <text x="82" y="512" class="body">
+    <tspan x="82" dy="0">Atmosphere, clouds, surface, ocean,</tspan>
+    <tspan x="82" dy="22">ice and other stages that are actually</tspan>
+    <tspan x="82" dy="22">implemented in JAX for this run.</tspan>
+    <tspan x="82" dy="28">State proceeds to the radiation point.</tspan>
+  </text>
+
+  <path d="M418 537 H500" class="lineGreen"/>
+  <text x="459" y="518" text-anchor="middle" class="micro">radiation cadence</text>
+
+  <rect x="513" y="448" width="420" height="178" rx="14" class="blueCard"/>
+  <rect x="513" y="448" width="420" height="38" rx="14" fill="#2764a5"/>
+  <text x="537" y="474" class="white heading">Persistent Fortran RADIA server</text>
+  <text x="537" y="514" class="body">
+    <tspan x="537" dy="0">Original RADIA / SOCRATES computes</tspan>
+    <tspan x="537" dy="22">radiation for a JAX-supplied packet.</tspan>
+    <tspan x="537" dy="28">JAX consumes returned heating / fluxes;</tspan>
+    <tspan x="537" dy="22">account for its compute, data transfer</tspan>
+    <tspan x="537" dy="22">and synchronization cost.</tspan>
+  </text>
+
+  <path d="M933 537 H1011" class="lineGreen"/>
+  <text x="972" y="518" text-anchor="middle" class="micro">results back</text>
+
+  <rect x="1024" y="448" width="517" height="178" rx="14" class="greenCard"/>
+  <text x="1048" y="480" class="heading greenText">JAX continues / records result</text>
+  <text x="1048" y="512" class="body">
+    <tspan x="1048" dy="0">Returned radiation is applied; the coupled</tspan>
+    <tspan x="1048" dy="22">state advances and is compared with the</tspan>
+    <tspan x="1048" dy="22">saved Fortran oracle at chosen checkpoints.</tspan>
+    <tspan x="1048" dy="28">Only RADIA runs in Fortran at runtime—not</tspan>
+    <tspan x="1048" dy="22">the whole Fortran timestep.</tspan>
+  </text>
+
+  <rect x="58" y="652" width="716" height="218" rx="16" class="amberCard"/>
+  <text x="84" y="687" class="heading amberText">Replay mode — useful control, not full-work performance</text>
+  <text x="84" y="721" class="body">
+    <tspan x="84" dy="0">• Radiation outputs are read from saved Fortran records; RADIA is not run.</tspan>
+    <tspan x="84" dy="24">• Holds radiation fixed, so developers can isolate and profile the JAX stages.</tspan>
+    <tspan x="84" dy="24">• It skips radiation computation: do not compare its runtime to full Fortran</tspan>
+    <tspan x="104" dy="21">as if both performed the same amount of work.</tspan>
+  </text>
+  <rect x="84" y="817" width="655" height="33" rx="8" fill="#f2e2b8"/>
+  <text x="101" y="839" class="small amberText" font-weight="700">Replay answers: “How fast are these stages with radiation held fixed?”</text>
+
+  <rect x="800" y="652" width="741" height="218" rx="16" class="blueCard"/>
+  <text x="826" y="687" class="heading">Live-server mode — real radiation, still a hybrid</text>
+  <text x="826" y="721" class="body">
+    <tspan x="826" dy="0">• On scheduled radiation steps, the original Fortran RADIA/SOCRATES is called;</tspan>
+    <tspan x="846" dy="21">between them, the returned heating is held as in the model cadence.</tspan>
+    <tspan x="826" dy="24">• This avoids porting radiation and counts its actual cost in the JAX run.</tspan>
+    <tspan x="826" dy="24">• It is a valid test of this hybrid design—but recorded inputs elsewhere mean</tspan>
+    <tspan x="846" dy="21">it is not yet proof that every physics stage was computed in both runs.</tspan>
+  </text>
+  <rect x="826" y="817" width="686" height="33" rx="8" fill="#d9e8f7"/>
+  <text x="843" y="839" class="small" font-weight="700">Live radiation ≠ full Fortran model; it is one Fortran component inside JAX.</text>
+
+  <text x="58" y="913" class="section">3  What the current baseline says—and the boundary of the claim</text>
+  <rect x="58" y="934" width="470" height="139" rx="14" class="greenCard"/>
+  <text x="82" y="966" class="heading greenText">Measured hybrid result (V100)</text>
+  <text x="82" y="996" class="body">
+    <tspan x="82" dy="0">16-step live-radiation cycle: 3.40–3.57 s/step</tspan>
+    <tspan x="82" dy="22">Optional template prefetch: 3.33 s/step</tspan>
+    <tspan x="82" dy="22">Owner marked 3.5 s challenge MET (speed only).</tspan>
+  </text>
+
+  <rect x="548" y="934" width="470" height="139" rx="14" class="redCard"/>
+  <text x="572" y="966" class="heading redText">Known limits of this result</text>
+  <text x="572" y="996" class="body">
+    <tspan x="572" dy="0">Day-1; some land / Ent / template / packet</tspan>
+    <tspan x="572" dy="22">inputs are recorded; it is hybrid, not all-JAX.</tspan>
+    <tspan x="572" dy="22">Strict day-fidelity criterion remains NOT MET.</tspan>
+  </text>
+
+  <rect x="1038" y="934" width="503" height="139" rx="14" class="amberCard"/>
+  <text x="1062" y="966" class="heading amberText">What is still needed for “faster than Fortran”</text>
+  <text x="1062" y="996" class="body">
+    <tspan x="1062" dy="0">Equivalent computed work; same restart/window;</tspan>
+    <tspan x="1062" dy="22">matched target hardware / cores; include compile</tspan>
+    <tspan x="1062" dy="22">and callback costs; report fidelity separately.</tspan>
+  </text>
+
+  <line x1="58" y1="1097" x2="1541" y2="1097" stroke="#cbd6e2" stroke-width="1"/>
+  <text x="58" y="1124" class="small">Bottom line: reuse the full Fortran run as a reference; invoke only original Fortran radiation at runtime. This avoids porting and rerunning all Fortran for every JAX iteration.</text>
+  <text x="58" y="1147" class="micro">Evidence: Reports/GPU_V100_VS_A100.md; Reports/PERFORMANCE_BUDGET_3P5S.md; Reports/ACCEPTANCE_CRITERIA.md (checked 2026-10-11).</text>
+</svg>
