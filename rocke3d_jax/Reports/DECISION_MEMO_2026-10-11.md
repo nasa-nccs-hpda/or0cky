@@ -12,7 +12,7 @@ One frozen test: nov26 restart, 54 steps (one day) for Fortran x3 and JAX; JAX a
 | two days, wall | about 277 s | 1,393 s (1,104 s with the stall fix) |
 | cold start (compile, once) | none | 733 s |
 | non-radiation work per step | about 0.75 s | about 2.0 s (held steps) |
-| radiation, per radiation step | 8.1 s | 10.8 s (8.4 s server + about 2.4 s transfers/packet) |
+| radiation, per radiation step | 8.1 s (RADIA) | 10.3-10.8 s = an ordinary step (1.7-1.9 s) + 8.4 s server + 0.2-0.45 s hand-off (packet transfers) |
 | cycle average per step | 2.4 s | 3.45-3.9 s (excl. cold start and day-boundary steps; 3.45 s with the stall fix) |
 | day-boundary step | not separate | 134 s; 1.7 s with `ROCKE_STAGE_ARGS=1` (GPU result then differs from the unflagged run at rounding level, scores equivalent) |
 | stability | n/a | 108 of 108 steps finite; error does NOT grow from day 1 to day 2 (day-2 worst ratio 1.22) |
@@ -42,9 +42,18 @@ One JAX run per configuration (three V100 nodes, noise about 0.2 s per step); Fo
 | step-0 hidden/PBL start state, MMST, ADVSI geometry, per-date constants, first SEEDS[0], RQT/KLIQ/SNOAGE of the first call | small | statics and restart-derived | do not block a longer run |
 Consequence for "blocking a multi-day run": the records come from the instrumented real model, so a longer hybrid run only needs more days of records (day 2 was produced that way: `nov26_day2`, 108 steps; about 6 GB of dumps and a few minutes of Fortran per day). It does NOT need new JAX code, but it keeps the JAX run tied to the real trajectory for land, vegetation and surface templates (errors in those pieces cannot show). A standalone JAX run needs the three largest items above ported; that work is not sized in hours here (no estimate exists in the repo; the SOCRATES estimate of 135-295 h is for radiation only).
 
-## 7. The bar for any proposal aimed at beating the Fortran (added 2026-10-11 after the second-opinion review; numbers from section 2)
-* Fortran cycle: 2.37 s per step = radiation 1.62 s + everything else 0.75 s. JAX hybrid cycle: 3.45 s per step = about 1.72 s radiation-related (10.32 s per radiation step minus a held step, over 5) + about 1.73 s other (held steps).
-* To beat the Fortran on this benchmark, JAX needs (non-radiation work + radiation hand-off) below about 0.75 s per step while the radiation stays the same Fortran code (parity at 0.75 s); today that sum is about 2.1 s per step, a reduction of about 2.8x. The radiation server alone is 8.4 s per call, 1.7 s per step averaged over the cycle, more than the whole Fortran non-radiation step.
-* If radiation moved to the device (SOCRATES port, off the table under the standing rule) at, say, 1 s per step, the JAX cycle would be about 2.7 s against 2.4 s: still slower. A device radiation is necessary for a win, not sufficient.
-* A proposal to continue for speed must state, before work starts, which stage gives which share of the 2.8x reduction (held-step stages today: cloud-base 0.94 s, dynamics 0.20 s, template build 0.20 s, other about 0.4 s) and how each will be measured on the frozen benchmark. A proposal that does not is not funded for speed.
-* The two-day wall ratio of about 4x Fortran is dominated by the one-time 735 s compile; the comparable figure is the steady day, 188 s against 138 s (1.36x).
+## 7. The bar for any proposal aimed at beating the Fortran (added 2026-10-11 after the second-opinion review; corrected the same day)
+Correction: the first version of this section used the older 3.7 s cycle and a wrong reading of the radiation step (10.8 s is an ordinary step plus the 8.4 s server plus a 0.2-0.45 s hand-off, not "8.4 s plus 2.4 s of transfers"). Numbers below are from the 3.45 s run (job 37941519, held 1.73 s, radiation step 10.32 s).
+* Fortran cycle 2.37 s per step = RADIA 1.62 s + everything else 0.75 s. JAX cycle 3.45 s = radiation server 1.68 s (8.4 s / 5) + hand-off 0.04 s + ordinary step work 1.73 s.
+* Parity needs the JAX ordinary step work (including the hand-off) at about 0.75 s while the radiation stays the same Fortran code (cycle then about 2.5 s, 5% above the Fortran because the server request is 8.4 s against RADIA 8.09 s); a WIN (below 2.37 s) needs about 0.65 s. Today 1.73 s: a reduction of 2.3x to 2.7x, about 1.0 to 1.1 s per step.
+* A device radiation (SOCRATES port, off the table under the standing rule) is necessary for a win only if the server cost is to shrink; it does not touch the 1.0 s above.
+### Proposed allocation (HYPOTHESES, none demonstrated; stage seconds from job 37941486, 1.70 s step, V100)
+| stage | now (s) | target (s) | saving (s) | how, and what is known |
+|---|---|---|---|---|
+| cloud-base (condse_mstcnv) | 0.94 | 0.30 | 0.64 (about 60%) | 22 launch-bound event blocks of 43 ms, 69% of a block in the plume ascent loop. Round-based loop (slower, 1.78 s), unrolling (compile over 26 min) and XLA command-buffer flags already tried: no gain. Make-or-break item; no known route. |
+| dynamics | 0.20 | 0.05 | 0.15 | 770 eager dispatches per step, 294 in the template build; fuse into jit programs |
+| template build (host scaffolding) | 0.20 | 0.05 | 0.15 | prefetch (already built, opt-in) measured 1.71 to 1.60 s; the cost returns as device work once Ent/land forcing are computed, so this saving is NOT additive with the standalone port |
+| everything else (condse_post 0.075, setup 0.067, post_a 0.060, ocean_b 0.045, surface tiles/land 0.037, radiation apply 0.033, rest) | 0.36 | 0.25 | 0.11 | small jit fusion |
+| total | 1.70 | 0.65 | 1.05 | borderline: a miss of 0.1 s on any line removes the win; parity is reachable only if cloud-base reaches 0.3 s |
+### How it is measured
+Rerun the frozen job (`gpu/benchmark_v100.sh`, node type, restart, 54-step day, exclusive node, Fortran x3 beside it); report the held-step mean, the cycle average (4 held + 1 radiation, excluding step 0 and day-boundary steps, with `ROCKE_STAGE_ARGS=1` stated), the stage table from a `--timed` run, and the end-state score against the five members. A stage claim counts only if its stage seconds fall in the timed run AND the cycle average falls in the frozen run; noise is 0.2 s per step, so single savings below 0.2 s need repeated runs. Success for the speed track: cycle average at or below the Fortran's measured cycle average on the same node (2.37 s).
