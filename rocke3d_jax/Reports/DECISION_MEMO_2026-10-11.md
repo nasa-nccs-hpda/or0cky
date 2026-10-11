@@ -32,3 +32,12 @@ C. **Continue for speed:** requires a device radiation (SOCRATES) or a different
 
 ## 5. Limits of this evidence
 One JAX run per configuration (three V100 nodes, noise about 0.2 s per step); Fortran timed on the same node type, 1 core, 3 runs; two days of one start date; GPU result not bitwise with CPU/Fortran; relaxed criterion chosen after seeing the results; recorded inputs mean JAX was never run independently of the real trajectory for land, vegetation and surface templates.
+
+## 6. What is still recorded (inventory from `fullfidelity/scoping/D212_RADIATION_PACKET_OWN_STATE_ENTRY.md` section 4; sizes and rankings there are that entry's, the cost ranking is its hypothesis, not measured)
+| recorded input (every step unless noted) | size | computed form in the repo | status |
+|---|---|---|---|
+| SURFACE templates ffp/ffs/ffl/ffg/fft: Ent exports (LAI, albedo, vegetation), land forcing columns, PBL template columns, tile rows and sets, soil static columns | about 1.3 GB per day | Ent: NumPy only (no JAX port; D169/D171 validated); GHY batched JAX exists but takes recorded Ent exports; `PBLCarry` (D177) not wired | largest piece |
+| tile radiation columns (srheat, trhr0, qsol, trup_in_rad, vis_rad, dvis, Ca, cosz1) | part of the templates | `drv_radcols*.py` (D176), bitwise over the nov26 day, not wired in | the cheapest next one (D212 hypothesis) |
+| CONDSE entry non-state fields (ffc_cse_in) | about 4.6 GB per day | not ported (cloud/precip carry, ground fields, tuning) | needs a decision on what the entry set contains |
+| step-0 hidden/PBL start state, MMST, ADVSI geometry, per-date constants, first SEEDS[0], RQT/KLIQ/SNOAGE of the first call | small | statics and restart-derived | do not block a longer run |
+Consequence for "blocking a multi-day run": the records come from the instrumented real model, so a longer hybrid run only needs more days of records (day 2 was produced that way: `nov26_day2`, 108 steps; about 6 GB of dumps and a few minutes of Fortran per day). It does NOT need new JAX code, but it keeps the JAX run tied to the real trajectory for land, vegetation and surface templates (errors in those pieces cannot show). A standalone JAX run needs the three largest items above ported; that work is not sized in hours here (no estimate exists in the repo; the SOCRATES estimate of 135-295 h is for radiation only).
