@@ -16,6 +16,48 @@ import numpy as np
 
 mode = sys.argv[1]
 
+
+def _widths_bench(path, repeats=3):
+    """Time ONE cloud-base event block (md._event_body at a fixed LMIN) at several widths nb: is the cost per sequential step (flat in nb) or per element?"""
+    import jax
+    import jax.numpy as jnp
+    jax.config.update('jax_enable_x64', True)
+    import clouds_mstcnv_jax as mj
+    import clouds_mstcnv_dev as md
+    from types import SimpleNamespace
+    d = pickle.load(open(path, 'rb'))
+    cfg = d['cfg']
+    R = jax.tree_util.tree_map(lambda a: jnp.asarray(a) if isinstance(a, (np.ndarray, np.generic)) and np.asarray(a).dtype.kind in 'fiub' else a, d['R'])
+    lmcm = int(cfg['lmcm'])
+    K = mj.make_K(cfg['tune'])
+    for n_ in ('xmass', 'bydtsrc', 'dtsrc', 'bybr'):
+        K[n_] = np.float64(cfg[n_])
+    K['fmpscale'] = np.float64(min(1.0, np.float64(cfg['dtsrc']) / (np.float64(1.0) * mj.mc.SECONDS_PER_HOUR)))
+    Kj = {n_: jnp.asarray(v) for n_, v in K.items()}
+    S, Sc, I_, aux = jax.jit(lambda K, R, lmcm: mj._setup(SimpleNamespace(**K), R, lmcm), static_argnums=2)(Kj, R, lmcm)
+    lmin = 3
+    mask, fmp0, fmp2 = jax.jit(lambda K, S, I: md._base_dev(K, lmin, S, I))(Kj, S, I_)
+    N = int(mask.shape[0])
+    idx_all = np.flatnonzero(np.asarray(mask))
+    print('backend', jax.default_backend(), 'LMIN', lmin, 'event columns available at this LMIN:', idx_all.size, 'of N =', N, flush=True)
+    for nb in (32, 128, 512, 1024):
+        cnt = min(nb, idx_all.size)
+        idxg = np.zeros(nb, np.int64)
+        idxg[:cnt] = idx_all[:cnt]
+        idxs = np.full(nb, N, np.int64)
+        idxs[:cnt] = idx_all[:cnt]
+        valid = np.arange(nb) < cnt
+        f = jax.jit(lambda K, S, Sc, I, aux, fmp0, fmp2, idxg, idxs, valid: md._event_body(K, lmin, fmp0, fmp2, idxg, idxs, valid, S, Sc, I, aux))
+        args = (Kj, S, Sc, I_, aux, fmp0, fmp2, jnp.asarray(idxg), jnp.asarray(idxs), jnp.asarray(valid))
+        ts = []
+        for r in range(repeats + 1):
+            t0 = time.perf_counter()
+            out = f(*args)
+            jax.block_until_ready(out)
+            ts.append(time.perf_counter() - t0)
+        print(f'nb {nb:5d} (valid columns {cnt:4d}): first (compile) {ts[0]:8.2f} s   steady {np.mean(ts[1:]):7.3f} s  ({", ".join(f"{x:.3f}" for x in ts[1:])})', flush=True)
+
+
 if mode == 'capture':
     import gpu_step_run as G
     import jax
@@ -49,6 +91,8 @@ if mode == 'capture':
         print(f'[step {k}] wall {out["step_seconds"]:.2f} s', flush=True)
         if cur['done']:
             break
+elif mode == 'widths':
+    _widths_bench(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 3)
 else:
     import jax
     import jax.numpy as jnp
