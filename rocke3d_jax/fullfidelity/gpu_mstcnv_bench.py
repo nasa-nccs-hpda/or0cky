@@ -14,6 +14,9 @@ import time
 
 import numpy as np
 
+if sys.argv[1:2] != ['capture']:
+    import clouds_jax_env  # noqa: F401  (the exactness XLA flags must be set BEFORE jax is imported; the CPU results of earlier bench runs were compiled without them)
+
 mode = sys.argv[1]
 
 

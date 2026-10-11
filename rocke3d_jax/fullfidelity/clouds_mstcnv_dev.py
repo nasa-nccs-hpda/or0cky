@@ -90,9 +90,29 @@ def reset_qus():
         QUS.update(calls=0, bytes=0, seconds=0.0)
 
 
+_QCAP = []
+
+
+def _qus_capture_flush():
+    import pickle
+    p = _os.environ.get('ROCKE_QUS_CAPTURE')
+    if p and _QCAP:
+        pickle.dump(_QCAP, open(p, 'wb'), protocol=4)
+
+
+if _os.environ.get('ROCKE_QUS_CAPTURE'):
+    import atexit
+    atexit.register(_qus_capture_flush)
+
+
 def _host_adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
     t0 = time.perf_counter()
+    _cin = None
+    if _os.environ.get('ROCKE_QUS_CAPTURE') and len(_QCAP) < int(_os.environ.get('ROCKE_QUS_CAPTURE_N', '24')):
+        _cin = tuple(np.array(x) for x in (sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr))
     r = cmj._host_adv(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit)
+    if _cin is not None:
+        _QCAP.append((_cin, bool(qlimit), tuple(np.array(x) for x in r)))
     nb = sum(np.asarray(x).nbytes for x in (sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr)) + sum(x.nbytes for x in r)
     with _qlk:
         QUS["calls"] += 1
@@ -102,7 +122,8 @@ def _host_adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
 
 
 def adv_cb_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
-    if _os.environ.get('ROCKE_MSTCNV_QUS_DEV') == '1':       # D214: the subsidence advection on the device (clouds_adv1d_dev, bitwise equal to the NumPy callback in tests/test_clouds_adv1d_dev.py)
+    _qd = _os.environ.get('ROCKE_MSTCNV_QUS_DEV')          # '1' force on, '0' force off, unset: on for a non-CPU backend (the CPU keeps the validated NumPy callback)
+    if _qd == '1' or (_qd is None and jax.default_backend() != 'cpu'):       # D214: the subsidence advection on the device (clouds_adv1d_dev, bitwise equal to the NumPy callback in tests/test_clouds_adv1d_dev.py)
         import clouds_adv1d_dev as _AD
         return _AD.adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit)
     if _os.environ.get('ROCKE_MSTCNV_NOQUS') == '1':      # PROFILING ONLY: skip the host callback (results are WRONG), to time the rest of the subsidence phase
