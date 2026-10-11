@@ -60,6 +60,8 @@ class SrvWrap:
         import radiation_server as rs
         import jax_harness as H
         out = self.srv.request(state, itime, seed)
+        import drv_radcols_dev as DD_
+        DD_.LAST.update(out=out, it=int(itime))
         rin, rout = _read_rsv(itime, 'in'), _read_rsv(itime, 'out')
         rec = dict(itime=int(itime), seed=int(seed), server_s=float(out['_server_s']), wall_s=float(out['_wall_s']))
         if rin is not None and rout is not None:            # no recorded packets for the radiation steps of day 2 (nov26_day2): no comparison

@@ -32,6 +32,7 @@ INST = W.install()
 import jax  # noqa: E402
 import jax.numpy as jnp  # noqa: E402
 import jax_atm_phase1 as P1  # noqa: E402
+import drv_radcols_dev as DD  # noqa: E402
 import jax_p1_count as CNT  # noqa: E402
 import jax_p1_melt as M  # noqa: E402
 import jax_harness as H  # noqa: E402
@@ -100,6 +101,8 @@ STAGES2 = [
     ('nit_rebuild', 'REC/NP', 'host (D195, ON by default, Coupled(nit_fix=True)): only on steps with a cell of recorded ffnit > 11: ONE declared device->host read of PREC/EPREC/PRECSS (3 small arrays), '
                               'ghy_advnc_test.build_batch (NumPy, ghy_ref_nit.run_cell_full) of those rows with OUR precipitation, device replacement of edts/ecnc/elai/ebet/nsub/dt of those cells '
                               '(jax_surface.nit_rebuild); a no-op, no transfer, on the other steps'),
+    ('radcols', 'JJ', 'D218 (ROCKE_RADCOLS=1, server mode): the radiation-derived template columns (srheat, trhr0, qsol, trup_in_rad of the tiles and the land patch) from OUR radiation state (server output, ice legs), replacing the recorded columns (drv_radcols_dev)'),
+    ('radcols_legs', 'JJ', 'D218: RESET_SURF_FLUXES ice legs (b), (c), (F) at the end of the step on the carried FSF/TRSURF'),
     ('template_apply', 'JJ', 'device rewrite of the state columns of the SURFACE templates and of the GHY precipitation forcing (jax_tpl_state)'),
     ('surface_tiles_land', 'JJ/REC', 'SURFACE stage (D188): PBL, tile fluxes, aggregation, ATURB, land GHY (Ent exports, land forcing and tile radiation columns are RECORDED inputs), '
                                       'land ice, 2 substeps; 5 jit executions'),
@@ -284,6 +287,13 @@ class Coupled:
             info['land_fractions'] = dict(n_shrunk=linfo['n_shrunk'], n_expanded=linfo['n_expanded'], new_cell_rows=linfo['new_cell_rows'].tolist(),
                                           n_changed_cells_without_land_row=int((chg & ~rowmask & (out['fearth'] > 0) & (np.asarray(geo['focean']) < 1)).sum()))
             info['not_applied'] = [x for x in info['not_applied'] if 'GHY dfrac' not in x] + ['atmlnd fr_snow_rad / set_new_ghy_cells_outputs (radiation replayed)']
+        if getattr(self, '_rs', None) is not None:                # D218: RESET_SURF_FLUXES of daily_LAKE on the carried FSF / TRSURF (host RadSurf.daily_lake, once per day)
+            import drv_radcols as DR_
+            rsn = DR_.RadSurf()
+            rsn.FSF, rsn.TRSURF = np.array(self._rs['FSF'], dtype=np.float64), np.array(self._rs['TRSURF'], dtype=np.float64)
+            rsn.daily_lake(geo['flake'], out['flake'], ice['rsi'], out['rsi'], fearth0, out['fearth'])
+            self._rs = dict(self._rs, FSF=jnp.asarray(rsn.FSF), TRSURF=jnp.asarray(rsn.TRSURF))
+            info['radcols_daily_lake_legs'] = rsn.n_legs
         # ---- device state
         newice = dict(sf['ice'])
         for k in ('rsi', 'msi', 'snowi', 'hsi'):
@@ -460,6 +470,32 @@ class Coupled:
             arrays['condse'] = r['snaps']['condse']
             arrays['radia'] = r['snaps']['radia']
             arrays['X'] = r['X']
+        # ---------------------------------------------------------------- D218: radiation-derived template columns from OUR radiation state (ROCKE_RADCOLS=1, server mode)
+        use_rc = os.environ.get('ROCKE_RADCOLS', '0') == '1' and server is not None
+        if use_rc:
+            with stage('radcols'):
+                geo_ = self.st['geo']
+                if A.is_radiation_step(it):
+                    assert DD.LAST.get('it') == it, f"radiation server output of step {it} not captured (last {DD.LAST.get('it')})"
+                    self._rs = DD.rs_from_server(DD.LAST['out'])
+                    cz_ = jnp.asarray(np.asarray(DD.LAST['out']['COSZ1'], dtype=np.float64))
+                else:
+                    assert getattr(self, '_rs', None) is not None, 'ROCKE_RADCOLS needs a radiation step first'
+                    self._rs = DD.ice_leg(self._rs, SS['ice']['rsi'], ice_new['rsi'], jnp.asarray((np.asarray(geo_['focean']) > 0) | (np.asarray(geo_['flake']) > 0)))   # leg (a)
+                    cz_ = jnp.asarray(np.asarray(rec['rad']['COSZ1'], dtype=np.float64))
+                tpl_new = DD.fill_tpl(tpl, self._rs, cz_, host)
+                if os.environ.get('ROCKE_RADCOLS_CHECK', '0') == '1':            # diagnostic: computed columns against the RECORDED template (host read, slow)
+                    lo, ln = jax.tree_util.tree_flatten_with_path(tpl)[0], jax.tree_util.tree_leaves(tpl_new)
+                    chk = {}
+                    for (pth, a), b in zip(lo, ln):
+                        a_, b_ = np.asarray(a), np.asarray(b)
+                        if a_.dtype.kind == 'f' and not np.array_equal(a_, b_, equal_nan=True):
+                            chk[jax.tree_util.keystr(pth)] = (int((a_ != b_).sum()), float(np.nanmax(np.abs(a_ - b_))))
+                    info['radcols_check'] = chk
+                    print(f'  radcols_check it {it}: {len(chk)} leaves differ from the recorded template: ' + '; '.join(f'{k}: n={v[0]} max={v[1]:.3g}' for k, v in chk.items()), flush=True)
+                tpl = tpl_new
+                fin(tpl)
+            info['radcols'] = True
         # ---------------------------------------------------------------- J2: surface
         prec, eprec, precss = S1a['PREC'], S1a['EPREC'], S1a['PRECSS']
         with stage('surface_pre'):
@@ -505,6 +541,15 @@ class Coupled:
         with stage('post_b'):
             SSn, V2n, post = self.pb(S1s, c, oc_b, V)
             fin(SSn)
+        if use_rc:
+            with stage('radcols_legs'):                          # legs (b), (c) ocean cells and (F) lake cells; they act on the NEXT step's columns
+                geo_ = self.st['geo']
+                ocn_, lake_ = jnp.asarray(np.asarray(geo_['focean']) > 0), jnp.asarray(np.asarray(geo_['flake']) > 0)
+                s1_, pre_, gsi_, end_ = S1s['ice']['rsi'], post['ice_pre_adv']['rsi'], post['ice_after_gsi']['rsi'], SSn['ice']['rsi']
+                rs_ = DD.ice_leg(self._rs, s1_, pre_, ocn_)
+                rs_ = DD.ice_leg(rs_, pre_, end_, ocn_)
+                self._rs = DD.ice_leg(rs_, s1_, gsi_, lake_)
+                fin(self._rs['FSF'])
         # ---------------------------------------------------------------- J3: phase 2
         with stage('dissip_filter'):
             Sin = {kk: S2a[kk] for kk in P2.IN_KEYS}
