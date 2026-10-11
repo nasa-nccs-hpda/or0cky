@@ -14,7 +14,7 @@ cat > "$F" <<EOF
 #SBATCH --partition=compute
 #SBATCH --constraint=v100
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=${V100_CPUS:-4}
 #SBATCH --mem=24G
 #SBATCH --time=00:$(printf '%02d' "$MIN"):00
 #SBATCH --output=$PROJ/gpu_runs/${NAME}_%j.out
