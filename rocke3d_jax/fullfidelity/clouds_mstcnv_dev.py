@@ -50,6 +50,27 @@ import os as _os
 UNROLL = int(_os.environ.get('ROCKE_MSTCNV_UNROLL', '1'))   # D214 experiment: unroll of the static-trip fori loops of the event block (same arithmetic and order; fewer loop iterations)
 
 
+STOP = int(_os.environ.get('ROCKE_MSTCNV_STOP', '99'))     # D214 profiling: stop the event block after phase k (0..6); 99 = whole block.  Read at trace time.
+
+
+def _early(Tf, S, V, Sc_names=None):
+    return ({n: Tf[n] for n in S_NAMES}, {n: Tf[n] for n in SC_NAMES}, {n: Tf[n] for n in V.keys()}, Tf['err_neg_cloud'])
+
+
+TRACE = _os.environ.get('ROCKE_MSTCNV_TRACE') == '1'      # D214 profiling: ordered timestamp callbacks at the phase boundaries of the event block (off by default)
+TRACE_LOG = []
+
+
+def _mark(tag, ns):
+    """Phase marker: an ordered host callback that depends on (a reduction of) the current state, so it fires after the preceding phase has finished on the device."""
+    if not TRACE:
+        return
+    from jax.experimental import io_callback
+    vals = vars(ns) if not isinstance(ns, dict) else ns
+    dep = jnp.stack([jnp.sum(jnp.asarray(v, jnp.float64)) for v in vals.values() if hasattr(v, 'dtype') and jnp.issubdtype(v.dtype, jnp.floating)][:200])
+    io_callback(lambda x, _t=tag: TRACE_LOG.append((_t, time.perf_counter())), None, dep, ordered=True)
+
+
 def _fori(lo, hi, body, init):
     """lax.fori_loop; with ROCKE_MSTCNV_UNROLL = k > 1 the loops with Python-int bounds are unrolled k times (default 1 = unchanged)."""
     if UNROLL > 1 and isinstance(lo, (int, np.integer)) and isinstance(hi, (int, np.integer)):
@@ -81,6 +102,11 @@ def _host_adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
 
 
 def adv_cb_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit):
+    if _os.environ.get('ROCKE_MSTCNV_QUS_DEV') == '1':       # D214: the subsidence advection on the device (clouds_adv1d_dev, bitwise equal to the NumPy callback in tests/test_clouds_adv1d_dev.py)
+        import clouds_adv1d_dev as _AD
+        return _AD.adv_dev(sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, qlimit)
+    if _os.environ.get('ROCKE_MSTCNV_NOQUS') == '1':      # PROFILING ONLY: skip the host callback (results are WRONG), to time the rest of the subsidence phase
+        return arr, mom, ierr, lerr
     out = (jax.ShapeDtypeStruct(arr.shape, jnp.float64), jax.ShapeDtypeStruct(mom.shape, jnp.float64),
            jax.ShapeDtypeStruct(ierr.shape, ierr.dtype), jax.ShapeDtypeStruct(lerr.shape, lerr.dtype))
     return jax.pure_callback(functools.partial(_host_adv_dev, qlimit=qlimit), out, sel, ldmin, lmax, arr, mom, ml, cmneg, ierr, lerr, vmap_method='sequential')   # sequential: one call per lane of a vmapped round
@@ -309,6 +335,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     mplum1 = mplume0
     contce = wb(ic == 1, k.contce1, k.contce2)
 
+    _mark('0 start', T)
+    if STOP == 0:
+        return _early(T, S, V)
     # ================================================================ NPPL loop (area partitions)
     def nppl_body(nppl, carry):
         T, cyc = carry
@@ -392,6 +421,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     T, cyc = _fori(1, 3, nppl_body, (T, jnp.zeros(n, bool)))
     s = SimpleNamespace(**T)
     ev = live & ~cyc
+    _mark('1 plume ascent (NPPL loop)', s)
+    if STOP == 1:
+        return _early(vars(s), S, V)
     # ================================================================ after the plume partitions
     def tm_body(L, tm):
         return wb(ev & (L <= s.lmax), tm + s.taumc1[L], tm)
@@ -418,6 +450,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     s.dvm = s.dvm.at[kr, lme[None, :], cols[None, :]].set(wb(ev[None, :], s.dvm[kr, lme[None, :], cols[None, :]] + s.vmp, s.dvm[kr, lme[None, :], cols[None, :]]))
     s.lmcmin = wb(ev & (s.lmcmin == 0), lmin, s.lmcmin)
     s.lmcmax = wb(ev & (s.lmcmax < s.lmax), s.lmax, s.lmcmax)
+    _mark('2 after-plume bookkeeping', s)
+    if STOP == 2:
+        return _early(vars(s), S, V)
     # ================================================================ downdraft
     s.ldmin = wb(ev, s.ldraft - 1, s.ldmin)
     s.llmin = wb(ev, s.ldmin, s.llmin)
@@ -561,6 +596,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     s.dvm = s.dvm.at[kr, ld_[None, :], cols[None, :]].set(wb(ddm_ev[None, :], s.dvm[kr, ld_[None, :], cols[None, :]] + d.vmdn,
                                                               s.dvm[kr, ld_[None, :], cols[None, :]]))
     s.dm = s.dm.at[ld_, cols].set(wb(ddm_ev, s.dm[ld_, cols] + d.ddraft, s.dm[ld_, cols]))
+    _mark('3 downdraft', s)
+    if STOP == 3:
+        return _early(vars(s), S, V)
     # ================================================================ subsidence
     s.ldmin = wb(ev & (s.ldmin > lmin), lmin, s.ldmin)
     lmax = s.lmax
@@ -655,6 +693,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         s.qm, s.qmom, s.ierr, s.lerr = adv_cb_dev(selm, s.ldmin, lmax, s.qm, s.qmom, ml2, cmneg, s.ierr, s.lerr, True)
         s.qm = wb(mm_, s.qm + s.dqm * byksub[None, :], s.qm)
         s.qmom = wb(mm_[None], s.qmom + s.dqmom * byksub[None, None, :], s.qmom)
+    _mark('4 subsidence (loops + QUS callbacks)', s)
+    if STOP == 4:
+        return _early(vars(s), S, V)
     # ================================================================ diagnostics that feed exit fields
     fcdh = wb(Lr == lmax[None, :], s.cdhsum - s.cdhsum1 + 0.0, 0.0)
     fcdh1 = wb(Lr == s.llmin[None, :], s.cdhsum1 - s.evpsum, 0.0)
@@ -663,6 +704,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     s.ddmflx = wb(inr1, s.ddmflx + s.ddm * s.fmc1, s.ddmflx)
     s.sm1 = wb(ev[None, :] & (Lr >= 1) & (Lr <= LM), s.sm, s.sm1)
     s.qm1 = wb(ev[None, :] & (Lr >= 1) & (Lr <= LM), s.qm, s.qm1)
+    _mark('5 diagnostics', s)
+    if STOP == 5:
+        return _early(vars(s), S, V)
     # ================================================================ precipitation
     s.cond = s.cond.at[lme, cols].set(wb(ev, s.cond[lme, cols] + s.condv[lme, cols], s.cond[lme, cols]))
     deep = (ple[lmin] - ple[lmax + 1, cols]) >= 450.
@@ -794,6 +838,9 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
     s.prcpmc = wb(ev, s.prcpmc + prcp * s.fmc1, s.prcpmc)
     s.lmcmin = wb(ev & (s.lmcmin > s.ldmin), s.ldmin, s.lmcmin)
     s.mc1 = wb(ev, False, s.mc1)
+    _mark('6 precipitation', s)
+    if STOP == 6:
+        return _early(vars(s), S, V)
     Tf = vars(s)
     return ({n: Tf[n] for n in S_NAMES}, {n: Tf[n] for n in SC_NAMES}, {n: Tf[n] for n in V.keys()}, Tf["err_neg_cloud"])
 

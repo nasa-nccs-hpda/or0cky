@@ -23,6 +23,7 @@ export FF_DATA="\${FF_DATA:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai
 echo "host: \$(hostname)  gpu: \$(nvidia-smi --query-gpu=name --format=csv,noheader)  git: \$(cd $PROJ && git log --oneline -1 | cut -c1-60)  dirty: \$(cd $PROJ && git status --short | grep -v '^??' | wc -l)"
 cd $PROJ/fullfidelity
 export OMP_NUM_THREADS=1
-\$CONDA run --no-capture-output -n graphcast-env bash -c '$CMD'
+\$CONDA run --no-capture-output -n graphcast-env bash ${F%.sbatch}.cmd.sh
 EOF
+printf '%s\n' "$CMD" > "${F%.sbatch}.cmd.sh"      # the command goes into its own file: no quoting problems with quotes inside CMD
 timeout 25 ssh -o BatchMode=yes -o ConnectTimeout=5 gpulogin1 "sbatch $F" 2>&1 | grep -i "submitted\|error"
