@@ -78,3 +78,13 @@ Reported with every correctness result: wall time per step (first step with comp
 2. **Status of the nov26 day (D193, D195):** NOT MET on this rule. The only field beyond 2x is QCL at step 1 (ratio 2.84: ours 1.15e-6 vs largest member distance 4.06e-7). Steps >= 3: worst ratio <= 1.17 in D193 and 1.13 in D195 (reported as additional information only). The earlier statements that the floor at steps < 3 is "~1e-9" were wrong (correction in `FULL_FIDELITY_DELTAS.md`, commit 8a649f7); no exception clause or exclusion of steps 0-2 is recorded.
 3. **Possible later relaxation:** the owner said (2026-10-08) the criteria may be relaxed later only to advance to the GPU run. If that happens it must be recorded here as a dated owner decision made AFTER the results were known, with the unrelaxed status stated next to it; every result report will then carry both statuses.
 4. **Work queued:** a short QCL step-1 diagnosis; leave-one-out scoring with the 8 JAN1950 members (D172) for longer windows.
+
+## 10. Owner decision of 2026-10-11 (G. Tamkin): relaxed day criterion for the V100 hybrid experiment, reported BESIDE the unrelaxed status
+Context: the owner declared the work an experiment with no wrong answers, not a production migration, and asked to decide today whether to continue; relaxation of the day criterion was authorised ("even if we have to relax the threshold"). Section 9 item 3 required the relaxation to be recorded as a dated decision made AFTER the results were known, with the unrelaxed status next to it. Both hold here.
+1. **Relaxed rule (experiment status, "RELAXED-MET"):** every step finite (atmosphere and ocean) AND, at steps >= 3, never beyond 3 times the largest member distance for every scored field. Steps 0-2 are reported, not gated (the member floor there is tiny and ratios are unstable). The factor 3 and the exclusion of steps 0-2 were chosen by the agent on 2026-10-11 AFTER seeing the results below (worst ratio at steps >= 3: 2.37); a MET under this rule shows the run stays inside the ensemble spread at a loose margin; it does NOT show agreement at rounding level.
+2. **Unrelaxed rule (section 9 item 1)** remains the standard for any claim of fidelity; every report carries both.
+3. **Statuses known on 2026-10-11 (V100, libm mode, nov26 day 1):**
+| run | unrelaxed (s9) | relaxed (s10) | worst ratio steps >= 3 | worst ratio steps 0-2 |
+|---|---|---|---|---|
+| GPU replay-radiation day (job 37941501) | NOT MET (U 2.61, QCL 2.95 at step 1; P 25.8 at step 0) | MET | 1.44 (QCI step 47) | P 25.79 step 0 |
+| GPU server-radiation day, radiation inputs from own state (baseline v1, job 37941503) | NOT MET | MET | 2.37 (QCI step 3) | P 25.48 step 0; QCL 7.34 step 1 |
