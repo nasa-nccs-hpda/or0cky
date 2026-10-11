@@ -657,11 +657,16 @@ def oadvt2_dev(Ko, mmi, rm, rx, ry, rz, dt, qlimit, smu, smv, smw):
     return ma, rm, rx, ry, rz
 
 
+OC_STOP = int(os.environ.get('ROCKE_OCEAN_STOP', '99'))      # D214 profiling: stop stage_dynamics after phase k (1 odhorz0, 2 odhorz calls, 3 ofluxv, 4 first OADVT2); read at trace time
+
+
 def stage_dynamics(K, Kb, s, fx):
     """ocean_step.stage_dynamics: ODHORZ0, five ODHORZ calls with the OPFIL2 prefilter, VONP, OFLUXV, OADVT2 of G0M and S0M."""
     from ocean_ofluxv import ofluxv_jax
     Ko = K['oc']
     s = run_odhorz0(K, s)
+    if OC_STOP == 1:
+        return s
     s['smu'] = jnp.zeros_like(s['mo'])
     s['smv'] = jnp.zeros_like(s['mo'])
     mk, ku, kv = (jnp.asarray(Ko[k]) for k in ('mk', 'ku', 'kv'))
@@ -704,14 +709,20 @@ def stage_dynamics(K, Kb, s, fx):
         st1 = call(main, st1, DTOLF, False)
     for k in ('mo', 'uo', 'vo', 'uod', 'vod', 'opbot'):
         s[k] = main[k]
+    if OC_STOP == 2:
+        return s
     s['uo'] = s['uo'].at[IVNP0, JM - 1, :].set(s['vonp'])
     mo, uo, vo, smw = ofluxv_jax(Ko['lmm_f'], Ko['lmu_f'], Ko['lmv_f'], DTOLF, s['opbot'], s['opress'], s['mo'], s['uo'], s['vo'])
     s['mo'], s['uo'], s['vo'] = mo, uo, vo
     s['smw'] = jnp.where(jnp.asarray(Ko['wr']), smw * (jnp.asarray(_DXYPO)[None, :, None] / DTOLF), 0.0)
+    if OC_STOP == 3:
+        return s
     for r, qk in ((('g0m', 'gxmo', 'gymo', 'gzmo'), False), (('s0m', 'sxmo', 'symo', 'szmo'), True)):
         ma, rm, rx, ry, rz = oadvt2_dev(Ko, _to1(s['mmi']), *[_to1(s[k]) for k in r], DTOLF, qk, _to1(s['smu']), _to1(s['smv']), _to1(s['smw']))
         for k, v in zip(r, (rm, rx, ry, rz)):
             s[k] = _from1(v)
+        if OC_STOP == 4 and r[0] == 'g0m':
+            return s
     return s
 
 
