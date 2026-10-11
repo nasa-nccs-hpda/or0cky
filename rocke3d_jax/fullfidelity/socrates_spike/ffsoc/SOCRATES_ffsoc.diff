@@ -1,0 +1,131 @@
+--- socrates_orig/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:22.407415666 -0400
++++ socrates/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:24.130508346 -0400
+@@ -26,6 +26,7 @@
+   USE def_bound,    ONLY: StrBound
+   USE def_out,      ONLY: StrOut, allocate_out
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE gas_list_pcf, ONLY: ip_h2o, ip_air, molar_weight
+   USE rad_ccf,      ONLY: mol_weight_air
+   USE errormessagelength_mod, ONLY: errormessagelength
+@@ -424,6 +425,12 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_begin_call
++  CALL ffsoc_tic(6)
++  CALL ffsoc_arr(0, control%isolir, 0, 1, atm%p)
++  CALL ffsoc_arr(0, control%isolir, 0, 2, atm%t)
++  CALL ffsoc_arr(0, control%isolir, 0, 3, atm%density)
++  CALL ffsoc_arr(0, control%isolir, 0, 4, atm%gas_mix_ratio)
+ 
+ 
+   CALL allocate_out(radout, control, dimen, spectrum)
+@@ -755,6 +762,7 @@
+ ! increment the fluxes.
+ 
+   DO i_band=control%first_band, control%last_band
++    CALL ffsoc_tic(2)
+ 
+ !   Set the flag to initialize the diagnostic arrays.
+     IF (i_band == control%first_band) THEN
+@@ -943,6 +951,7 @@
+ 
+ !   Calculate the grey extinction within the band.
+ 
++    CALL ffsoc_tic(1)
+ ! DEPENDS ON: grey_opt_prop
+     CALL grey_opt_prop(ierr, control, radout, i_band                           &
+       , atm%n_profile, atm%n_layer, atm%p, atm%t, atm%density                  &
+@@ -1002,6 +1011,11 @@
+       , dimen%nd_profile_aerosol_prsc, dimen%nd_profile_cloud_prsc             &
+       , dimen%nd_opt_level_aerosol_prsc, dimen%nd_opt_level_cloud_prsc         &
+       )
++    CALL ffsoc_toc(1)
++    CALL ffsoc_arr(10, control%isolir, i_band, 1, ss_prop%k_grey_tot_clr)
++    CALL ffsoc_arr(10, control%isolir, i_band, 2, ss_prop%k_ext_scat_clr)
++    CALL ffsoc_arr(10, control%isolir, i_band, 3, ss_prop%k_grey_tot)
++    CALL ffsoc_arr(10, control%isolir, i_band, 4, ss_prop%k_ext_scat)
+ 
+ 
+     IF ( (control%i_angular_integration == ip_two_stream).OR.                  &
+@@ -2543,6 +2557,9 @@
+         )
+     END IF
+ 
++    CALL ffsoc_toc(2)
++    CALL ffsoc_arr(30, control%isolir, i_band, 1, radout%flux_down(:,:,control%map_channel(i_band)))
++    CALL ffsoc_arr(30, control%isolir, i_band, 2, radout%flux_up(:,:,control%map_channel(i_band)))
+ !   Set band-by-band flux diagnostics
+     IF (control%l_flux_direct_band) THEN
+       radout%flux_direct_band(:,:,i_band)                                      &
+@@ -2578,6 +2595,8 @@
+   END DO ! i_band
+ 
+   9999 CONTINUE
++  CALL ffsoc_toc(6)
++  CALL ffsoc_end_call(control%isolir, control%last_band)
+   IF (ierr /= i_normal) THEN
+     CALL ereport(RoutineName, ierr, cmessage)
+   END IF
+--- socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:22.282647853 -0400
++++ socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:24.136678807 -0400
+@@ -102,6 +102,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE rad_ccf, ONLY: diffusivity_factor_minor
+   USE vectlib_mod, ONLY: exp_v
+@@ -565,6 +566,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(3)
+ 
+   i_abs=index_abs(1)
+   
+@@ -834,6 +836,10 @@
+     END DO
+   END IF
+ 
++  CALL ffsoc_toc(3)
++  CALL ffsoc_arr(20, isolir, 0, 1, k_eqv(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(20, isolir, 0, 2, d_mass(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(20, isolir, 0, 3, zen_0(1:n_profile))
+ ! The ESFT terms for the major gas in the band are used with
+ ! appropriate weighted terms for the minor gases.
+   DO iex=1, n_abs_esft(i_abs)
+@@ -901,6 +907,7 @@
+       END DO
+     END DO
+ 
++    CALL ffsoc_tic(4)
+     IF (i_cloud == ip_cloud_mcica) THEN
+ 
+ ! DEPENDS ON: mcica_sample
+@@ -1045,11 +1052,15 @@
+ 
+     END IF
+ 
++    CALL ffsoc_toc(4)
++    CALL ffsoc_arr(21, isolir, 0, iex, flux_total_part(1:n_profile, 1:2*n_layer+2))
++    CALL ffsoc_arr(22, isolir, 0, iex, (/ esft_weight /))
+ !   Increment the fluxes within the band.
+     weight_incr=weight_band*esft_weight
+     IF (l_blue_flux_surf)                                               &
+       weight_blue_incr=weight_blue*esft_weight
+ 
++    CALL ffsoc_tic(5)
+ ! DEPENDS ON: augment_radiance
+     CALL augment_radiance(n_profile, n_layer                            &
+       , i_angular_integration, i_sph_mode                               &
+@@ -1094,6 +1105,7 @@
+ 
+ !   After the first call to these routines quantities should be
+ !   incremented rather than initialized, until the flag is reset.
++    CALL ffsoc_toc(5)
+     l_initial=.FALSE.
+ 
+   END DO
