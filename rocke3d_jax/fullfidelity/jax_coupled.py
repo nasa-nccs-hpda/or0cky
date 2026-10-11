@@ -155,6 +155,22 @@ class Coupled:
         self._land3 = None                # D208: underwater-fraction soil state (w, ht of GHY ibv = 3) carried across day boundaries (first boundary: from the recorded rows)
         self.setup_seconds = time.perf_counter() - t0
 
+    @staticmethod
+    def _make_ob(K):
+        """Ocean stage b. D214: on a non-CPU backend each of its five stages is its OWN jit, called in sequence (mathematically the same program): measured on the A100
+        the single-jit version took 4.11 s per steady step against 1.46 s for the five jits (whole step 11.96 s -> about 8.3 s, jobs 58814135 / 58815058); the CPU keeps the
+        single jit (bitwise results unchanged). ROCKE_OCEAN_B_SPLIT=1 forces the split, =0 forces the single jit."""
+        mode = os.environ.get('ROCKE_OCEAN_B_SPLIT')
+        if not (mode == '1' or (mode is None and jax.default_backend() != 'cpu')):
+            return jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b'))
+        subs = [jax.jit((lambda fn: (lambda s, fx, Kb: fn(K, Kb, s, fx)))(f)) for _, f in JO.STAGES[5:]]
+
+        def ob(oc, fx, Kb):
+            for j in subs:
+                oc = j(oc, fx, Kb)
+            return oc
+        return ob
+
     def _build_jits(self, only=None):
         """The jitted functions of the surface half; they close over the statics self.K (compile-time constants).  `only` = names to (re)build (default all).
         D205: after the lake fractions change only 'pre' and 'pa' are rebuilt: the ocean stages (oa, ob: K keys focean, dxypo, oc, valid) and post_b (adv, is_ocean,
@@ -164,7 +180,7 @@ class Coupled:
         mk = dict(pre=lambda: jax.jit(lambda S, mi, me, inp: PT.surface_pre_dev(K, S, mi, me, inp)),
                   pa=lambda: jax.jit(lambda S1, mid, acc, srfp, itime, V: PT.post_a(K, S1, mid, acc, srfp, itime, V)),
                   oa=lambda: jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='a')),
-                  ob=lambda: jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b')),
+                  ob=lambda: self._make_ob(K),
                   pb=lambda: jax.jit(lambda S1, c, oc, V: PT.post_b(K, S1, c, oc, V)))
         for name in (only or tuple(mk)):
             setattr(self, name, mk[name]())
