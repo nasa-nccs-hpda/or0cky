@@ -74,6 +74,7 @@ STATE_DYN = ('U', 'V', 'T', 'Q', 'QCL', 'QCI', 'MA', 'PEDN', 'PMID', 'PK', 'P', 
 HIDDEN_ENTRY = ('EGCM', 'W2GCM', 'PBLHT', 'DCLEV', 'PBLPTOP', 'TSAVG', 'QSAVG')
 DYN_TO_ENTRY = ('U', 'V', 'T', 'Q', 'QCL', 'QCI', 'TMOM', 'QMOM', 'PK', 'PMID', 'PEDN', 'PDSIG', 'PMIDOLD', 'GZ', 'MWS', 'PEK')
 CARRY_KEYS = tuple(A.CARRY_KEYS)
+REC_LAZY = os.environ.get('ROCKE_REC_LAZY', '0') == '1'                  # D221, default off: with server radiation and computed seed/COSZ1 the per-step siter and CONDSE-exit records are not read
 CSE_IN_OWN = os.environ.get('ROCKE_CSE_IN_OWN', '0') == '1'            # D221, default off
 CSE_IN_OWN_CHECK = os.environ.get('ROCKE_CSE_IN_OWN_CHECK', '0') == '1'    # keep reading the record and log own against recorded
 
@@ -172,11 +173,20 @@ class Phase1:
             rec['cse_in'] = {k: np.ascontiguousarray(v, dtype=np.float64) for k, v in R.cse_in.items() if hasattr(v, 'shape')}
             if first:
                 self._ci0 = rec['cse_in']
-        rec['rad'] = {k: np.ascontiguousarray(R.r[k], dtype=np.float64) for k in ('SRHR', 'TRHR', 'COSZ1')}
+        lazy = REC_LAZY and not first and getattr(self, '_rad0', None) is not None and getattr(self, 'rad_mode', 'replay') == 'server'
+        if lazy:       # D221: server radiation + computed COSZ1 + computed seed: the siter and CONDSE-exit records of this step are dead; placeholders keep the shapes
+            rec['rad'] = {k: np.zeros_like(v) for k, v in self._rad0.items()}
+            rec['seed'] = 0
+            rec['lazy'] = True
+        else:
+            rec['rad'] = {k: np.ascontiguousarray(R.r[k], dtype=np.float64) for k in ('SRHR', 'TRHR', 'COSZ1')}
+            if first:
+                self._rad0 = rec['rad']
         if first:
             rec['S0'] = A._native(A.init_state(R))
             rec['ice'] = self.reg.read('surface_restart_for_melt_si', lambda: self._melt_inputs(), stage='record_load')
-        rec['seed'] = int(round(float(R.cse_out['SEEDS'][1])))       # RADIA seed of the step = SEEDS[1] of the CONDSE exit record (jax_radiation.seed_from_record)
+        if not lazy:
+          rec['seed'] = int(round(float(R.cse_out['SEEDS'][1])))       # RADIA seed of the step = SEEDS[1] of the CONDSE exit record (jax_radiation.seed_from_record)
         return rec
 
     def _melt_inputs(self):

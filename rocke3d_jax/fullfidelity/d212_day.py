@@ -149,6 +149,16 @@ class CoupledD209(C.Coupled):
 
         def lr(itime, first=True):
             rec = orig(itime, first)
+            if rec.get('lazy'):                                # ROCKE_REC_LAZY: siter and CONDSE-exit records of this step were not read (no recorded value to compare)
+                if OWN['seed'] != 'computed' or OWN['cosz'] != 'computed':
+                    raise RuntimeError('ROCKE_REC_LAZY needs --seed computed and --cosz computed')
+                rec['seed'] = seed_for(itime, rec)
+                if OWN['zen'] is None:
+                    import drv_zenith
+                    OWN['zen'] = drv_zenith.Zenith()
+                rec['rad']['COSZ1'] = np.ascontiguousarray(OWN['zen'].cosz1(itime), dtype=np.float64)
+                OWN['log'].append(dict(kind='seed_cosz', itime=int(itime), seed_used=int(rec['seed']), lazy=True))
+                return rec
             rec['seed_recorded'] = rec['seed']
             if OWN['seed'] == 'computed':
                 rec['seed'] = seed_for(itime, rec)
