@@ -754,6 +754,13 @@ CARRY_KEYS = ("TTOLD QTOLD SVLHX SVLAT RHSAV CLDSAV CLDSAV1 FSS TAUSS TAUSSIP TA
               "QIMC W_CLOUD FRAC_ST_WATER FRAC_ST_ICE FRAC_CNV_WATER FRAC_CNV_ICE MIX_ST_WATER MIX_ST_ICE MIX_CNV_WATER MIX_CNV_ICE "
               "DIM_ST_WATER DIM_ST_ICE DIM_CNV_WATER DIM_CNV_ICE FRAC_AREA_ST FRAC_AREA_CNV LMC SNOAGE P_ACC PM_ACC AIRX").split()
 
+# D221 (ROCKE_CARRY_CSE_OUT=1, default off): the CONDSE outputs that the next step's entry record repeats bitwise (ci(it+1) == co(it) in 107 of 107
+# transitions of nov26_day2, ci_carry_audit.py) are chained from our own exit instead of read from the record. TDN1/QDN1/DDMS keep the entry value
+# when no downdraft is found (clouds_condse_ff.py), so they are genuine persistent state.
+CARRY_OUT_KEYS = "PREC EPREC PRECSS DDM1 DDML DDMS TDN1 QDN1".split()
+if os.environ.get('ROCKE_CARRY_CSE_OUT', '0') == '1':
+    CARRY_KEYS = CARRY_KEYS + CARRY_OUT_KEYS
+
 
 def run_free(date, it0, nsteps, ctx, land_mode='recorded', condse='run', ff=FF, log=None):
     """Chain `nsteps` consecutive steps from the REAL state at it0, each step starting from OUR previous end state (atmosphere and

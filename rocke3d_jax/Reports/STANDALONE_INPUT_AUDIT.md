@@ -30,3 +30,10 @@ LIMITS: the carry equality shows the record is self-consistent, not that our cha
 3. Re-measure what is read from `co` and `siter` per step.
 4. Template builder for the SURFACE tile rows and the PBL carry (largest item; no hour estimate exists).
 - Reproduce section 2: `python ci_carry_audit.py` inside fullfidelity/ (graphcast-env, reads ff_data/nov26_day2).
+
+## 5. Step 2: the eight carry fields wired (D221, MEASURED, 2026-10-11)
+`ROCKE_CARRY_CSE_OUT=1` (default off; `atm_step.CARRY_OUT_KEYS`, read by the device path through `CARRY_KEYS`) chains `PREC EPREC PRECSS DDM1 DDML DDMS TDN1 QDN1` from our previous CONDSE exit; step 0 still reads the record. Test: `tests/test_carry_cse_out.py` (2 passed).
+V100 run (job 37941554, same options as the `entlive` run, 108 steps, finite, 1,437 s against 1,320 s wall; one run each, node timing noise not separated), scored with `d207_score.py` against the five real members:
+* Steps 0 and 1 are bitwise equal to the unflagged run, step 2 differs at 1e-16 to 6e-16 relative, from step 3 on the runs differ at 1e-4 to 1e-2 of the field maximum (T 1e-2, QCL up to order 1 locally by step 40-100): rounding-level seeds amplified by the cloud scheme. No repeat of the unflagged run exists, so the run-to-run noise floor of the GPU is NOT known and the difference cannot be attributed to the flag alone.
+* Scores: unrelaxed day criterion still NOT MET (same worst ratio, QCI 2.37 at step 3, QCL 7.36 and U 3.37 at step 1, P 20.7 at step 0: these steps are identical to the unflagged run); day 2 worst ratio 1.12 (QCL) against 1.17, none beyond 2x. Relaxed criterion (steps >= 3 within 3x): met.
+Verdict: no worse by the score, the record is no longer needed for these eight fields after step 0. Not shown: any gain in speed (none expected), behaviour on another date.
