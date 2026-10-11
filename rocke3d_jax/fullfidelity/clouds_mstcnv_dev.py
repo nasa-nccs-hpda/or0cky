@@ -45,6 +45,18 @@ from clouds_mstcnv_jax import (F, I64, LM, NK, NMOM, S_NAMES, SC_NAMES, WORK_2, 
 
 jax.config.update("jax_enable_x64", True)
 
+import os as _os
+
+UNROLL = int(_os.environ.get('ROCKE_MSTCNV_UNROLL', '1'))   # D214 experiment: unroll of the static-trip fori loops of the event block (same arithmetic and order; fewer loop iterations)
+
+
+def _fori(lo, hi, body, init):
+    """lax.fori_loop; with ROCKE_MSTCNV_UNROLL = k > 1 the loops with Python-int bounds are unrolled k times (default 1 = unchanged)."""
+    if UNROLL > 1 and isinstance(lo, (int, np.integer)) and isinstance(hi, (int, np.integer)):
+        return lax.fori_loop(lo, hi, body, init, unroll=UNROLL)
+    return lax.fori_loop(lo, hi, body, init)
+
+
 BUCKETS = (32, 64, 128, 256, 512, 1024)      # plus N (the largest); measured nov26 event counts per LMIN: 9..1006 (see the ledger)
 
 # ---------------------------------------------------------------------------------------------- QUS host callback (counted)
@@ -237,7 +249,7 @@ def conv_micro_dev(k, pl, wcu, dwcu, lfrz, wcufrz, tp, pland, condmu, tlmin, tlm
         dcw = jnp.where(active & ~ex, dcw + ddcw2, dcw)
         return dcw, active & ~ex
 
-    dcw_both, _ = lax.fori_loop(0, int(mc.ITMAX) - 1, sbody, (jnp.zeros(wv2.shape), jnp.ones(wv2.shape, bool)))
+    dcw_both, _ = _fori(0, int(mc.ITMAX) - 1, sbody, (jnp.zeros(wv2.shape), jnp.ones(wv2.shape, bool)))
     dcw1, dcw2 = dcw_both[:n[0]], dcw_both[n[0]:]
     r2 = FX.fx([("p", flamw, 4.0, a), ("p", flami, 4.0, a), ("p", flamg, 4.0, a),
                 ("e", -flamw * dcw1, a), ("e", -flamw * dcw2, a), ("e", -flami * dci, a), ("e", -flami * dci_u, a),
@@ -377,7 +389,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         cyc = cyc | (r2 & (s.lmax == lmin))
         return vars(s), cyc
 
-    T, cyc = lax.fori_loop(1, 3, nppl_body, (T, jnp.zeros(n, bool)))
+    T, cyc = _fori(1, 3, nppl_body, (T, jnp.zeros(n, bool)))
     s = SimpleNamespace(**T)
     ev = live & ~cyc
     # ================================================================ after the plume partitions
@@ -529,7 +541,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         d.alive = d.alive & ~brk
         return vars(d)
 
-    D = lax.fori_loop(0, LM, dd_body, DD)
+    D = _fori(0, LM, dd_body, DD)
     d = SimpleNamespace(**D)
     for nm in ("cond", "taumcl", "cdheat", "evpsum", "dsmr", "dsmomr", "dqmr", "dqmomr", "dum", "dvm", "dsm", "dsmom", "dqm", "dqmom", "dmr", "dm", "ddm",
                "ldmin", "llmin"):
@@ -564,7 +576,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         return cm, smt, qmt
 
     z2 = jnp.zeros((LM + 2, n))
-    cm, smt, qmt = lax.fori_loop(1, LM + 1, cm_body, (z2, z2, z2))
+    cm, smt, qmt = _fori(1, LM + 1, cm_body, (z2, z2, z2))
     cm = wb(ev[None, :] & (Lr >= lmax[None, :]) & (Lr >= 1) & (Lr <= LM), 0., cm)
 
     def ks_body(l, ksub):
@@ -577,7 +589,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         ksub = wb(c_b, jnp.maximum(ksub, 1 + vb.astype(I64)), ksub)
         return ksub
 
-    ksub = lax.fori_loop(1, LM, ks_body, jnp.ones(n, I64))
+    ksub = _fori(1, LM, ks_body, jnp.ones(n, I64))
     ksub = jnp.minimum(ksub, 2)
     byksub = 1.0 / ksub
 
@@ -586,7 +598,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         m = ev & (L >= s.ldmin) & (L <= lmax)
         return wb(m[None, :], sumu + s.um[:, L], sumu), wb(m[None, :], sumv + s.vm[:, L], sumv), wb(m, sumdp + airm[L], sumdp)
 
-    sumu, sumv, sumdp = lax.fori_loop(1, LM + 1, su_body, (jnp.zeros((NK, n)), jnp.zeros((NK, n)), jnp.zeros(n)))
+    sumu, sumv, sumdp = _fori(1, LM + 1, su_body, (jnp.zeros((NK, n)), jnp.zeros((NK, n)), jnp.zeros(n)))
 
     def al_body(L, c):
         alpha, um_, vm_ = c
@@ -616,14 +628,14 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         vm_ = vm_.at[:, L].set(wb(m[None, :], vm_[:, L] + ra * (-alphau * vm_[:, L] + betau * vm_[:, L + 1] + s.dvm[:, L]), vm_[:, L]))
         return wb(m, beta, alpha), um_, vm_, vsubl
 
-    _, s.um, s.vm, s.vsubl = lax.fori_loop(1, LM + 1, al_body2, (jnp.zeros(n), s.um, s.vm, s.vsubl))
+    _, s.um, s.vm, s.vsubl = _fori(1, LM + 1, al_body2, (jnp.zeros(n), s.um, s.vm, s.vsubl))
 
     def s1_body(L, c):
         su, sv = c
         m = ev & (L >= s.ldmin) & (L <= lmax)
         return wb(m[None, :], su + s.um[:, L], su), wb(m[None, :], sv + s.vm[:, L], sv)
 
-    sumu1, sumv1 = lax.fori_loop(1, LM + 1, s1_body, (jnp.zeros((NK, n)), jnp.zeros((NK, n))))
+    sumu1, sumv1 = _fori(1, LM + 1, s1_body, (jnp.zeros((NK, n)), jnp.zeros((NK, n))))
     inr1 = ev[None, :] & (Lr >= s.ldmin[None, :]) & (Lr <= lmax[None, :]) & (Lr >= 1) & (Lr <= LM)
     s.um = wb(inr1[None], s.um - (sumu1 - sumu)[:, None, :] * airm[None] / sumdp[None, None, :], s.um)
     s.vm = wb(inr1[None], s.vm - (sumv1 - sumv)[:, None, :] * airm[None] / sumdp[None, None, :], s.vm)
@@ -669,7 +681,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         condpt = condpt.at[L].set(wb(m, condpt[L] + condp[L], condpt[L]))
         return cond, condp, heat1, svlatl, svwmxl, condpt
 
-    s.cond, s.condp, s.heat1, s.svlatl, s.svwmxl, s.condpt = lax.fori_loop(
+    s.cond, s.condp, s.heat1, s.svlatl, s.svwmxl, s.condpt = _fori(
         0, LM, pr_body, (s.cond, s.condp, s.heat1, s.svlatl, s.svwmxl, s.condpt))
     prcp = s.cond[lmax, cols]
     s.prheat = wb(ev, s.cdheat[lmax, cols], s.prheat)
@@ -701,7 +713,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         lh_ = wb((lh_ == k.LHE) & (told_ <= k.TF) & (told1_ > k.TF), k.LHS, lh_)
         return lh.at[L].set(wb(mL, lh_, lh[L]))
 
-    lhp_all = lax.fori_loop(0, LM - 1, lh_body, s.lhp)
+    lhp_all = _fori(0, LM - 1, lh_body, s.lhp)
     Lx = jnp.arange(LM + 1)[:, None]
     fev_all = .5 * s.ccm[:LM + 1] * byam[1:LM + 2]
     fev_all = wb(Lx < lmin, .5 * s.ccm[lmin] * byam[lmin + 1], fev_all)
@@ -770,7 +782,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
         prcp = wb(m, prcp + s.cond[L], prcp)
         return prcp, prheat, cldmcl, cldslwij, clddepij, precnvl, lhp, heat1, qm, sm, smom, errf
 
-    (prcp, s.prheat, s.cldmcl, s.cldslwij, s.clddepij, s.precnvl, s.lhp, s.heat1, s.qm, s.sm, s.smom, errf) = lax.fori_loop(
+    (prcp, s.prheat, s.cldmcl, s.cldslwij, s.clddepij, s.precnvl, s.lhp, s.heat1, s.qm, s.sm, s.smom, errf) = _fori(
         0, LM - 1, pp_body, (prcp, s.prheat, s.cldmcl, s.cldslwij, s.clddepij, s.precnvl, s.lhp, s.heat1, s.qm, s.sm, s.smom, jnp.zeros((), bool)))
     s.err_neg_cloud = s.err_neg_cloud | errf
     pos = ev & (prcp > 0.)
@@ -1061,7 +1073,7 @@ def _event_body(K, lmin, fmp0, fmp2, idxg, idxs, valid, S, Sc, I, aux):
         Sg, Scg, V, e = _event_dev(K, lmin, ic, f0, f2, valid, Sg, Scg, Ig, V, KC)
         return Sg, Scg, V, err | e
 
-    Sg, Scg, V, err = lax.fori_loop(1, 3, ic_body, (Sg, Scg, V, jnp.zeros((), bool)))
+    Sg, Scg, V, err = _fori(1, 3, ic_body, (Sg, Scg, V, jnp.zeros((), bool)))
     return _put(S, Sg, idxs), _put(Sc, Scg, idxs), err
 
 
@@ -1102,7 +1114,7 @@ def _events_device(K, S, Sc, I, aux, lmcm, buckets):
         S, Sc, e = lax.switch(bi, branches, (S, Sc, idx, cnt, lmin, fmp0, fmp2))
         return S, Sc, err | e, nev.at[lmin].set(cnt)
 
-    S, Sc, err, nev = lax.fori_loop(1, lmcm, body, (S, Sc, jnp.zeros((), bool), jnp.zeros(lmcm + 1, I64)))
+    S, Sc, err, nev = lax.fori_loop(1, lmcm, body, (S, Sc, jnp.zeros((), bool), jnp.zeros(lmcm + 1, I64)))   # outer loop never unrolled (huge body)
     return S, Sc, err, nev
 
 
@@ -1126,7 +1138,7 @@ def _post_dev(K, S, Sc, I, aux):
         m = conv & (L >= lmcmin) & (L <= lmcmax)
         return (jnp.where(m, sumdp + airm[L] * fmc1, sumdp), jnp.where(m, sumaj + S["dgdsm"][L], sumaj), jnp.where(m, airxl + S["mcflx"][L], airxl))
 
-    sumdp, sumaj, airxl = lax.fori_loop(1, LM + 1, acc, (jnp.zeros(N), jnp.zeros(N), jnp.zeros(N)))
+    sumdp, sumaj, airxl = _fori(1, LM + 1, acc, (jnp.zeros(N), jnp.zeros(N), jnp.zeros(N)))
     dgdsm = jnp.where(inb, S["dgdsm"] - sumaj * airm * fmc1 / sumdp, S["dgdsm"])
     sm = jnp.where(inb, sm - sumaj * airm / (sumdp * plk), sm)
     wconst = k.wmu_mult * (k.WMU * (1. - aux["pearth"]) + k.WMUL * aux["pearth"])
@@ -1194,7 +1206,7 @@ def _post_dev(K, S, Sc, I, aux):
         return tl, taumcl, svlat1, svlatl, csizel, qlmc, qimc, wmsum, wmctwp, wmclwp
 
     z = jnp.zeros((LM + 2, N))
-    tl, taumcl, svlat1, svlatl, csizel, qlmc, qimc, wmsum, wmctwp, wmclwp = lax.fori_loop(
+    tl, taumcl, svlat1, svlatl, csizel, qlmc, qimc, wmsum, wmctwp, wmclwp = _fori(
         1, LM + 1, ot, (I["tl"], S["taumcl"], z, S["svlatl"], aux["csizel"], z, z, jnp.zeros(N), jnp.zeros(N), jnp.zeros(N)))
     low = lmcmax <= 1
     pl_dcl = pl[dcl, ca]
