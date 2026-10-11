@@ -3,6 +3,9 @@
 ## 0. Owner decision (G. Tamkin, 2026-10-11)
 "Lift rule for spike." The standing rule "SOCRATES is never ported or modified" is LIFTED FOR A SPIKE ONLY, on the terms of this page. It stays in force for everything else. A full port needs a further, separate, dated owner decision (decisions R0/D1-D3 of `SOCRATES_PORT_PLAN.md` section 8 are still open and are NOT answered by this one).
 
+### 0b. Follow-up decision (2026-10-11)
+D3 is approved for stages R1-R2 only (instrumented scratch copy, dumps, time-boxed); terms in `ACCEPTANCE_CRITERIA.md` section 12. The restrictions of section 3 below remain for everything outside that decision.
+
 ## 1. Question the spike must answer
 Can a JAX radiation on one V100 get the full RADIA call (3,312 columns, longwave and shortwave) down to a cost that changes the benchmark answer, and at what effort? Today: unmodified Fortran RADIA = 8.1 s per radiation step on the benchmark node (8.4 s as the persistent server), 1 radiation step in 5, i.e. 1.62 s per step, 68 % of the Fortran step; the JAX hybrid cycle is 3.45 s against 2.37 s (`STATUS_2026-10-11.md`, `DECISION_MEMO_2026-10-11.md` section 7).
 
