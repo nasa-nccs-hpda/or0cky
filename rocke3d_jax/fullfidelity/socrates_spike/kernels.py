@@ -89,13 +89,12 @@ def aer_optical(tbl, rh, mass, comp_idx, radius, mass_div_dens, frac_sulph, scal
 
 
 # ------------------------------------------------------------------------------------------------------------- kernel B
-def two_stream_homogen(tau, omega, g, scheme, solar, sec_0=None, diffuse_albedo=None, direct_albedo=None, flux_inc_down=None,
-                       s_up=None, s_down=None, flux_direct_ground=None, d_planck_flux_surface=None):
-    """All layer arrays [L, B] (layer axis first, top to bottom, B = flattened column x term x region); per-batch scalars [B].
-    Returns flux_total [2L+2, B] in the SOCRATES layout (index 0 = up at TOA, 1 = down at TOA, 2i = up at bottom of layer i, ...).
-    solar=True: PIFM80-style coefficients with the solar source; solar=False: infra-red.  s_up/s_down: layer source terms [L,B]."""
-    L = tau.shape[0]
+def two_coeff(tau, tau_noscal, omega, g, scheme, solar, sec_0=None, l_ir_quad=True):
+    """Port of two_coeff -> two_coeff_basic, solar_coefficient_basic, trans_source_coeff (same operation order), any array shape.
+    Returns dict: trans, reflect, and for solar trans_0, trans_0_noscal, s_up / s_down (source_coeff solar up / down); for the infra-red
+    ir_1d and (if l_ir_quad) ir_2d (source_coeff 1 and 2).  Used by two_stream_homogen and by r2_kernel_b_check.py (tags 40-41)."""
     sq_eps_r = np.sqrt(np.finfo(np.float64).eps)
+    tol = np.sqrt(sq_eps_r)
     if scheme == IP_PIFM80:
         sm = 2.0 - 1.5 * omega * g - 0.5 * omega
         df = 2.0 * (1.0 - omega)
@@ -105,6 +104,7 @@ def two_stream_homogen(tau, omega, g, scheme, solar, sec_0=None, diffuse_albedo=
     else:
         raise ValueError(scheme)
     lam = jnp.sqrt(sm * df)
+    out = {}
     if solar:
         tol_p = 32.0 * np.finfo(np.float64).eps
         near = jnp.abs(lam - sec_0) < tol_p
@@ -122,10 +122,31 @@ def two_stream_homogen(tau, omega, g, scheme, solar, sec_0=None, diffuse_albedo=
     inv = 1.0 / (1.0 - e2 * gm2)
     trans = e * (1.0 - gm2) * inv
     refl = gm * (1.0 - e2) * inv
+    out["trans"], out["reflect"] = trans, refl
     if solar:
         trans_0 = jnp.exp(-tau * sec_0)
-        s_up_c = (gam_up - refl * (1.0 + gam_dn)) - gam_up * trans * trans_0
-        s_dn_c = trans_0 * (1.0 + gam_dn - gam_up * refl) - (1.0 + gam_dn) * trans
+        out["trans_0"] = trans_0
+        out["trans_0_noscal"] = jnp.exp(-tau_noscal * sec_0)
+        out["s_up"] = (gam_up - refl * (1.0 + gam_dn)) - gam_up * trans * trans_0
+        out["s_down"] = trans_0 * (1.0 + gam_dn - gam_up * refl) - (1.0 + gam_dn) * trans
+    else:
+        out["ir_1d"] = (1.0 - trans + refl + sq_eps_r) / (sq_eps_r + tau * sm)
+        if l_ir_quad:
+            q = jnp.where(tau > tol, -2.0 * (1.0 - trans - refl + sq_eps_r) / (df * tau + sq_eps_r), -2.0 + df * tau)
+            out["ir_2d"] = -(1.0 + refl + trans + q) / (sm * tau + sq_eps_r)
+    return out
+
+
+def two_stream_homogen(tau, omega, g, scheme, solar, sec_0=None, diffuse_albedo=None, direct_albedo=None, flux_inc_down=None,
+                       s_up=None, s_down=None, flux_direct_ground=None, d_planck_flux_surface=None):
+    """All layer arrays [L, B] (layer axis first, top to bottom, B = flattened column x term x region); per-batch scalars [B].
+    Returns flux_total [2L+2, B] in the SOCRATES layout (index 0 = up at TOA, 1 = down at TOA, 2i = up at bottom of layer i, ...).
+    solar=True: PIFM80-style coefficients with the solar source; solar=False: infra-red.  s_up/s_down: layer source terms [L,B]."""
+    L = tau.shape[0]
+    c = two_coeff(tau, tau, omega, g, scheme, solar, sec_0)
+    trans, refl = c["trans"], c["reflect"]
+    if solar:
+        trans_0, s_up_c, s_dn_c = c["trans_0"], c["s_up"], c["s_down"]
         # direct beam through the layers (flux_inc_down is the direct flux at TOA here)
         fdir_bot = flux_inc_down * jnp.cumprod(trans_0, axis=0)
         fdir_top = jnp.concatenate([flux_inc_down[None], fdir_bot[:-1]], 0)

@@ -215,7 +215,7 @@
  
  END SUBROUTINE solve_band_without_gas
 --- socrates_orig/src/radiance_core/triple_column.F90	2026-10-11 17:46:22.508109161 -0400
-+++ socrates/src/radiance_core/triple_column.F90	2026-10-11 18:25:52.330638009 -0400
++++ socrates/src/radiance_core/triple_column.F90	2026-10-11 18:35:29.684561263 -0400
 @@ -62,6 +62,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -224,7 +224,7 @@
    USE rad_pcf
    USE yomhook, ONLY: lhook, dr_hook
    USE parkind1, ONLY: jprb, jpim
-@@ -281,6 +282,21 @@
+@@ -281,6 +282,24 @@
    END IF
  
  
@@ -238,6 +238,9 @@
 +  CALL ffsoc_arr(40, isolir, 0, 8, ss_prop%phase_fnc)
 +  CALL ffsoc_arr(40, isolir, 0, 9, sec_0(1:n_profile))
 +  CALL ffsoc_arr(44, isolir, 0, 1, (/ REAL(n_cloud_top, 8), REAL(n_region, 8), REAL(n_cloud_type, 8), REAL(n_layer, 8) /))
++  CALL ffsoc_arr(45, isolir, 0, 1, frac_cloud(1:n_profile, id_ct:n_layer, 1:n_cloud_type))
++  CALL ffsoc_arr(45, isolir, 0, 2, frac_region(1:n_profile, id_ct:n_layer, 1:n_region))
++  CALL ffsoc_arr(45, isolir, 0, 3, REAL(i_region_cloud(1:n_cloud_type), 8))
 +  CALL ffsoc_arr(41, isolir, 0, 1, trans(1:n_profile, 1:n_layer, :))
 +  CALL ffsoc_arr(41, isolir, 0, 2, reflect(1:n_profile, 1:n_layer, :))
 +  CALL ffsoc_arr(41, isolir, 0, 3, trans_0_noscal(1:n_profile, 1:n_layer, :))
@@ -246,7 +249,7 @@
    IF (isolir == ip_infra_red) THEN
  
      DO k=1, n_region
-@@ -395,6 +411,9 @@
+@@ -395,6 +414,9 @@
        END DO
      END IF
  
@@ -256,7 +259,7 @@
  
  
    SELECT CASE (i_solver)
-@@ -535,7 +554,7 @@
+@@ -535,7 +557,7 @@
      CALL ereport(RoutineName, ierr, cmessage)
  
    END SELECT

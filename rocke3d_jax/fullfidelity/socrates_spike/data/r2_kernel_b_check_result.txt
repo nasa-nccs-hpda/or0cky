@@ -1,0 +1,22 @@
+k-term groups compared: 3634
+    quantity        region     entries  bitwise%     max rel     max abs
+LW  ir_1d           clear       127538    99.678   6.502e-09   6.502e-09
+LW  ir_1d           cloudy       71848    96.063   1.693e-14   1.688e-14
+LW  ir_2d           clear       127538    99.693   1.000e+00   1.263e-08
+LW  ir_2d           cloudy       71848    96.182   4.665e-09   5.073e-12
+LW  reflect         clear       127538    99.720   5.107e-08   3.144e-17
+LW  reflect         cloudy       71848    96.146   1.699e-14   2.776e-17
+LW  trans           clear       127538    99.526   2.211e-16   1.110e-16
+LW  trans           cloudy       71848    97.109   5.018e-08   2.220e-16
+SW  reflect         clear        28724    99.721   5.983e-11   4.528e-16
+SW  reflect         cloudy       13432    96.352   8.138e-15   1.887e-15
+SW  s_down          clear        28724    99.245   8.981e-10   8.882e-16
+SW  s_down          cloudy       13432    96.843   9.111e-14   1.421e-14
+SW  s_up            clear        28724    99.506   7.848e-10   1.665e-16
+SW  s_up            cloudy       13432    96.300   3.433e-14   8.882e-16
+SW  trans           clear        28724    99.614   6.661e-16   6.661e-16
+SW  trans           cloudy       13432    96.955   2.259e-08   2.109e-15
+SW  trans_0         clear        28724    99.443   2.107e-16   1.110e-16
+SW  trans_0         cloudy       13432    97.365   4.400e-16   2.220e-16
+SW  trans_0_noscal  clear        28724     5.441  1.000e+300   1.512e+03
+SW  trans_0_noscal  cloudy       13432    64.622  1.000e+300   1.000e+00
