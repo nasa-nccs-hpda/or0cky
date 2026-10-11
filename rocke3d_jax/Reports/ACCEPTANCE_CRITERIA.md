@@ -88,3 +88,6 @@ Context: the owner declared the work an experiment with no wrong answers, not a 
 |---|---|---|---|---|
 | GPU replay-radiation day (job 37941501) | NOT MET (U 2.61, QCL 2.95 at step 1; P 25.8 at step 0) | MET | 1.44 (QCI step 47) | P 25.79 step 0 |
 | GPU server-radiation day, radiation inputs from own state (baseline v1, job 37941503) | NOT MET | MET | 2.37 (QCI step 3) | P 25.48 step 0; QCL 7.34 step 1 |
+
+## 11. Owner decision of 2026-10-11 (G. Tamkin): the SOCRATES rule is lifted for a SPIKE only
+The standing rule "SOCRATES is never ported or modified" is lifted for a time-boxed spike whose scope, limits and deliverables are in `SOCRATES_SPIKE_BRIEF.md`. Everything else under the rule stays: no edit of the SOCRATES/ModelE trees (an instrumented copy needs a separate approval), no change of the production radiation path, no full port without a further dated decision. The spike's result is a go/no-go recommendation against the gate in the brief; the owner decides.
