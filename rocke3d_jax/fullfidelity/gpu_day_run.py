@@ -20,6 +20,9 @@ H.provenance_header = lambda *a, **k: _prov(*a, **{**k, 'require_xla_flags': Fal
 _mk = A.make_ctx
 A.make_ctx = lambda date, imf=False, *a, **k: _mk(date, False, *a, **k)
 
+import d193_day as _D193   # noqa: E402
+_D193.DAYDIR = os.environ.get('GPU_DAYDIR', _D193.DAYDIR)   # nov26_day2 for the 108-step (two-day) record set; DayReal and ch4ox_increment read it at call time (as d207_day.py)
+
 if __name__ == '__main__':
     drv = os.environ.get('GPU_DAY_DRIVER', 'd193_day')      # d193_day: radiation replayed; d212_day: pass its own flags (--rad server --surf-fields computed ...)
     if drv == 'd193_day':
