@@ -381,8 +381,18 @@ class Coupled:
             self._last_ghy = (host['nit_rows'][1], host['ecells'])
             fin(tpl)
         if self._stage_cache is None or not self._same_host(self._stage_cache['host'], host):
-            self._stage_cache = dict(host=host, stage=JS.make_stage(host), apply=TS.make_apply_state(host, self.K),
-                                     accf=jax.jit(lambda aux_, tpl_, _h=host: PT.tile_accumulators_dev(_h, tpl_, aux_)))
+            if os.environ.get('ROCKE_STAGE_ARGS', '0') == '1':       # D217: cell index arrays as jit arguments (no recompile when daily_LAKE changes them)
+                _cells = {k: jnp.asarray(host[k]) for k in ('wcells', 'lcells', 'ecells')}
+                _ak = (host['Nw'], tuple(_cells[k].shape for k in sorted(_cells)))
+                if not hasattr(self, '_accj_cache'):
+                    self._accj_cache = {}
+                if _ak not in self._accj_cache:                  # compiled once, reused after daily_LAKE rebuilds
+                    self._accj_cache[_ak] = jax.jit(lambda aux_, tpl_, c_, _h=host: PT.tile_accumulators_dev(_h, tpl_, aux_, c_))
+                _accj = self._accj_cache[_ak]
+                _accf = lambda aux_, tpl_, _j=_accj, _c=_cells: _j(aux_, tpl_, _c)
+            else:
+                _accf = jax.jit(lambda aux_, tpl_, _h=host: PT.tile_accumulators_dev(_h, tpl_, aux_))
+            self._stage_cache = dict(host=host, stage=JS.make_stage(host), apply=TS.make_apply_state(host, self.K), accf=_accf)
             info['stage_rebuilt'] = True
         stg, apply = self._stage_cache['stage'], self._stage_cache['apply']
         # ---------------------------------------------------------------- J1: phase 1

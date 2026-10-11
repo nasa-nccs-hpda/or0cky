@@ -600,6 +600,11 @@ def _host_consts(host):
     return h
 
 
+_STAGE_ARGS = os.environ.get("ROCKE_STAGE_ARGS", "0") == "1"      # D217: index arrays as jit ARGUMENTS (not compile-time constants): no recompile when daily_LAKE changes their values
+_STAGE_JIT_CACHE = {}
+_IDX_KEYS = ("wj", "wi", "lj", "li", "ej", "ei", "bj", "bi", "wcells", "lcells", "ecells", "bcells")
+
+
 def make_stage(host):
     """Returns the jitted units and a driver stage_surface_jax(Sd, tpl) -> dict.  `host` from build_template."""
     h = _host_consts(host)
@@ -608,78 +613,93 @@ def make_stage(host):
     wj2 = jnp.concatenate([h['wj'], h['wj']])
     wi2 = jnp.concatenate([h['wi'], h['wi']])
 
-    def rows_override(atm, cell, tpl, skip, tw, tl):
-        pw = override_pbl(tpl['pw'], cell, wj2, wi2, skip)
-        pl = override_pbl(tpl['pl'], cell, h['lj'], h['li'], skip)
-        pe = override_pbl(tpl['pe'], cell, h['ej'], h['ei'], skip)
-        return dict(pw=pw, pl=pl, pe=pe)
+    hbase = dict(h)
+    HD = {k: h[k] for k in _IDX_KEYS}
+    HD["wj2"], HD["wi2"] = wj2, wi2
 
-    @jax.jit
-    def prep1(Sd, tpl_all):
-        tpl = tpl_all['ns'][0]
-        atm1 = atm_layout(Sd)
-        cell1 = cell_inputs(Sd, atm1, tpl_all['coriol'])
-        rows = rows_override(atm1, cell1, tpl, (), None, None)
-        tw, tl = override_tiles(tpl['tw'], tpl['tl'], atm1, wj2, wi2, h['lj'], h['li'])
-        rows.update(tw=tw, tl=tl)
-        return atm1, cell1, rows
+    def _units(hd):
+        h = dict(hbase)
+        h.update({k: hd[k] for k in _IDX_KEYS})
+        wj2, wi2 = hd["wj2"], hd["wi2"]
+        def rows_override(atm, cell, tpl, skip, tw, tl):
+            pw = override_pbl(tpl['pw'], cell, wj2, wi2, skip)
+            pl = override_pbl(tpl['pl'], cell, h['lj'], h['li'], skip)
+            pe = override_pbl(tpl['pe'], cell, h['ej'], h['ei'], skip)
+            return dict(pw=pw, pl=pl, pe=pe)
 
-    @jax.jit
-    def core(atm, rows, ftype, wvalid, ghy_tpl, ma1_land, trup, dyn, tmom, qmom, pk):
-        """One substep; the same compiled executable runs both substeps (all per-substep data are arguments; no eager op outside the jit)."""
-        qmt = (atm['Q'][h['ej'], h['ei'], 0], ma1_land, trup)
-        return _substep_with_flu(atm, rows, ftype, wvalid, h, ghy_tpl, dyn, qmt, tmom, qmom, pk[0], ms)
+        def prep1(Sd, tpl_all):
+            tpl = tpl_all['ns'][0]
+            atm1 = atm_layout(Sd)
+            cell1 = cell_inputs(Sd, atm1, tpl_all['coriol'])
+            rows = rows_override(atm1, cell1, tpl, (), None, None)
+            tw, tl = override_tiles(tpl['tw'], tpl['tl'], atm1, wj2, wi2, h['lj'], h['li'])
+            rows.update(tw=tw, tl=tl)
+            return atm1, cell1, rows
+
+        def core(atm, rows, ftype, wvalid, ghy_tpl, ma1_land, trup, dyn, tmom, qmom, pk):
+            """One substep; the same compiled executable runs both substeps (all per-substep data are arguments; no eager op outside the jit)."""
+            qmt = (atm['Q'][h['ej'], h['ei'], 0], ma1_land, trup)
+            return _substep_with_flu(atm, rows, ftype, wvalid, h, ghy_tpl, dyn, qmt, tmom, qmom, pk[0], ms)
+
+        def between(Sd, atm1, cell1, rows1, r1, ex1, tpl_all):
+            tpl2 = tpl_all['ns'][1]
+            atm2 = dict(atm1)
+            for k in ('T', 'Q', 'U', 'V', 'UA', 'VA'):
+                atm2[k] = merge_valid(ex1[k], atm1[k], k)
+            atm2['E'] = merge_valid(ex1['E'], atm1['E'], 'E')
+            atm2['pblht'], atm2['dclev'] = ex1['pblht'], ex1['dclev']
+            ftype1 = tpl_all['ns'][0]['ftype']
+            p12, p3, tnew, lnew, p4 = predict_ns2(r1, rows1, tpl2, ftype1, tpl_all['ns'][0]['wvalid'], atm2, tpl_all['coriol'], h, rows1['tw'], rows1['tl'])
+            cell2 = dict(cell1)
+            t1aa = atm2['T'][..., 0]
+            e2 = SC.layer1_exports(atm2['T'], atm2['Q'], atm2['UA'], atm2['VA'], atm2['MA1'], atm2['PEK1'], atm2['PMID'][..., 0])
+            cell2['dtdt'] = (e2['tkv'] - t1aa * atm1['PEK1']) / DT
+            cell2['u1aa'], cell2['v1aa'] = atm2['UA'][..., 0], atm2['VA'][..., 0]
+            p12 = override_pbl(p12, cell2, wj2, wi2, SKIP2)
+            p3 = override_pbl(p3, cell2, h['lj'], h['li'], SKIP2)
+            p4 = override_pbl(p4, cell2, h['ej'], h['ei'], SKIP2)
+            tnew2, lnew2 = override_tiles(tnew, lnew, atm2, wj2, wi2, h['lj'], h['li'])
+            rows2 = dict(pw=p12, pl=p3, pe=p4, tw=tnew2, tl=lnew2)
+            return {k: atm2[k] for k in atm1}, rows2        # same pytree structure as atm1: `core` compiles once for both substeps
+
+        def final(Sd, atm2, r2, ex2, rows2, tpl_all):
+            out = {}
+            to_ijl = lambda x: jnp.transpose(x, (1, 0, 2))
+            to_lij = lambda x: jnp.transpose(x, (2, 1, 0))
+            out['T'] = to_ijl(merge_valid(ex2['T'], atm2['T'], 'T'))
+            out['Q'] = to_ijl(merge_valid(ex2['Q'], atm2['Q'], 'Q'))
+            out['U'] = to_ijl(merge_valid(ex2['U'], atm2['U'], 'U'))
+            out['V'] = to_ijl(merge_valid(ex2['V'], atm2['V'], 'V'))
+            out['UALIJ'] = to_lij(merge_valid(ex2['UA'], atm2['UA'], 'UA'))
+            out['VALIJ'] = to_lij(merge_valid(ex2['VA'], atm2['VA'], 'VA'))
+            out['EGCM'] = to_lij(merge_valid(ex2['E'], atm2['E'], 'E'))
+            out['W2GCM'] = to_lij(merge_valid(ex2['W2'], jnp.transpose(Sd['W2GCM'], (2, 1, 0)), 'W2'))
+            m = _VALID
+            for k, kk in (('PBLHT', 'pblht'), ('DCLEV', 'dclev'), ('PBLPTOP', 'pblptop')):
+                out[k] = jnp.where(m.T, ex2[kk].T, Sd[k])
+            out['T1AA'] = jnp.where(m.T, out['T'][:, :, 0], Sd['T1AA'])
+            out['U1AA'] = jnp.where(m.T, out['UALIJ'][0], Sd['U1AA'])
+            out['V1AA'] = jnp.where(m.T, out['VALIJ'][0], Sd['V1AA'])
+            out['TSAVG'] = Sd['TSAVG'].at[h['bi'], h['bj']].set(r2['comp']['tsavg'])
+            out['QSAVG'] = Sd['QSAVG'].at[h['bi'], h['bj']].set(r2['comp']['qsavg'])
+            ust, lmo = _accumulate(tpl_all['ns'][1]['ftype'], tpl_all['ns'][1]['wvalid'], h, *_split_pbl(r2, h))
+            out['USTARPBL'], out['LMONINPBL'] = ust.T, lmo.T
+            return out
+
+        return prep1, core, between, final
+
+    if _STAGE_ARGS:
+        _key = (ms, Nw, tuple(HD[k].shape for k in _IDX_KEYS))
+        if _key not in _STAGE_JIT_CACHE:                    # the jitted programs outlive a rebuild after daily_LAKE: only the argument arrays HD change
+            _STAGE_JIT_CACHE[_key] = [jax.jit(lambda hd, *a, _i=i: _units(hd)[_i](*a)) for i in range(4)]
+        _j = _STAGE_JIT_CACHE[_key]
+        prep1, core, between, final = (lambda *a, _f=f: _f(HD, *a) for f in _j)
+    else:
+        prep1, core, between, final = (jax.jit(f) for f in _units(HD))
 
     def run_core(atm, rows, tpl_all, k, dyn, tmom, qmom, pk):
         n = tpl_all['ns'][k]
         return core(atm, rows, n['ftype'], n['wvalid'], tpl_all['ghy'][k], tpl_all['ma1_land'], tpl_all['trup'], dyn, tmom, qmom, pk)
-
-    @jax.jit
-    def between(Sd, atm1, cell1, rows1, r1, ex1, tpl_all):
-        tpl2 = tpl_all['ns'][1]
-        atm2 = dict(atm1)
-        for k in ('T', 'Q', 'U', 'V', 'UA', 'VA'):
-            atm2[k] = merge_valid(ex1[k], atm1[k], k)
-        atm2['E'] = merge_valid(ex1['E'], atm1['E'], 'E')
-        atm2['pblht'], atm2['dclev'] = ex1['pblht'], ex1['dclev']
-        ftype1 = tpl_all['ns'][0]['ftype']
-        p12, p3, tnew, lnew, p4 = predict_ns2(r1, rows1, tpl2, ftype1, tpl_all['ns'][0]['wvalid'], atm2, tpl_all['coriol'], h, rows1['tw'], rows1['tl'])
-        cell2 = dict(cell1)
-        t1aa = atm2['T'][..., 0]
-        e2 = SC.layer1_exports(atm2['T'], atm2['Q'], atm2['UA'], atm2['VA'], atm2['MA1'], atm2['PEK1'], atm2['PMID'][..., 0])
-        cell2['dtdt'] = (e2['tkv'] - t1aa * atm1['PEK1']) / DT
-        cell2['u1aa'], cell2['v1aa'] = atm2['UA'][..., 0], atm2['VA'][..., 0]
-        p12 = override_pbl(p12, cell2, wj2, wi2, SKIP2)
-        p3 = override_pbl(p3, cell2, h['lj'], h['li'], SKIP2)
-        p4 = override_pbl(p4, cell2, h['ej'], h['ei'], SKIP2)
-        tnew2, lnew2 = override_tiles(tnew, lnew, atm2, wj2, wi2, h['lj'], h['li'])
-        rows2 = dict(pw=p12, pl=p3, pe=p4, tw=tnew2, tl=lnew2)
-        return {k: atm2[k] for k in atm1}, rows2        # same pytree structure as atm1: `core` compiles once for both substeps
-
-    @jax.jit
-    def final(Sd, atm2, r2, ex2, rows2, tpl_all):
-        out = {}
-        to_ijl = lambda x: jnp.transpose(x, (1, 0, 2))
-        to_lij = lambda x: jnp.transpose(x, (2, 1, 0))
-        out['T'] = to_ijl(merge_valid(ex2['T'], atm2['T'], 'T'))
-        out['Q'] = to_ijl(merge_valid(ex2['Q'], atm2['Q'], 'Q'))
-        out['U'] = to_ijl(merge_valid(ex2['U'], atm2['U'], 'U'))
-        out['V'] = to_ijl(merge_valid(ex2['V'], atm2['V'], 'V'))
-        out['UALIJ'] = to_lij(merge_valid(ex2['UA'], atm2['UA'], 'UA'))
-        out['VALIJ'] = to_lij(merge_valid(ex2['VA'], atm2['VA'], 'VA'))
-        out['EGCM'] = to_lij(merge_valid(ex2['E'], atm2['E'], 'E'))
-        out['W2GCM'] = to_lij(merge_valid(ex2['W2'], jnp.transpose(Sd['W2GCM'], (2, 1, 0)), 'W2'))
-        m = _VALID
-        for k, kk in (('PBLHT', 'pblht'), ('DCLEV', 'dclev'), ('PBLPTOP', 'pblptop')):
-            out[k] = jnp.where(m.T, ex2[kk].T, Sd[k])
-        out['T1AA'] = jnp.where(m.T, out['T'][:, :, 0], Sd['T1AA'])
-        out['U1AA'] = jnp.where(m.T, out['UALIJ'][0], Sd['U1AA'])
-        out['V1AA'] = jnp.where(m.T, out['VALIJ'][0], Sd['V1AA'])
-        out['TSAVG'] = Sd['TSAVG'].at[h['bi'], h['bj']].set(r2['comp']['tsavg'])
-        out['QSAVG'] = Sd['QSAVG'].at[h['bi'], h['bj']].set(r2['comp']['qsavg'])
-        ust, lmo = _accumulate(tpl_all['ns'][1]['ftype'], tpl_all['ns'][1]['wvalid'], h, *_split_pbl(r2, h))
-        out['USTARPBL'], out['LMONINPBL'] = ust.T, lmo.T
-        return out
 
     def stage(Sd, tpl_all, timers=None):
         def T(name, f):

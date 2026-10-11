@@ -39,16 +39,30 @@ def _pow4(x):
     return jnp.power(x, 4.0)
 
 
+_APPLY_JIT_CACHE = {}
+
+
 def make_apply_state(host, K):
     """host: static index arrays of jax_surface.build_template; K: post-tile statics (jax_posttile.make_static_all, numpy).  Returns a jitted function
-    apply(tpl, S1, ag, ps_ij, prec, eprec, precss, dyn_prev=None, land_prev=None) -> new tpl (same pytree structure as `tpl`)."""
+    apply(tpl, S1, ag, ps_ij, prec, eprec, precss, dyn_prev=None, land_prev=None) -> new tpl (same pytree structure as `tpl`).
+    ROCKE_STAGE_ARGS=1 (D217): the index arrays and the daily-varying statics (flake, fwater) are jit ARGUMENTS, so the program is not recompiled when daily_LAKE changes them."""
+    if os.environ.get("ROCKE_STAGE_ARGS", "0") != "1":
+        return _make_apply_state_impl(host, K, None)
+    arrs = dict({k: jnp.asarray(host[k]) for k in ('wj', 'wi', 'lj', 'li', 'ej', 'ei', 'bcells')}, flake=jnp.asarray(K['flake']), fwater=jnp.asarray(K['fwater']))
+    key = (host['Nw'], tuple(arrs[k].shape for k in sorted(arrs)))
+    if key not in _APPLY_JIT_CACHE:                          # reused across daily_LAKE rebuilds (axyp and the other K entries do not change)
+        _APPLY_JIT_CACHE[key] = jax.jit(lambda a_, *args, **kw: _make_apply_state_impl(host, K, a_)(*args, **kw))
+    outer = _APPLY_JIT_CACHE[key]
+    return lambda *args, **kw: outer(arrs, *args, **kw)
+
+
+def _make_apply_state_impl(host, K, arrs):
     Nw = host['Nw']
-    wj, wi = jnp.asarray(host['wj']), jnp.asarray(host['wi'])
-    lj, li = jnp.asarray(host['lj']), jnp.asarray(host['li'])
-    ej, ei = jnp.asarray(host['ej']), jnp.asarray(host['ei'])
-    bcells = jnp.asarray(host['bcells'])
-    flake = jnp.asarray(K['flake'])
-    fwater = jnp.asarray(K['fwater'])
+    g = (lambda k: jnp.asarray(host[k])) if arrs is None else (lambda k: arrs[k])
+    wj, wi, lj, li, ej, ei = g('wj'), g('wi'), g('lj'), g('li'), g('ej'), g('ei')
+    bcells = g('bcells')
+    flake = jnp.asarray(K['flake']) if arrs is None else arrs['flake']
+    fwater = jnp.asarray(K['fwater']) if arrs is None else arrs['fwater']
     axyp = jnp.asarray(K['axyp'])
     IN, LIN = ST.IN, LIT.IN
 

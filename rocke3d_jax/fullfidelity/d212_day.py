@@ -24,6 +24,17 @@ import d193_day as D
 import d187_common as K
 import d191_run as R191
 
+
+def _read_rsv(it, kind='in'):
+    """recorded live radiation packet of step `it` (ff_data/<DAYDIR>/rsv_n26_<it>_<kind>.bin; the 11 packets of day 1 live in nov26_day); None when not recorded (day 2 of nov26_day2)"""
+    import radiation_server as rs
+    for d in (D.DAYDIR, 'nov26_day'):
+        f = f'{rs.FF}/{d}/rsv_n26_{it}_{kind}.bin'
+        if os.path.exists(f):
+            return rs.read_packet(f)
+    return None
+
+
 def rs_FF():
     import radiation_server as rs
     return rs.FF
@@ -49,12 +60,11 @@ class SrvWrap:
         import radiation_server as rs
         import jax_harness as H
         out = self.srv.request(state, itime, seed)
-        d = f'{rs.FF}/nov26_day'
-        rin = rs.read_packet(f'{d}/rsv_n26_{itime}_in.bin')
-        rout = rs.read_packet(f'{d}/rsv_n26_{itime}_out.bin')
+        rin, rout = _read_rsv(itime, 'in'), _read_rsv(itime, 'out')
         rec = dict(itime=int(itime), seed=int(seed), server_s=float(out['_server_s']), wall_s=float(out['_wall_s']))
-        rec['packet_vs_recorded_packet'] = {k: K.slim(H.field_category(np.asarray(state[k]), rin[k])) for k in rs.INPUT_FIELDS}
-        rec['output_vs_recorded_output'] = {k: K.slim(H.field_category(np.asarray(out[k]), rout[k])) for k in rs.OUTPUT_FIELDS if k != 'AIJ' and k in out and k in rout}
+        if rin is not None and rout is not None:            # no recorded packets for the radiation steps of day 2 (nov26_day2): no comparison
+            rec['packet_vs_recorded_packet'] = {k: K.slim(H.field_category(np.asarray(state[k]), rin[k])) for k in rs.INPUT_FIELDS}
+            rec['output_vs_recorded_output'] = {k: K.slim(H.field_category(np.asarray(out[k]), rout[k])) for k in rs.OUTPUT_FIELDS if k != 'AIJ' and k in out and k in rout}
         RAD['calls'].append(rec)
         if RAD['save_dir']:
             np.savez(os.path.join(RAD['save_dir'], f'server_out_{itime}.npz'), **{k: np.asarray(out[k]) for k in rs.OUTPUT_FIELDS if k != 'AIJ'},
@@ -106,7 +116,7 @@ class CoupledD209(C.Coupled):
             srv = RP.PersistentServer('nov26').start()
             RAD['srv'] = srv
             RAD['wrap'] = SrvWrap(srv)
-            RAD['lv'] = rs.read_packet(f'{rs.FF}/nov26_day/rsv_n26_{self.it0}_in.bin')
+            RAD['lv'] = _read_rsv(self.it0, 'in')
             ph = self.ph
             ph.rad_mode, ph.server, ph.live_packet = 'server', RAD['wrap'], RAD['lv']
             for att in ('_handoff', '_hstep'):
@@ -156,7 +166,7 @@ class CoupledD209(C.Coupled):
     # ------------------------------------------------------------------------------------------------ D212: the 21 surface fields of the packet from OUR state
     def _static_land_rows(self, it):
         import ghy_compare as GC
-        g = GC.load(f"{rs_FF()}/nov26_day/ffg_{it}.bin")          # static columns of the land rows only (cell index, top_dev, fv, soil), see the entry
+        g = GC.load(f"{rs_FF()}/{D.DAYDIR}/ffg_{it}.bin")          # static columns of the land rows only (cell index, top_dev, fv, soil), see the entry
         return g[len(g) // 2:]
 
     def _land_update(self, it, new_state):
@@ -203,7 +213,7 @@ class CoupledD209(C.Coupled):
 
     def _static_land_rows_first(self):
         import ghy_compare as GC
-        g = GC.load(f"{rs_FF()}/nov26_day/ffg_{self.it0}.bin")
+        g = GC.load(f"{rs_FF()}/{D.DAYDIR}/ffg_{self.it0}.bin")
         return g[:len(g) // 2]
 
     def own_surface(self, k, it, state):
@@ -234,7 +244,7 @@ class CoupledD209(C.Coupled):
         import radiation_server as rs
         import drv_radpacket as RP
         import d212_inputs_check as IC
-        lv = rs.read_packet(f"{rs.FF}/nov26_day/rsv_n26_{it}_in.bin")
+        lv = _read_rsv(it, 'in')
         ok = ~RP.pole_mask()
         geo, st = self.st['geo'], self.st
         poice = (np.asarray(lv['RSI']) * np.asarray(geo['fwater']) > 0) & ok
@@ -270,12 +280,14 @@ class CoupledD209(C.Coupled):
             import atm_step as A
             it = self.it0 + k
             if A.is_radiation_step(it):                      # live packet of THIS radiation step: its 21 surface fields are read only with --surf-fields recorded (and, at step 0, RQT/KLIQ/SNOAGE)
-                pk = rs.read_packet(f'{rs.FF}/nov26_day/rsv_n26_{it}_in.bin')
+                pk = _read_rsv(it, 'in')
                 if OWN['surf'] == 'computed':
                     own = self.own_surface(k, it, state)
-                    self._compare_surface(it, own)
-                    pk = dict(pk)
+                    if pk is not None:
+                        self._compare_surface(it, own)
+                    pk = dict(pk or {})
                     pk.update(own)
+                assert pk is not None, 'no recorded live packet for this step: --surf-fields computed is required'
                 self.ph.live_packet = pk
             kw['server'], kw['lv'] = RAD['wrap'], RAD['lv']
         elif OWN['check']:
@@ -290,7 +302,7 @@ class CoupledD209(C.Coupled):
             np.savez(os.path.join(HOOK['outdir'], f'land_step{k:02d}.npz'), **{kk: np.asarray(dn[kk]) for kk in ('w', 'ht', 'fr_snow')})
         if HOOK['outdir'] and 'SNOAGE' in out[0]['carry']:       # D209 diagnostic: our carried SNOAGE (CONDSE exit) vs the recorded CONDSE exit of this step
             import clouds_condse_io as cio
-            ro = np.asarray(cio.read_cse(f"{cio.FF_DEFAULT}/nov26_day/ffc_cse_out_{33312 + k}.bin")['SNOAGE'])
+            ro = np.asarray(cio.read_cse(f"{cio.FF_DEFAULT}/{D.DAYDIR}/ffc_cse_out_{33312 + k}.bin")['SNOAGE'])
             d = np.abs(np.asarray(out[0]['carry']['SNOAGE']) - ro)
             SNO_DRIFT.append(dict(k=k, max_abs=float(d.max()), n_diff=int((d > 0).sum()), by_type=[float(d[t].max()) for t in range(d.shape[0])]))
         return out

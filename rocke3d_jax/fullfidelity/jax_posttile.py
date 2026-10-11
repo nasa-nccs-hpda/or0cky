@@ -162,13 +162,13 @@ def surface_post_dev(K, Kb, S, mid, acc, srfp, itime, V):
     return post_b(K, S, c, oc, V)
 
 
-def tile_accumulators_dev(host, tpl, aux):
+def tile_accumulators_dev(host, tpl, aux, aux_cells=None):
     """surface_loop.tile_outputs_to_acc + surface_loop_v2.ice_tile_dmua_from_tiles on the DEVICE outputs of the D188 stage (jax_surface.make_stage):
     the per-slot tile fluxes of both substeps are reduced to the (IM, JM) accumulators of the post-tile stage.  Invalid water slots (masked by wvalid) contribute
     nothing, exactly as the rows that do not exist in the record sets.  host/tpl: from jax_surface.build_template; aux: second return value of the stage."""
     import surface_tile_ff as ST
     Nw = host['Nw']
-    wcells, lcells, ecells = (jnp.asarray(host[k]) for k in ('wcells', 'lcells', 'ecells'))
+    wcells, lcells, ecells = ((aux_cells[k] if aux_cells else jnp.asarray(host[k])) for k in ('wcells', 'lcells', 'ecells'))
 
     def grid(cells, vals):
         return jnp.zeros(IM * JM).at[cells].set(vals).reshape(JM, IM).T
