@@ -90,12 +90,15 @@ print(f'setup {cp.setup_seconds:.1f} s (server started); backend {jax.default_ba
 sr = G.build_registry()
 state, rec, dev = cp.initial_state()
 rows = []
+snaps = []
+TIMED = os.environ.get('SRV_TIMED') == '1'      # block after every stage: per-stage seconds (slightly slower steps)
 for k in range(NSTEPS):
     if k > 0:
         rec = cp.ph.load_records(cp.it0 + k, first=False)
         dev = cp.ph.to_device(rec, first=False)
     n0 = len(RAD['calls'])
-    out, state, arrays, sr = G.run_step(cp, k, state, rec, dev, sr, False)
+    out, state, arrays, sr = G.run_step(cp, k, state, rec, dev, sr, TIMED)
+    snaps.append({nm: v['seconds'] for nm, v in sr._st.items()})
     ea = G.end_arrays(arrays)
     nf = {kk: int((~np.isfinite(ea[kk])).sum()) for kk in ('filter/T', 'filter/U', 'filter/V', 'filter/Q', 'filter/P') if kk in ea}
     rad = len(RAD['calls']) > n0
@@ -107,5 +110,15 @@ held = [r['wall'] for r in steady if not r['radiation_step']]
 print('\nsummary (steps >= 2): held steps mean %.2f s (n=%d); radiation steps mean %s s (n=%d)' % (np.mean(held) if held else float('nan'), len(held), ('%.2f' % np.mean(nrad)) if nrad else 'n/a', len(nrad)))
 if nrad and held:
     print('cycle average over NRAD=5 steps (4 held + 1 radiation): %.2f s per step' % ((4 * np.mean(held) + np.mean(nrad)) / 5))
+if TIMED:
+    held_k = [r['k'] for r in rows if not r['radiation_step'] and r['k'] >= 2]
+    rad_k = [r['k'] for r in rows if r['radiation_step'] and r['k'] >= 2]
+    def per_step(k):
+        return {nm: snaps[k][nm] - snaps[k - 1].get(nm, 0.0) for nm in snaps[k]}
+    for tag, ks in (('held steps', held_k), ('radiation steps', rad_k)):
+        if not ks:
+            continue
+        mean = {nm: float(np.mean([per_step(k)[nm] for k in ks])) for nm in snaps[-1]}
+        print(f'per-stage seconds, mean over {tag} (n={len(ks)}):', ', '.join(f'{nm} {v:.3f}' for nm, v in sorted(mean.items(), key=lambda kv: -kv[1]) if v > 0.004), flush=True)
 print('LABEL: radiation computed by the original Fortran (hybrid component; real RADIA/SOCRATES in the persistent server); libm mode; hybrid step; V100/A100 timing, not bitwise to the CPU')
 print('server calls:', json.dumps(RAD['calls']))
