@@ -269,7 +269,7 @@ def run_step(cp, k, state, rec, dev, sr, timed):
         hp = cp.ph.cs.host
         out = dict(k=k, itime=info['itime'], step_seconds=wall, jit_executions=c1['jit_calls'] - c0['jit_calls'],
                    eager_primitive_dispatches=(c1['eager_primitive_calls'] or 0) - (c0['eager_primitive_calls'] or 0),
-                   xla_compilations=tot['compiles'], xla_compile_seconds=tot['compile_seconds'], jit_by_stage=info['jit_by_stage'], flags=info['flags'],
+                   xla_compilations=tot['compiles'], xla_compile_seconds=tot['compile_seconds'], jit_by_stage=info['jit_by_stage'], eager_by_stage=info.get('eager_by_stage'), flags=info['flags'],
                    stage_rebuilt=bool(info.get('stage_rebuilt', False)), host_template=info['host'], nit_rebuild=info.get('nit_rebuild'),
                    libimf_callbacks=dict(libimf_ops=LI.counters()['total'], libimf_fused=FX.counters()['total']),
                    qus_callbacks=dict(md.QUS), oadvt2_prepass_callbacks=dict(JO.XPRE_STATS),
