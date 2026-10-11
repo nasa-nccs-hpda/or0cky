@@ -92,10 +92,15 @@ state, rec, dev = cp.initial_state()
 rows = []
 snaps = []
 TIMED = os.environ.get('SRV_TIMED') == '1'      # block after every stage: per-stage seconds (slightly slower steps)
+PREFETCH = os.environ.get('SRV_PREFETCH') == '1'      # replay scaffolding: build the next step's SURFACE template in a background thread during this step
+rec_next = None
 for k in range(NSTEPS):
     if k > 0:
-        rec = cp.ph.load_records(cp.it0 + k, first=False)
+        rec = rec_next if rec_next is not None else cp.ph.load_records(cp.it0 + k, first=False)
         dev = cp.ph.to_device(rec, first=False)
+    if PREFETCH and k + 1 < NSTEPS:
+        rec_next = cp.ph.load_records(cp.it0 + k + 1, first=False)
+        cp.prefetch_template(rec_next)
     n0 = len(RAD['calls'])
     out, state, arrays, sr = G.run_step(cp, k, state, rec, dev, sr, TIMED)
     snaps.append({nm: v['seconds'] for nm, v in sr._st.items()})
@@ -104,6 +109,11 @@ for k in range(NSTEPS):
     rad = len(RAD['calls']) > n0
     rows.append(dict(k=k, wall=out['step_seconds'], radiation_step=rad, request_s=(RAD['calls'][-1]['request_s'] if rad else 0.0), nonfinite=sum(nf.values())))
     print(f'[step {k}] {"RADIATION step" if rad else "held step     "} wall {out["step_seconds"]:8.2f} s   server request {(RAD["calls"][-1]["request_s"] if rad else 0.0):6.2f} s   non-finite {sum(nf.values())}', flush=True)
+import hashlib
+_h = hashlib.sha256()
+for _kk in ('filter/T', 'filter/U', 'filter/V', 'filter/Q', 'filter/P'):
+    _h.update(np.ascontiguousarray(ea[_kk]).tobytes())
+print('end-state digest of T U V Q P after the last step (equal digests = bitwise equal runs):', _h.hexdigest()[:20], flush=True)
 steady = [r for r in rows[2:] ]
 nrad = [r['wall'] for r in steady if r['radiation_step']]
 held = [r['wall'] for r in steady if not r['radiation_step']]

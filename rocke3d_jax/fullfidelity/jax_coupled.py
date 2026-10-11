@@ -149,6 +149,7 @@ class Coupled:
         self._build_jits()
         self.writeback = jax.jit(self._writeback, static_argnums=(3,))
         self._stage_cache = None
+        self._tpl_prefetch = {}
         self.ocean_keys = list(self.SS0['ocean'].keys())
         self._last_ghy = None             # D205: (ffg rows of the substep 2 of the last step, their flat cells) for the DMWLDF of the day-boundary lake update
         self.daily_lake_info = None
@@ -330,6 +331,25 @@ class Coupled:
                     land=(state['land_prev'] or {}), clock=state['clock'])
 
     # ------------------------------------------------------------------------------------------------ one step
+    def _build_tpl(self, R):
+        """Host build of the SURFACE template of one step from its recorded rows (depends only on rec['R'])."""
+        reg_fn = self.ph.reg.guard_function('surface_records', A.surface_records, stage='surface')
+        recs = reg_fn(R)
+        tpl, host = JS.build_template(recs)
+        g1 = recs['g1']
+        irrig = np.zeros((IM, JM))
+        irrig[g1[:, 0].astype(int) - 1, g1[:, 1].astype(int) - 1] = g1[:, 147]
+        irrig_act = jnp.asarray(irrig * self.st['fearth'])
+        return tpl, host, recs, irrig_act
+
+    def prefetch_template(self, rec_next):
+        """D214 (replay scaffolding): start building the template of the NEXT step in a background thread; step() picks it up by the identity of rec['R']."""
+        import concurrent.futures as cf
+        if not hasattr(self, '_tpl_pool'):
+            self._tpl_pool = cf.ThreadPoolExecutor(max_workers=1)
+        R = rec_next['R']
+        self._tpl_prefetch[id(R)] = self._tpl_pool.submit(self._build_tpl, R)
+
     def step(self, k, state, rec, dev, sr, timed=False, keep=False, server=None, lv=None, io=None):
         """One coupled step from `state` (device pytree).  rec/dev: records of this step (host dict / device dict).  Returns (new state, info, arrays)."""
         it = self.it0 + k
@@ -353,14 +373,12 @@ class Coupled:
         S, SS, V = state['S'], state['surf'], state['V']
         # ---------------------------------------------------------------- host: template of the SURFACE stage (recorded rows, uploaded)
         with stage('template_build'):
-            reg_fn = ph.reg.guard_function('surface_records', A.surface_records, stage='surface')
-            recs = reg_fn(R)
-            tpl, host = JS.build_template(recs)
+            pf = self._tpl_prefetch.pop(id(R), None)
+            if pf is not None:                                   # D214: built for this step in a background thread while the previous step ran (identical call, identical result)
+                tpl, host, recs, irrig_act = pf.result()
+            else:
+                tpl, host, recs, irrig_act = self._build_tpl(R)
             self._last_ghy = (host['nit_rows'][1], host['ecells'])
-            g1 = recs['g1']
-            irrig = np.zeros((IM, JM))
-            irrig[g1[:, 0].astype(int) - 1, g1[:, 1].astype(int) - 1] = g1[:, 147]
-            irrig_act = jnp.asarray(irrig * self.st['fearth'])
             fin(tpl)
         if self._stage_cache is None or not self._same_host(self._stage_cache['host'], host):
             self._stage_cache = dict(host=host, stage=JS.make_stage(host), apply=TS.make_apply_state(host, self.K),
