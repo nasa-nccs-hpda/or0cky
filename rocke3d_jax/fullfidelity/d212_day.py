@@ -106,6 +106,48 @@ def _signed32(u):
     return u - (1 << 32) if u >= (1 << 31) else u
 
 
+class NativeMarker:
+    """Stands where the SrvWrap object stands in server mode (a non-None `server` argument of Coupled.step switches the server-mode code paths); never called."""
+    binary = restart = rundir = None
+
+    def request(self, *a, **k):
+        raise RuntimeError('native radiation: no server request')
+
+
+class NativeLog:
+    """What d193_day.main asks of the hand-off log (totals, sentence); no server counters exist in native mode."""
+
+    def totals(self):
+        return dict(radiation='computed natively in JAX (socrates_spike NativeHandoff), no server process', calls=None, host_sync_points=0)
+
+    def sentence(self):
+        return 'radiation computed by the JAX port of RADIA + SOCRATES (socrates_spike, NativeHandoff)'
+
+
+def _native_handoff():
+    """NativeHandoff of the SOCRATES port for the nov26 products (ROCKE_SOCRATES_DIR holds products_day0.npz, static0.npz, spec/spec_{lw,sw}.npz)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    sd = os.path.join(here, 'socrates_spike')
+    for p_ in (sd, here):
+        if p_ not in sys.path:
+            sys.path.insert(0, p_)
+    import radia_jax as RJ
+    import radia_native as RN
+    import drv_zenith as Z
+    import dyn_step as ds
+    d = os.environ.get('ROCKE_SOCRATES_DIR', '/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/gpu_data_stage/socrates_nov26')
+    prod = RJ.Products(np.load(os.path.join(d, 'products_day0.npz')))
+    zen = Z.Zenith()
+    rj = RJ.RadiaJax(os.path.join(d, 'spec'), os.path.join(d, 'static0.npz'), prod, zen=zen)
+    nrad = int(os.environ.get('ROCKE_NATIVE_NRAD', '60'))      # radiation steps covered by the zenith table (60 -> 300 model steps)
+    it0 = int(os.environ.get('ROCKE_NATIVE_IT0', '33312'))     # first radiation step of the table (nov26 start; (it0 - ITIMEI) % 5 == 0)
+    assert (it0 - ds.ITIMEI) % 5 == 0
+    tab = RN.zenith_table(zen, it0, nrad)
+    nh = RN.NativeHandoff(rj, tab, it0)
+    nh.log = NativeLog()
+    return nh
+
+
 class CoupledD209(C.Coupled):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -124,6 +166,16 @@ class CoupledD209(C.Coupled):
             for att in ('_handoff', '_hstep'):
                 if hasattr(ph, att):
                     delattr(ph, att)
+        elif RAD['mode'] == 'native':                       # D228: radiation = the JAX port of RADIA + SOCRATES (socrates_spike/radia_native.NativeHandoff), no server process
+            import jax_radiation as JR_
+            nh = _native_handoff()
+            ph = self.ph
+            RAD['wrap'] = NativeMarker()
+            RAD['lv'] = _read_rsv(self.it0, 'in')            # the step-0 live packet: RQT/KLIQ/SNOAGE start values (as in server mode)
+            ph.rad_mode, ph.server, ph.live_packet = 'server', None, RAD['lv']
+            ph._handoff = nh
+            ph._hstep = JR_.make_handoff_step(nh, ph.const)
+            ph.native_rad = True
 
 
     # ------------------------------------------------------------------------------------------------ D212: seed and COSZ1 from our own functions
@@ -291,7 +343,7 @@ class CoupledD209(C.Coupled):
 
     def step(self, k, state, *a, **kw):
         it = self.it0 + k
-        if RAD['mode'] == 'server':
+        if RAD['mode'] in ('server', 'native'):
             import radiation_server as rs
             import atm_step as A
             it = self.it0 + k
@@ -369,7 +421,7 @@ if __name__ == '__main__':
     if '--rad' in sys.argv:
         k = sys.argv.index('--rad')
         RAD['mode'] = sys.argv[k + 1]
-        assert RAD['mode'] in ('replay', 'server')
+        assert RAD['mode'] in ('replay', 'server', 'native')
         del sys.argv[k:k + 2]
     for flag in ('--surf-fields', '--seed', '--cosz'):
         if flag in sys.argv:
@@ -412,8 +464,9 @@ if __name__ == '__main__':
     finally:
         try:
             hf = getattr(HOOK['cp'].ph, '_handoff', None)
-            json.dump(dict(rad_mode=RAD['mode'], sentence=(hf.log.sentence() if hf is not None and RAD['mode'] == 'server' else 'radiation replayed from the real record (not computed)'),
-                           log=(hf.log.totals() if hf is not None else None), calls=RAD['calls']), open(os.path.join(out, 'd212_server_calls.json'), 'w'), indent=1, default=float)
+            json.dump(dict(rad_mode=RAD['mode'], sentence=('radiation computed by the JAX port of RADIA + SOCRATES (socrates_spike, NativeHandoff)' if RAD['mode'] == 'native' else
+                                                           hf.log.sentence() if hf is not None and RAD['mode'] == 'server' else 'radiation replayed from the real record (not computed)'),
+                           log=(hf.log.totals() if hf is not None and RAD['mode'] != 'native' else None), calls=RAD['calls']), open(os.path.join(out, 'd212_server_calls.json'), 'w'), indent=1, default=float)
             if RAD['srv'] is not None:
                 RAD['srv'].stop()
         except Exception as e:

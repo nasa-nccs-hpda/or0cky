@@ -52,3 +52,25 @@ Radiation steps in the window: every `A.is_radiation_step(it)` (the 11 recorded 
 The `.out` file, `score.md`/`score.json` of the trial, and `d212_server_calls.json` (per-call times and, for day 1, comparison against the recorded packets). Report the SOCRATES radiation time per call separately from the model step time.
 
 Sources: `fullfidelity/radiation_server.py` (INPUT_FIELDS, OUTPUT_FIELDS), `fullfidelity/d212_day.py` (SrvWrap, RAD), `fullfidelity/drv_radcols_dev.py` (rs_from_server), `fullfidelity/jax_coupled.py`, `gpu/v100_run.sh`, `Reports/SOCRATES_SPIKE_BRIEF.md`.
+
+## 6. RESULT of the integration, 2026-10-12 (MEASURED, one V100, jobs `allfix2` and `native108`)
+
+Wiring (commit after `dffe148`, merge of `socrates-spike`): `--rad native` in `fullfidelity/d212_day.py` builds `socrates_spike/radia_native.NativeHandoff` from `RadiaJax` (SOCRATES port of the other session, unmodified) and installs it as the hand-off of `jax_atm_phase1` (`ph._handoff`, `ph._hstep = jax_radiation.make_handoff_step`): radiation runs inside the same jitted step, no server process. `jax_coupled.py` copies the radiation outputs the surface columns read (`FSF, TRSURF, TRHR, SRVISSURF, FSRDIR, COSZ1`) into `drv_radcols_dev.LAST` as the server wrapper does. Inputs (products of nov26, static0, spectral data `spec2`) were copied from the SOCRATES session scratch to `/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/gpu_data_stage/socrates_nov26/` (`ROCKE_SOCRATES_DIR`); products are valid for nov26 only.
+
+Command: the one of section 2 with `--rad native` in place of `--rad server`.
+
+| | Fortran server (`allfix2`) | JAX SOCRATES (`native108`) |
+|---|---|---|
+| finished, finite, no flag | yes | yes (108 of 108 steps) |
+| radiation step, median wall (steps 5..105) | 10.0 s | 1.9 s |
+| non-radiation step, median wall | 1.7 s | 1.7 s |
+| sum of steps 2..107 | 360 s | 186 s (1.9x) |
+| step 0 (compile + first step) | 779 s | 1,089 s (about 310 s more compile) |
+| worst ratio, steps >= 3, both days | 2.37 (QCI, step 3) | 2.36 (QCI, step 3) |
+| day 2 worst ratio | 1.16 | 1.24 (QCI step 56) |
+| unrelaxed 2x criterion | NOT MET | NOT MET (QCI 2.36 step 3, QCL 1.76 step 4) |
+| relaxed criterion (3x, steps >= 3) | met | met |
+
+Score files: `gpu_runs/native108/score.md`, `score.json`; model output `gpu_runs/native108/ours_d193/`.
+
+Not shown: other dates (products exist for nov26 only), the 750 AIJ radiation diagnostics (four accumulators are rebuilt), a run longer than the 108 recorded steps, memory use of the combined program (it ran on a 32 GB V100), a second repetition of the timing. At step 1 the native and server runs already differ locally (T by up to 0.07 K at 24 points, from a 5e-9 K difference after radiation step 0): a discrete event of the kind seen before, judged only by the score band.

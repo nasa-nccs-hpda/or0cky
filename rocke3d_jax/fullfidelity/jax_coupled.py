@@ -616,6 +616,8 @@ class Coupled:
         with sr.time('flag_read'):
             fl = P1.D.flags_to_host(r['flags'])
         info['phase1_seconds'] = time.perf_counter() - t0
+        if getattr(ph, 'native_rad', False) and A.is_radiation_step(it):         # D228: the outputs the radcols stage reads (as SrvWrap.request leaves them in DD.LAST in server mode)
+            DD.LAST.update(out={kk: r['hold'][kk] for kk in ('FSF', 'TRSURF', 'TRHR', 'SRVISSURF', 'FSRDIR', 'COSZ1')}, it=int(it))
         info['flags'] = {kk: int(v) for kk, v in fl.items()}
         info['phase1_stage_seconds'] = r['info']['stage_seconds']
         info['phase1_stage_jit'] = r['info']['stage_jit_calls']
