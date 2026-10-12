@@ -1,0 +1,6 @@
+SW: 1825 columns, 6 bands in 22.4 s (first call incl. compile)
+   SW   flux_down 481800 entries  bitwise  29.71 %  max abs 6.716e-11  max rel 3.024e-13
+   SW   flux_up   481800 entries  bitwise   9.00 %  max abs 3.500e-11  max rel 7.159e-12
+LW: 3169 columns, 9 bands in 40.7 s (first call incl. compile)
+   LW   flux_down 1254924 entries  bitwise  12.43 %  max abs 4.920e-09  max rel 1.470e-05
+   LW   flux_up   1254924 entries  bitwise  12.12 %  max abs 5.000e-09  max rel 4.173e-11

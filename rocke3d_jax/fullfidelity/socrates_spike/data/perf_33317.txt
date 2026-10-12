@@ -1,0 +1,149 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 12K of event 'cycles:u'
+# Event count (approx.): 35972042588
+#
+# Overhead       Samples  Symbol                                             Shared Object     
+# ........  ............  .................................................  ..................
+#
+     0.00%             6  [.] __close                                        libpthread-2.28.so
+     0.03%             3  [.] __errno_location                               libpthread-2.28.so
+     0.35%            42  [.] __intel_avx_rep_memcpy                         P2SAoM40          
+     0.48%            58  [.] __intel_avx_rep_memset                         P2SAoM40          
+     0.00%             6  [.] __libc_read                                    libpthread-2.28.so
+     0.00%             1  [.] __libc_write                                   libpthread-2.28.so
+     0.55%            67  [.] __libm_error_support                           P2SAoM40          
+     0.27%            33  [.] __libm_exp_e7                                  P2SAoM40          
+     2.37%           285  [.] __libm_exp_l9                                  P2SAoM40          
+     0.03%             3  [.] __libm_log10_l9                                P2SAoM40          
+     0.06%             7  [.] __libm_log_l9                                  P2SAoM40          
+     0.28%            33  [.] __libm_pow_l9                                  P2SAoM40          
+     0.18%            22  [.] __powr8i4                                      P2SAoM40          
+     0.31%            37  [.] _int_free                                      libc-2.28.so      
+     0.58%            70  [.] _int_malloc                                    libc-2.28.so      
+     0.02%             2  [.] _intel_fast_memcmp                             P2SAoM40          
+     0.03%             4  [.] _intel_fast_memcpy                             P2SAoM40          
+     0.02%             2  [.] _intel_fast_memset                             P2SAoM40          
+     0.09%            11  [.] _mm_free                                       P2SAoM40          
+     0.03%             3  [.] _mm_malloc                                     P2SAoM40          
+     0.09%            11  [.] adjust_ir_radiance_                            P2SAoM40          
+     0.02%             2  [.] aerparam_mod_mp_get_aero_column_               P2SAoM40          
+     0.02%             2  [.] aggregate_cloud_                               P2SAoM40          
+     1.33%           159  [.] augment_radiance_                              P2SAoM40          
+     0.04%             5  [.] augment_tiled_radiance_                        P2SAoM40          
+     0.37%            45  [.] calc_aer_opt_prop_                             P2SAoM40          
+     0.16%            19  [.] calc_alb_wgt_                                  P2SAoM40          
+     0.09%            11  [.] cfree@GLIBC_2.2.5                              libc-2.28.so      
+     0.04%             5  [.] column_solver_                                 P2SAoM40          
+     0.02%             2  [.] def_aer_mp_allocate_aer_                       P2SAoM40          
+     0.01%             1  [.] def_atm_mp_allocate_atm_                       P2SAoM40          
+     0.02%             2  [.] def_atm_mp_deallocate_atm_                     P2SAoM40          
+     0.01%             1  [.] def_bound_mp_allocate_bound_                   P2SAoM40          
+     0.02%             2  [.] def_bound_mp_deallocate_bound_                 P2SAoM40          
+     0.01%             1  [.] def_control_mp_allocate_control_               P2SAoM40          
+     0.02%             3  [.] def_out_mp_allocate_out_                       P2SAoM40          
+     0.02%             2  [.] def_out_mp_deallocate_out_                     P2SAoM40          
+     0.24%            29  [.] diff_planck_source_tbl_                        P2SAoM40          
+     0.02%             2  [.] do_deallocate_all                              P2SAoM40          
+     0.31%            37  [.] exp                                            P2SAoM40          
+     0.05%             7  [.] f_ldnint_val                                   P2SAoM40          
+     0.00%             1  [.] for__close_proc                                P2SAoM40          
+     0.00%             1  [.] for__deallocate_lub                            P2SAoM40          
+     0.00%             1  [.] for__get_s                                     P2SAoM40          
+     0.00%             1  [.] for__read_input                                P2SAoM40          
+     0.08%            10  [.] for_alloc_allocatable                          P2SAoM40          
+     0.16%            19  [.] for_allocate                                   P2SAoM40          
+     0.05%             6  [.] for_array_copy_in                              P2SAoM40          
+     0.05%             6  [.] for_array_copy_out                             P2SAoM40          
+     0.43%            52  [.] for_check_mult_overflow64                      P2SAoM40          
+     0.02%             3  [.] for_contig_array                               P2SAoM40          
+     0.06%             7  [.] for_cpstr                                      P2SAoM40          
+     0.01%             1  [.] for_dealloc_all_nopdtlen                       P2SAoM40          
+     0.14%            18  [.] for_dealloc_allocatable                        P2SAoM40          
+     0.03%            19  [.] for_read_seq_xmit                              P2SAoM40          
+     0.09%            30  [.] for_write_seq_xmit                             P2SAoM40          
+     0.03%             4  [.] get_72x46ij_                                   P2SAoM40          
+     0.12%            15  [.] ghgmod_mp_getgas_                              P2SAoM40          
+     2.20%           265  [.] grey_opt_prop_                                 P2SAoM40          
+     0.05%             6  [.] inc_aj_                                        P2SAoM40          
+     0.06%             7  [.] inc_ajl_                                       P2SAoM40          
+     0.01%             1  [.] inc_areg_                                      P2SAoM40          
+     0.14%            17  [.] integ_planck_                                  P2SAoM40          
+     0.36%            43  [.] inter_pt_lookup_                               P2SAoM40          
+     4.74%           568  [.] interp1d_mod_mp_interp1d_                      P2SAoM40          
+    33.82%          4056  [.] interp_aer_                                    P2SAoM40          
+     0.88%           106  [.] ir_source_                                     P2SAoM40          
+     0.01%             1  [.] log                                            P2SAoM40          
+     0.22%            27  [.] malloc                                         libc-2.28.so      
+     0.06%             7  [.] malloc_consolidate                             libc-2.28.so      
+     0.94%           113  [.] monochromatic_gas_flux_                        P2SAoM40          
+     0.23%            27  [.] monochromatic_radiance_                        P2SAoM40          
+     0.09%            11  [.] monochromatic_radiance_tseq_                   P2SAoM40          
+     0.02%             3  [.] opt_prop_aerosol_                              P2SAoM40          
+     0.14%            17  [.] opt_prop_ice_cloud_                            P2SAoM40          
+     0.11%            13  [.] opt_prop_inhom_corr_cairns_                    P2SAoM40          
+     3.21%           384  [.] opt_prop_ukca_aerosol_                         P2SAoM40          
+     0.12%            15  [.] opt_prop_water_cloud_                          P2SAoM40          
+     0.24%            28  [.] overlap_coupled_                               P2SAoM40          
+     0.02%             2  [.] patches_mp_patch_extract_pfts_                 P2SAoM40          
+     0.01%             1  [.] planet_alb_mp_set_surf_prop_lw_                P2SAoM40          
+     0.01%             1  [.] planet_alb_mp_set_surf_prop_sw_                P2SAoM40          
+     0.11%            14  [.] planet_rad_mp_get_planet_radout_               P2SAoM40          
+     0.09%            11  [.] planet_rad_mp_run_planet_rad_                  P2SAoM40          
+     0.02%             2  [.] planet_rad_mp_set_control_sw_                  P2SAoM40          
+     0.02%             2  [.] pow                                            P2SAoM40          
+     1.02%           124  [.] radia_                                         P2SAoM40          
+     5.06%           606  [.] radiance_calc_                                 P2SAoM40          
+     0.53%            64  [.] radpar_mp_getdst_                              P2SAoM40          
+     0.07%             8  [.] radpar_mp_rcompx_                              P2SAoM40          
+     0.45%            53  [.] radpar_mp_setaer_                              P2SAoM40          
+     0.12%            14  [.] radpar_mp_setvol_                              P2SAoM40          
+     0.02%             2  [.] radsrvp_hook_                                  P2SAoM40          
+     0.06%            22  [.] radsrvp_hook_IP_outputs_                       P2SAoM40          
+     0.00%             1  [.] radsrvp_hook_IP_setclock_                      P2SAoM40          
+     0.01%             4  [.] radsrvp_hook_IP_xi4_                           P2SAoM40          
+     0.12%            14  [.] repart_                                        P2SAoM40          
+     0.30%            36  [.] rescale_continuum_                             P2SAoM40          
+     0.23%            28  [.] rescale_phase_fnc_                             P2SAoM40          
+     1.46%           173  [.] rescale_tau_omega_                             P2SAoM40          
+     0.01%             1  [.] rhdtna_                                        P2SAoM40          
+     0.02%             2  [.] rxsnow_                                        P2SAoM40          
+     0.58%            70  [.] scale_absorb_                                  P2SAoM40          
+     3.41%           410  [.] set_aer_                                       P2SAoM40          
+     0.16%            19  [.] set_atm_                                       P2SAoM40          
+     0.06%             7  [.] set_cld_                                       P2SAoM40          
+     0.11%            13  [.] set_cloud_field_                               P2SAoM40          
+     0.02%             2  [.] set_cloud_geometry_                            P2SAoM40          
+     0.88%           106  [.] set_major_abs_                                 P2SAoM40          
+     0.02%             3  [.] set_n_source_coeff_mod_mp_set_n_source_coeff_  P2SAoM40          
+     0.01%             1  [.] sin                                            P2SAoM40          
+     1.53%           184  [.] single_scattering_                             P2SAoM40          
+     0.37%            44  [.] single_scattering_all_                         P2SAoM40          
+     0.65%            77  [.] solar_coefficient_basic_                       P2SAoM40          
+     0.22%            26  [.] solar_source_                                  P2SAoM40          
+     2.19%           263  [.] solve_band_k_eqv_scl_                          P2SAoM40          
+     3.38%           405  [.] solver_homogen_direct_                         P2SAoM40          
+     6.13%           737  [.] solver_triple_hogan_                           P2SAoM40          
+     0.01%             1  [.] surf_albedo_mp_getsur_                         P2SAoM40          
+     5.20%           623  [.] trans_source_coeff_                            P2SAoM40          
+     0.95%           114  [.] triple_column_                                 P2SAoM40          
+     0.49%            59  [.] triple_solar_source_                           P2SAoM40          
+     1.13%           135  [.] two_coeff_                                     P2SAoM40          
+     0.99%           119  [.] two_coeff_basic_                               P2SAoM40          
+     2.56%           307  [.] two_coeff_region_                              P2SAoM40          
+     0.16%            20  [.] unlink_chunk.isra.2                            libc-2.28.so      
+     0.01%             1  [.] upd_surf_alb_                                  P2SAoM40          
+     0.64%            77  [.] vectlib_mod_mp_exp_v_                          P2SAoM40          
+     0.01%             1  [.] vectlib_mod_mp_rtor_v_                         P2SAoM40          
+     0.86%           104  [.] vectlib_mod_mp_sqrt_v_                         P2SAoM40          
+     0.02%             2  [.] volcparam_mod_mp_get_volc_column_              P2SAoM40          
+     0.02%             3  [k] 0xffffffffab401da0                             [unknown]         
+     0.02%             7  [k] 0xffffffffab4011e0                             [unknown]         
+
+
+#
+# (Tip: To separate samples by time use perf report --sort time,overhead,sym)
+#

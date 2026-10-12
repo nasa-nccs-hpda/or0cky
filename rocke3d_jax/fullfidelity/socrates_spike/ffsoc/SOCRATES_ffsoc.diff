@@ -1,0 +1,305 @@
+Only in /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core: ffsoc_mod.F90
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/radiance_calc.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/radiance_calc.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:22.407415666 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/radiance_calc.F90	2026-10-11 20:15:51.404531333 -0400
+@@ -26,6 +26,7 @@
+   USE def_bound,    ONLY: StrBound
+   USE def_out,      ONLY: StrOut, allocate_out
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE gas_list_pcf, ONLY: ip_h2o, ip_air, molar_weight
+   USE rad_ccf,      ONLY: mol_weight_air
+   USE errormessagelength_mod, ONLY: errormessagelength
+@@ -424,6 +425,12 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_begin_call
++  CALL ffsoc_tic(6)
++  CALL ffsoc_arr(0, control%isolir, 0, 1, atm%p)
++  CALL ffsoc_arr(0, control%isolir, 0, 2, atm%t)
++  CALL ffsoc_arr(0, control%isolir, 0, 3, atm%density)
++  CALL ffsoc_arr(0, control%isolir, 0, 4, atm%gas_mix_ratio)
+ 
+ 
+   CALL allocate_out(radout, control, dimen, spectrum)
+@@ -755,6 +762,7 @@
+ ! increment the fluxes.
+ 
+   DO i_band=control%first_band, control%last_band
++    CALL ffsoc_tic(2)
+ 
+ !   Set the flag to initialize the diagnostic arrays.
+     IF (i_band == control%first_band) THEN
+@@ -943,6 +951,7 @@
+ 
+ !   Calculate the grey extinction within the band.
+ 
++    CALL ffsoc_tic(1)
+ ! DEPENDS ON: grey_opt_prop
+     CALL grey_opt_prop(ierr, control, radout, i_band                           &
+       , atm%n_profile, atm%n_layer, atm%p, atm%t, atm%density                  &
+@@ -1002,6 +1011,11 @@
+       , dimen%nd_profile_aerosol_prsc, dimen%nd_profile_cloud_prsc             &
+       , dimen%nd_opt_level_aerosol_prsc, dimen%nd_opt_level_cloud_prsc         &
+       )
++    CALL ffsoc_toc(1)
++    CALL ffsoc_arr(10, control%isolir, i_band, 1, ss_prop%k_grey_tot_clr)
++    CALL ffsoc_arr(10, control%isolir, i_band, 2, ss_prop%k_ext_scat_clr)
++    CALL ffsoc_arr(10, control%isolir, i_band, 3, ss_prop%k_grey_tot)
++    CALL ffsoc_arr(10, control%isolir, i_band, 4, ss_prop%k_ext_scat)
+ 
+ 
+     IF ( (control%i_angular_integration == ip_two_stream).OR.                  &
+@@ -2543,6 +2557,9 @@
+         )
+     END IF
+ 
++    CALL ffsoc_toc(2)
++    CALL ffsoc_arr(30, control%isolir, i_band, 1, radout%flux_down(:,:,control%map_channel(i_band)))
++    CALL ffsoc_arr(30, control%isolir, i_band, 2, radout%flux_up(:,:,control%map_channel(i_band)))
+ !   Set band-by-band flux diagnostics
+     IF (control%l_flux_direct_band) THEN
+       radout%flux_direct_band(:,:,i_band)                                      &
+@@ -2578,6 +2595,8 @@
+   END DO ! i_band
+ 
+   9999 CONTINUE
++  CALL ffsoc_toc(6)
++  CALL ffsoc_end_call(control%isolir, control%last_band)
+   IF (ierr /= i_normal) THEN
+     CALL ereport(RoutineName, ierr, cmessage)
+   END IF
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_k_eqv_scl.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:22.282647853 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 20:15:51.453682884 -0400
+@@ -102,6 +102,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE rad_ccf, ONLY: diffusivity_factor_minor
+   USE vectlib_mod, ONLY: exp_v
+@@ -565,8 +566,21 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(3)
++  CALL ffsoc_tic(10)
+ 
+   i_abs=index_abs(1)
++  CALL ffsoc_arr(25, isolir, 0, 1, k_abs_layer(1:n_profile, 1:n_layer, :, :))
++  CALL ffsoc_arr(25, isolir, 0, 2, w_abs_esft(:, :))
++  CALL ffsoc_arr(25, isolir, 0, 3, REAL(n_abs_esft(:), 8))
++  CALL ffsoc_arr(25, isolir, 0, 4, (/ REAL(n_abs, 8), REAL(index_abs(1:n_abs), 8) /))
++  CALL ffsoc_arr(25, isolir, 0, 5, planck_flux_band(1:n_profile, 0:n_layer))
++  CALL ffsoc_arr(25, isolir, 0, 6, diff_planck_band(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(25, isolir, 0, 7, diff_planck_band_2(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(25, isolir, 0, 8, planck_flux_surface(1:n_profile))
++  CALL ffsoc_arr(25, isolir, 0, 9, solar_irrad(1:n_profile))
++  CALL ffsoc_arr(25, isolir, 0, 10, rho_alb(1:n_profile, :))
++  CALL ffsoc_arr(25, isolir, 0, 11, (/ weight_band /))
+   
+ 
+   IF (isolir == ip_solar) THEN
+@@ -834,6 +848,10 @@
+     END DO
+   END IF
+ 
++  CALL ffsoc_toc(3)
++  CALL ffsoc_arr(20, isolir, 0, 1, k_eqv(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(20, isolir, 0, 2, d_mass(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(20, isolir, 0, 3, zen_0(1:n_profile))
+ ! The ESFT terms for the major gas in the band are used with
+ ! appropriate weighted terms for the minor gases.
+   DO iex=1, n_abs_esft(i_abs)
+@@ -901,6 +919,7 @@
+       END DO
+     END DO
+ 
++    CALL ffsoc_tic(4)
+     IF (i_cloud == ip_cloud_mcica) THEN
+ 
+ ! DEPENDS ON: mcica_sample
+@@ -1045,11 +1064,15 @@
+ 
+     END IF
+ 
++    CALL ffsoc_toc(4)
++    CALL ffsoc_arr(21, isolir, 0, iex, flux_total_part(1:n_profile, 1:2*n_layer+2))
++    CALL ffsoc_arr(22, isolir, 0, iex, (/ esft_weight /))
+ !   Increment the fluxes within the band.
+     weight_incr=weight_band*esft_weight
+     IF (l_blue_flux_surf)                                               &
+       weight_blue_incr=weight_blue*esft_weight
+ 
++    CALL ffsoc_tic(5)
+ ! DEPENDS ON: augment_radiance
+     CALL augment_radiance(n_profile, n_layer                            &
+       , i_angular_integration, i_sph_mode                               &
+@@ -1094,11 +1117,13 @@
+ 
+ !   After the first call to these routines quantities should be
+ !   incremented rather than initialized, until the flag is reset.
++    CALL ffsoc_toc(5)
+     l_initial=.FALSE.
+ 
+   END DO
+ 
+ 
++  CALL ffsoc_toc(10)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_k_eqv_scl
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_one_gas.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_one_gas.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_one_gas.F90	2026-10-11 17:46:22.782682825 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_one_gas.F90	2026-10-11 20:15:51.424768335 -0400
+@@ -98,6 +98,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -491,6 +492,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(8)
+ 
+ ! The ESFT terms for the first gas in the band alone are used.
+   i_abs=index_abs(1)
+@@ -674,6 +676,7 @@
+   END DO
+ 
+ 
++  CALL ffsoc_toc(8)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_one_gas
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_ses.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_ses.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_ses.F90	2026-10-11 17:46:22.438417125 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_ses.F90	2026-10-11 20:15:51.418118871 -0400
+@@ -107,6 +107,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -541,6 +542,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(7)
+ 
+ ! Set the appropriate boundary terms for the total
+ ! upward and downward fluxes.
+@@ -819,6 +821,7 @@
+   END DO
+ 
+ 
++  CALL ffsoc_toc(7)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_ses
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_without_gas.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_without_gas.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/solve_band_without_gas.F90	2026-10-11 17:46:23.007639088 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/solve_band_without_gas.F90	2026-10-11 20:15:51.447742772 -0400
+@@ -92,6 +92,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -460,6 +461,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(9)
+ 
+ ! Set the appropriate total upward and downward fluxes
+ ! at the boundaries.
+@@ -627,6 +629,7 @@
+   l_initial=.FALSE.
+ 
+ 
++  CALL ffsoc_toc(9)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_without_gas
+diff -u -r /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/triple_column.F90 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/triple_column.F90
+--- /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates_orig/src/radiance_core/triple_column.F90	2026-10-11 17:46:22.508109161 -0400
++++ /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates/src/radiance_core/triple_column.F90	2026-10-11 20:15:51.460565305 -0400
+@@ -62,6 +62,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -281,6 +282,38 @@
+   END IF
+ 
+ 
++  CALL ffsoc_arr(40, isolir, 0, 1, ss_prop%tau_clr)
++  CALL ffsoc_arr(40, isolir, 0, 2, ss_prop%omega_clr)
++  CALL ffsoc_arr(40, isolir, 0, 3, ss_prop%tau)
++  CALL ffsoc_arr(40, isolir, 0, 4, ss_prop%omega)
++  CALL ffsoc_arr(40, isolir, 0, 5, ss_prop%tau_clr_noscal)
++  CALL ffsoc_arr(40, isolir, 0, 6, ss_prop%tau_noscal)
++  CALL ffsoc_arr(40, isolir, 0, 7, ss_prop%phase_fnc_clr)
++  CALL ffsoc_arr(40, isolir, 0, 8, ss_prop%phase_fnc)
++  CALL ffsoc_arr(40, isolir, 0, 9, sec_0(1:n_profile))
++  CALL ffsoc_arr(44, isolir, 0, 1, (/ REAL(n_cloud_top, 8), REAL(n_region, 8), REAL(n_cloud_type, 8), REAL(n_layer, 8) /))
++  CALL ffsoc_arr(45, isolir, 0, 1, frac_cloud(1:n_profile, id_ct:n_layer, 1:n_cloud_type))
++  CALL ffsoc_arr(45, isolir, 0, 2, frac_region(1:n_profile, id_ct:n_layer, 1:n_region))
++  CALL ffsoc_arr(45, isolir, 0, 3, REAL(i_region_cloud(1:n_cloud_type), 8))
++  CALL ffsoc_arr(46, isolir, 0, 1, cloud_overlap(1:n_profile, id_ct-1:n_layer, 1:18))
++  CALL ffsoc_arr(46, isolir, 0, 2, flux_inc_down(1:n_profile))
++  CALL ffsoc_arr(46, isolir, 0, 3, diffuse_albedo(1:n_profile))
++  CALL ffsoc_arr(47, isolir, 0, 1, diff_planck(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(47, isolir, 0, 2, diff_planck_2(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(47, isolir, 0, 3, w_free(1:n_profile, id_ct:n_layer))
++  CALL ffsoc_arr(47, isolir, 0, 4, w_cloud(1:n_profile, id_ct:n_layer))
++  CALL ffsoc_arr(47, isolir, 0, 5, adjust_solar_ke(1:n_profile, 1:n_layer))
++  CALL ffsoc_arr(47, isolir, 0, 6, flux_inc_direct(1:n_profile))
++  CALL ffsoc_arr(47, isolir, 0, 7, direct_albedo(1:n_profile))
++  CALL ffsoc_arr(47, isolir, 0, 8, d_planck_flux_surface(1:n_profile))
++  CALL ffsoc_arr(47, isolir, 0, 9, (/ MERGE(1.0d0, 0.0d0, l_scale_solar) /))
++  CALL ffsoc_arr(49, isolir, 0, 1, ss_prop%forward_scatter_clr)
++  CALL ffsoc_arr(49, isolir, 0, 2, ss_prop%forward_scatter)
++  CALL ffsoc_arr(41, isolir, 0, 1, trans(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 2, reflect(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 3, trans_0_noscal(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 4, trans_0(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(41, isolir, 0, 5, source_coeff(1:n_profile, 1:n_layer, :, :))
+   IF (isolir == ip_infra_red) THEN
+ 
+     DO k=1, n_region
+@@ -395,6 +428,9 @@
+       END DO
+     END IF
+ 
++  CALL ffsoc_arr(42, isolir, 0, 1, s_down(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(42, isolir, 0, 2, s_up(1:n_profile, 1:n_layer, :))
++  CALL ffsoc_arr(42, isolir, 0, 3, source_flux_ground(1:n_profile, :))
+ 
+ 
+   SELECT CASE (i_solver)
+@@ -535,7 +571,8 @@
+     CALL ereport(RoutineName, ierr, cmessage)
+ 
+   END SELECT
+-
++  CALL ffsoc_arr(43, isolir, 0, 1, flux_total(1:n_profile, 1:2*n_layer+2))
++  CALL ffsoc_arr(48, isolir, 0, 1, flux_direct(1:n_profile, 0:n_layer))
+ 
+ 
+   IF (l_clear) THEN

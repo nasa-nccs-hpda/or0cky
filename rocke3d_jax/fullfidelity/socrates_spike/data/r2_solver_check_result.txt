@@ -1,0 +1,4 @@
+triple_column calls compared: 3634
+            columns   entries  bitwise % nonfinite     max abs     max rel
+LW  nct>1      2966    261008    100.000         0   0.000e+00   0.000e+00
+SW  nct>1       668     58784     99.864         0  1.843e-308   1.843e-08

@@ -1,0 +1,9 @@
+host: gpu012  gpu: Tesla V100-SXM2-32GB  git: 5770224 SOCRATES spike: owner decision recorded (rule lifted  dirty: 5
+device: cuda:0 jax 0.5.3
+columns 3312 layers 40 RH min/mean/max 0.000 0.008 0.352
+kernel A lw (3312 cols x 40 layers x 6 aerosols, 4 with sulphate): compile+first 5.986 s, steady median 0.0027 s (min 0.0027 max 0.0028)
+kernel A sw (3312 cols x 40 layers x 6 aerosols, 4 with sulphate): compile+first 3.420 s, steady median 0.0011 s (min 0.0010 max 0.0011)
+kernel B LW elsasser: 3312 cols x 180 terms x 1 regions x 40 layers, chunk 276 cols (batch 49680): compile+first 0.343 s, steady 0.0021 s per chunk -> 0.025 s for all 12 chunks (min 0.0020 max 0.0023)
+kernel B SW pifm80 (half the columns lit): 1656 cols x 95 terms x 1 regions x 40 layers, chunk 276 cols (batch 26220): compile+first 0.537 s, steady 0.0018 s per chunk -> 0.011 s for all 6 chunks (min 0.0018 max 0.0018)
+kernel B LW elsasser: 3312 cols x 180 terms x 3 regions x 40 layers, chunk 276 cols (batch 149040): compile+first 0.318 s, steady 0.0044 s per chunk -> 0.053 s for all 12 chunks (min 0.0044 max 0.0045)
+kernel B SW pifm80 (half the columns lit): 1656 cols x 95 terms x 3 regions x 40 layers, chunk 276 cols (batch 78660): compile+first 0.510 s, steady 0.0036 s per chunk -> 0.022 s for all 6 chunks (min 0.0035 max 0.0039)

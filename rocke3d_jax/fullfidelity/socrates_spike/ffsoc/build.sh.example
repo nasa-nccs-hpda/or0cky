@@ -1,0 +1,5 @@
+#!/bin/bash
+# control/instrumented build of the scratch ModelE copy; SOCRATES from the scratch copy (decision D3, R2)
+source /panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai-socrates-imvi/rocke3d_jax/fullfidelity/env_modele.sh
+export SOCRATESPATH=/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/socrates
+cd /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/mE2/decks && gmake RUN=P2SAoM40 /panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/socdump/mE2/model/P2SAoM40.bin

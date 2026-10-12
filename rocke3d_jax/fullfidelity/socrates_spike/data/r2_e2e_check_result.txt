@@ -1,0 +1,4 @@
+LW  flux_down  band-records  126     5544 entries  bitwise  17.623 %  max abs  1.604e-08  max rel  3.226e-06
+LW  flux_up    band-records  126     5544 entries  bitwise  16.991 %  max abs  1.419e-08  max rel  3.169e-10
+SW  flux_down  band-records   48     2112 entries  bitwise  79.545 %  max abs  1.137e-13  max rel  1.023e-15
+SW  flux_up    band-records   48     2112 entries  bitwise  67.614 %  max abs  1.137e-13  max rel  9.484e-16

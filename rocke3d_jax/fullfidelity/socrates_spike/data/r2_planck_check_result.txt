@@ -1,0 +1,4 @@
+LW  diff_planck_band        11223 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  diff_planck_band_2      11223 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  planck_flux_band        11484 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  planck_flux_surface       261 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
