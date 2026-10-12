@@ -442,3 +442,113 @@ def surface_sw(c, alb_wgt, n_band):
     td = jnp.stack([tiles_d[0], tiles_d[2], tiles_d[1], tiles_d[3]], axis=1)
     tx = jnp.stack([tiles_x[0], tiles_x[2], tiles_x[1], tiles_x[3]], axis=1)
     return jnp.stack([rd, rx], axis=1), jnp.stack([td, tx], axis=1)
+
+
+# ---------------------------------------------------------------------------------------------------------------- post-processing
+def total_cloud_cover(w_cloud, frac_cloud):
+    """radout%tot_cloud_cover of overlap_coupled (ip_cloud_triple): w_cloud (N, 43), frac_cloud (N, 43, 4) -> (N,).  For any cloud top
+    this equals the batched n_cloud_top = 1 evaluation (the factors above the top cloud are exactly 1)."""
+    eps = float(np.finfo(np.float64).eps)
+    tol = 1.0e2 * eps
+    N, nl = w_cloud.shape
+    w_free = 1.0 - w_cloud
+    fr1 = frac_cloud[:, :, 0] + frac_cloud[:, :, 1]
+    fr2 = frac_cloud[:, :, 2] + frac_cloud[:, :, 3]
+    a1 = w_cloud * jnp.where(fr1 > TINY, fr1, 0.0)
+    a2 = w_cloud * jnp.where(fr2 > TINY, fr2, 0.0)
+    z = jnp.zeros((N, 1))
+    ao22 = jnp.minimum(a1, jnp.concatenate([z, a1[:, :-1]], axis=1))
+    ao33 = jnp.minimum(a2, jnp.concatenate([z, a2[:, :-1]], axis=1))
+
+    def step(tcc, x):
+        wf, o2, o3 = x
+        upd = tcc * wf / (1.0 - o2 - o3)
+        return jnp.where(wf > tol, upd, 0.0), None
+
+    tcc, _ = jax.lax.scan(step, jnp.ones(N), (w_free.T, ao22.T, ao33.T))
+    return 1.0 - tcc
+
+
+def post_lw(dn_b, up_b, t_level):
+    """get_planet_radout, long-wave part.  dn_b, up_b: lists of (N, 44) per-band fluxes (Planck add-back included, level 0 = top)."""
+    up = None; dn = None
+    for u, d in zip(up_b, dn_b):                                        # cumulative channel (adjust_ir_radiance), sequential over bands
+        up = u if up is None else up + u
+        dn = d if dn is None else dn + d
+    truflb, trdflb = up[:, ::-1], dn[:, ::-1]
+    trnflb = truflb - trdflb
+    return dict(tlb=t_level[:, ::-1], tlt=t_level[:, :-1][:, ::-1], truflb=truflb, trdflb=trdflb, trnflb=trnflb,
+                trfcrl=trnflb[:, 1:] - trnflb[:, :-1], truptoa=jnp.stack([u[:, 0] for u in up_b], axis=1))
+
+
+def post_sw(dn_b, up_b, dr_b, lit, cos_zen, weight_blue, frac, tile_up, solar_irrad, norms0=1):
+    """get_planet_radout, short-wave part.  dn_b/up_b/dr_b: lists (per band = channel) of (N, 44); lit (N,) bool; cos_zen (N,);
+    frac: dict sea/land/ice/lice fractions; tile_up: (N, 4, nb) or None (tile order ocean, sea ice, land, land ice) already /cos_zen."""
+    N = dn_b[0].shape[0]
+    nb = len(dn_b)
+    cz = jnp.where(lit, cos_zen, 1.0)[:, None]
+    if norms0 > 0:
+        dn_n = [d / cz for d in dn_b]; up_n = [u / cz for u in up_b]
+    else:
+        dn_n, up_n = list(dn_b), list(up_b)
+    dn_n = [jnp.where(lit[:, None], d, 0.0) for d in dn_n]; up_n = [jnp.where(lit[:, None], u, 0.0) for u in up_n]
+    dr_n = [jnp.where(lit[:, None], d, 0.0) for d in dr_b]
+    def chsum(lst):
+        acc = None
+        for x in lst:
+            acc = x if acc is None else acc + x
+        return acc
+    sruflb = chsum(up_n)[:, ::-1]; srdflb = chsum(dn_n)[:, ::-1]
+    srnflb = srdflb - sruflb
+    srfhrl = srnflb[:, 1:] - srnflb[:, :-1]
+    wb = jnp.asarray(weight_blue)
+    def wsum(lst, lev, w):
+        acc = None
+        for b in range(nb):
+            t = lst[b][:, lev] * w[b]
+            acc = t if acc is None else acc + t
+        return acc
+    one_m = 1.0 - wb
+    srivis = wsum(dn_n, 0, wb); srovis = wsum(up_n, 0, wb)
+    plavis = jnp.where(lit, srovis / jnp.where(lit, srivis, 1.0), 1.0)
+    srinir = wsum(dn_n, 0, one_m); sronir = wsum(up_n, 0, one_m)
+    planir = jnp.where(lit, sronir / jnp.where(lit, srinir, 1.0), 1.0)
+    srdvis = wsum(dn_n, -1, wb); sruvis = wsum(up_n, -1, wb)
+    albvis = jnp.where(lit, sruvis / (srdvis + TINY), 1.0)
+    srdnir = wsum(dn_n, -1, one_m); srunir = wsum(up_n, -1, one_m)
+    albnir = jnp.where(lit, srunir / (srdnir + TINY), 1.0)
+    d0v = wsum(dr_n, 0, wb); dnv = wsum(dr_n, -1, wb)
+    d0n = wsum(dr_n, 0, one_m); dnn = wsum(dr_n, -1, one_m)
+    srxvis = jnp.where(lit, dnv / jnp.where(lit, d0v, 1.0), 0.0)
+    srxnir = jnp.where(lit, dnn / jnp.where(lit, d0n, 1.0), 0.0)
+    return dict(sruflb=sruflb, srdflb=srdflb, srnflb=srnflb, srfhrl=srfhrl, srivis=srivis, srovis=srovis, plavis=plavis, srinir=srinir,
+                sronir=sronir, planir=planir, srdvis=srdvis, sruvis=sruvis, albvis=albvis, srdnir=srdnir, srunir=srunir, albnir=albnir,
+                srxvis=srxvis, srxnir=srxnir, s0=solar_irrad, sruptoa=jnp.stack([u[:, 0] for u in up_n], axis=1),
+                srdntoa=jnp.stack([d[:, 0] for d in dn_n], axis=1))
+
+
+def fsrnfg(post, frac, tile_flag, tile_up):
+    """FSRNFG(1:4) = ocean, land, sea ice, land ice (GISS order).  post: post_sw dict; tile_up (N, 4 tiles, nb) or None."""
+    srd0 = post["srdflb"][:, 0]; srn0 = post["srnflb"][:, 0]
+    fs, fl, fi, fli = frac
+    tot = lambda k: sum_seq([tile_up[:, k, b] for b in range(tile_up.shape[2])])
+    if tile_up is not None:
+        t_oc = jnp.where(fs > 0.0, srd0 - tot(0), srd0)
+        t_la = jnp.where(fl > 0.0, srd0 - tot(2), srd0)
+        t_si = jnp.where(fi > 0.0, srd0 - tot(1), srd0)
+        t_li = jnp.where(fli > 0.0, srd0 - tot(3), srd0)
+    else:
+        t_oc = t_la = t_si = t_li = srd0
+    n_oc = jnp.where(fs > 0.0, srn0, srd0)
+    n_la = jnp.where((fs <= 0.0) & (fl > 0.0), srn0, srd0)
+    n_si = jnp.where((fs <= 0.0) & (fl <= 0.0) & (fi > 0.0), srn0, srd0)
+    n_li = jnp.where((fs <= 0.0) & (fl <= 0.0) & (fi <= 0.0) & (fli > 0.0), srn0, srd0)
+    f = lambda a, b: jnp.where(tile_flag, a, b)
+    return jnp.stack([f(t_oc, n_oc), f(t_la, n_la), f(t_si, n_si), f(t_li, n_li)], axis=1)
+
+
+def sum_seq(lst):
+    acc = None
+    for x in lst:
+        acc = x if acc is None else acc + x
+    return acc
