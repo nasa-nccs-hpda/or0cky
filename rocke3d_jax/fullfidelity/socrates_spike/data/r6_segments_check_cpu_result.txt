@@ -1,0 +1,6 @@
+# r6_segments_check.py, CPU float64, steps_0.npz / run_c1, max_days=1, itime 33312..33428 (three segments, two midnights)
+segments: [(694, 1, 33312, 33359), (695, 1, 33360, 33407), (696, 1, 33408, 33428)]
+radiation steps checked: 24, products identical: 24, zenith rows identical: 24
+whole step itime 33312 (day 694): bitwise identical True
+whole step itime 33362 (day 695): bitwise identical True
+whole step itime 33412 (day 696): bitwise identical True

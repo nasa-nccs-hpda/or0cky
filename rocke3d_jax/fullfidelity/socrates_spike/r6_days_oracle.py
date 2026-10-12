@@ -22,6 +22,22 @@ def first_rad_itime(jday, year_after_1950=0):
     return it
 
 
+def apply_rundeck_edits(lines, edits):
+    """Replace the namelist entries `name=value` of a rundeck (list of lines) by `edits` (dict); entries not present are added before the
+    terminating `&&END_PARAMETERS` line.  Returns the new list of lines."""
+    txt, done = list(lines), set()
+    for i, ln in enumerate(txt):
+        k = ln.split("=")[0].strip()
+        if "=" in ln and k in edits:
+            txt[i] = " %s=%s" % (k, edits[k])
+            done.add(k)
+    missing = set(edits) - done
+    if missing:
+        at = max(i for i, ln in enumerate(txt) if ln.strip() == "&&END_PARAMETERS")
+        txt[at:at] = [" %s=%s" % (k, edits[k]) for k in sorted(missing)]
+    return txt
+
+
 class EditedServer(P.PersistentServer):
     """PersistentServer whose rundeck copy (scratch run directory) has entries replaced from env R6_I_EDIT (name=value;...)."""
 
@@ -31,17 +47,7 @@ class EditedServer(P.PersistentServer):
         if not edits:
             return
         path = os.path.join(self.rundir, "I")
-        txt, done = open(path).read().split("\n"), set()
-        for i, ln in enumerate(txt):
-            k = ln.split("=")[0].strip()
-            if k in edits:
-                txt[i] = " %s=%s" % (k, edits[k])
-                done.add(k)
-        missing = set(edits) - done
-        if missing:                                      # not in the rundeck: add inside the namelist before its terminating line
-            at = max(i for i, ln in enumerate(txt) if ln.strip() == "&&END_PARAMETERS")
-            txt[at:at] = [" %s=%s" % (k, edits[k]) for k in sorted(missing)]
-        open(path, "w").write("\n".join(txt))
+        open(path, "w").write("\n".join(apply_rundeck_edits(open(path).read().split("\n"), edits)))
 
 
 def main(bin_, rundir, days):

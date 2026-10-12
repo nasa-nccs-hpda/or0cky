@@ -116,6 +116,13 @@ class RadiaJax:
                 assert k in proto, "day_source lacks " + k
         self._jit = jax.jit(self._core)
 
+    def set_day_products(self, day_products, day0):
+        """Replace the device stack of day products (same shapes: no recompilation of `__call__`).  Inside a jitted step that closed over this
+        object (NativeHandoff in make_handoff_step) the old stack is a constant of the trace: build a new step per segment (segments.py)."""
+        keys = list(self.DAY_KEYS) + [k for k in self.DAY_OPT_KEYS if all(k in d for d in day_products)]
+        self.day0 = day0
+        self.day_arrays = {k: jnp.stack([jnp.asarray(d[k]) for d in day_products]) for k in keys}
+
     def _day_host(self, day):
         d = self.day_source(int(day))
         return {k: np.asarray(d[k], dtype=self._day_proto[k].dtype) for k in self._day_proto}
