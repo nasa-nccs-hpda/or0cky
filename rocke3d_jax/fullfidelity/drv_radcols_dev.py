@@ -19,6 +19,7 @@ import numpy as np
 import drv_radcols as DR
 
 FFS, FFP, FFL = DR.FFS, DR.FFP, DR.FFL
+HIST = []          # D229: (itime, FSF, SRVISSURF, COSZ1) of each radiation step in native mode (host copies)
 LAST = {}          # last radiation-server output (set by the server wrapper on the host: LAST['out'], LAST['it'])
 
 

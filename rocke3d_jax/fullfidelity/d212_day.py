@@ -23,6 +23,7 @@ import jax_p1_melt as M
 import d193_day as D
 import d187_common as K
 import d191_run as R191
+import drv_radcols_dev as DD
 
 
 def _read_rsv(it, kind='in'):
@@ -144,8 +145,9 @@ def _native_handoff():
         import daily_products as DP
         dp = DP.DailyProducts(os.path.join(d, 'rundir'), prod.c60['plb0'][0], prod.g['drym2g'], prod.g['ppmv80'], prod.taucon_dust,
                               solar_constant=prod.solar_constant)
-        ndays = int(os.environ.get('ROCKE_NATIVE_DAYS', '3'))
-        dd, day0 = DP.day_products_for_run(dp, prod, it0_, it0_ + 48 * ndays - 1)
+        nrad_ = int(os.environ.get('ROCKE_NATIVE_NRAD', '60'))
+        ndays = int(os.environ.get('ROCKE_NATIVE_DAYS', str((it0_ + 5 * (nrad_ - 1)) // 48 - it0_ // 48 + 1)))      # default: every day the zenith table reaches (7 for 60 radiation steps from it0 33312)
+        dd, day0 = DP.day_products_for_run(dp, prod, it0_, (it0_ // 48 + ndays) * 48 - 1)
         kw = dict(day_products=dd, day0=day0)
     rj = RJ.RadiaJax(os.path.join(d, 'spec'), os.path.join(d, 'static0.npz'), prod, zen=zen, **kw)
     nrad = int(os.environ.get('ROCKE_NATIVE_NRAD', '60'))      # radiation steps covered by the zenith table (60 -> 300 model steps)
@@ -478,6 +480,9 @@ if __name__ == '__main__':
                            log=(hf.log.totals() if hf is not None and RAD['mode'] != 'native' else None), calls=RAD['calls']), open(os.path.join(out, 'd212_server_calls.json'), 'w'), indent=1, default=float)
             if RAD['srv'] is not None:
                 RAD['srv'].stop()
+            if RAD['mode'] == 'native' and DD.HIST:
+                np.savez(os.path.join(out, 'native_rad_outputs.npz'), itime=np.array([h[0] for h in DD.HIST]), FSF=np.stack([h[1] for h in DD.HIST]),
+                         SRVISSURF=np.stack([h[2] for h in DD.HIST]), COSZ1=np.stack([h[3] for h in DD.HIST]))
         except Exception as e:
             print('d210 radiation log failed', repr(e), flush=True)
         json.dump(dict(daily_consts=CONSTS['mode'], strict=strict, daily_lake=on, land_fractions=landf, rebuild_log=JS.NIT_LOG, mismatch=JS.NIT_MISMATCH), open(os.path.join(out, 'd212_nit.json'), 'w'), indent=1)
