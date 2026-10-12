@@ -36,7 +36,8 @@ def step(self, k, state, rec, dev, sr, *a, **kw):
         jax.profiler.stop_trace()
         DONE.add(kind)
     stg = {n: round(v['seconds'] - srt0[n], 4) for n, v in sr._st.items() if v['seconds'] - srt0[n] > 0}
-    WALLS.append(dict(k=k, it=it, rad=rad, wall=w, traced=tr, stages=stg, p1_sub=out[1].get('phase1_stage_seconds'), p1_s=out[1].get('phase1_seconds')))
+    WALLS.append(dict(k=k, it=it, rad=rad, wall=w, traced=tr, stages=stg, p1_sub=out[1].get('phase1_stage_seconds'), p1_s=out[1].get('phase1_seconds'),
+                      p1_eager=out[1].get('phase1_stage_eager'), p1_jit=out[1].get('phase1_stage_jit'), eager_by_stage=out[1].get('eager_by_stage'), jit_by_stage=out[1].get('jit_by_stage')))
     json.dump(WALLS, open(os.path.join(D, 'step_walls.json'), 'w'), indent=1)
     return out
 
