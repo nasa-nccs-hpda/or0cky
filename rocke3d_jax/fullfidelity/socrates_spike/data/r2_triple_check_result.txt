@@ -1,0 +1,21 @@
+triple_column groups: 91
+MODE A: Fortran coefficients (tag 41) -> sources, solver
+  LW  flux_total                6600 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  LW  s_down                    5001 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  LW  s_up                      5001 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  LW  source_flux_ground         225 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  flux_direct                704 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  flux_total                1408 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  s_down                    1008 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  s_up                      1008 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  source_flux_ground          48 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+MODE B: coefficients rebuilt by kernels.two_coeff
+  LW  flux_total                6600 entries  bitwise   94.924 %  max abs  3.971e-08  nonfinite skipped 0
+  LW  s_down                    5001 entries  bitwise   98.640 %  max abs  3.971e-08  nonfinite skipped 0
+  LW  s_up                      5001 entries  bitwise   98.700 %  max abs  3.971e-08  nonfinite skipped 0
+  LW  source_flux_ground         225 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0
+  SW  flux_direct                704 entries  bitwise   94.602 %  max abs  1.776e-15  nonfinite skipped 0
+  SW  flux_total                1408 entries  bitwise   78.267 %  max abs  5.684e-14  nonfinite skipped 0
+  SW  s_down                    1008 entries  bitwise   96.825 %  max abs  5.684e-14  nonfinite skipped 0
+  SW  s_up                      1008 entries  bitwise   94.643 %  max abs  4.984e-15  nonfinite skipped 0
+  SW  source_flux_ground          48 entries  bitwise  100.000 %  max abs  0.000e+00  nonfinite skipped 0

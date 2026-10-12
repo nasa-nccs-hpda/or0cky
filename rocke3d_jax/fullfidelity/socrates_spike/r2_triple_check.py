@@ -71,7 +71,10 @@ if __name__ == "__main__":
     stA = collections.defaultdict(lambda: dict(n=0, bit=0, nonfin=0, maxabs=0.0))
     stB = collections.defaultdict(lambda: dict(n=0, bit=0, nonfin=0, maxabs=0.0))
     ng = 0
-    for g in groups(recs):
+    step = int(sys.argv[2]) if len(sys.argv) > 2 else 1     # use every step-th k-term group (eager JAX is slow)
+    for gi, g in enumerate(groups(recs)):
+        if gi % step:
+            continue
         nct, nl, solar, co, fin, alb, kw = inputs(g)
         iso = SOLAR if solar else IR
         tag = "SW" if solar else "LW"

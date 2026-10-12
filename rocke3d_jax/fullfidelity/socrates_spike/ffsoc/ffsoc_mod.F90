@@ -14,8 +14,9 @@ MODULE ffsoc_mod
   INTEGER(8), SAVE :: ffsoc_t0(ffsoc_nst) = 0, ffsoc_rate = 1
   REAL(8), SAVE :: ffsoc_acc(ffsoc_nst) = 0.0d0
   INTEGER, SAVE :: ffsoc_nacc(ffsoc_nst) = 0
+  LOGICAL, SAVE :: ffsoc_spec_done(2) = .FALSE.
   INTERFACE ffsoc_arr
-    MODULE PROCEDURE ffsoc_a1, ffsoc_a2, ffsoc_a3, ffsoc_a4
+    MODULE PROCEDURE ffsoc_a1, ffsoc_a2, ffsoc_a3, ffsoc_a4, ffsoc_a5, ffsoc_a6
   END INTERFACE
 CONTAINS
   SUBROUTINE ffsoc_init
@@ -104,4 +105,22 @@ CONTAINS
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4)
     WRITE(ffsoc_unit) a
   END SUBROUTINE ffsoc_a4
+  SUBROUTINE ffsoc_a5(tag, isolir, i_band, k, a)
+    INTEGER, INTENT(IN) :: tag, isolir, i_band, k
+    REAL(8), INTENT(IN) :: a(:, :, :, :, :)
+    IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    CALL ffsoc_hdr(tag, isolir, i_band, k, 5, SIZE(a, 1), SIZE(a, 2))
+    WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), SIZE(a, 5), &
+      LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4), LBOUND(a, 5)
+    WRITE(ffsoc_unit) a
+  END SUBROUTINE ffsoc_a5
+  SUBROUTINE ffsoc_a6(tag, isolir, i_band, k, a)
+    INTEGER, INTENT(IN) :: tag, isolir, i_band, k
+    REAL(8), INTENT(IN) :: a(:, :, :, :, :, :)
+    IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    CALL ffsoc_hdr(tag, isolir, i_band, k, 6, SIZE(a, 1), SIZE(a, 2))
+    WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), SIZE(a, 5), SIZE(a, 6), &
+      LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4), LBOUND(a, 5), LBOUND(a, 6)
+    WRITE(ffsoc_unit) a
+  END SUBROUTINE ffsoc_a6
 END MODULE ffsoc_mod

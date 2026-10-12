@@ -20,6 +20,64 @@ edit(os.path.join(rc, "radiance_calc.F90"), [
   CALL ffsoc_arr(0, control%isolir, 0, 2, atm%t)
   CALL ffsoc_arr(0, control%isolir, 0, 3, atm%density)
   CALL ffsoc_arr(0, control%isolir, 0, 4, atm%gas_mix_ratio)
+  CALL ffsoc_arr(0, control%isolir, 0, 5, atm%mass)
+  CALL ffsoc_arr(0, control%isolir, 0, 6, atm%p_level)
+  CALL ffsoc_arr(0, control%isolir, 0, 7, atm%t_level)
+  IF (ALLOCATED(aer%mix_ratio)) CALL ffsoc_arr(0, control%isolir, 0, 8, aer%mix_ratio)
+  IF (ALLOCATED(aer%mean_rel_humidity)) CALL ffsoc_arr(0, control%isolir, 0, 9, aer%mean_rel_humidity)
+  IF (ALLOCATED(cld%w_cloud)) CALL ffsoc_arr(0, control%isolir, 0, 10, cld%w_cloud)
+  IF (ALLOCATED(cld%frac_cloud)) CALL ffsoc_arr(0, control%isolir, 0, 11, cld%frac_cloud)
+  IF (ALLOCATED(cld%condensed_mix_ratio)) CALL ffsoc_arr(0, control%isolir, 0, 12, cld%condensed_mix_ratio)
+  IF (ALLOCATED(cld%condensed_dim_char)) CALL ffsoc_arr(0, control%isolir, 0, 13, cld%condensed_dim_char)
+  IF (ALLOCATED(cld%condensed_rel_var_dens)) CALL ffsoc_arr(0, control%isolir, 0, 14, cld%condensed_rel_var_dens)
+  CALL ffsoc_arr(0, control%isolir, 0, 15, bound%zen_0)
+  CALL ffsoc_arr(0, control%isolir, 0, 16, bound%solar_irrad)
+  CALL ffsoc_arr(0, control%isolir, 0, 17, bound%rho_alb)
+  CALL ffsoc_arr(0, control%isolir, 0, 18, bound%t_ground)
+  IF (ALLOCATED(bound%orog_corr)) CALL ffsoc_arr(0, control%isolir, 0, 19, bound%orog_corr)
+  CALL ffsoc_arr(0, control%isolir, 0, 20, (/ MERGE(1.0d0, 0.0d0, control%l_noscal_tau), MERGE(1.0d0, 0.0d0, control%l_orog), &
+    MERGE(1.0d0, 0.0d0, control%l_rescale), MERGE(1.0d0, 0.0d0, control%l_cloud), MERGE(1.0d0, 0.0d0, control%l_aerosol), &
+    MERGE(1.0d0, 0.0d0, control%l_gas), MERGE(1.0d0, 0.0d0, control%l_cont_gen) /))
+  IF (ffsoc_on .AND. .NOT. ffsoc_spec_done(control%isolir)) THEN
+    ffsoc_spec_done(control%isolir) = .TRUE.
+    ffsoc_dump_now = .TRUE.
+    CALL ffsoc_arr(100, control%isolir, 0, 1, spectrum%gas%k_lookup)
+    IF (ALLOCATED(spectrum%gas%k_lookup_sb)) CALL ffsoc_arr(100, control%isolir, 0, 2, spectrum%gas%k_lookup_sb)
+    CALL ffsoc_arr(100, control%isolir, 0, 3, spectrum%gas%p_lookup)
+    CALL ffsoc_arr(100, control%isolir, 0, 4, spectrum%gas%t_lookup)
+    CALL ffsoc_arr(100, control%isolir, 0, 5, spectrum%gas%gf_lookup)
+    CALL ffsoc_arr(100, control%isolir, 0, 6, (/ REAL(spectrum%gas%n_gas_frac, 8) /))
+    CALL ffsoc_arr(100, control%isolir, 0, 7, spectrum%gas%k)
+    CALL ffsoc_arr(100, control%isolir, 0, 8, spectrum%gas%w)
+    CALL ffsoc_arr(100, control%isolir, 0, 9, REAL(spectrum%gas%i_scale_fnc, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 10, REAL(spectrum%gas%i_scale_k, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 11, spectrum%gas%p_ref)
+    CALL ffsoc_arr(100, control%isolir, 0, 12, spectrum%gas%t_ref)
+    CALL ffsoc_arr(100, control%isolir, 0, 13, spectrum%gas%scale)
+    CALL ffsoc_arr(100, control%isolir, 0, 14, MERGE(1.0d0, 0.0d0, spectrum%gas%l_doppler))
+    CALL ffsoc_arr(100, control%isolir, 0, 15, spectrum%gas%doppler_cor)
+    CALL ffsoc_arr(100, control%isolir, 0, 16, REAL(spectrum%gas%i_band_k, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 17, REAL(spectrum%gas%index_absorb, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 18, REAL(spectrum%gas%n_band_absorb, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 19, REAL(spectrum%gas%i_scat, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 20, REAL(spectrum%gas%type_absorb, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 21, MERGE(1.0d0, 0.0d0, spectrum%gas%l_self_broadening))
+    CALL ffsoc_arr(100, control%isolir, 0, 22, REAL(spectrum%gas%index_sb, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 30, REAL(spectrum%contgen%n_band_cont, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 31, REAL(spectrum%contgen%index_cont, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 32, REAL(spectrum%contgen%i_band_k_cont, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 33, spectrum%contgen%k_lookup_cont)
+    CALL ffsoc_arr(100, control%isolir, 0, 34, spectrum%contgen%t_lookup_cont)
+    CALL ffsoc_arr(100, control%isolir, 0, 35, spectrum%contgen%w_cont)
+    CALL ffsoc_arr(100, control%isolir, 0, 36, REAL(spectrum%contgen%index_cont_gas_1, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 37, REAL(spectrum%contgen%index_cont_gas_2, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 38, REAL(spectrum%contgen%i_cont_overlap_band, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 39, MERGE(1.0d0, 0.0d0, spectrum%contgen%l_cont_major))
+    CALL ffsoc_arr(100, control%isolir, 0, 40, REAL(spectrum%contgen%i_scat_cont, 8))
+    CALL ffsoc_arr(100, control%isolir, 0, 41, spectrum%planck%thermal_coeff)
+    CALL ffsoc_arr(100, control%isolir, 0, 42, spectrum%solar%solar_flux_band)
+    ffsoc_dump_now = .FALSE.
+  END IF
 """, 1),
  ("! DEPENDS ON: grey_opt_prop\n", "    CALL ffsoc_tic(1)\n! DEPENDS ON: grey_opt_prop\n", 1),
  ("      , dimen%nd_opt_level_aerosol_prsc, dimen%nd_opt_level_cloud_prsc         &\n      )\n",
@@ -35,6 +93,11 @@ edit(os.path.join(rc, "radiance_calc.F90"), [
   "    CALL ffsoc_arr(30, control%isolir, i_band, 1, radout%flux_down(:,:,control%map_channel(i_band)))\n"
   "    CALL ffsoc_arr(30, control%isolir, i_band, 2, radout%flux_up(:,:,control%map_channel(i_band)))\n"
   "!   Set band-by-band flux diagnostics\n", 1),
+ ("    IF (control%isolir == ip_infra_red) THEN\n\n!     Calculate the change in the thermal source function\n",
+  "    CALL ffsoc_arr(26, control%isolir, i_band, 1, k_esft_layer(1:atm%n_profile, 1:atm%n_layer, :, :))\n"
+  "    CALL ffsoc_arr(26, control%isolir, i_band, 2, k_esft_cont_layer(1:atm%n_profile, 1:atm%n_layer, :, :))\n"
+  "    CALL ffsoc_arr(26, control%isolir, i_band, 3, gas_frac_rescaled(1:atm%n_profile, 1:atm%n_layer, :))\n"
+  "    IF (control%isolir == ip_infra_red) THEN\n\n!     Calculate the change in the thermal source function\n", 1),
  ("  9999 CONTINUE\n", "  9999 CONTINUE\n  CALL ffsoc_toc(6)\n  CALL ffsoc_end_call(control%isolir, control%last_band)\n", 1),
 ])
 edit(os.path.join(rc, "solve_band_k_eqv_scl.F90"), [
