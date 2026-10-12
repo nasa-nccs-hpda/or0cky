@@ -107,9 +107,12 @@ def solver_triple_hogan(n_cloud_top, t, r, s_down, s_up, t_s, r_s, sd_s, su_s, t
 
 
 def solver_hogan_nct1_scan(t, r, s_down, s_up, t_s, r_s, sd_s, su_s, t_c, r_c, sd_c, su_c, v, u, flux_inc_down, sg_free, sg_strat,
-                           sg_conv, albedo_surface_diff):
+                           sg_conv, albedo_surface_diff, special=None):
     """solver_triple_hogan for n_cloud_top = 1 with lax.scan over the layers (same arithmetic as the unrolled version above; compiles
-    in seconds instead of minutes).  Shapes as solver_triple_hogan."""
+    in seconds instead of minutes).  Shapes as solver_triple_hogan.
+    special (n_profile,) bool: columns whose Fortran n_cloud_top equals n_layer (no cloud above the lowest layer).  For those the Fortran
+    (solver_triple_hogan.F90, `IF (n_cloud_top < n_layer) ... ELSE theta11 = alpha11(l, i+1)`) uses only the clear-region albedo of the
+    lowest layer when going up through layer n_layer-1, ignoring the overlap with a cloud in the lowest layer; reproduced here."""
     import jax
     from jax import lax
     n_layer = t.shape[1]
@@ -117,12 +120,16 @@ def solver_hogan_nct1_scan(t, r, s_down, s_up, t_s, r_s, sd_s, su_s, t_c, r_c, s
     # layer i = 1..n_layer: v(i) is v[:, i], u(i-1) is u[:, i-1]
     vi = jnp.moveaxis(v[:, 1:], 1, 0)                           # (nl, N, 3, 3)
     uim1 = jnp.moveaxis(u[:, :n_layer], 1, 0)
-    xs = (vi, uim1, T(t), T(r), T(s_down), T(s_up), T(t_s), T(r_s), T(sd_s), T(su_s), T(t_c), T(r_c), T(sd_c), T(su_c))
+    if special is None:
+        special = jnp.zeros(t.shape[0], dtype=bool)
+    flag = jnp.zeros((n_layer, t.shape[0]), dtype=bool).at[n_layer - 2].set(special)       # layer n_layer-1 (0-based n_layer-2)
+    xs = (vi, uim1, T(t), T(r), T(s_down), T(s_up), T(t_s), T(r_s), T(sd_s), T(su_s), T(t_c), T(r_c), T(sd_c), T(su_c), flag)
 
     def up_step(carry, x):
         a1, a2, a3, g1, g2, g3 = carry
-        vv, uu, t1, r1, sd1, su1, t2, r2, sd2, su2, t3, r3, sd3, su3 = x
+        vv, uu, t1, r1, sd1, su1, t2, r2, sd2, su2, t3, r3, sd3, su3, fl = x
         th1 = a1 * vv[:, 0, 0] + a2 * vv[:, 1, 0] + a3 * vv[:, 2, 0]
+        th1 = jnp.where(fl, a1, th1)
         th2 = a1 * vv[:, 0, 1] + a2 * vv[:, 1, 1] + a3 * vv[:, 2, 1]
         th3 = a1 * vv[:, 0, 2] + a2 * vv[:, 1, 2] + a3 * vv[:, 2, 2]
         b1 = 1.0 / (1.0 - th1 * r1)

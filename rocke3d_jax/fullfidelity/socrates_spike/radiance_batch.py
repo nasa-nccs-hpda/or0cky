@@ -344,7 +344,8 @@ def band_fluxes(spec, iso, ib, X, scheme):
         fdir = None
     ft = solver_hogan_nct1_scan(trans[:, :, 0], refl[:, :, 0], s_dn[:, :, 0], s_up[:, :, 0], trans[:, :, 1], refl[:, :, 1],
                              s_dn[:, :, 1], s_up[:, :, 1], trans[:, :, 2], refl[:, :, 2], s_dn[:, :, 2], s_up[:, :, 2], v, u,
-                             finc_b, sg[0], sg[1], sg[2], alb_d)                          # (B, 2nl+2)
+                             finc_b, sg[0], sg[1], sg[2], alb_d,
+                             special=rep(jnp.all(X["w_cloud"][:, :nl - 1] <= 0.0, axis=1)))   # (B, 2nl+2)
     ft = ft.reshape(N, NK, 2 * nl + 2)
     w = wperm[:, :, 0]                                              # (N, NK) ESFT weights of the major absorber (0 where padded)
     up = jnp.einsum("nk,nkl->nl", w, ft[:, :, 0::2][:, :, :nl + 1])
