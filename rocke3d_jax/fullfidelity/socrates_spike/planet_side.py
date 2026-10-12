@@ -292,17 +292,17 @@ def alb_segments(rad_min, rad_max):
     return seg
 
 
-def integ_planck(temp, nu_min, nu_max):
-    """integ_planck: trapezoid rule with delta_u = 0.1, n_point = max(nint(du/0.1)+1, 2); temp (M,) -> (M,)"""
+def integ_planck(temp, nu_min, nu_max, t_min=100.0):
+    """integ_planck: trapezoid rule with delta_u = 0.1, n_point = max(nint(du/0.1)+1, 2).  The padded number of points is a static bound for
+    temperatures >= t_min (jit-able); below t_min the integral would be truncated (the model's Planck table starts at 100 K)."""
     alpha = K_BOLTZMANN / (H_PLANCK * C_LIGHT)
     q = 2.0 * PI * H_PLANCK * alpha ** 4 * C_LIGHT ** 2
     u_min = nu_min / (alpha * temp)
     u_max = nu_max / (alpha * temp)
-    # Fortran NINT rounds half away from zero
     x = (u_max - u_min) / 0.1
-    n_point = jnp.maximum(jnp.floor(x + 0.5).astype(jnp.int32) + 1, 2)
+    n_point = jnp.maximum(jnp.floor(x + 0.5).astype(jnp.int32) + 1, 2)         # Fortran NINT: half away from zero (x > 0)
     du = (u_max - u_min) / (n_point - 1)
-    nmax = int(np.max(np.asarray(n_point)))
+    nmax = int(np.ceil((nu_max - nu_min) / (alpha * t_min) / 0.1)) + 3
     i = jnp.arange(nmax)
     u = u_min[:, None] + du[:, None] * i[None, :]
     f = u ** 3 * jnp.exp(-u) / (1.0 - jnp.exp(-u))

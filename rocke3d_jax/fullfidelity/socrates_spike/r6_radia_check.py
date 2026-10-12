@@ -2,6 +2,10 @@
 every field except AIJ, for the radiation steps given.
    JAX_PLATFORMS=cpu python r6_radia_check.py products_step0.npz static0.npz specdir ITIME [ITIME ...]"""
 import sys, os, time
+import os as _os, sys as _sys
+if _os.environ.get('R6_XLA_FLAGS', '1') == '1':      # XLA:CPU without FMA contraction / HLO algebraic rewrites (as the other ports, D139/D145)
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..'))
+    import clouds_jax_env  # noqa: F401  (must precede the jax import)
 import numpy as np
 import jax; jax.config.update("jax_enable_x64", True)
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +15,7 @@ import radia_jax as RJ
 import drv_zenith as Z
 
 z = np.load(sys.argv[1])
-prod = RJ.Products(z)
+prod = RJ.Products(z, np.load(os.environ["R6_STATIC"]) if "R6_STATIC" in os.environ else None)
 rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith())
 valid = np.zeros((72, 46), bool)
 valid[rj.ii - 1, rj.jj - 1] = True

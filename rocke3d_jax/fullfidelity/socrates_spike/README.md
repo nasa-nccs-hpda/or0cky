@@ -13,6 +13,9 @@ Owner decisions: `Reports/ACCEPTANCE_CRITERIA.md` sections 12 and 12a. Results a
 | `gas_absorption.py`, `k_eqv.py`, `kterm.py`, `grey_opt_prop.py`, `cloud_geometry.py`, `planck.py`, `kernels.py`, `triple_column.py`, `solver_triple_hogan.py` | the ported pieces (NumPy/JAX, float64) |
 | `band_chain.py`, `radiance_calc_jax.py` | reference chain: model-side inputs -> band fluxes, one column per call (follows the Fortran control flow) |
 | `radiance_batch.py` | batched, jit-able formulation (all columns at once, n_cloud_top = 1, per-column major absorber, padded k-terms) |
+| `planet_side.py`, `radia_cols.py`, `zenith_coszs.py`, `radia_jax.py`, `radia_native.py` | R6: planet_rad set-up and read-out, RADIA/RCOMPX set-up (albedos, gases, aerosols), COSZS, the whole radiation step as one jit, and the `NativeHandoff` drop-in for the server callback (report section 12) |
+| `r6_collect.py`, `r6_stream.py`, `r6_static0.py`, `r6_stageb_check.py`, `r6_e2e_check.py`, `r6_stagea_check.py`, `r6_radia_check.py`, `r6_native_check.py`, `radia_bench.py` | R6 reading of the dumps (streaming; per-column npz) and the checks; the V100 benchmark |
+| `ffsoc/apply_ffsoc_r6.py` | second instrumentation stage (planet_rad, RADIATION.f, RAD_DRV.f, planet_alb.F90 of the SCRATCH model copy; `FFSOC_PL=1`) |
 | `r2_*_check.py` | one oracle comparison per stage (see below); results in `data/` |
 | `radiance_bench.py`, `solver_bench.py` | device timing (V100 via `sbatch` on `gpulogin1`) |
 
@@ -30,7 +33,13 @@ Owner decisions: `Reports/ACCEPTANCE_CRITERIA.md` sections 12 and 12a. Results a
 k-eqv solver; 26 `k_esft_layer`, continuum, rescaled gas; 30 band-end fluxes (LW: cumulative over bands); 40-49 per-k-term coefficients, sources, solver
 inputs/outputs; 100 spectral data; 900 stage times.
 
+## R6 records (planet_rad side and RADIA statics; written with `FFSOC_PL=1`, independent of the stride; layouts in `planet_side.py` PACK50/60/51)
+
+50 arguments and module inputs of `run_planet_rad` (p_level 44, t_layer 43, t_level 44, ULGAS 43x13, CLDEPS 43, PRNB 6x4, PRNX 6x4, cos zenith, S0, 15 cloud arrays x 43, cld_scaling, n_aer, n_aer_tracer, rel. humidity 43, wind, 4 fractions, 4 temperatures, soil wetness, PVT 12, snow fraction/depth land 2+2, sea-ice snow depth, snow amount); 51 outputs of `get_planet_radout` (TLB, TLT, TRUFLB, TRDFLB, TRNFLB, TRFCRL, SRUFLB, SRDFLB, SRNFLB, SRFHRL, FSRNFG, 15 scalars, TRUPTOA 9, SRUPTOA 6, SRDNTOA 6, cloud cover); 52 / 53 planet aerosol set-up (component, radius, sulphate fraction, SW/LW scaling; mass/density); 54 SW albedo weights; 60 RCOMPX state (see report 12.2); 61 / 62 dust columns, TAUCON; 101 / 102 control flags LW / SW; 103-111 band limits and exclusions, blue weights; 112 / 113 cloud-parameter limits; 120-130 / 140-150 planet aerosol tables LW / SW; 170-183 RADIA statics (byaml00, plb0, shl0, RSDIST, GTAU, SALBTG, TAUGSA, TAUTGS, REDUST, RODUST, ALBVNH, EPLOW, EPMID, EPHIG); tag 30 k = 3 direct flux, k = 4 tile upward flux.
+
+R6 reproduction: apply `ffsoc/apply_ffsoc_r6.py SCRATCH_SOCRATES SCRATCH_MODEL` after `apply_ffsoc.py`, rebuild (the model part takes 1-2 min after the first full build), `R2_LIGHT=1 R2_PL=1 python r2_oracle.py BIN RUN --stride 1000000000 33312 33317 ...`, `python r6_collect.py RUN/ffsoc_dump.bin out.npz 3170` (one npz per step), `python r6_static0.py ...`, then the `r6_*_check.py` scripts and `radia_bench.py` (arguments in each docstring). The scripts import `fullfidelity/clouds_jax_env.py` (XLA:CPU without FMA contraction, `R6_XLA_FLAGS=0` to skip): without it a threshold of the snow/ice albedo flips in about 0.1 % of the boxes (report 12.4).
+
 ## Known limits
 
 CPU float64 is bitwise or at rounding level against the Fortran; GPU `exp`/`pow` are not bitwise. Only the nov26 radiation steps are available as oracle.
-Unported branches and the ModelE-side interface are listed in `Reports/SOCRATES_R2_DUMPS.md` section 10.
+Unported branches are listed in `Reports/SOCRATES_R2_DUMPS.md` sections 10 and 12.6; the daily climatology products for dates other than nov26 are not produced by this code (12.5).

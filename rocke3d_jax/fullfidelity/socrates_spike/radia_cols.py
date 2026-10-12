@@ -96,6 +96,22 @@ def _compute(f1, f2, f3, f4, var):
     return ffcusp * cuspwt + fflinr * (1.0 - cuspwt)
 
 
+_SPLIT = 134217729.0                                                   # 2**27 + 1 (Veltkamp)
+
+
+def _two_prod(a, b):
+    """(p, e): p = fl(a*b) and the Dekker error term; e is the guard that gives p a second use (no FMA contraction of p + q)."""
+    p = a * b
+    t = _SPLIT * a
+    ah = t - (t - a)
+    al = a - ah
+    t = _SPLIT * b
+    bh = t - (t - b)
+    bl = b - bh
+    e = ((ah * bh - p) + ah * bl + al * bh) + al * bl
+    return p, e
+
+
 def _trunc(x):
     return jnp.trunc(x).astype(jnp.int32)
 
@@ -277,8 +293,7 @@ def rxsnow(rbsno, xcosz, ggsno, tab):
     rasx = rasx * xnorm
     tanb = tanb * bnorm
     tanx = tanx * xnorm
-    nmax = int(np.max(np.asarray(ndbls))) if ndbls.size else 0
-    for nn in range(1, max(nmax, 0) + 1):
+    for nn in range(1, 31):                                            # NDBLS <= 10 + 1.44269 ln(tau) < 30 for tau < 1e8
         act = nn <= ndbls
         rarb = rasb * rasb
         rarx = xanx * rasx
@@ -338,6 +353,7 @@ def getsur(cosz, jlat, ilon, ageSN, pocean, poice, pearth, plice, plake, zlake, 
     albvnh: (12, 6, 2) vegetation albedo table of the day (SURF_ALBEDO ALBVNH)."""
     N = cosz.shape[0]
     ALB = jnp.asarray(albvnh)
+    ALBDIF_, AGEXPF_ = jnp.asarray(ALBDIF), jnp.asarray(AGEXPF)
     jh = jnp.where(jlat > jnorth, 1, 0)                                 # 0-based hemisphere index
     kkz = jnp.where(cosz < 0.001, 0, kzsnow)
     # ---- ocean
@@ -367,7 +383,7 @@ def getsur(cosz, jlat, ilon, ageSN, pocean, poice, pearth, plice, plake, zlake, 
     # ---- land (soil + vegetation + snow)
     L = jnp.arange(1, 7)
     fsn = jnp.where(L > 2, 2.0 / L, 1.0)[None, :]
-    asnage = ALBDIF[0, jh] * jnp.exp(-AGEXPF[0, jh] * ageSN[:, 0])
+    asnage = ALBDIF_[0, jh] * jnp.exp(-AGEXPF_[0, jh] * ageSN[:, 0])
     bsn = jnp.asarray(ASNALB[:6])[None, :] + asnage[:, None] * fsn
     gz = jnp.asarray(GZSNOW[:6])[None, :]
     cz = jnp.where(kkz > 0, cosz, 0.5)
@@ -410,7 +426,7 @@ def getsur(cosz, jlat, ilon, ageSN, pocean, poice, pearth, plice, plake, zlake, 
     # ---- ocean ice
     if int(ksialb) == 1:
         expsno = jnp.exp(-snowoi / DMOICE)
-        asn2 = ALBDIF[1, jh] * jnp.exp(-AGEXPF[1, jh] * ageSN[:, 1])
+        asn2 = ALBDIF_[1, jh] * jnp.exp(-AGEXPF_[1, jh] * ageSN[:, 1])
         bsn2 = jnp.asarray(ASNALB[:6])[None, :] + asn2[:, None] * fsn
         ahm = jnp.where(jlat > jnorth, ANHZOI, ASHZOI)
         fdz = zoice / (zoice + ahm)
@@ -434,7 +450,11 @@ def getsur(cosz, jlat, ilon, ageSN, pocean, poice, pearth, plice, plake, zlake, 
         almp = jnp.broadcast_to(jnp.asarray(AMPMIN), (N, 6))
         mp = (zmp > 0.0) & (zmp < 0.5)
         almp = jnp.where(mp[:, None], almp + (jnp.asarray(AOIMAX)[None, :] - almp) * ((1.0 - 2.0 * zmp) ** 2)[:, None], almp)
-        boi = boi * (1.0 - fmp)[:, None] + almp * fmp[:, None]
+        # strict-IEEE blend: with fused multiply-add the sum 0.05*(1-f) + 0.05*f can land one ulp above 0.05 and the threshold of RXSNOW
+        # (rbsno < 0.05) then takes the other branch (a jump of up to 0.45 in the albedo); each product gets a second use so that it cannot be contracted
+        p_a, e_a = _two_prod(boi, (1.0 - fmp)[:, None])
+        p_b, e_b = _two_prod(almp, fmp[:, None])
+        boi = (p_a + p_b) + (e_a * 0.0 + e_b * 0.0)
         gz2 = jnp.asarray(GZSNOW[:6])[None, :]
         xoi = jnp.where((kkz > 0)[:, None], rxsnow(boi, cz[:, None], gz2, tab), boi)
         expsno = 1.0 - patchy
@@ -444,7 +464,7 @@ def getsur(cosz, jlat, ilon, ageSN, pocean, poice, pearth, plice, plake, zlake, 
     oi_on = (poice >= 1.0e-04)[:, None]
     boi = jnp.where(oi_on, boi, 0.0); xoi = jnp.where(oi_on, xoi, 0.0)
     # ---- land ice
-    asn3 = ALBDIF[2, jh] * jnp.exp(-AGEXPF[2, jh] * ageSN[:, 2])
+    asn3 = ALBDIF_[2, jh] * jnp.exp(-AGEXPF_[2, jh] * ageSN[:, 2])
     bsn3 = jnp.asarray(ASNALB[:6])[None, :] + asn3[:, None] * fsn
     expsnl = jnp.exp(-snowli / DMLICE)
     bli = jnp.asarray(ALIALB[:6])[None, :] * expsnl[:, None] + bsn3 * (1.0 - expsnl)[:, None]

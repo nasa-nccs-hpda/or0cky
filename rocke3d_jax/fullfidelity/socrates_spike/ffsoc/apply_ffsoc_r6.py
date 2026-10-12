@@ -152,6 +152,8 @@ edit(os.path.join(md, "RAD_DRV.f"), [
  ("      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n",
   "      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n"
   "      use ffsoc_mod, only: ffsoc_pl1, ffsoc_pl2\n"
+  "      use RADPAR, only: ffsoc_eplow=>EPLOW, ffsoc_epmid=>EPMID,\n"
+  "     &     ffsoc_ephig=>EPHIG\n"
   "      use GTAU_state_mod, only: ffsoc_gtau=>GTAU, ffsoc_salbtg=>SALBTG,\n"
   "     &     ffsoc_taugsa=>TAUGSA, ffsoc_tautgs=>TAUTGS\n"
   "      use DustParam_mod, only: ffsoc_redust=>redust,\n"
@@ -175,6 +177,9 @@ edit(os.path.join(md, "RAD_DRV.f"), [
         CALL ffsoc_pl1(178, ffsoc_redust)
         CALL ffsoc_pl1(179, ffsoc_rodust)
         CALL ffsoc_pl2(180, RESHAPE(ffsoc_albvnh, (/ 72, 2 /)))
+        CALL ffsoc_pl2(181, ffsoc_eplow)
+        CALL ffsoc_pl2(182, ffsoc_epmid)
+        CALL ffsoc_pl2(183, ffsoc_ephig)
       END IF
 """, 1)])
 print("applied")
