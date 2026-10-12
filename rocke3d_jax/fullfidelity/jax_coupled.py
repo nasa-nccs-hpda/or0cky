@@ -117,6 +117,9 @@ STAGES2 = [
 ]
 
 
+TPL_OWN = os.environ.get('ROCKE_TPL_OWN', '0') == '1'      # D224, default off: SURFACE template of steps after the first from the first-step base + own state (needs ROCKE_ENT_LIVE=1)
+
+
 class Coupled:
     def __init__(self, date, mstcnv='dev', log=print, nit_fix=True, nit_strict=True):
         self.nit_strict = bool(nit_strict)   # True (default): the build_batch_nit assertion nit == ffnit is NOT caught (as the NumPy chain); False: reported in jax_surface.NIT_MISMATCH
@@ -388,6 +391,93 @@ class Coupled:
         irrig_act = jnp.asarray(irrig * self.st['fearth'])
         return tpl, host, recs, irrig_act
 
+    # ------------------------------------------------------------------------------------------------ D224: the SURFACE template without per-step records
+    def _tpl_own_base(self, tpl, host):
+        """Once, at the first step: the slots that are invalid in the first-step template (ice tiles that do not exist yet) get their STATIC columns from
+        jax_static.build_static (validated bitwise against the records, D181); everything else of those rows is written by the step's own overrides."""
+        import jax_static as JST
+        b = JST.build_static(self.date)
+        Nw = host['Nw']
+        wi, wj = np.asarray(host['wi']), np.asarray(host['wj'])
+        out = dict(tpl)
+        nsl = []
+        for d in tpl['ns']:
+            d = dict(d)
+            wv = np.asarray(d['wvalid'])
+            pw, tw = np.array(d['pw']), np.array(d['tw'])
+            for ty in (0, 1):
+                inv = np.nonzero(~wv[ty])[0]
+                if not len(inv):
+                    continue
+                rows = ty * Nw + inv
+                for arr, fam, cols in ((pw, b['pbl'][ty], b['built']['pbl']), (tw, b['tile'][ty], b['built']['tile'])):
+                    src = fam[wi[inv], wj[inv]]
+                    for c in cols:
+                        arr[rows, c] = src[:, c]
+            for ty, el in ((0, 2.5e6), (1, 2.834e6)):          # elhx (pbl col 19) of the water tiles: LHE for open water, LHS for ice (constants)
+                inv = np.nonzero(~wv[ty])[0]
+                pw[ty * Nw + inv, 19] = el
+            d['pw'], d['tw'] = jnp.asarray(pw), jnp.asarray(tw)
+            nsl.append(d)
+        out['ns'] = nsl
+        return out
+
+    def _tpl_own(self, R, it):
+        """Template of a step after the first from the first-step base: the slot validity and the type fractions are refreshed from OUR sea-ice state in
+        step() (_tpl_own_state); here the recorded land irrigation columns of THIS step (ffg 147, 148: the demand file is not available) are the only record read."""
+        tpl, host, recs, _ = self._tpl_base
+        import ghy_compare as GC_
+        path = f"{R.ff}/{R.date}/ffg_{it}.bin"
+        g = self.ph.reg.read('irrigation_demand', lambda: np.asarray(GC_.load(path)), stage='surface')
+        h = len(g) // 2
+        gs = (g[:h], g[h:])
+        irrig = np.zeros((IM, JM))
+        irrig[gs[0][:, 0].astype(int) - 1, gs[0][:, 1].astype(int) - 1] = gs[0][:, 147]
+        irrig_act = jnp.asarray(irrig * self.st['fearth'])
+        ghy = []
+        for k, b in enumerate(tpl['ghy']):
+            b = dict(b)
+            f = dict(b['forcing'])
+            fv = np.asarray(f['fv'])
+            pos = fv > 0.0
+            f['irrig'] = jnp.asarray(np.where(pos, gs[k][:, 147] / np.where(pos, fv, 1.0), 0.0))
+            f['htirrig'] = jnp.asarray(np.where(pos, gs[k][:, 148] / np.where(pos, fv, 1.0), 0.0))
+            b['forcing'] = f
+            ghy.append(b)
+        return self._tpl_own_exports(dict(tpl, ghy=ghy), host), host, recs, irrig_act
+
+    def _tpl_own_state(self, tpl, host, rsi):
+        """Slot validity and type fractions of both substeps from OUR RSI (jax_state_d181.tile_ptype: [(1-RSI) FWATER, RSI FWATER, FLICE, FEARTH])."""
+        p = S181.tile_ptype(self.sp181, rsi, jnp)                      # (4, IM, JM)
+        wi, wj = jnp.asarray(host['wi']), jnp.asarray(host['wj'])
+        wv = jnp.stack([p[0][wi, wj] > 0.0, p[1][wi, wj] > 0.0])
+        ft = jnp.stack([p[t].T.reshape(-1) for t in range(4)], axis=1)
+        nsl = [dict(d, wvalid=wv, ftype=ft) for d in tpl['ns']]
+        return dict(tpl, ns=nsl)
+
+    def _tpl_own_exports(self, tpl, host, refresh=False):
+        """ws_can, shc_can and height (snowm = 0.1 height) of the Ent cells into the GHY static leaves.  They change only at the daily Ent update: the arrays are
+        taken from ent_jax.REG['exports'] there (refresh=True) and applied to every later step's template."""
+        import ent_jax as EJ_
+        if refresh:
+            ex = EJ_.REG.get('exports')
+            if ex:
+                keys = [(int(i_) + 1, int(j_) + 1) for i_, j_ in zip(host['ei'], host['ej'])]
+                self._own_ex = tuple(jnp.asarray(np.array([ex[k][n] for k in keys]) * m_) for n, m_ in (('ws_can', 1.0), ('shc_can', 1.0), ('height', 0.1)))
+        if getattr(self, '_own_ex', None) is None:
+            return tpl
+        ws, shc, sm = self._own_ex
+        ghy = []
+        for b in tpl['ghy']:
+            b = dict(b)
+            st = dict(b['static'])
+            st['ws'] = st['ws'].at[:, 0, 1].set(ws)
+            st['shc'] = st['shc'].at[:, 0, 1].set(shc)
+            b['static'] = st
+            b['snowm'] = sm
+            ghy.append(b)
+        return dict(tpl, ghy=ghy)
+
     def prefetch_template(self, rec_next):
         """D214 (replay scaffolding): start building the template of the NEXT step in a background thread; step() picks it up by the identity of rec['R']."""
         import concurrent.futures as cf
@@ -449,9 +539,16 @@ class Coupled:
             pf = self._tpl_prefetch.pop(id(R), None)
             if pf is not None:                                   # D214: built for this step in a background thread while the previous step ran (identical call, identical result)
                 tpl, host, recs, irrig_act = pf.result()
+            elif TPL_OWN and getattr(self, '_tpl_base', None) is not None:
+                tpl, host, recs, irrig_act = self._tpl_own(R, it)
             else:
                 tpl, host, recs, irrig_act = self._build_tpl(R)
-            self._last_ghy = (host['nit_rows'][1], host['ecells'])
+                if TPL_OWN:                       # D224: the first-step template is the base of all later steps
+                    tpl = self._tpl_own_base(tpl, host)
+                    self._tpl_base = (tpl, host, recs, irrig_act)
+            if not (TPL_OWN and getattr(self, '_tpl_last_ghy', None) is not None):
+                self._last_ghy = (host['nit_rows'][1], host['ecells'])
+                self._tpl_last_ghy = self._last_ghy
             fin(tpl)
         if self._stage_cache is None or not self._same_host(self._stage_cache['host'], host):
             if os.environ.get('ROCKE_STAGE_ARGS', '0') == '1':       # D217: cell index arrays as jit arguments (no recompile when daily_LAKE changes them)
@@ -472,6 +569,8 @@ class Coupled:
         with stage('melt_si_dev'):
             ice_new, melt = M.melt_si(SS['ice'], SS['atm']['gtemp'], SS['atm']['sss'], SS['atm']['mlhc'], self.melt_geo, 1800.0)
             dev['cse_in']['RSI'] = ice_new['rsi']                       # as surface_loop.Loop.pre_cse: our RSI replaces the recorded CONDSE-entry RSI
+            if TPL_OWN:
+                tpl = self._tpl_own_state(tpl, host, ice_new['rsi'])
             if P1.CSE_IN_OWN:
                 self._own_cse_in(it, dev)
             fin(ice_new)
@@ -542,11 +641,12 @@ class Coupled:
             fin(masks)
         with stage('nit_rebuild'):
             n_nit, n_d2h = 0, 0
-            if self.nit_fix:
+            if self.nit_fix and not TPL_OWN:         # D224: the recorded iteration counts of the step are not read
                 tpl, n_nit, n_d2h = JS.nit_rebuild(tpl, host, prec, eprec, precss, strict=self.nit_strict)
                 fin(tpl)
             info['nit_rebuild'] = dict(cells=n_nit, device_to_host_arrays=n_d2h)
-        if os.environ.get('ROCKE_ENT_LIVE', '0') == '1' and state['land_prev'] is not None and 'ent_state' in state['land_prev']['dyn_next'] and bool(host['nit_rows'][0][0, 163] == 1.0):
+        eod_ = (it % 48 == 0) if TPL_OWN else bool(host['nit_rows'][0][0, 163] == 1.0)       # end-of-day flag of the records == itime % 48 == 0 (steps 33312, 33360, 33408)
+        if os.environ.get('ROCKE_ENT_LIVE', '0') == '1' and state['land_prev'] is not None and 'ent_state' in state['land_prev']['dyn_next'] and eod_:
             with stage('ent_daily'):
                 import ent_jax as EJ_
                 lp_ = state['land_prev']
@@ -556,6 +656,26 @@ class Coupled:
                 ec_, es_ = EJ_.daily_update(keys_, dn_['ent_const'], dn_['ent_state'], jday_)
                 state = dict(state, land_prev=dict(lp_, dyn_next=dict(dn_, ent_const=ec_, ent_state=es_)))
                 info['ent_daily'] = int(jday_)
+                if TPL_OWN:
+                    tpl = self._tpl_own_exports(tpl, host, refresh=True)
+        if TPL_OWN and os.environ.get('ROCKE_TPL_OWN_CHECK', '0') == '1' and k > 0:       # diagnostic: own template against the RECORDED one of this step (host read, slow)
+            with stage('tpl_own_check'):
+                rt, _, _, _ = self._build_tpl(R)
+                fl = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(tpl)[0]}
+                fr = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(rt)[0]}
+                bad = {}
+                for n_, a_ in fl.items():
+                    b_ = fr.get(n_)
+                    if b_ is None or a_.shape != b_.shape or a_.dtype.kind != 'f':
+                        continue
+                    if "['ns'][" in n_ and n_.endswith("['pw']") or n_.endswith("['tw']"):
+                        wv_ = np.asarray(tpl['ns'][int(n_[7])]['wvalid']).reshape(-1)
+                        a_, b_ = a_[wv_], b_[wv_]
+                    d_ = np.abs(a_ - b_)
+                    if d_.size and d_.max() > 0:
+                        bad[n_] = (float(d_.max()), int((d_ > 0).sum()))
+                imp = {n_: v_ for n_, v_ in bad.items() if any(t_ in n_ for t_ in ('wvalid', 'ftype', "['ws']", "['shc']", 'snowm', 'irrig', "['fb']", "['fv']", 'geothermal'))}
+                print(f'  tpl_own_check it {it}: {len(bad)} float leaves differ from the recorded template; static/forcing: ' + '; '.join(f'{n_}: max {v_[0]:.3g} n {v_[1]}' for n_, v_ in imp.items()), flush=True)
         with stage('template_apply'):
             lp = state['land_prev']
             tpl_m = apply(tpl, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)

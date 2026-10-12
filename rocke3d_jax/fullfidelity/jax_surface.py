@@ -58,6 +58,8 @@ FLOAT4_4375 = float(np.float32(4375.0))
 PBL_COLS = dict(zs1=5, tkv=7, ps=16, ddml=23, gusti=24, tdns=25, qdns=26, dbl=29, ug=31, vg=32, utop=37, vtop=38, qtop=39, ztop=40,
                 mdf=41, dpdxr=42, dpdyr=43, dpdxr0=44, dpdyr0=45, dtdt=46, u1aa=47, v1aa=48)
 PBL_GUSTI_OUT = 113
+_OWN_GHY = os.environ.get('ROCKE_OWN_GHY', '0') == '1'      # D223, default off
+_OWN_ELHX = _OWN_GHY or os.environ.get('ROCKE_TPL_OWN', '0') == '1'
 PRED_FILL_COLS = dict(zs1=5, tkv=7, dbl=29, ug=31, vg=32, utop=37, vtop=38, qtop=39, ztop=40)
 SKIP2 = ('zs1', 'tkv', 'dbl', 'ug', 'vg', 'utop', 'vtop', 'qtop', 'ztop')
 ATM_KEYS = ('T', 'Q', 'U', 'V', 'UALIJ', 'VALIJ', 'EGCM', 'W2GCM', 'PMID', 'PEDN', 'PK', 'PDSIG', 'PEK', 'MA', 'TMOM', 'QMOM', 'DDMS', 'TDN1',
@@ -432,6 +434,8 @@ def next_land_pbl_columns(rec, land):
     gh = land["ghy"]
     ps = rec[:, 16]
     tg = gh["tsns"] + TF
+    if _OWN_ELHX:        # D224: GHY_DRV.f:1071-1075, elhx = LHS where the entry ground temperature tsns < 0 C else LHE (0 mismatches in 162,648 recorded land rows, both substeps)
+        rec = rec.at[:, 19].set(jnp.where(gh["tsns"] < 0.0, 2.834e6, 2.5e6))
     qg_sat = P.qsat(tg, rec[:, 19], ps)
     # elhx of the substep that just ran (GHY_DRV.f:1304-1312), see land_chain.next_land_pbl_columns (D199)
     qg_sat_cur = qg_sat if land.get("elhx") is None else P.qsat(tg, land["elhx"], ps)
@@ -621,6 +625,8 @@ _STAGE_JIT_CACHE = {}
 _IDX_KEYS = ("wj", "wi", "lj", "li", "ej", "ei", "bj", "bi", "wcells", "lcells", "ecells", "bcells")
 
 
+
+
 def make_stage(host):
     """Returns the jitted units and a driver stage_surface_jax(Sd, tpl) -> dict.  `host` from build_template."""
     h = _host_consts(host)
@@ -715,7 +721,12 @@ def make_stage(host):
 
     def run_core(atm, rows, tpl_all, k, dyn, tmom, qmom, pk):
         n = tpl_all['ns'][k]
-        return core(atm, rows, n['ftype'], n['wvalid'], tpl_all['ghy'][k], tpl_all['ma1_land'], tpl_all['trup'], dyn, tmom, qmom, pk)
+        ghy = tpl_all['ghy'][k]
+        ma1 = tpl_all['ma1_land']
+        if _OWN_GHY:        # D223: GHY forcing 'pres' = the PBL surface pressure column of the land rows (ffg 154 == ffp 16 land rows, bitwise on records), ma1_land = MA(1) of our atmosphere (ffg 165 == tile ma1, bitwise)
+            ghy = dict(ghy, forcing=dict(ghy['forcing'], pres=rows['pe'][:, 16]))
+            ma1 = atm['MA1'][hbase['ej'], hbase['ei']]
+        return core(atm, rows, n['ftype'], n['wvalid'], ghy, ma1, tpl_all['trup'], dyn, tmom, qmom, pk)
 
     def stage(Sd, tpl_all, timers=None):
         def T(name, f):

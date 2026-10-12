@@ -494,5 +494,6 @@ def daily_update(keys, const, state, jday):
         cell = cells.get((ci, cj))
         if cell is not None:
             D.daily_update(cell, la[:, cj - 1, ci - 1], D.hemi_of_j(cj), jday)
+    REG['exports'] = {k: E.call_exports(cells[k]) for k in keys if cells.get(k) is not None}      # D224: Ent exports of the updated cells (ws_can, shc_can, fv, height, albedo)
     pc, ps = pack_cells(cells, list(keys))
     return to_device(pc, ps)
