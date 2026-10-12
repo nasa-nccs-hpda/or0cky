@@ -1,0 +1,7 @@
+LW  band_flux_down bands  72      3168 entries  bitwise  16.319 %  max abs  2.450e-08  max rel  3.818e-06
+LW  band_flux_up bands  72      3168 entries  bitwise  14.394 %  max abs  2.367e-08  max rel  3.163e-10
+LW  flux_total   bands  72     69608 entries  bitwise  74.280 %  max abs  7.226e-08  max rel  6.152e-08
+SW  band_flux_down bands  24      1056 entries  bitwise  81.345 %  max abs  2.842e-14  max rel  6.770e-16
+SW  band_flux_up bands  24      1056 entries  bitwise  63.352 %  max abs  2.842e-14  max rel  7.317e-16
+SW  flux_direct  bands   0      7392 entries  bitwise  87.514 %  max abs  1.421e-14  max rel  7.864e-16
+SW  flux_total   bands  24     14784 entries  bitwise  77.151 %  max abs  3.553e-14  max rel  4.079e-10

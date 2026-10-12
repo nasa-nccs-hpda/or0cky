@@ -10,7 +10,12 @@ NAMES = {1: "k_lookup", 2: "k_lookup_sb", 3: "p_lookup", 4: "t_lookup", 5: "gf_l
          16: "i_band_k", 17: "index_absorb", 18: "n_band_absorb", 19: "i_scat", 20: "type_absorb", 21: "l_self_broadening",
          22: "index_sb", 30: "n_band_cont", 31: "index_cont", 32: "i_band_k_cont", 33: "k_lookup_cont", 34: "t_lookup_cont",
          35: "w_cont", 36: "index_cont_gas_1", 37: "index_cont_gas_2", 38: "i_cont_overlap_band", 39: "l_cont_major",
-         40: "i_scat_cont", 41: "thermal_coeff", 42: "solar_flux_band"}
+         40: "i_scat_cont", 41: "thermal_coeff", 42: "solar_flux_band",
+         43: "planck_misc", 44: "theta_planck_tbl",           # planck_misc = (n_deg_fit, l_planck_tbl, t_ref_planck)
+         50: "rayleigh_misc", 51: "index_rayleigh", 52: "rayleigh_coeff", 53: "rayleigh_coeff_gas",   # misc = (scheme, n_gas)
+         60: "n_band_continuum", 61: "index_continuum", 62: "i_scale_fnc_cont", 63: "k_cont", 64: "scale_cont", 65: "p_ref_cont",
+         66: "t_ref_cont", 70: "aerosol_misc", 71: "i_aerosol_parm", 72: "type_aerosol", 73: "nhumidity", 74: "humidities",   # misc = (n_aerosol, n_aerosol_mr)
+         75: "aer_abs", 76: "aer_scat", 77: "aer_phf"}
 
 
 def extract(dump, outdir):

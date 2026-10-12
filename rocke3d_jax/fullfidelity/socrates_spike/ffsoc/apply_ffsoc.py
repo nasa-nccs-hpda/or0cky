@@ -35,6 +35,18 @@ edit(os.path.join(rc, "radiance_calc.F90"), [
   CALL ffsoc_arr(0, control%isolir, 0, 17, bound%rho_alb)
   CALL ffsoc_arr(0, control%isolir, 0, 18, bound%t_ground)
   IF (ALLOCATED(bound%orog_corr)) CALL ffsoc_arr(0, control%isolir, 0, 19, bound%orog_corr)
+  IF (ALLOCATED(cld%i_condensed_param)) CALL ffsoc_arr(0, control%isolir, 0, 21, REAL(cld%i_condensed_param, 8))
+  IF (ALLOCATED(cld%condensed_n_phf)) CALL ffsoc_arr(0, control%isolir, 0, 22, REAL(cld%condensed_n_phf, 8))
+  IF (ALLOCATED(cld%condensed_param_list)) CALL ffsoc_arr(0, control%isolir, 0, 23, cld%condensed_param_list)
+  IF (ALLOCATED(cld%type_condensed)) CALL ffsoc_arr(0, control%isolir, 0, 24, REAL(cld%type_condensed, 8))
+  IF (ALLOCATED(aer%mr_source)) CALL ffsoc_arr(0, control%isolir, 0, 25, REAL(aer%mr_source, 8))
+  IF (ALLOCATED(aer%mr_type_index)) CALL ffsoc_arr(0, control%isolir, 0, 26, REAL(aer%mr_type_index, 8))
+  IF (ALLOCATED(aer%mode_mix_ratio)) CALL ffsoc_arr(0, control%isolir, 0, 27, aer%mode_mix_ratio)
+  IF (ALLOCATED(aer%mode_absorption)) CALL ffsoc_arr(0, control%isolir, 0, 28, aer%mode_absorption)
+  IF (ALLOCATED(aer%mode_scattering)) CALL ffsoc_arr(0, control%isolir, 0, 29, aer%mode_scattering)
+  IF (ALLOCATED(aer%mode_asymmetry)) CALL ffsoc_arr(0, control%isolir, 0, 30, aer%mode_asymmetry)
+  CALL ffsoc_arr(0, control%isolir, 0, 31, (/ REAL(cld%n_condensed, 8), REAL(cld%n_cloud_type, 8), REAL(aer%n_mode, 8), &
+    REAL(control%i_cloud, 8), REAL(control%i_cloud_representation, 8) /))
   CALL ffsoc_arr(0, control%isolir, 0, 20, (/ MERGE(1.0d0, 0.0d0, control%l_noscal_tau), MERGE(1.0d0, 0.0d0, control%l_orog), &
     MERGE(1.0d0, 0.0d0, control%l_rescale), MERGE(1.0d0, 0.0d0, control%l_cloud), MERGE(1.0d0, 0.0d0, control%l_aerosol), &
     MERGE(1.0d0, 0.0d0, control%l_gas), MERGE(1.0d0, 0.0d0, control%l_cont_gen) /))
@@ -76,6 +88,28 @@ edit(os.path.join(rc, "radiance_calc.F90"), [
     CALL ffsoc_arr(100, control%isolir, 0, 40, REAL(spectrum%contgen%i_scat_cont, 8))
     CALL ffsoc_arr(100, control%isolir, 0, 41, spectrum%planck%thermal_coeff)
     CALL ffsoc_arr(100, control%isolir, 0, 42, spectrum%solar%solar_flux_band)
+    CALL ffsoc_arr(100, control%isolir, 0, 43, (/ REAL(spectrum%planck%n_deg_fit, 8), MERGE(1.0d0, 0.0d0, spectrum%planck%l_planck_tbl), &
+      spectrum%planck%t_ref_planck /))
+    IF (ALLOCATED(spectrum%planck%theta_planck_tbl)) CALL ffsoc_arr(100, control%isolir, 0, 44, spectrum%planck%theta_planck_tbl)
+    CALL ffsoc_arr(100, control%isolir, 0, 50, (/ REAL(spectrum%rayleigh%i_rayleigh_scheme, 8), REAL(spectrum%rayleigh%n_gas_rayleigh, 8) /))
+    IF (ALLOCATED(spectrum%rayleigh%index_rayleigh)) CALL ffsoc_arr(100, control%isolir, 0, 51, REAL(spectrum%rayleigh%index_rayleigh, 8))
+    IF (ALLOCATED(spectrum%rayleigh%rayleigh_coeff)) CALL ffsoc_arr(100, control%isolir, 0, 52, spectrum%rayleigh%rayleigh_coeff)
+    IF (ALLOCATED(spectrum%rayleigh%rayleigh_coeff_gas)) CALL ffsoc_arr(100, control%isolir, 0, 53, spectrum%rayleigh%rayleigh_coeff_gas)
+    IF (ALLOCATED(spectrum%cont%n_band_continuum)) CALL ffsoc_arr(100, control%isolir, 0, 60, REAL(spectrum%cont%n_band_continuum, 8))
+    IF (ALLOCATED(spectrum%cont%index_continuum)) CALL ffsoc_arr(100, control%isolir, 0, 61, REAL(spectrum%cont%index_continuum, 8))
+    IF (ALLOCATED(spectrum%cont%i_scale_fnc_cont)) CALL ffsoc_arr(100, control%isolir, 0, 62, REAL(spectrum%cont%i_scale_fnc_cont, 8))
+    IF (ALLOCATED(spectrum%cont%k_cont)) CALL ffsoc_arr(100, control%isolir, 0, 63, spectrum%cont%k_cont)
+    IF (ALLOCATED(spectrum%cont%scale_cont)) CALL ffsoc_arr(100, control%isolir, 0, 64, spectrum%cont%scale_cont)
+    IF (ALLOCATED(spectrum%cont%p_ref_cont)) CALL ffsoc_arr(100, control%isolir, 0, 65, spectrum%cont%p_ref_cont)
+    IF (ALLOCATED(spectrum%cont%t_ref_cont)) CALL ffsoc_arr(100, control%isolir, 0, 66, spectrum%cont%t_ref_cont)
+    CALL ffsoc_arr(100, control%isolir, 0, 70, (/ REAL(spectrum%aerosol%n_aerosol, 8), REAL(spectrum%aerosol%n_aerosol_mr, 8) /))
+    IF (ALLOCATED(spectrum%aerosol%i_aerosol_parm)) CALL ffsoc_arr(100, control%isolir, 0, 71, REAL(spectrum%aerosol%i_aerosol_parm, 8))
+    IF (ALLOCATED(spectrum%aerosol%type_aerosol)) CALL ffsoc_arr(100, control%isolir, 0, 72, REAL(spectrum%aerosol%type_aerosol, 8))
+    IF (ALLOCATED(spectrum%aerosol%nhumidity)) CALL ffsoc_arr(100, control%isolir, 0, 73, REAL(spectrum%aerosol%nhumidity, 8))
+    IF (ALLOCATED(spectrum%aerosol%humidities)) CALL ffsoc_arr(100, control%isolir, 0, 74, spectrum%aerosol%humidities)
+    IF (ALLOCATED(spectrum%aerosol%abs)) CALL ffsoc_arr(100, control%isolir, 0, 75, spectrum%aerosol%abs)
+    IF (ALLOCATED(spectrum%aerosol%scat)) CALL ffsoc_arr(100, control%isolir, 0, 76, spectrum%aerosol%scat)
+    IF (ALLOCATED(spectrum%aerosol%phf_fnc)) CALL ffsoc_arr(100, control%isolir, 0, 77, spectrum%aerosol%phf_fnc)
     ffsoc_dump_now = .FALSE.
   END IF
 """, 1),
