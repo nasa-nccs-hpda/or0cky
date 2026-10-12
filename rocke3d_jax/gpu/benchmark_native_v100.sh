@@ -2,7 +2,7 @@
 # Matched benchmark, ONE exclusive V100 node, strictly sequential: (1) real Fortran ModelE nov26 two-day window (108 steps, end 1950-11-28 03:00) x3, one core;
 # (2) JAX hybrid with the SOCRATES JAX radiation (--rad native, day products), same restart, 108 steps, same node.  Cold compile is in step 0 of d193_run.json.
 # usage: V100_CPUS=8 V100_EXTRA=--exclusive gpu/v100_run.sh bench_native 100 'bash ../gpu/benchmark_native_v100.sh'
-P=/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax
+P=${ROCKE_PROJ:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax}
 echo "node $(hostname) cpu $(lscpu | grep 'Model name' | cut -c1-90) load $(cut -d' ' -f1-3 /proc/loadavg)"
 for i in $(seq 1 ${NFORT:-3}); do FORT_DATEE=28 bash $P/gpu/fortran_day.sh ${FTAG:-n}$i ${FCORE:-0}; done
 cd $P/fullfidelity

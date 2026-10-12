@@ -1,11 +1,12 @@
 #!/bin/bash
 # Submit one job on the ADAPT V100 partition from this host (forest204) over ssh gpulogin1; the batch file and the output live in the shared project directory.
+# ROCKE_PROJ: absolute path of the checkout whose code the job runs (default: the main checkout); set it when working from a git worktree.
 # usage: gpu/v100_run.sh NAME MINUTES 'shell command run inside fullfidelity/ with graphcast-env'     (example below)
 #   gpu/v100_run.sh mstb_seq 30 'python -u gpu_mstcnv_bench.py bench /explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/gpu_data_stage/mstcnv_inputs_nov26_step1.pkl 3'
 # Prints the job id; output: gpu_runs/NAME_<jobid>.out .  Environment variables for the job can be put in front of the command (VAR=1 python ...).
 # Platform facts (2026-10-10): partition compute, constraint v100, Tesla V100-SXM2-32GB, graphcast-env (jax 0.5.3, python 3.10, no container), no Intel libimf (libm mode).
 NAME=${1:?name}; MIN=${2:?minutes}; CMD=${3:?command}
-PROJ=/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax
+PROJ=${ROCKE_PROJ:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax}
 mkdir -p "$PROJ/gpu_runs"
 F="$PROJ/gpu_runs/${NAME}_$$.sbatch"
 cat > "$F" <<EOF
