@@ -117,6 +117,8 @@ STAGES2 = [
 ]
 
 
+IRRIG_OWN = os.environ.get('ROCKE_IRRIG_OWN', '0') == '1'    # D225, default off: irrigation from the IRRIG file and our lake state (no record read)
+RHOW_, DTSRC_ = 1000.0, 1800.0
 TPL_OWN = os.environ.get('ROCKE_TPL_OWN', '0') == '1'      # D224, default off: SURFACE template of steps after the first from the first-step base + own state (needs ROCKE_ENT_LIVE=1)
 
 
@@ -426,6 +428,8 @@ class Coupled:
         """Template of a step after the first from the first-step base: the slot validity and the type fractions are refreshed from OUR sea-ice state in
         step() (_tpl_own_state); here the recorded land irrigation columns of THIS step (ffg 147, 148: the demand file is not available) are the only record read."""
         tpl, host, recs, _ = self._tpl_base
+        if IRRIG_OWN:
+            return self._tpl_own_exports(tpl, host), host, recs, jnp.zeros((IM, JM))
         import ghy_compare as GC_
         path = f"{R.ff}/{R.date}/ffg_{it}.bin"
         g = self.ph.reg.read('irrigation_demand', lambda: np.asarray(GC_.load(path)), stage='surface')
@@ -445,6 +449,27 @@ class Coupled:
             b['forcing'] = f
             ghy.append(b)
         return self._tpl_own_exports(dict(tpl, ghy=ghy), host), host, recs, irrig_act
+
+    def _irrig_pot(self, it):
+        """D225 (ROCKE_IRRIG_OWN=1): potential irrigation (m/s, IRRIGMOD irrig_water_pot) of day `jday` from Irrig72x46_1848to2100_FixedFuture_v3.nc, monthly data with
+        timestream 'linm2m' (ent_daily_ff.lai_linm2m), year irrig_yr (default master_yr 1850, ROCKE_IRRIG_YR), negatives set to 0.  Returns (IM,JM) float64 and the
+        Ent fv grid (conditioned as GHY)."""
+        import netCDF4 as nc_
+        import ent_daily_ff as ED_
+        import jax_static as JST_
+        if getattr(self, '_irr_q', None) is None:
+            yr = int(os.environ.get('ROCKE_IRRIG_YR', '1850'))
+            f_ = os.path.join(JST_.PROD, 'Irrig72x46_1848to2100_FixedFuture_v3.nc')
+            q = np.array(nc_.Dataset(f_).variables['irrigation_per_m2'][:], dtype=np.float64)       # REAL*8 as read_stream holds it
+            self._irr_q = q[(yr - 1848) * 12:(yr - 1848) * 12 + 12]
+            es = JST_.ent_static(self.date)
+            fv = np.where(es['fv'] < 1e-6, 0.0, es['fv'])
+            self._irr_fv = np.where(fv > 1.0 - 1e-6, 1.0, fv)
+            self._irr_cache = {}
+        jday = (it // 48) % 365 + 1
+        if jday not in self._irr_cache:
+            self._irr_cache = {jday: np.maximum(ED_.lai_linm2m(self._irr_q, jday), 0.0).T.copy()}
+        return self._irr_cache[jday], self._irr_fv
 
     def _tpl_own_state(self, tpl, host, rsi):
         """Slot validity and type fractions of both substeps from OUR RSI (jax_state_d181.tile_ptype: [(1-RSI) FWATER, RSI FWATER, FLICE, FEARTH])."""
@@ -631,6 +656,10 @@ class Coupled:
         # ---------------------------------------------------------------- J2: surface
         prec, eprec, precss = S1a['PREC'], S1a['EPREC'], S1a['PRECSS']
         with stage('surface_pre'):
+            if IRRIG_OWN:
+                pot_, fvg_ = self._irrig_pot(it)
+                fe_ = np.asarray(self.st['fearth'])
+                irrig_act = jnp.asarray(np.where((pot_ > 1e-30) & (fe_ > 1e-30) & (fvg_ > 1e-30), pot_, 0.0))       # irrig_water_pot where IRRIGMOD acts
             inp = dict(prec=prec, eprec=eprec, irrig_act=irrig_act)
             ice_c = {kk: v.astype(SS['ice'][kk].dtype) if kk in SS['ice'] else v for kk, v in ice_new.items()}
             melt_c = melt
@@ -659,7 +688,7 @@ class Coupled:
                 if TPL_OWN:
                     tpl = self._tpl_own_exports(tpl, host, refresh=True)
         if TPL_OWN and os.environ.get('ROCKE_TPL_OWN_CHECK', '0') == '1' and k > 0:       # diagnostic: own template against the RECORDED one of this step (host read, slow)
-            with stage('tpl_own_check'):
+            with contextlib.nullcontext():
                 rt, _, _, _ = self._build_tpl(R)
                 fl = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(tpl)[0]}
                 fr = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(rt)[0]}
@@ -676,6 +705,26 @@ class Coupled:
                         bad[n_] = (float(d_.max()), int((d_ > 0).sum()))
                 imp = {n_: v_ for n_, v_ in bad.items() if any(t_ in n_ for t_ in ('wvalid', 'ftype', "['ws']", "['shc']", 'snowm', 'irrig', "['fb']", "['fv']", 'geothermal'))}
                 print(f'  tpl_own_check it {it}: {len(bad)} float leaves differ from the recorded template; static/forcing: ' + '; '.join(f'{n_}: max {v_[0]:.3g} n {v_[1]}' for n_, v_ in imp.items()), flush=True)
+        if IRRIG_OWN:                      # actual irrigation (water, energy) per land fraction -> GHY forcing irrig/htirrig of the vegetated tile (GHY_DRV.f:1223, GHY.f:2230)
+            m2kg_ = RHOW_ * jnp.asarray(self.st['axyp'])
+            mi_, gi_ = mid['irr']['mwl_to_irrig'], mid['irr']['gml_to_irrig']
+            pot_g_ = irrig_act
+            full_ = (mi_ >= pot_g_ * m2kg_ * DTSRC_) & (pot_g_ > 0)
+            act_ = jnp.where(full_, pot_g_, mi_ / (m2kg_ * DTSRC_))
+            en_ = gi_ * RHOW_ / (m2kg_ * DTSRC_)
+            fe_ = jnp.asarray(self.st['fearth'])
+            ej_, ei_ = jnp.asarray(host['ej']), jnp.asarray(host['ei'])
+            ghy_ = []
+            for b_ in tpl['ghy']:
+                b_ = dict(b_)
+                f_ = dict(b_['forcing'])
+                fvr_ = f_['fv']
+                pos_ = fvr_ > 0.0
+                f_['irrig'] = jnp.where(pos_, (act_[ei_, ej_] / fe_[ei_, ej_]) / jnp.where(pos_, fvr_, 1.0), 0.0)
+                f_['htirrig'] = jnp.where(pos_, (en_[ei_, ej_] / fe_[ei_, ej_]) / jnp.where(pos_, fvr_, 1.0), 0.0)
+                b_['forcing'] = f_
+                ghy_.append(b_)
+            tpl = dict(tpl, ghy=ghy_)
         with stage('template_apply'):
             lp = state['land_prev']
             tpl_m = apply(tpl, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)
@@ -700,6 +749,33 @@ class Coupled:
                     n0['pw'], n0['pl'], n0['pe'] = npw, npl, npe
                     tpl_m = dict(tpl_m, ns=[n0, tpl_m['ns'][1]])
             fin(tpl_m)
+            if TPL_OWN and os.environ.get('ROCKE_TPL_OWN_CHECK2', '0') == '1' and k > 0 and k < 4:      # diagnostic: the same pipeline on the RECORDED template, compared leaf by leaf after apply
+                rt_, _, _, _ = self._build_tpl(R)
+                if use_rc:
+                    rt_ = DD.fill_tpl(rt_, self._rs, cz_, host)
+                rt_m = apply(rt_, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)
+                if pcarry_b is not None and state.get('pbl_carry') is not None:
+                    r0 = dict(rt_m['ns'][0])
+                    r0['pw'], r0['pl'], r0['pe'] = PC_.fill_template(r0['pw'], r0['pl'], r0['pe'], pcarry_b, ix_)
+                    rt_m = dict(rt_m, ns=[r0, rt_m['ns'][1]])
+                A_ = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(tpl_m)[0]}
+                B_ = {jax.tree_util.keystr(p_): np.asarray(x) for p_, x in jax.tree_util.tree_flatten_with_path(rt_m)[0]}
+                out_ = []
+                for n_, a_ in A_.items():
+                    b_ = B_.get(n_)
+                    if b_ is None or a_.shape != b_.shape or a_.dtype.kind != 'f':
+                        continue
+                    if n_.endswith("['pw']") or n_.endswith("['tw']"):
+                        v_ = np.asarray(tpl_m['ns'][int(n_[7])]['wvalid']).reshape(-1)
+                        a_, b_ = a_[v_], b_[v_]
+                    if a_.ndim == 2 and a_.size:
+                        d_ = np.abs(a_ - b_)
+                        cs_ = np.nonzero(d_.max(0) > 0)[0]
+                        if len(cs_):
+                            out_.append((n_, [(int(c_), float(d_[:, c_].max())) for c_ in cs_][:12]))
+                    elif a_.size and np.abs(a_ - b_).max() > 0:
+                        out_.append((n_, float(np.abs(a_ - b_).max())))
+                print(f'  tpl_own_check2 it {it}: ' + ' | '.join(f'{n_}: {v_}' for n_, v_ in out_), flush=True)
         with stage('surface_tiles_land'):
             Sd = {kk: S1a[kk] for kk in JS.ATM_KEYS}
             out_s, aux = stg(Sd, tpl_m)
