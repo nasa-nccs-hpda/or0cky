@@ -231,3 +231,15 @@ No new arithmetic. `FFSOC_PL=1` (via `R2_PL=1` in `r2_oracle.py`) writes, for ev
 * Dates other than nov26 and any free-running comparison; the owner decisions of 12a (funding, `interp_aer` edit) stand; A100 confirmation; float32; GPU memory.
 * Branches of RADIA not reached by this rundeck: `kradia /= 0`, tracer aerosols (`TRACERS_ON`), `cloud_aer_o3_rad_forc` second calls, `aer_rad_forc > 0` (calls radiation 18 more times), the `dust` / `AMP` / `TOMAS` options, `ocalbedo` with chlorophyll, KSIALB = 1 (written, not validated), spectral-file options of section 10.
 * Integration test of `NativeHandoff` inside the full atmosphere step (`jax_atm_step`/`atm_day_free_rad`): the class has the interface but was exercised only by `r6_native_check.py`, with the packet taken from the record. The seed chain and the carry (`SNOAGE`, `RQT`, `KLIQ`) are the caller's, as before. `jax_radiation.py` was not edited (it belongs to the other session's branch).
+
+## 13. Trial integration, nov26 radiation steps 33312-33357 (owner request 2026-10-12)
+
+`fullfidelity/socrates_spike/r6_trial_integration.py` plugs `NativeHandoff` into the other session's `jax_radiation.make_handoff_step` (not modified) and drives it like a free run on the device: per radiation step the recorded atmosphere/cloud state and live surface fields, SNOAGE from the model record (RADIA does not produce it), **RQT and KLIQ from the held outputs of the previous radiation call**, then the four non-radiation steps that follow (held SRHR/TRHR, recorded per-step COSZ1). CPU, float64, no server process. Result (`data/r6_trial_integration_cpu_result.json`), 10 radiation steps + 40 held steps:
+
+* the 21 output fields against the recorded server output: Q, KLIQ, SNOAGE, CLDSS, CLDMC, CFRAC, COSZ1 bitwise in all 10 steps; SRHR 1.7e-8, TRHR 2e-7 W/m2, FSF/SRDN 8e-10, ALB 4e-12, T 4e-7 K; **RQT drifts from 4e-6 K (first call) to 4e-5 K (tenth call)** because the carry feeds back our own rounding-level differences (not a per-step error);
+* T_new of the radiation steps against the recorded T: 4e-7 K; held steps against an independent NumPy evaluation: bitwise (0.0); the hold is not modified by held steps;
+* 13 XLA compilations, all in the first call (none afterwards): the `lax.cond` step is compiled once.
+
+Two traps found while doing it, both about numerics not interface: (1) **the XLA:CPU flags must be set before `import jax`** (`import clouds_jax_env` first; the project modules do this, a script that imports jax first does not): without them the first trial run had FSF errors of 5-130 W/m2 (the snow/ice albedo threshold of section 12.4, and a SNOAGE carry taken from the server output, which is wrong: the model updates SNOAGE); (2) SNOAGE must come from the model, not from the hold.
+
+Not covered by the trial: the drv_radpacket surface fields (taken from the live packet), the dynamics (T between radiation steps is the record's), the RNG/seed chain (`seed` is ignored), a GPU run of the chain, and any date other than nov26.
