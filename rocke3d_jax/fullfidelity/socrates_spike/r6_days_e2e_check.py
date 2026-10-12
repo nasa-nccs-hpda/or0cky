@@ -31,6 +31,10 @@ rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith(float(master)))
 if os.environ.get("R6_PVT_NPZ"):
     import planet_side as PS
     rj.prod_arrays["frac_veg"] = jnp.asarray(PS.unpack(np.load(os.environ["R6_PVT_NPZ"])["p50"], PS.PACK50)["frac_veg"])
+if os.environ.get("R6_LAND") == "1":         # land cover of the master year from the VEG / CROPS files (daily_products.LandCover) instead of the restart's
+    lc = DP.LandCover(os.path.join(sys.argv[4], "VEG"), os.path.join(sys.argv[4], "CROPS"))
+    land = np.asarray(prod.frac_veg).sum(1) > 0
+    rj.prod_arrays["frac_veg"] = jnp.asarray(lc.frac_veg(master, prod.ilon, prod.jlat, land))
 valid = np.zeros((72, 46), bool)
 valid[rj.ii - 1, rj.jj - 1] = True
 mv = np.nonzero(valid)

@@ -422,6 +422,66 @@ class VolcanicTables:
         return (1.0 - whi) * self.q55v[lo - 1] + whi * self.q55v[lo]
 
 
+class LandCover:
+    """GISS vegetation fractions PVT (`frac_veg`, 12 per box) of a model year from the VEG and CROPS files, as the model builds them at its
+    daily update (ENT_DRV `update_vegetation_data` -> `set_vegetation_data` -> `get_vdata`, `get_cropdata`; RAD_DRV `map_ent2giss`, N_COVERTYPES = 18):
+    the 18 cover fractions of VEG (fractions < 1e-4 zeroed, rescaled by their sum when it exceeds 0.9, all-bare when it is below 0.1), times
+    (1 - crops(year)), the crop type set to crops(year), the CROPS series interpolated linearly in year (clamped to its first / last year).
+    The year is crops_yr (default master_yr).  Ocean / ice-only boxes have PVT = 0: pass `land`, a (jlat, ilon) mask, or the columns of the
+    restart's own frac_veg with a non-zero sum.  Assumes the cold-shrub height h_ent(9) <= 0.5 (shrub type to tundra): true for all 753 land boxes of
+    this run's files (the height comes from the plant data of the model, not read here)."""
+    #  ENT cover index (0-based, VEG file order) -> GISS type (0-based): sand 16->0; grass 10-13->2; shrub 9->3; deciduous 4-7 and 15->5;
+    #  evergreen 2,3->6; rainforest 0,1->7; crops 14->8; dirt 17->9; cold shrub 8->1 (tundra)
+
+    def __init__(self, vegfile, cropsfile):
+        v, c = _nc(vegfile), _nc(cropsfile)
+        names = [k for k in v.variables if k not in ("lon", "lat")]
+        self.cover = np.stack([np.asarray(v[k][:], dtype=np.float64) for k in names])         # (18, 46, 72)
+        self.years = np.asarray(c["time"][:], dtype=np.float64)
+        self.crops_series = np.asarray(c["crops"][:], dtype=np.float64)
+
+    def crops(self, year):
+        y, c = self.years, self.crops_series
+        if year <= y[0]:
+            return c[0]
+        if year >= y[-1]:
+            return c[-1]
+        j = int(np.searchsorted(y, year))
+        if y[j] == year:
+            return c[j]
+        w = (y[j] - year) / (y[j] - y[j - 1])
+        return w * c[j - 1] + (1.0 - w) * c[j]
+
+    def grid(self, year):
+        """(12, 46, 72) GISS vegetation fractions of every box (land or not) for `year`."""
+        v = self.cover.copy()
+        v[v < 1.0e-4] = 0.0
+        s = v.sum(0)
+        v = v / np.where(s > 0.9, s, 1.0)
+        bare = s < 0.1
+        v[:, bare] = 0.0
+        v[16, bare] = 1.0
+        c = np.maximum(self.crops(year), 0.0)
+        v = v * (1.0 - c)
+        v[14] = c
+        g = np.zeros((12,) + c.shape)
+        g[0] = v[16]
+        g[1] = v[8]
+        g[2] = v[10:14].sum(0)
+        g[3] = v[9]
+        g[5] = v[4:8].sum(0) + v[15]
+        g[6] = v[2] + v[3]
+        g[7] = v[0] + v[1]
+        g[8] = v[14]
+        g[9] = v[17]
+        return g
+
+    def frac_veg(self, year, ilon, jlat, land):
+        """(ncol, 12) for the 1-based box indices of the columns; `land` (ncol,) bool: columns with land (PVT = 0 elsewhere)."""
+        g = self.grid(year)[:, np.asarray(jlat) - 1, np.asarray(ilon) - 1].T
+        return np.where(np.asarray(land)[:, None], g, 0.0)
+
+
 class DailyProducts:
     """Per-day products on the (72, 46) radiation grid from the rundeck's input files.
     rundir: directory with the files (or links) O3file, TAero_SUL..BCB, DUSTaer, BCdalbsn, GHG, RADN8.

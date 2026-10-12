@@ -168,3 +168,28 @@ def test_apply_rundeck_edits():
     out = O.apply_rundeck_edits(lines, {"master_yr": "1990", "volc_yr": "0", "extra": "3"})
     assert out == [" &&PARAMETERS", " master_yr=1990", " volc_yr=0", " DT=450.", " extra=3", " &&END_PARAMETERS"]
     assert lines[1] == " master_yr=1850"                                         # input not modified
+
+
+# ------------------------------------------------------------------------------------------------------------- land cover (PVT / frac_veg)
+VEGF = os.path.join(PROD, "V72x46_EntMM16_lc_max_trimmed_scaled_nocrops.ext.nc")
+CROPF = os.path.join(PROD, "CROPS_and_pastures_Pongratz_to_Hurtt_72x46N_nocasp.nc")
+
+
+@pytest.mark.skipif(not (os.path.exists(VEGF) and os.path.exists(CROPF)), reason="VEG / CROPS files not on this machine")
+def test_land_cover_matches_model_values():
+    """Values of box (ilon 64, jlat 15) for 1850 and 1990: the reader reproduced the model's frac_veg exactly on all 753 land boxes of the
+    instrumented runs for both years (report 14.8)."""
+    lc = D.LandCover(VEGF, CROPF)
+    g50, g90 = lc.grid(1850)[:, 14, 63], lc.grid(1990)[:, 14, 63]
+    np.testing.assert_allclose(g50, [0.0020169612727245516, 0, 0.031133337912446983, 0.8778708509653983, 0, 0, 0.011121028067983681,
+                                     0.012295645493671667, 0.06186806410551071, 0.003694112182264117, 0, 0], rtol=1e-12, atol=1e-15)
+    np.testing.assert_allclose(g90[8], 0.5115272402763367, rtol=1e-12)               # the crop fraction of 1990
+    assert abs(lc.grid(1990).sum(0) - 1.0).max() < 1e-12                              # every box sums to one
+    # linear interpolation between the CROPS years, clamped outside the series
+    yrs = lc.years
+    mid = 0.5 * (yrs[3] + yrs[4])
+    np.testing.assert_allclose(lc.crops(mid), 0.5 * (lc.crops_series[3] + lc.crops_series[4]), rtol=1e-14)
+    np.testing.assert_array_equal(lc.crops(yrs[0] - 100.0), lc.crops_series[0])
+    np.testing.assert_array_equal(lc.crops(yrs[-1] + 100.0), lc.crops_series[-1])
+    fv = lc.frac_veg(1850, [64, 1], [15, 1], [True, False])
+    assert fv.shape == (2, 12) and fv[1].sum() == 0.0 and abs(fv[0].sum() - 1.0) < 1e-12
