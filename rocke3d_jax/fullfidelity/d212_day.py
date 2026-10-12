@@ -138,7 +138,16 @@ def _native_handoff():
     d = os.environ.get('ROCKE_SOCRATES_DIR', '/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/gpu_data_stage/socrates_nov26')
     prod = RJ.Products(np.load(os.path.join(d, 'products_day0.npz')))
     zen = Z.Zenith()
-    rj = RJ.RadiaJax(os.path.join(d, 'spec'), os.path.join(d, 'static0.npz'), prod, zen=zen)
+    it0_ = int(os.environ.get('ROCKE_NATIVE_IT0', '33312'))
+    kw = {}
+    if os.environ.get('ROCKE_NATIVE_DAYPROD', '1') == '1':     # D229: the products of each model day from the rundeck's input files (socrates_spike/daily_products.py, report section 14)
+        import daily_products as DP
+        dp = DP.DailyProducts(os.path.join(d, 'rundir'), prod.c60['plb0'][0], prod.g['drym2g'], prod.g['ppmv80'], prod.taucon_dust,
+                              solar_constant=prod.solar_constant)
+        ndays = int(os.environ.get('ROCKE_NATIVE_DAYS', '3'))
+        dd, day0 = DP.day_products_for_run(dp, prod, it0_, it0_ + 48 * ndays - 1)
+        kw = dict(day_products=dd, day0=day0)
+    rj = RJ.RadiaJax(os.path.join(d, 'spec'), os.path.join(d, 'static0.npz'), prod, zen=zen, **kw)
     nrad = int(os.environ.get('ROCKE_NATIVE_NRAD', '60'))      # radiation steps covered by the zenith table (60 -> 300 model steps)
     it0 = int(os.environ.get('ROCKE_NATIVE_IT0', '33312'))     # first radiation step of the table (nov26 start; (it0 - ITIMEI) % 5 == 0)
     assert (it0 - ds.ITIMEI) % 5 == 0
