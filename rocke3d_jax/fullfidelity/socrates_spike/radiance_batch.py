@@ -332,7 +332,7 @@ def band_fluxes(spec, iso, ib, X, scheme):
         s_up, s_dn = wgt * s_up, wgt * s_dn
         pfb = X["planck"][ib][0]
         d_surf = rep(X["planck"][ib][3] - pfb[:, nl])
-        sg = [v_ for v_ in (u[:, nl, 0, 0] * (1.0 - alb_d) * d_surf, u[:, nl, 1, 1] * (1.0 - alb_d) * d_surf, u[:, nl, 2, 2] * (1.0 - alb_d) * d_surf)]
+        sg = [u[:, nl, k, 0] * (1.0 - alb_d) * d_surf for k in range(3)]      # cloud_overlap(:, n_layer, 10/13/16) = u11, u21, u31
         finc_b = rep(-pfb[:, 0])
         fdir = None
     ft = solver_triple_hogan(R_NCT1, trans[:, :, 0], refl[:, :, 0], s_dn[:, :, 0], s_up[:, :, 0], trans[:, :, 1], refl[:, :, 1],
