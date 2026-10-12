@@ -65,6 +65,19 @@ for fn, st in (("solve_band_ses", 7), ("solve_band_one_gas", 8), ("solve_band_wi
      (ZOUT, "  CALL ffsoc_toc(%d)\n" % st + ZOUT, 1)])
 edit(os.path.join(rc, "solve_band_k_eqv_scl.F90"), [
  ("  CALL ffsoc_tic(3)\n", "  CALL ffsoc_tic(3)\n  CALL ffsoc_tic(10)\n", 1),
+ ("  i_abs=index_abs(1)\n",
+  "  i_abs=index_abs(1)\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 1, k_abs_layer(1:n_profile, 1:n_layer, :, :))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 2, w_abs_esft(:, :))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 3, REAL(n_abs_esft(:), 8))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 4, (/ REAL(n_abs, 8), REAL(index_abs(1:n_abs), 8) /))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 5, planck_flux_band(1:n_profile, 0:n_layer))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 6, diff_planck_band(1:n_profile, 1:n_layer))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 7, diff_planck_band_2(1:n_profile, 1:n_layer))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 8, planck_flux_surface(1:n_profile))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 9, solar_irrad(1:n_profile))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 10, rho_alb(1:n_profile, :))\n"
+  "  CALL ffsoc_arr(25, isolir, 0, 11, (/ weight_band /))\n", 1),
  (ZOUT, "  CALL ffsoc_toc(10)\n" + ZOUT, 1)])
 # per-k-term two-stream coefficients, sources and solver result of the triple solver (tags 40-43; band/k are not visible here: file order
 # links them to the surrounding tag 10 / 20 (band) and 21 (k-term, written after monochromatic_radiance returns))
@@ -87,6 +100,17 @@ edit(os.path.join(rc, "triple_column.F90"), [
   "  CALL ffsoc_arr(46, isolir, 0, 1, cloud_overlap(1:n_profile, id_ct-1:n_layer, 1:18))\n"
   "  CALL ffsoc_arr(46, isolir, 0, 2, flux_inc_down(1:n_profile))\n"
   "  CALL ffsoc_arr(46, isolir, 0, 3, diffuse_albedo(1:n_profile))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 1, diff_planck(1:n_profile, 1:n_layer))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 2, diff_planck_2(1:n_profile, 1:n_layer))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 3, w_free(1:n_profile, id_ct:n_layer))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 4, w_cloud(1:n_profile, id_ct:n_layer))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 5, adjust_solar_ke(1:n_profile, 1:n_layer))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 6, flux_inc_direct(1:n_profile))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 7, direct_albedo(1:n_profile))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 8, d_planck_flux_surface(1:n_profile))\n"
+  "  CALL ffsoc_arr(47, isolir, 0, 9, (/ MERGE(1.0d0, 0.0d0, l_scale_solar) /))\n"
+  "  CALL ffsoc_arr(49, isolir, 0, 1, ss_prop%forward_scatter_clr)\n"
+  "  CALL ffsoc_arr(49, isolir, 0, 2, ss_prop%forward_scatter)\n"
   "  CALL ffsoc_arr(41, isolir, 0, 1, trans(1:n_profile, 1:n_layer, :))\n"
   "  CALL ffsoc_arr(41, isolir, 0, 2, reflect(1:n_profile, 1:n_layer, :))\n"
   "  CALL ffsoc_arr(41, isolir, 0, 3, trans_0_noscal(1:n_profile, 1:n_layer, :))\n"
@@ -99,7 +123,7 @@ edit(os.path.join(rc, "triple_column.F90"), [
   "  CALL ffsoc_arr(42, isolir, 0, 3, source_flux_ground(1:n_profile, :))\n"
   "\n\n  SELECT CASE (i_solver)\n", 1),
  ("  END SELECT\n\n\n\n  IF (l_clear) THEN\n",
-  "  END SELECT\n  CALL ffsoc_arr(43, isolir, 0, 1, flux_total(1:n_profile, 1:2*n_layer+2))\n\n\n  IF (l_clear) THEN\n", 1),
+  "  END SELECT\n  CALL ffsoc_arr(43, isolir, 0, 1, flux_total(1:n_profile, 1:2*n_layer+2))\n  CALL ffsoc_arr(48, isolir, 0, 1, flux_direct(1:n_profile, 0:n_layer))\n\n\n  IF (l_clear) THEN\n", 1),
 ])
 edit(mk, [("\tdef_planetstr.F90\n", "\tdef_planetstr.F90 \\\n\tffsoc_mod.F90\n", 1)])
 print("instrumentation applied")

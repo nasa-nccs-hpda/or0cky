@@ -1,0 +1,9 @@
+k-term groups: 3634
+LW  omega          179620 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  omega_clr       91614 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  tau            179620 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  tau_clr         91614 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  omega           33580 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  omega_clr       22008 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  tau             33580 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  tau_clr         22008 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00

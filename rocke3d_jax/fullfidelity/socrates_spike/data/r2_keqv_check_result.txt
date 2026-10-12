@@ -1,0 +1,4 @@
+band records compared: 20
+LW  k_eqv                  688 entries  bitwise   80.959 %  max abs  3.696e-17  max rel  2.126e-12
+SW  adjust_solar_ke        172 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_eqv                  172 entries  bitwise   93.605 %  max abs  4.235e-22  max rel  3.251e-16
