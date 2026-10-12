@@ -10,8 +10,16 @@ import time
 
 import numpy as np
 
-import d193_day as D
-import atm_step as A
+import os
+_A = list(sys.argv)                     # same GPU preamble as gpu_day_run.py: backend and libm wiring BEFORE anything else imports jax
+sys.argv = [_A[0], 'nov26', os.environ.get('GPU_IMPORT_SCRATCH', '/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax/gpu_runs/_import_scratch')]
+import gpu_step_run as G  # noqa: E402,F401
+sys.argv = _A
+import atm_step as A  # noqa: E402
+import jax_harness as H  # noqa: E402
+_mk = A.make_ctx
+A.make_ctx = lambda date, imf=False, *a, **k: _mk(date, False, *a, **k)
+import d193_day as D  # noqa: E402
 import jax
 import jax.numpy as jnp
 import jax_coupled as C
