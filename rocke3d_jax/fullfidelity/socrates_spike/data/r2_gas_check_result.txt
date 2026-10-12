@@ -1,0 +1,4 @@
+LW  k_abs_layer       183309 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  k_esft_layer      183309 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_abs_layer        47472 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_esft_layer       40592 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00

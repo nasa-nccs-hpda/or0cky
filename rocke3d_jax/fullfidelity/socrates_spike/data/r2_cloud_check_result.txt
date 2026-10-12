@@ -1,0 +1,8 @@
+LW  cloud_overlap                   6984 entries  bitwise  100.000 %  max abs  0.000e+00
+LW  frac_region(strat,conv)          718 entries  bitwise  100.000 %  max abs  0.000e+00
+LW  n_cloud_top                       29 entries  bitwise  100.000 %  max abs  0.000e+00
+LW  w_free                           359 entries  bitwise  100.000 %  max abs  0.000e+00
+SW  cloud_overlap                   3168 entries  bitwise  100.000 %  max abs  0.000e+00
+SW  frac_region(strat,conv)          320 entries  bitwise  100.000 %  max abs  0.000e+00
+SW  n_cloud_top                       16 entries  bitwise  100.000 %  max abs  0.000e+00
+SW  w_free                           160 entries  bitwise  100.000 %  max abs  0.000e+00
