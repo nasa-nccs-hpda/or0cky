@@ -83,9 +83,10 @@ class RadiaJax:
     (drv_zenith / zenith_coszs, exact rational orbit arithmetic) and the packet -> device transfer."""
 
     DAY_KEYS = ("o3col", "ataulx", "dtaulx", "dalbsn", "epl", "epm", "eph", "albvnh", "fulgas", "ppmv80", "solar_irrad")
+    DAY_OPT_KEYS = ("vtaulx", "vreff", "q55h2s")           # day-varying only when the day products carry them (volcanic reader)
     DAY_LEN = 48                                          # model steps per day (DTsrc = 1800 s)
 
-    def __init__(self, specdir, static0_npz, products, zen=None, day_products=None, day0=None):
+    def __init__(self, specdir, static0_npz, products, zen=None, day_products=None, day0=None, day_source=None):
         self.spec = {1: SD.load(os.path.join(specdir, "spec_sw.npz")), 2: SD.load(os.path.join(specdir, "spec_lw.npz"))}
         self.spec_np = {"lw": np.load(os.path.join(specdir, "spec_lw.npz")), "sw": np.load(os.path.join(specdir, "spec_sw.npz"))}
         self.s0 = dict(np.load(static0_npz)) if isinstance(static0_npz, str) else static0_npz
@@ -103,8 +104,21 @@ class RadiaJax:
         self.day0 = day0
         self.day_arrays = None
         if day_products is not None:
-            self.day_arrays = {k: jnp.stack([jnp.asarray(d[k]) for d in day_products]) for k in self.DAY_KEYS}
+            keys = list(self.DAY_KEYS) + [k for k in self.DAY_OPT_KEYS if all(k in d for d in day_products)]
+            self.day_arrays = {k: jnp.stack([jnp.asarray(d[k]) for d in day_products]) for k in keys}
+        # day products on demand: day_source(day number = itime // 48) -> dict of numpy arrays (daily_products.DayStream); evaluated on the host
+        # by a pure_callback inside the trace (no window, no per-day device stack), so a run of any length needs one compilation
+        self.day_source = day_source
+        if day_source is not None:
+            proto = day_source(0)
+            self._day_proto = {k: jax.ShapeDtypeStruct(np.shape(v), np.asarray(v).dtype) for k, v in proto.items()}
+            for k in self.DAY_KEYS:
+                assert k in proto, "day_source lacks " + k
         self._jit = jax.jit(self._core)
+
+    def _day_host(self, day):
+        d = self.day_source(int(day))
+        return {k: np.asarray(d[k], dtype=self._day_proto[k].dtype) for k in self._day_proto}
 
     # ---------------------------------------------------------------------------------------------------------- host side
     def __call__(self, pkt, itime, cosz=None, to_numpy=True):
@@ -127,6 +141,14 @@ class RadiaJax:
     def pa_for_itime(self, itime):
         """The per-column products of the model day containing `itime` (a Python or traced int).  Without day products: the dump's day.
         Outside the window of the day products the first / last day is used (clipped; check on the host with `day_covers`)."""
+        if self.day_source is not None:
+            pa = dict(self.prod_arrays)
+            if isinstance(itime, (int, np.integer)):
+                pa.update({n: jnp.asarray(v) for n, v in self._day_host(int(itime) // self.DAY_LEN).items()})
+            else:
+                day = jnp.asarray(itime, jnp.int32) // self.DAY_LEN
+                pa.update(jax.pure_callback(self._day_host, self._day_proto, day))
+            return pa
         if self.day_arrays is None:
             return self.prod_arrays
         k = jnp.clip(jnp.asarray(itime, jnp.int32) // self.DAY_LEN - self.day0, 0, self.day_arrays["o3col"].shape[0] - 1)
@@ -135,7 +157,7 @@ class RadiaJax:
         return pa
 
     def day_covers(self, itime):
-        return self.day_arrays is None or 0 <= int(itime) // self.DAY_LEN - self.day0 < self.day_arrays["o3col"].shape[0]
+        return self.day_arrays is None or self.day_source is not None or 0 <= int(itime) // self.DAY_LEN - self.day0 < self.day_arrays["o3col"].shape[0]
 
     # ---------------------------------------------------------------------------------------------------------- device side
     def _inputs(self, pkt, cosz1_grid, cosz2_grid, cosza_grid, pa):
