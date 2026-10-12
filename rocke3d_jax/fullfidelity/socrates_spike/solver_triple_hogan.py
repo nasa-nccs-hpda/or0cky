@@ -104,3 +104,72 @@ def solver_triple_hogan(n_cloud_top, t, r, s_down, s_up, t_s, r_s, sd_s, su_s, t
         ft[2 * i + 1] = fu1[i] + fu2[i] + fu3[i]
         ft[2 * i + 2] = fd1[i] + fd2[i] + fd3[i]
     return jnp.stack([ft[k] for k in range(1, 2 * n_layer + 3)], axis=1)
+
+
+def solver_hogan_nct1_scan(t, r, s_down, s_up, t_s, r_s, sd_s, su_s, t_c, r_c, sd_c, su_c, v, u, flux_inc_down, sg_free, sg_strat,
+                           sg_conv, albedo_surface_diff):
+    """solver_triple_hogan for n_cloud_top = 1 with lax.scan over the layers (same arithmetic as the unrolled version above; compiles
+    in seconds instead of minutes).  Shapes as solver_triple_hogan."""
+    import jax
+    from jax import lax
+    n_layer = t.shape[1]
+    T = lambda a: jnp.moveaxis(a, 1, 0)                          # (n_layer, n_profile)
+    # layer i = 1..n_layer: v(i) is v[:, i], u(i-1) is u[:, i-1]
+    vi = jnp.moveaxis(v[:, 1:], 1, 0)                           # (nl, N, 3, 3)
+    uim1 = jnp.moveaxis(u[:, :n_layer], 1, 0)
+    xs = (vi, uim1, T(t), T(r), T(s_down), T(s_up), T(t_s), T(r_s), T(sd_s), T(su_s), T(t_c), T(r_c), T(sd_c), T(su_c))
+
+    def up_step(carry, x):
+        a1, a2, a3, g1, g2, g3 = carry
+        vv, uu, t1, r1, sd1, su1, t2, r2, sd2, su2, t3, r3, sd3, su3 = x
+        th1 = a1 * vv[:, 0, 0] + a2 * vv[:, 1, 0] + a3 * vv[:, 2, 0]
+        th2 = a1 * vv[:, 0, 1] + a2 * vv[:, 1, 1] + a3 * vv[:, 2, 1]
+        th3 = a1 * vv[:, 0, 2] + a2 * vv[:, 1, 2] + a3 * vv[:, 2, 2]
+        b1 = 1.0 / (1.0 - th1 * r1)
+        ga1 = th1 * t1
+        h1 = g1 + th1 * sd1
+        b2 = 1.0 / (1.0 - th2 * r2)
+        ga2 = th2 * t2
+        h2 = g2 + th2 * sd2
+        b3 = 1.0 / (1.0 - th3 * r3)
+        ga3 = th3 * t3
+        h3 = g3 + th3 * sd3
+        l1 = su1 + h1 * t1 * b1
+        l2 = su2 + h2 * t2 * b2
+        l3 = su3 + h3 * t3 * b3
+        na1 = r1 + th1 * t1 * t1 * b1
+        ng1 = uu[:, 0, 0] * l1 + uu[:, 0, 1] * l2 + uu[:, 0, 2] * l3
+        na2 = r2 + th2 * t2 * t2 * b2
+        ng2 = uu[:, 1, 0] * l1 + uu[:, 1, 1] * l2 + uu[:, 1, 2] * l3
+        na3 = r3 + th3 * t3 * t3 * b3
+        ng3 = uu[:, 2, 0] * l1 + uu[:, 2, 1] * l2 + uu[:, 2, 2] * l3
+        return (na1, na2, na3, ng1, ng2, ng3), (b1, b2, b3, ga1, ga2, ga3, h1, h2, h3)
+
+    a0 = albedo_surface_diff
+    init = (a0, a0, a0, sg_free, sg_strat, sg_conv)
+    (alpha1, alpha2, alpha3, g1, g2, g3), (B1, B2, B3, GA1, GA2, GA3, H1, H2, H3) = lax.scan(up_step, init, xs, reverse=True)
+    ft2 = flux_inc_down
+    ft1 = g1 + flux_inc_down * (v[:, 0, 0, 0] * alpha1 + v[:, 0, 1, 0] * alpha2 + v[:, 0, 2, 0] * alpha3)
+    vdn = jnp.moveaxis(v[:, :n_layer], 1, 0)                   # v(i-1) for i = 1..nl
+    xs2 = (vdn, B1, B2, B3, GA1, GA2, GA3, H1, H2, H3, T(t), T(r), T(s_down), T(t_s), T(r_s), T(sd_s), T(t_c), T(r_c), T(sd_c))
+
+    def down_step(carry, x):
+        f1, f2, f3 = carry
+        vv, b1, b2, b3, ga1, ga2, ga3, h1, h2, h3, t1, r1, sd1, t2, r2, sd2, t3, r3, sd3 = x
+        d1 = vv[:, 0, 0] * f1 + vv[:, 0, 1] * f2 + vv[:, 0, 2] * f3
+        d2 = vv[:, 1, 0] * f1 + vv[:, 1, 1] * f2 + vv[:, 1, 2] * f3
+        d3 = vv[:, 2, 0] * f1 + vv[:, 2, 1] * f2 + vv[:, 2, 2] * f3
+        u1 = (ga1 * d1 + h1) * b1
+        u2 = (ga2 * d2 + h2) * b2
+        u3 = (ga3 * d3 + h3) * b3
+        n1 = t1 * d1 + r1 * u1 + sd1
+        n2 = t2 * d2 + r2 * u2 + sd2
+        n3 = t3 * d3 + r3 * u3 + sd3
+        return (n1, n2, n3), (u1 + u2 + u3, n1 + n2 + n3)
+
+    z = jnp.zeros_like(ft2)
+    _, (UP, DN) = lax.scan(down_step, (ft2, z, z), xs2)         # (nl, N)
+    cols = [ft1, ft2]
+    out = jnp.concatenate([ft1[:, None], ft2[:, None], jnp.stack([UP, DN], axis=2).transpose(1, 0, 2).reshape(ft1.shape[0], 2 * n_layer)],
+                          axis=1)
+    return out

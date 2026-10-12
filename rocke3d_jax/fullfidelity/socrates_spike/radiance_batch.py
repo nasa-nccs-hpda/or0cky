@@ -16,7 +16,7 @@ from jax import lax
 import kernels as K
 import gas_absorption as GA
 import planck as PL
-from solver_triple_hogan import solver_triple_hogan
+from solver_triple_hogan import solver_triple_hogan, solver_hogan_nct1_scan
 
 TINY = np.finfo(np.float64).tiny
 EPS = np.finfo(np.float64).eps
@@ -91,18 +91,19 @@ def grey_props(iso, rc, mode_mix, mode_abs, mode_scat, mode_asym, n_mode, cont_t
 
 # ---------------------------------------------------------------- cloud geometry (overlap_coupled, ip_cloud_triple, n_cloud_top = 1)
 def overlap_triple(w_cloud, fr):
-    """w_cloud (N, nl); fr (N, nl, 3) region fractions (clear unused).  Returns co (N, nl+1, 18), w_free (N, nl)."""
+    """w_cloud (N, nl); fr (N, nl, 3) region fractions (clear unused).  Returns co (N, nl+1, 18), w_free (N, nl).  lax.scan over the
+    layer boundaries 0..nl (n_cloud_top = 1)."""
     N, nl = w_cloud.shape
     tol = 1.0e2 * EPS
     w_free = 1.0 - w_cloud
-    zeros = jnp.zeros(N)
-    area_upper = [jnp.ones(N), zeros, zeros]
-    co = []
-    for i in range(0, nl + 1):                                   # Fortran layer index i = nct-1 .. nl with nct = 1
-        if i < nl:
-            area_lower = [w_free[:, i], w_cloud[:, i] * fr[:, i, 1], w_cloud[:, i] * fr[:, i, 2]]
-        else:
-            area_lower = [jnp.ones(N), zeros, zeros]
+    zeros = jnp.zeros((N,))
+    lower = jnp.stack([w_free, w_cloud * fr[:, :, 1], w_cloud * fr[:, :, 2]], axis=0)          # (3, N, nl)
+    lower = jnp.moveaxis(lower, 2, 0)                                                         # (nl, 3, N)
+    last = jnp.stack([jnp.ones((N,)), zeros, zeros], axis=0)[None]                            # (1, 3, N)
+    AL = jnp.concatenate([lower, last], axis=0)                                               # (nl+1, 3, N)
+    area_upper0 = jnp.stack([jnp.ones((N,)), zeros, zeros], axis=0)
+
+    def step(area_upper, area_lower):
         ao = [[zeros] * 3 for _ in range(3)]
         for k in range(3):
             ao[k][k] = jnp.minimum(area_lower[k], area_upper[k])
@@ -115,20 +116,20 @@ def overlap_triple(w_cloud, fr):
         for k in range(3):
             for j in range(3):
                 ao[k][j] = jnp.where(ok, ao[k][j] + ar_up[k] * ar_lo[j] / jnp.where(ok, art, 1.0), ao[k][j])
-        c = [jnp.zeros(N) for _ in range(18)]
+        c = [jnp.zeros((N,)) for _ in range(18)]
         for k in range(3):
-            c[3 * k + k] = jnp.ones(N)
-            c[3 * (3 + k) + k] = jnp.ones(N)
+            c[3 * k + k] = jnp.ones((N,))
+            c[3 * (3 + k) + k] = jnp.ones((N,))
         for k in range(3):
             oku = area_upper[k] > tol
             okl = area_lower[k] > tol
             for j in range(3):
                 c[3 * j + k] = jnp.where(oku, ao[k][j] / jnp.where(oku, area_upper[k], 1.0), c[3 * j + k])
                 c[3 * (3 + j) + k] = jnp.where(okl, ao[j][k] / jnp.where(okl, area_lower[k], 1.0), c[3 * (3 + j) + k])
-        co.append(jnp.stack(c, axis=1))
-        if i < nl:
-            area_upper = list(area_lower)
-    return jnp.stack(co, axis=1), w_free
+        return area_lower, jnp.stack(c, axis=0)                                              # (18, N)
+
+    _, C = lax.scan(step, area_upper0, AL)                                                    # (nl+1, 18, N)
+    return jnp.transpose(C, (2, 0, 1)), w_free
 
 
 # ---------------------------------------------------------------- gas absorption with per-column major absorber
@@ -163,25 +164,30 @@ def band_gas(spec, ib, p, t, mix, mass):
     kslots = jnp.stack(slots, axis=3)                              # (N, nl, NK, n)
     wslots = jnp.asarray(np.stack(ws, axis=1))                     # (NK, n)
     nkv = jnp.asarray(np.array(nks))
-    # major absorber: column transmission test (planet_rad.F90 2780-2842), per column
-    colm = [jnp.zeros(N) for _ in range(n)]
-    trans = [jnp.ones(N) for _ in range(n)]
-    done = jnp.zeros(N, dtype=bool)
-    for lay in range(nl):
+    # major absorber: column transmission test (planet_rad.F90 2780-2842), per column; scan over layers
+    Wk = [jnp.asarray(spec["w"][:nks[j], ib - 1, g - 1]) for j, g in enumerate(gases)]
+    Kk = [jnp.asarray(spec["k"][:nks[j], ib - 1, g - 1]) for j, g in enumerate(gases)]
+    mixg = jnp.stack([mix[:, :, g - 1] for g in gases], axis=0)                      # (n, N, nl)
+    xs_m = (jnp.moveaxis(mixg, 2, 0), jnp.moveaxis(mass, 1, 0))                       # (nl, n, N), (nl, N)
+
+    def major_step(carry, x):
+        colm_c, trans_c, done_c = carry
+        mx, ms = x
         nc, nt = [], []
-        for j, g in enumerate(gases):
-            nk = nks[j]
-            c = colm[j] + mix[:, lay, g - 1] * mass[:, lay]
-            w = jnp.asarray(spec["w"][:nk, ib - 1, g - 1]); k = jnp.asarray(spec["k"][:nk, ib - 1, g - 1])
-            tr = jnp.sum(w[None, :] * jnp.exp(-k[None, :] * c[:, None]), axis=1)
+        for j in range(n):
+            c = colm_c[j] + mx[j] * ms
+            tr = jnp.sum(Wk[j][None, :] * jnp.exp(-Kk[j][None, :] * c[:, None]), axis=1)
             nc.append(c); nt.append(tr)
-        upd = ~done
-        colm = [jnp.where(upd, nc[j], colm[j]) for j in range(n)]
-        trans = [jnp.where(upd, nt[j], trans[j]) for j in range(n)]
-        prod = trans[0]
+        upd = ~done_c
+        colm_n = jnp.stack([jnp.where(upd, nc[j], colm_c[j]) for j in range(n)], axis=0)
+        trans_n = jnp.stack([jnp.where(upd, nt[j], trans_c[j]) for j in range(n)], axis=0)
+        prod = trans_n[0]
         for j in range(1, n):
-            prod = prod * trans[j]
-        done = done | (prod <= TRANS_DEF_MAJOR)
+            prod = prod * trans_n[j]
+        return (colm_n, trans_n, done_c | (prod <= TRANS_DEF_MAJOR)), None
+
+    (colm_f, trans_f, _), _ = lax.scan(major_step, (jnp.zeros((n, N)), jnp.ones((n, N)), jnp.zeros((N,), dtype=bool)), xs_m)
+    trans = [trans_f[j] for j in range(n)]
     nmaj = jnp.argmin(jnp.stack(trans, axis=1), axis=1)            # (N,)
     ar = jnp.arange(n)[None, :]
     order = jnp.where(ar == 0, nmaj[:, None], jnp.where(ar == nmaj[:, None], 0, ar))      # (N, n)
@@ -308,20 +314,21 @@ def band_fluxes(spec, iso, ib, X, scheme):
     if solar:
         t0 = flat(reg["trans_0"]); sc_up = flat(reg["s_up"]); sc_dn = flat(reg["s_down"])
         fd0 = rep(finc); adjb = rep(adj)
-        base = [fd0, jnp.zeros(B), jnp.zeros(B)]
-        s_up = [None] * nl; s_dn = [None] * nl; fdir = [fd0]
-        for i in range(1, nl + 1):
-            c = i - 1
-            top = [v[:, c, a, 0] * base[0] + v[:, c, a, 1] * base[1] + v[:, c, a, 2] * base[2] for a in range(3)]
-            nb = [top[k] * t0[:, c, k] * adjb[:, c] for k in range(3)]
-            s_up[c] = jnp.stack([sc_up[:, c, k] * top[k] for k in range(3)], axis=1)
-            s_dn[c] = jnp.stack([(sc_dn[:, c, k] - t0[:, c, k]) * top[k] + nb[k] for k in range(3)], axis=1)
-            base = nb
-            fdir.append(base[0] + base[1] + base[2])
-        s_up = jnp.stack(s_up, axis=1); s_dn = jnp.stack(s_dn, axis=1)
+        def src_step(base, x):
+            vv, t0_, su_, sd_, adj_ = x
+            top = [vv[:, a_, 0] * base[0] + vv[:, a_, 1] * base[1] + vv[:, a_, 2] * base[2] for a_ in range(3)]
+            nb = [top[k] * t0_[:, k] * adj_ for k in range(3)]
+            s_up_i = jnp.stack([su_[:, k] * top[k] for k in range(3)], axis=1)
+            s_dn_i = jnp.stack([(sd_[:, k] - t0_[:, k]) * top[k] + nb[k] for k in range(3)], axis=1)
+            return tuple(nb), (s_up_i, s_dn_i, nb[0] + nb[1] + nb[2])
+        xs_s = (jnp.moveaxis(v[:, :nl], 1, 0), jnp.moveaxis(t0, 1, 0), jnp.moveaxis(sc_up, 1, 0), jnp.moveaxis(sc_dn, 1, 0),
+                jnp.moveaxis(adjb, 1, 0))
+        base, (SU, SD, FD) = lax.scan(src_step, (fd0, jnp.zeros(B), jnp.zeros(B)), xs_s)
+        s_up = jnp.moveaxis(SU, 0, 1); s_dn = jnp.moveaxis(SD, 0, 1)
+        fdir_all = jnp.concatenate([fd0[:, None], jnp.moveaxis(FD, 0, 1)], axis=1)
         sg = [(alb_dir - alb_d) * base[k] for k in range(3)]
         finc_b = rep(finc)
-        fdir = jnp.stack(fdir, axis=1)
+        fdir = fdir_all
     else:
         dp_, dp2_ = rep(X["planck"][ib][1]), rep(X["planck"][ib][2])
         w_cloud_b = rep(X["w_cloud"]); w_free_b = rep(w_free); fr_b = rep(fr)
@@ -335,7 +342,7 @@ def band_fluxes(spec, iso, ib, X, scheme):
         sg = [u[:, nl, k, 0] * (1.0 - alb_d) * d_surf for k in range(3)]      # cloud_overlap(:, n_layer, 10/13/16) = u11, u21, u31
         finc_b = rep(-pfb[:, 0])
         fdir = None
-    ft = solver_triple_hogan(R_NCT1, trans[:, :, 0], refl[:, :, 0], s_dn[:, :, 0], s_up[:, :, 0], trans[:, :, 1], refl[:, :, 1],
+    ft = solver_hogan_nct1_scan(trans[:, :, 0], refl[:, :, 0], s_dn[:, :, 0], s_up[:, :, 0], trans[:, :, 1], refl[:, :, 1],
                              s_dn[:, :, 1], s_up[:, :, 1], trans[:, :, 2], refl[:, :, 2], s_dn[:, :, 2], s_up[:, :, 2], v, u,
                              finc_b, sg[0], sg[1], sg[2], alb_d)                          # (B, 2nl+2)
     ft = ft.reshape(N, NK, 2 * nl + 2)
