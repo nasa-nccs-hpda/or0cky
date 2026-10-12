@@ -146,4 +146,35 @@ edit(os.path.join(md, "RADIATION.f"), [
         CALL ffsoc_pl1(62, (/ TAUCON_dust /))
       END IF
       CALL run_planet_rad(""", 1)])
+
+# RAD_DRV.f (RADIA): static / daily records of the RADIA-level port (tags 170-181), first call only
+edit(os.path.join(md, "RAD_DRV.f"), [
+ ("      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n",
+  "      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n"
+  "      use ffsoc_mod, only: ffsoc_pl1, ffsoc_pl2\n"
+  "      use GTAU_state_mod, only: ffsoc_gtau=>GTAU, ffsoc_salbtg=>SALBTG,\n"
+  "     &     ffsoc_taugsa=>TAUGSA, ffsoc_tautgs=>TAUTGS\n"
+  "      use DustParam_mod, only: ffsoc_redust=>redust,\n"
+  "     &     ffsoc_rodust=>rodust\n"
+  "      use SURF_ALBEDO, only: ffsoc_albvnh=>albvnh\n"
+  "", 1),
+ ("      IMPLICIT NONE\n      real*8 dz,rho\n",
+  "      IMPLICIT NONE\n      LOGICAL, SAVE :: ffsoc_stat = .FALSE.\n      real*8 dz,rho\n", 1),
+ ("      solar_irrad = solar_constant/RSDIST\n",
+  """      solar_irrad = solar_constant/RSDIST
+      IF (.NOT. ffsoc_stat) THEN
+        ffsoc_stat = .TRUE.
+        CALL ffsoc_pl1(170, byaml00(1:LM+LM_REQ))
+        CALL ffsoc_pl1(171, plb0(1:LM_REQ))
+        CALL ffsoc_pl1(172, shl0(1:LM_REQ))
+        CALL ffsoc_pl1(173, (/ RSDIST, solar_constant /))
+        CALL ffsoc_pl2(174, RESHAPE(ffsoc_gtau, (/ 51*11, 143 /)))
+        CALL ffsoc_pl2(175, ffsoc_salbtg)
+        CALL ffsoc_pl2(176, ffsoc_taugsa)
+        CALL ffsoc_pl1(177, ffsoc_tautgs)
+        CALL ffsoc_pl1(178, ffsoc_redust)
+        CALL ffsoc_pl1(179, ffsoc_rodust)
+        CALL ffsoc_pl2(180, RESHAPE(ffsoc_albvnh, (/ 72, 2 /)))
+      END IF
+""", 1)])
 print("applied")

@@ -14,12 +14,12 @@ import r6_stream as S
 KEEP0 = {1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36}
 
 
-def main(path, out):
+def main(path, out, nper=None):
     cols = []
     cur = None
     alb_wgt = None
     static = {}
-    for r in S.stream(path, tags={0, 30, 50, 51, 52, 53, 54, 60, 61, 62} | set(range(101, 170))):
+    for r in S.stream(path, tags={0, 30, 50, 51, 52, 53, 54, 60, 61, 62} | set(range(101, 200))):
         t = r["tag"]
         if t == 60:
             cur = dict(p60=r["a"], lw={}, sw={}, lwend={}, swend={}, extra={})
@@ -41,6 +41,15 @@ def main(path, out):
             cur["lw" if r["iso"] == 2 else "sw"][r["k"]] = r["a"]
         elif t == 30:
             cur["lwend" if r["iso"] == 2 else "swend"][(r["band"], r["k"])] = r["a"]
+    if nper and len(cols) > nper:                                   # several radiation steps in one dump: one npz per step
+        base = out[:-4] if out.endswith(".npz") else out
+        for k in range(len(cols) // nper):
+            _save(cols[k * nper:(k + 1) * nper], "%s_%d.npz" % (base, k), alb_wgt, static)
+        return
+    _save(cols, out, alb_wgt, static)
+
+
+def _save(cols, out, alb_wgt, static):
     N = len(cols)
     d = {}
     for key in ("p60", "p50", "p51", "p52", "p53", "p61", "p62"):
@@ -75,4 +84,4 @@ def main(path, out):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else None)
