@@ -74,3 +74,17 @@ Command: the one of section 2 with `--rad native` in place of `--rad server`.
 Score files: `gpu_runs/native108/score.md`, `score.json`; model output `gpu_runs/native108/ours_d193/`.
 
 Not shown: other dates (products exist for nov26 only), the 750 AIJ radiation diagnostics (four accumulators are rebuilt), a run longer than the 108 recorded steps, memory use of the combined program (it ran on a 32 GB V100), a second repetition of the timing. At step 1 the native and server runs already differ locally (T by up to 0.07 K at 24 points, from a 5e-9 K difference after radiation step 0): a discrete event of the kind seen before, judged only by the score band.
+
+## 7. Day products and a five-day run (MEASURED 2026-10-12, V100 jobs `nativedays` 37941657, `native5d` 37941659)
+
+Configuration: `--rad native` with the per-day products of `socrates_spike/daily_products.py` (section 14 of the SOCRATES report; rundir of input files built in `gpu_data_stage/socrates_nov26/rundir`, `ROCKE_NATIVE_DAYS` defaults to the days the zenith table reaches: 7 for 60 radiation steps), the flag set of section 2.
+
+| run | steps | day-1 worst (>= 3) | day-2 worst | whole-window worst (>= 3) | relaxed 3x | unrelaxed 2x |
+|---|---|---|---|---|---|---|
+| `native108` (nov26 products for every day) | 108 | 2.36 (QCI step 3) | 1.24 (QCI 56) | 2.36 | met | NOT MET |
+| `nativedays` (day products) | 108 | 2.37 (QCI step 3) | 1.11 (QCI 72) | 2.37 | met | NOT MET |
+| `native5d` (day products, 7-day window) | 240 (first 108 scored) | 2.37 | 1.13 (QCI 70) | 2.37 | met | NOT MET |
+
+* `native5d`: 240 of 240 steps, finite at every sampled step (every 24th), no flag; mean P 814.45 -> 814.77 hPa, mean T 93.83 -> 93.87 (the model's T units as saved), max |U| 82-116 m/s; steps >= 2: median 1.7 s, sum 415 s; no zenith-table / products-window warning. Steps 109-239 have no real-model reference: no fidelity statement beyond day 2.
+* FSF excursions (the RXSNOW 0.05 threshold the SOCRATES session asked about): NOT detected and NOT excluded. The per-radiation-step FSF/SRVISSURF/COSZ1 of all 48 radiation steps are in `gpu_runs/native5d/native_rad_outputs.npz`; a temporal-residual statistic over lit cells has median 34 W/m2 and maximum 574 W/m2 (cloud and terminator variability at 2.5 h sampling), so it cannot resolve an isolated few W/m2 excursion. That test needs the same packet through the Fortran server and the JAX radiation (as in the SOCRATES report 13.1), not two different trajectories.
+* Regression at `93933e9` (clean worktree, XLA flags exported): main suite 3329 passed, 1 failed, 16 skipped (`test_libimf_fused::test_dq_dev_and_conv_micro_dev_bitwise_vs_cmj_libm_and_mutation`), separate-process files all passed. The failing test passes alone, with `test_jax_imf`, and paired with each of the 85 earlier test files individually; the polluting combination was not found.
