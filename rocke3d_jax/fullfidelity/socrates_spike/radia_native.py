@@ -41,17 +41,31 @@ def zenith_table(zen, itimei, n_steps):
     return tab
 
 
+class ZenithStream:
+    """zenith grids of the radiation step at `itime` on demand (host, exact rational orbit arithmetic, ~7 ms): the (3, 72, 46) of one row of
+    `zenith_table`.  Used by NativeHandoff(zen_source=...) so that no K-row table (80 kB per radiation step) is embedded in the compiled step."""
+
+    def __init__(self, zen):
+        self.zen = zen
+
+    def __call__(self, itime):
+        it = int(itime)
+        cz2, cza = ZS.calc_zenith_angle(self.zen, it, NRAD)
+        return np.stack([np.asarray(self.zen.cosz1(it)), np.asarray(cz2), np.asarray(cza)]).astype(np.float64)
+
+
 class NativeHandoff:
-    def __init__(self, radia, zen_table, itimei, log=None):
+    def __init__(self, radia, zen_table, itimei, log=None, zen_source=None):
         self.radia = radia
-        self.table = jnp.asarray(zen_table)
+        self.zen_source = zen_source                       # callable itime -> (3, 72, 46); zen_table may then be None
+        self.table = None if zen_table is None else jnp.asarray(zen_table)
         self.itimei = int(itimei)
         self.log = log
         self.aij_cols = dict(AIJ_COLS)
         self.ii, self.jj = jnp.asarray(radia.ii - 1), jnp.asarray(radia.jj - 1)
         # the day products are selected by itime // 48 and CLIPPED to the window (no exception inside a jit): a zenith table longer than the
         # window would silently reuse the last day's products, so say so now
-        if radia.day_arrays is not None:
+        if radia.day_arrays is not None and zen_table is not None:
             nd = int(radia.day_arrays["o3col"].shape[0])
             last = self.itimei + NRAD * (int(zen_table.shape[0]) - 1)
             need = last // radia.DAY_LEN - radia.day0 + 1
@@ -62,8 +76,11 @@ class NativeHandoff:
                               "steps after day %d will use the last day's products (build day_products for %d days)" % (last, need, nd, nd, need))
 
     def call(self, packet, itime, seed=None):
-        k = (jnp.asarray(itime, jnp.int32) - self.itimei) // NRAD
-        z = self.table[k]
+        if self.zen_source is not None:
+            z = jax.pure_callback(lambda it: np.asarray(self.zen_source(int(it)), dtype=np.float64),
+                                  jax.ShapeDtypeStruct((3, IM, JM), jnp.float64), jnp.asarray(itime, jnp.int32))
+        else:
+            z = self.table[(jnp.asarray(itime, jnp.int32) - self.itimei) // NRAD]
         pa = self.radia.pa_for_itime(itime)
         out = self.radia._core({n: jnp.asarray(packet[n]) for n in packet}, z[0], z[1], z[2], pa)
         res = OrderedDict((n, out[n]) for n in OUT_FIELDS)

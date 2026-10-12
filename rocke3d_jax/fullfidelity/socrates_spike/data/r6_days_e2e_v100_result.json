@@ -1,0 +1,3080 @@
+{
+ "33312": {
+  "jday": 330,
+  "fields": {
+   "T": {
+    "maxabs": 5.322590368450619e-09,
+    "bitwise_frac": 0.40990536277602524
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.1186784831807017e-10,
+    "bitwise_frac": 0.5466030622451334
+   },
+   "TRHR": {
+    "maxabs": 4.299681677366607e-08,
+    "bitwise_frac": 0.015442025082711395
+   },
+   "RQT": {
+    "maxabs": 1.0698613550630398e-08,
+    "bitwise_frac": 0.06813880126182965
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0857093002414331e-10,
+    "bitwise_frac": 0.4960567823343849
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 5.857120344288091e-14,
+    "bitwise_frac": 0.7439887837364179
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5769716088328076
+   },
+   "SRVISSURF": {
+    "maxabs": 1.750777300912887e-11,
+    "bitwise_frac": 0.4854889589905363
+   },
+   "FSRDIF": {
+    "maxabs": 1.517719283583574e-11,
+    "bitwise_frac": 0.4861198738170347
+   },
+   "DIRVIS": {
+    "maxabs": 7.673861546209082e-12,
+    "bitwise_frac": 0.47318611987381703
+   },
+   "DIRNIR": {
+    "maxabs": 7.673861546209082e-11,
+    "bitwise_frac": 0.46529968454258674
+   },
+   "DIFNIR": {
+    "maxabs": 3.1320723792305216e-11,
+    "bitwise_frac": 0.47981072555205045
+   },
+   "SRDN": {
+    "maxabs": 1.0822986951097846e-10,
+    "bitwise_frac": 0.49968454258675077
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "33362": {
+  "jday": 331,
+  "fields": {
+   "T": {
+    "maxabs": 4.848061507800594e-09,
+    "bitwise_frac": 0.4131703470031546
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 6.59383658785373e-11,
+    "bitwise_frac": 0.5451257982611372
+   },
+   "TRHR": {
+    "maxabs": 1.319963871537766e-08,
+    "bitwise_frac": 0.015357390166961606
+   },
+   "RQT": {
+    "maxabs": 8.563176834286423e-09,
+    "bitwise_frac": 0.06435331230283911
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.2437340046744794e-10,
+    "bitwise_frac": 0.49242902208201894
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 7.732703366514215e-14,
+    "bitwise_frac": 0.7440588853838065
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5694006309148265
+   },
+   "SRVISSURF": {
+    "maxabs": 7.617018127348274e-12,
+    "bitwise_frac": 0.4801261829652997
+   },
+   "FSRDIF": {
+    "maxabs": 3.183231456205249e-12,
+    "bitwise_frac": 0.4908517350157729
+   },
+   "DIRVIS": {
+    "maxabs": 5.002220859751105e-12,
+    "bitwise_frac": 0.4694006309148265
+   },
+   "DIRNIR": {
+    "maxabs": 2.0520474208751693e-11,
+    "bitwise_frac": 0.465615141955836
+   },
+   "DIFNIR": {
+    "maxabs": 2.0463630789890885e-11,
+    "bitwise_frac": 0.48580441640378547
+   },
+   "SRDN": {
+    "maxabs": 4.0472514228895307e-11,
+    "bitwise_frac": 0.49621451104100944
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "33552": {
+  "jday": 335,
+  "fields": {
+   "T": {
+    "maxabs": 5.717367912438931e-09,
+    "bitwise_frac": 0.4144006309148265
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 7.66249286243692e-11,
+    "bitwise_frac": 0.5442178964376394
+   },
+   "TRHR": {
+    "maxabs": 2.693880674087268e-08,
+    "bitwise_frac": 0.01601138724320997
+   },
+   "RQT": {
+    "maxabs": 3.848242613457842e-09,
+    "bitwise_frac": 0.07076761303890641
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0606981959426776e-10,
+    "bitwise_frac": 0.4839905362776025
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 9.980904991380157e-14,
+    "bitwise_frac": 0.7434630213810025
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5602523659305993
+   },
+   "SRVISSURF": {
+    "maxabs": 7.844391802791506e-12,
+    "bitwise_frac": 0.47728706624605677
+   },
+   "FSRDIF": {
+    "maxabs": 4.433786671143025e-12,
+    "bitwise_frac": 0.4788643533123028
+   },
+   "DIRVIS": {
+    "maxabs": 5.4001247917767614e-12,
+    "bitwise_frac": 0.4694006309148265
+   },
+   "DIRNIR": {
+    "maxabs": 1.6996182239381596e-11,
+    "bitwise_frac": 0.46782334384858043
+   },
+   "DIFNIR": {
+    "maxabs": 1.4296119843493216e-11,
+    "bitwise_frac": 0.4747634069400631
+   },
+   "SRDN": {
+    "maxabs": 2.7966962079517543e-11,
+    "bitwise_frac": 0.48706624605678234
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "34227": {
+  "jday": 349,
+  "fields": {
+   "T": {
+    "maxabs": 4.950436505168909e-09,
+    "bitwise_frac": 0.4175315457413249
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.914930519182235e-10,
+    "bitwise_frac": 0.5470570131568824
+   },
+   "TRHR": {
+    "maxabs": 1.9324772893014597e-08,
+    "bitwise_frac": 0.015072709086712318
+   },
+   "RQT": {
+    "maxabs": 2.3354516542895e-08,
+    "bitwise_frac": 0.07013669821240799
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 2.141860022675246e-10,
+    "bitwise_frac": 0.4889589905362776
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 3.7891911830456593e-13,
+    "bitwise_frac": 0.7432877672625307
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5555205047318612
+   },
+   "SRVISSURF": {
+    "maxabs": 3.26281224261038e-11,
+    "bitwise_frac": 0.4804416403785489
+   },
+   "FSRDIF": {
+    "maxabs": 1.3585577107733116e-11,
+    "bitwise_frac": 0.48454258675078865
+   },
+   "DIRVIS": {
+    "maxabs": 2.5011104298755527e-11,
+    "bitwise_frac": 0.47350157728706627
+   },
+   "DIRNIR": {
+    "maxabs": 1.432454155292362e-10,
+    "bitwise_frac": 0.4665615141955836
+   },
+   "DIFNIR": {
+    "maxabs": 7.042899596854113e-11,
+    "bitwise_frac": 0.47791798107255523
+   },
+   "SRDN": {
+    "maxabs": 2.141860022675246e-10,
+    "bitwise_frac": 0.4927444794952681
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "34992": {
+  "jday": 365,
+  "fields": {
+   "T": {
+    "maxabs": 5.420304205472348e-09,
+    "bitwise_frac": 0.41818611987381704
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 8.895995051716454e-10,
+    "bitwise_frac": 0.5443333076863892
+   },
+   "TRHR": {
+    "maxabs": 2.639444574015215e-08,
+    "bitwise_frac": 0.015342002000461645
+   },
+   "RQT": {
+    "maxabs": 1.0554600748946541e-08,
+    "bitwise_frac": 0.06372239747634069
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 7.124754120013677e-10,
+    "bitwise_frac": 0.48517350157728706
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.858616121592661e-13,
+    "bitwise_frac": 0.7434630213810025
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5599369085173501
+   },
+   "SRVISSURF": {
+    "maxabs": 1.6484591469634324e-11,
+    "bitwise_frac": 0.48201892744479496
+   },
+   "FSRDIF": {
+    "maxabs": 1.057287590811029e-11,
+    "bitwise_frac": 0.48769716088328074
+   },
+   "DIRVIS": {
+    "maxabs": 1.1027623258996755e-11,
+    "bitwise_frac": 0.46529968454258674
+   },
+   "DIRNIR": {
+    "maxabs": 3.101092715951381e-10,
+    "bitwise_frac": 0.4697160883280757
+   },
+   "DIFNIR": {
+    "maxabs": 4.027072009193944e-10,
+    "bitwise_frac": 0.47634069400630913
+   },
+   "SRDN": {
+    "maxabs": 7.124754120013677e-10,
+    "bitwise_frac": 0.48832807570977915
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "35042": {
+  "jday": 1,
+  "fields": {
+   "T": {
+    "maxabs": 5.296271865518065e-09,
+    "bitwise_frac": 0.4171214511041009
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 4.944240572513081e-10,
+    "bitwise_frac": 0.5461798876663846
+   },
+   "TRHR": {
+    "maxabs": 1.898521873044956e-08,
+    "bitwise_frac": 0.015057320920212357
+   },
+   "RQT": {
+    "maxabs": 4.6986770030343905e-09,
+    "bitwise_frac": 0.06982124079915877
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 5.281890480546281e-10,
+    "bitwise_frac": 0.49534700315457414
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 1.138603100692137e-13,
+    "bitwise_frac": 0.7438485804416404
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5760252365930599
+   },
+   "SRVISSURF": {
+    "maxabs": 1.3079670679871924e-10,
+    "bitwise_frac": 0.47728706624605677
+   },
+   "FSRDIF": {
+    "maxabs": 8.080291991063859e-11,
+    "bitwise_frac": 0.483596214511041
+   },
+   "DIRVIS": {
+    "maxabs": 4.999378688808065e-11,
+    "bitwise_frac": 0.4722397476340694
+   },
+   "DIRNIR": {
+    "maxabs": 1.319193643212202e-10,
+    "bitwise_frac": 0.46593059936908515
+   },
+   "DIFNIR": {
+    "maxabs": 2.654019226611126e-10,
+    "bitwise_frac": 0.48201892744479496
+   },
+   "SRDN": {
+    "maxabs": 5.281890480546281e-10,
+    "bitwise_frac": 0.4981072555205047
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "35712": {
+  "jday": 15,
+  "fields": {
+   "T": {
+    "maxabs": 8.21887624624651e-09,
+    "bitwise_frac": 0.4164353312302839
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.4215296434704214e-10,
+    "bitwise_frac": 0.5464337924136339
+   },
+   "TRHR": {
+    "maxabs": 2.0661957478296245e-08,
+    "bitwise_frac": 0.01498807417096253
+   },
+   "RQT": {
+    "maxabs": 4.7599542085663415e-09,
+    "bitwise_frac": 0.06487907465825447
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.5791101759532467e-10,
+    "bitwise_frac": 0.49873817034700313
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.0045076709607201e-13,
+    "bitwise_frac": 0.7426568524360323
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5624605678233439
+   },
+   "SRVISSURF": {
+    "maxabs": 3.0468072509393096e-11,
+    "bitwise_frac": 0.4842271293375394
+   },
+   "FSRDIF": {
+    "maxabs": 6.849631972727366e-12,
+    "bitwise_frac": 0.4861198738170347
+   },
+   "DIRVIS": {
+    "maxabs": 2.3646862246096134e-11,
+    "bitwise_frac": 0.47129337539432176
+   },
+   "DIRNIR": {
+    "maxabs": 6.966160981392022e-11,
+    "bitwise_frac": 0.4665615141955836
+   },
+   "DIFNIR": {
+    "maxabs": 8.830625120026525e-11,
+    "bitwise_frac": 0.48391167192429024
+   },
+   "SRDN": {
+    "maxabs": 1.5791101759532467e-10,
+    "bitwise_frac": 0.501577287066246
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "36482": {
+  "jday": 31,
+  "fields": {
+   "T": {
+    "maxabs": 6.938194019312505e-09,
+    "bitwise_frac": 0.41574132492113564
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 6.536993168992922e-11,
+    "bitwise_frac": 0.5434946526121412
+   },
+   "TRHR": {
+    "maxabs": 1.608614752512949e-08,
+    "bitwise_frac": 0.01498807417096253
+   },
+   "RQT": {
+    "maxabs": 5.78904746362241e-09,
+    "bitwise_frac": 0.07139852786540483
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1471001926111057e-10,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 6.164513344231182e-14,
+    "bitwise_frac": 0.7403434980722047
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5586750788643533
+   },
+   "SRVISSURF": {
+    "maxabs": 1.2391865311656147e-11,
+    "bitwise_frac": 0.48391167192429024
+   },
+   "FSRDIF": {
+    "maxabs": 9.038103598868474e-12,
+    "bitwise_frac": 0.48454258675078865
+   },
+   "DIRVIS": {
+    "maxabs": 3.367972567502875e-12,
+    "bitwise_frac": 0.4709779179810726
+   },
+   "DIRNIR": {
+    "maxabs": 1.949729266925715e-11,
+    "bitwise_frac": 0.467192429022082
+   },
+   "DIFNIR": {
+    "maxabs": 2.850697455869522e-11,
+    "bitwise_frac": 0.48264984227129337
+   },
+   "SRDN": {
+    "maxabs": 5.127276381244883e-11,
+    "bitwise_frac": 0.4848580441640379
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "36532": {
+  "jday": 32,
+  "fields": {
+   "T": {
+    "maxabs": 5.472315933729988e-09,
+    "bitwise_frac": 0.41720031545741326
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.4347278920467943e-10,
+    "bitwise_frac": 0.5434330999461414
+   },
+   "TRHR": {
+    "maxabs": 2.5288812821600004e-08,
+    "bitwise_frac": 0.015434330999461414
+   },
+   "RQT": {
+    "maxabs": 3.2529214877285995e-09,
+    "bitwise_frac": 0.06572029442691903
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.2232703738845885e-10,
+    "bitwise_frac": 0.48730283911671923
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 3.852473895449293e-14,
+    "bitwise_frac": 0.7409043112513144
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5624605678233439
+   },
+   "SRVISSURF": {
+    "maxabs": 8.753886504564434e-12,
+    "bitwise_frac": 0.47791798107255523
+   },
+   "FSRDIF": {
+    "maxabs": 6.707523425575346e-12,
+    "bitwise_frac": 0.4810725552050473
+   },
+   "DIRVIS": {
+    "maxabs": 6.366462912410498e-12,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "DIRNIR": {
+    "maxabs": 5.9685589803848416e-12,
+    "bitwise_frac": 0.4618296529968454
+   },
+   "DIFNIR": {
+    "maxabs": 2.1117330106790178e-11,
+    "bitwise_frac": 0.47791798107255523
+   },
+   "SRDN": {
+    "maxabs": 3.319655661471188e-11,
+    "bitwise_frac": 0.49116719242902207
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "37152": {
+  "jday": 45,
+  "fields": {
+   "T": {
+    "maxabs": 1.1527788501553005e-08,
+    "bitwise_frac": 0.41384069400630913
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.283524397877045e-10,
+    "bitwise_frac": 0.5406093713933985
+   },
+   "TRHR": {
+    "maxabs": 2.7369139843358425e-08,
+    "bitwise_frac": 0.01519581441871201
+   },
+   "RQT": {
+    "maxabs": 4.739945325127337e-09,
+    "bitwise_frac": 0.0655099894847529
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1868905858136714e-10,
+    "bitwise_frac": 0.4754731861198738
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 4.360400929215302e-14,
+    "bitwise_frac": 0.741254819488258
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5640378548895899
+   },
+   "SRVISSURF": {
+    "maxabs": 2.3590018827235326e-11,
+    "bitwise_frac": 0.4782334384858044
+   },
+   "FSRDIF": {
+    "maxabs": 1.517719283583574e-11,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "DIRVIS": {
+    "maxabs": 1.000444171950221e-11,
+    "bitwise_frac": 0.461198738170347
+   },
+   "DIRNIR": {
+    "maxabs": 6.969003152335063e-11,
+    "bitwise_frac": 0.45362776025236595
+   },
+   "DIFNIR": {
+    "maxabs": 4.5560000216937624e-11,
+    "bitwise_frac": 0.4747634069400631
+   },
+   "SRDN": {
+    "maxabs": 1.0618350643198937e-10,
+    "bitwise_frac": 0.4769716088328076
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "37827": {
+  "jday": 59,
+  "fields": {
+   "T": {
+    "maxabs": 4.479431936488254e-09,
+    "bitwise_frac": 0.40878548895899053
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.0063453121110797e-09,
+    "bitwise_frac": 0.5355312764484111
+   },
+   "TRHR": {
+    "maxabs": 2.6184636681136908e-08,
+    "bitwise_frac": 0.015357390166961606
+   },
+   "RQT": {
+    "maxabs": 1.0691337593016215e-08,
+    "bitwise_frac": 0.06855941114616193
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.7358843251713552e-09,
+    "bitwise_frac": 0.4753943217665615
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 4.075073611886637e-13,
+    "bitwise_frac": 0.7393971258324571
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.544794952681388
+   },
+   "SRVISSURF": {
+    "maxabs": 4.2928149923682213e-10,
+    "bitwise_frac": 0.46529968454258674
+   },
+   "FSRDIF": {
+    "maxabs": 1.5691625776526053e-10,
+    "bitwise_frac": 0.4728706624605678
+   },
+   "DIRVIS": {
+    "maxabs": 2.723368197621312e-10,
+    "bitwise_frac": 0.4618296529968454
+   },
+   "DIRNIR": {
+    "maxabs": 7.071037089190213e-10,
+    "bitwise_frac": 0.45078864353312303
+   },
+   "DIFNIR": {
+    "maxabs": 5.995559604343725e-10,
+    "bitwise_frac": 0.46813880126182966
+   },
+   "SRDN": {
+    "maxabs": 1.7358843251713552e-09,
+    "bitwise_frac": 0.4782334384858044
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "37872": {
+  "jday": 60,
+  "fields": {
+   "T": {
+    "maxabs": 6.264997409743955e-09,
+    "bitwise_frac": 0.40668769716088327
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.4564315026509576e-09,
+    "bitwise_frac": 0.5383165345849042
+   },
+   "TRHR": {
+    "maxabs": 2.8653602157646674e-08,
+    "bitwise_frac": 0.014703393090713241
+   },
+   "RQT": {
+    "maxabs": 1.0352087542742083e-07,
+    "bitwise_frac": 0.07076761303890641
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.7239472072105855e-09,
+    "bitwise_frac": 0.47421135646687695
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.0339285811132868e-13,
+    "bitwise_frac": 0.7379950928846828
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.5593059936908518
+   },
+   "SRVISSURF": {
+    "maxabs": 6.821210263296962e-12,
+    "bitwise_frac": 0.4668769716088328
+   },
+   "FSRDIF": {
+    "maxabs": 2.2168933355715126e-12,
+    "bitwise_frac": 0.47129337539432176
+   },
+   "DIRVIS": {
+    "maxabs": 4.888534022029489e-12,
+    "bitwise_frac": 0.455205047318612
+   },
+   "DIRNIR": {
+    "maxabs": 5.911573452976882e-10,
+    "bitwise_frac": 0.45993690851735014
+   },
+   "DIFNIR": {
+    "maxabs": 1.1328040727676125e-09,
+    "bitwise_frac": 0.47665615141955836
+   },
+   "SRDN": {
+    "maxabs": 1.7239472072105855e-09,
+    "bitwise_frac": 0.4753943217665615
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "38547": {
+  "jday": 74,
+  "fields": {
+   "T": {
+    "maxabs": 1.151903461504844e-08,
+    "bitwise_frac": 0.4001656151419558
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 8.36735125631094e-11,
+    "bitwise_frac": 0.5305608986689236
+   },
+   "TRHR": {
+    "maxabs": 1.958667894541577e-08,
+    "bitwise_frac": 0.01428791259521428
+   },
+   "RQT": {
+    "maxabs": 9.436490699954447e-09,
+    "bitwise_frac": 0.06593059936908517
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1254996934439987e-10,
+    "bitwise_frac": 0.4738958990536278
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 8.915090887740007e-14,
+    "bitwise_frac": 0.7369085173501577
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5634069400630914
+   },
+   "SRVISSURF": {
+    "maxabs": 1.5575096767861396e-11,
+    "bitwise_frac": 0.46466876971608834
+   },
+   "FSRDIF": {
+    "maxabs": 4.433786671143025e-12,
+    "bitwise_frac": 0.4697160883280757
+   },
+   "DIRVIS": {
+    "maxabs": 1.1141310096718371e-11,
+    "bitwise_frac": 0.46025236593059937
+   },
+   "DIRNIR": {
+    "maxabs": 3.4219738154206425e-11,
+    "bitwise_frac": 0.44763406940063094
+   },
+   "DIFNIR": {
+    "maxabs": 1.1539214028744027e-11,
+    "bitwise_frac": 0.45993690851735014
+   },
+   "SRDN": {
+    "maxabs": 6.139089236967266e-11,
+    "bitwise_frac": 0.477602523659306
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "39312": {
+  "jday": 90,
+  "fields": {
+   "T": {
+    "maxabs": 5.48445200365677e-09,
+    "bitwise_frac": 0.3969242902208202
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.4301698431372643e-09,
+    "bitwise_frac": 0.5348388089559128
+   },
+   "TRHR": {
+    "maxabs": 2.6706629796535708e-08,
+    "bitwise_frac": 0.014826498422712935
+   },
+   "RQT": {
+    "maxabs": 8.626187764093629e-09,
+    "bitwise_frac": 0.06593059936908517
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1470660865597893e-08,
+    "bitwise_frac": 0.47460567823343847
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.338096383169841e-11,
+    "bitwise_frac": 0.7401331931300386
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.555205047318612
+   },
+   "SRVISSURF": {
+    "maxabs": 1.1472081951069413e-08,
+    "bitwise_frac": 0.46593059936908515
+   },
+   "FSRDIF": {
+    "maxabs": 1.136771743404097e-08,
+    "bitwise_frac": 0.47350157728706627
+   },
+   "DIRVIS": {
+    "maxabs": 1.0434320074637071e-10,
+    "bitwise_frac": 0.4570977917981073
+   },
+   "DIRNIR": {
+    "maxabs": 4.487787919060793e-11,
+    "bitwise_frac": 0.45488958990536277
+   },
+   "DIFNIR": {
+    "maxabs": 3.601030584832188e-11,
+    "bitwise_frac": 0.47634069400630913
+   },
+   "SRDN": {
+    "maxabs": 1.1470660865597893e-08,
+    "bitwise_frac": 0.47634069400630913
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "39362": {
+  "jday": 91,
+  "fields": {
+   "T": {
+    "maxabs": 5.562469596043229e-09,
+    "bitwise_frac": 0.3935488958990536
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.4257360564661212e-09,
+    "bitwise_frac": 0.5329614526429176
+   },
+   "TRHR": {
+    "maxabs": 2.7086429099654197e-08,
+    "bitwise_frac": 0.013949372932215126
+   },
+   "RQT": {
+    "maxabs": 3.3108733532571932e-09,
+    "bitwise_frac": 0.07024185068349106
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1288193491054699e-08,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.3342772159651304e-11,
+    "bitwise_frac": 0.7370136698212408
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.538801261829653
+   },
+   "SRVISSURF": {
+    "maxabs": 1.1289444046269637e-08,
+    "bitwise_frac": 0.4589905362776025
+   },
+   "FSRDIF": {
+    "maxabs": 1.1175416148034856e-08,
+    "bitwise_frac": 0.4630914826498423
+   },
+   "DIRVIS": {
+    "maxabs": 1.1406831035287723e-10,
+    "bitwise_frac": 0.4523659305993691
+   },
+   "DIRNIR": {
+    "maxabs": 3.367972567502875e-11,
+    "bitwise_frac": 0.4526813880126183
+   },
+   "DIFNIR": {
+    "maxabs": 2.4300561562995426e-11,
+    "bitwise_frac": 0.467192429022082
+   },
+   "SRDN": {
+    "maxabs": 1.1288193491054699e-08,
+    "bitwise_frac": 0.47192429022082016
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "40032": {
+  "jday": 105,
+  "fields": {
+   "T": {
+    "maxabs": 4.712092049885541e-09,
+    "bitwise_frac": 0.3947476340694006
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.359229256398976e-09,
+    "bitwise_frac": 0.5356543817804109
+   },
+   "TRHR": {
+    "maxabs": 1.5462489955098135e-08,
+    "bitwise_frac": 0.014457182426713858
+   },
+   "RQT": {
+    "maxabs": 4.702570777226356e-09,
+    "bitwise_frac": 0.07192429022082018
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0300936992280185e-08,
+    "bitwise_frac": 0.4736593059936908
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.309408220213527e-11,
+    "bitwise_frac": 0.7375394321766562
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5599369085173501
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0302244390913984e-08,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "FSRDIF": {
+    "maxabs": 1.005923877528403e-08,
+    "bitwise_frac": 0.47634069400630913
+   },
+   "DIRVIS": {
+    "maxabs": 2.4301627377099067e-10,
+    "bitwise_frac": 0.4605678233438486
+   },
+   "DIRNIR": {
+    "maxabs": 7.5203843152849e-11,
+    "bitwise_frac": 0.45488958990536277
+   },
+   "DIFNIR": {
+    "maxabs": 2.9956481739645824e-11,
+    "bitwise_frac": 0.4757097791798107
+   },
+   "SRDN": {
+    "maxabs": 1.0300936992280185e-08,
+    "bitwise_frac": 0.4753943217665615
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "40752": {
+  "jday": 120,
+  "fields": {
+   "T": {
+    "maxabs": 6.167027777337353e-09,
+    "bitwise_frac": 0.38819400630914824
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.3021584638627246e-09,
+    "bitwise_frac": 0.5389320612449027
+   },
+   "TRHR": {
+    "maxabs": 1.1205318628526584e-07,
+    "bitwise_frac": 0.014511041009463722
+   },
+   "RQT": {
+    "maxabs": 7.1586612193641486e-09,
+    "bitwise_frac": 0.06708727655099894
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0348230716772377e-08,
+    "bitwise_frac": 0.48454258675078865
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.301159263140562e-11,
+    "bitwise_frac": 0.7392569225376796
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.549211356466877
+   },
+   "SRVISSURF": {
+    "maxabs": 1.034976548908162e-08,
+    "bitwise_frac": 0.4728706624605678
+   },
+   "FSRDIF": {
+    "maxabs": 9.939924439095194e-09,
+    "bitwise_frac": 0.4848580441640379
+   },
+   "DIRVIS": {
+    "maxabs": 4.09908551546323e-10,
+    "bitwise_frac": 0.46214511041009465
+   },
+   "DIRNIR": {
+    "maxabs": 6.079403647163417e-11,
+    "bitwise_frac": 0.45362776025236595
+   },
+   "DIFNIR": {
+    "maxabs": 1.4168222151056398e-10,
+    "bitwise_frac": 0.47728706624605677
+   },
+   "SRDN": {
+    "maxabs": 1.0348230716772377e-08,
+    "bitwise_frac": 0.48706624605678234
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "40802": {
+  "jday": 121,
+  "fields": {
+   "T": {
+    "maxabs": 5.837108574269223e-09,
+    "bitwise_frac": 0.38647476340694004
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.2995436665951274e-09,
+    "bitwise_frac": 0.5390090020774024
+   },
+   "TRHR": {
+    "maxabs": 2.8423784215192427e-08,
+    "bitwise_frac": 0.014103254597214742
+   },
+   "RQT": {
+    "maxabs": 4.657493946069735e-09,
+    "bitwise_frac": 0.06803364879074658
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0364260560891125e-08,
+    "bitwise_frac": 0.4813091482649842
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.300359902562832e-11,
+    "bitwise_frac": 0.7415001752541185
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5523659305993691
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0365624802943785e-08,
+    "bitwise_frac": 0.47350157728706627
+   },
+   "FSRDIF": {
+    "maxabs": 9.942993983713677e-09,
+    "bitwise_frac": 0.47318611987381703
+   },
+   "DIRVIS": {
+    "maxabs": 4.226272665164288e-10,
+    "bitwise_frac": 0.46214511041009465
+   },
+   "DIRNIR": {
+    "maxabs": 2.4073187887552194e-11,
+    "bitwise_frac": 0.4558359621451104
+   },
+   "DIFNIR": {
+    "maxabs": 1.935518412210513e-11,
+    "bitwise_frac": 0.4842271293375394
+   },
+   "SRDN": {
+    "maxabs": 1.0364260560891125e-08,
+    "bitwise_frac": 0.4832807570977918
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "41472": {
+  "jday": 135,
+  "fields": {
+   "T": {
+    "maxabs": 5.8819580317504006e-09,
+    "bitwise_frac": 0.38434542586750786
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.2477024685940705e-09,
+    "bitwise_frac": 0.5435792875278911
+   },
+   "TRHR": {
+    "maxabs": 2.864217663045565e-08,
+    "bitwise_frac": 0.014364853427714088
+   },
+   "RQT": {
+    "maxabs": 7.181199634942459e-09,
+    "bitwise_frac": 0.06624605678233439
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0630060387484264e-08,
+    "bitwise_frac": 0.4824132492113565
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.291722367431248e-11,
+    "bitwise_frac": 0.7426919032597266
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5542586750788644
+   },
+   "SRVISSURF": {
+    "maxabs": 1.063119725586148e-08,
+    "bitwise_frac": 0.47854889589905364
+   },
+   "FSRDIF": {
+    "maxabs": 1.0020244189945515e-08,
+    "bitwise_frac": 0.483596214511041
+   },
+   "DIRVIS": {
+    "maxabs": 6.108678007876733e-10,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "DIRNIR": {
+    "maxabs": 1.9522872207744513e-10,
+    "bitwise_frac": 0.4615141955835962
+   },
+   "DIFNIR": {
+    "maxabs": 1.673186034167884e-10,
+    "bitwise_frac": 0.4861198738170347
+   },
+   "SRDN": {
+    "maxabs": 1.0630060387484264e-08,
+    "bitwise_frac": 0.48233438485804414
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "42242": {
+  "jday": 151,
+  "fields": {
+   "T": {
+    "maxabs": 7.989228834048845e-09,
+    "bitwise_frac": 0.3759858044164038
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.188698999816552e-09,
+    "bitwise_frac": 0.5467415557436331
+   },
+   "TRHR": {
+    "maxabs": 1.852291120485461e-08,
+    "bitwise_frac": 0.013895514349465262
+   },
+   "RQT": {
+    "maxabs": 1.1458411108833388e-08,
+    "bitwise_frac": 0.06614090431125132
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0849930731637869e-08,
+    "bitwise_frac": 0.48785488958990536
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.2799984122912065e-11,
+    "bitwise_frac": 0.7435681738520855
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5719242902208201
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0851749721041415e-08,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "FSRDIF": {
+    "maxabs": 1.005508920570719e-08,
+    "bitwise_frac": 0.4854889589905363
+   },
+   "DIRVIS": {
+    "maxabs": 7.966818316162971e-10,
+    "bitwise_frac": 0.47318611987381703
+   },
+   "DIRNIR": {
+    "maxabs": 3.950617610826157e-11,
+    "bitwise_frac": 0.46403785488958993
+   },
+   "DIFNIR": {
+    "maxabs": 5.1102233555866405e-11,
+    "bitwise_frac": 0.4829652996845426
+   },
+   "SRDN": {
+    "maxabs": 1.0849930731637869e-08,
+    "bitwise_frac": 0.48990536277602525
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "42292": {
+  "jday": 152,
+  "fields": {
+   "T": {
+    "maxabs": 2.6119835183635587e-09,
+    "bitwise_frac": 0.37736593059936907
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.1855157683603466e-09,
+    "bitwise_frac": 0.5436946987766408
+   },
+   "TRHR": {
+    "maxabs": 2.106821739289444e-08,
+    "bitwise_frac": 0.014334077094714164
+   },
+   "RQT": {
+    "maxabs": 4.168811074123369e-09,
+    "bitwise_frac": 0.07034700315457414
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0860617294383701e-08,
+    "bitwise_frac": 0.49022082018927443
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.279054722720275e-11,
+    "bitwise_frac": 0.7447949526813881
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.559621451104101
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0862493127206108e-08,
+    "bitwise_frac": 0.4753943217665615
+   },
+   "FSRDIF": {
+    "maxabs": 1.0056567134597572e-08,
+    "bitwise_frac": 0.48170347003154573
+   },
+   "DIRVIS": {
+    "maxabs": 8.058691491896752e-10,
+    "bitwise_frac": 0.47791798107255523
+   },
+   "DIRNIR": {
+    "maxabs": 1.2948930816492066e-10,
+    "bitwise_frac": 0.4662460567823344
+   },
+   "DIFNIR": {
+    "maxabs": 6.505729288619477e-11,
+    "bitwise_frac": 0.47917981072555205
+   },
+   "SRDN": {
+    "maxabs": 1.0860617294383701e-08,
+    "bitwise_frac": 0.4914826498422713
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "42962": {
+  "jday": 166,
+  "fields": {
+   "T": {
+    "maxabs": 6.051834589015925e-09,
+    "bitwise_frac": 0.3746372239747634
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.149022293451708e-09,
+    "bitwise_frac": 0.5456566900053859
+   },
+   "TRHR": {
+    "maxabs": 2.946944732684642e-08,
+    "bitwise_frac": 0.01448795875971378
+   },
+   "RQT": {
+    "maxabs": 1.0846775921891094e-08,
+    "bitwise_frac": 0.07108307045215563
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0960320651065558e-08,
+    "bitwise_frac": 0.4908517350157729
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.265854170957482e-11,
+    "bitwise_frac": 0.7441640378548896
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5602523659305993
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0962082797050243e-08,
+    "bitwise_frac": 0.48264984227129337
+   },
+   "FSRDIF": {
+    "maxabs": 1.006554839477758e-08,
+    "bitwise_frac": 0.4886435331230284
+   },
+   "DIRVIS": {
+    "maxabs": 8.965272968453064e-10,
+    "bitwise_frac": 0.4694006309148265
+   },
+   "DIRNIR": {
+    "maxabs": 2.0122570276726037e-11,
+    "bitwise_frac": 0.46466876971608834
+   },
+   "DIFNIR": {
+    "maxabs": 2.2879476091475226e-11,
+    "bitwise_frac": 0.4892744479495268
+   },
+   "SRDN": {
+    "maxabs": 1.0960320651065558e-08,
+    "bitwise_frac": 0.4952681388012618
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "43682": {
+  "jday": 181,
+  "fields": {
+   "T": {
+    "maxabs": 6.2377125686907675e-09,
+    "bitwise_frac": 0.3758675078864353
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.148681232938543e-09,
+    "bitwise_frac": 0.5462491344156344
+   },
+   "TRHR": {
+    "maxabs": 3.0374508241948206e-08,
+    "bitwise_frac": 0.01458798184196353
+   },
+   "RQT": {
+    "maxabs": 8.609447377239121e-09,
+    "bitwise_frac": 0.06740273396424816
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0944518180622254e-08,
+    "bitwise_frac": 0.49029968454258677
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.2515878050910487e-11,
+    "bitwise_frac": 0.7439887837364179
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5529968454258675
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0946166639769217e-08,
+    "bitwise_frac": 0.48201892744479496
+   },
+   "FSRDIF": {
+    "maxabs": 1.0052531251858454e-08,
+    "bitwise_frac": 0.4861198738170347
+   },
+   "DIRVIS": {
+    "maxabs": 8.936353879107628e-10,
+    "bitwise_frac": 0.47350157728706627
+   },
+   "DIRNIR": {
+    "maxabs": 1.4364331946126185e-10,
+    "bitwise_frac": 0.47066246056782335
+   },
+   "DIFNIR": {
+    "maxabs": 6.360778570524417e-11,
+    "bitwise_frac": 0.48580441640378547
+   },
+   "SRDN": {
+    "maxabs": 1.0944518180622254e-08,
+    "bitwise_frac": 0.494006309148265
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "43732": {
+  "jday": 182,
+  "fields": {
+   "T": {
+    "maxabs": 4.087382876605261e-09,
+    "bitwise_frac": 0.37308359621451104
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.149022293451708e-09,
+    "bitwise_frac": 0.546418404247134
+   },
+   "TRHR": {
+    "maxabs": 1.9903552583855344e-08,
+    "bitwise_frac": 0.01397245518196507
+   },
+   "RQT": {
+    "maxabs": 1.0958160601148847e-08,
+    "bitwise_frac": 0.06898002103049422
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0938720151898451e-08,
+    "bitwise_frac": 0.49037854889589905
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.2507329333620874e-11,
+    "bitwise_frac": 0.7454258675078864
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5542586750788644
+   },
+   "SRVISSURF": {
+    "maxabs": 1.094076651497744e-08,
+    "bitwise_frac": 0.48170347003154573
+   },
+   "FSRDIF": {
+    "maxabs": 1.0050939636130352e-08,
+    "bitwise_frac": 0.48706624605678234
+   },
+   "DIRVIS": {
+    "maxabs": 8.898126679923735e-10,
+    "bitwise_frac": 0.46813880126182966
+   },
+   "DIRNIR": {
+    "maxabs": 5.127276381244883e-11,
+    "bitwise_frac": 0.4605678233438486
+   },
+   "DIFNIR": {
+    "maxabs": 6.201616997714154e-11,
+    "bitwise_frac": 0.4810725552050473
+   },
+   "SRDN": {
+    "maxabs": 1.0938720151898451e-08,
+    "bitwise_frac": 0.4949526813880126
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "44402": {
+  "jday": 196,
+  "fields": {
+   "T": {
+    "maxabs": 1.4642239420936676e-08,
+    "bitwise_frac": 0.37805993690851736
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.168235369026661e-09,
+    "bitwise_frac": 0.5448641994306378
+   },
+   "TRHR": {
+    "maxabs": 1.3669477993971668e-08,
+    "bitwise_frac": 0.014418712010463953
+   },
+   "RQT": {
+    "maxabs": 7.003620794421295e-09,
+    "bitwise_frac": 0.07160883280757098
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0806616046465933e-08,
+    "bitwise_frac": 0.4917981072555205
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.2369217589357504e-11,
+    "bitwise_frac": 0.7470732562215212
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.5589905362776025
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0808207662194036e-08,
+    "bitwise_frac": 0.48801261829653
+   },
+   "FSRDIF": {
+    "maxabs": 1.0013650353357662e-08,
+    "bitwise_frac": 0.48769716088328074
+   },
+   "DIRVIS": {
+    "maxabs": 7.945430979816592e-10,
+    "bitwise_frac": 0.471608832807571
+   },
+   "DIRNIR": {
+    "maxabs": 3.447553353908006e-11,
+    "bitwise_frac": 0.4608832807570978
+   },
+   "DIFNIR": {
+    "maxabs": 4.339995030022692e-11,
+    "bitwise_frac": 0.4867507886435331
+   },
+   "SRDN": {
+    "maxabs": 1.0806616046465933e-08,
+    "bitwise_frac": 0.494006309148265
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "45172": {
+  "jday": 212,
+  "fields": {
+   "T": {
+    "maxabs": 5.236699962551938e-09,
+    "bitwise_frac": 0.3800473186119874
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.2146195988170803e-09,
+    "bitwise_frac": 0.5430714780333923
+   },
+   "TRHR": {
+    "maxabs": 2.0982639625799493e-08,
+    "bitwise_frac": 0.014572593675463569
+   },
+   "RQT": {
+    "maxabs": 6.429587529055425e-09,
+    "bitwise_frac": 0.06687697160883281
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0513417691981886e-08,
+    "bitwise_frac": 0.488801261829653
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.2124635457032582e-11,
+    "bitwise_frac": 0.7459165790396074
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5599369085173501
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0515293524804292e-08,
+    "bitwise_frac": 0.49053627760252366
+   },
+   "FSRDIF": {
+    "maxabs": 9.902578312903643e-09,
+    "bitwise_frac": 0.49369085173501576
+   },
+   "DIRVIS": {
+    "maxabs": 6.127294227553648e-10,
+    "bitwise_frac": 0.4722397476340694
+   },
+   "DIRNIR": {
+    "maxabs": 2.0474999473663047e-10,
+    "bitwise_frac": 0.4558359621451104
+   },
+   "DIFNIR": {
+    "maxabs": 1.580815478519071e-10,
+    "bitwise_frac": 0.4842271293375394
+   },
+   "SRDN": {
+    "maxabs": 1.0513417691981886e-08,
+    "bitwise_frac": 0.4914826498422713
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "45217": {
+  "jday": 213,
+  "fields": {
+   "T": {
+    "maxabs": 6.103107352828374e-09,
+    "bitwise_frac": 0.38109621451104103
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.21882601181278e-09,
+    "bitwise_frac": 0.5413326152188966
+   },
+   "TRHR": {
+    "maxabs": 2.9234257681309828e-08,
+    "bitwise_frac": 0.014395629760714011
+   },
+   "RQT": {
+    "maxabs": 8.370676596314297e-09,
+    "bitwise_frac": 0.06519453207150368
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0491476132301614e-08,
+    "bitwise_frac": 0.48249211356466876
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.210820415626813e-11,
+    "bitwise_frac": 0.7418156326673677
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.5470031545741325
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0493465651961742e-08,
+    "bitwise_frac": 0.4794952681388013
+   },
+   "FSRDIF": {
+    "maxabs": 9.893710739561357e-09,
+    "bitwise_frac": 0.4807570977917981
+   },
+   "DIRVIS": {
+    "maxabs": 5.998046503918886e-10,
+    "bitwise_frac": 0.46593059936908515
+   },
+   "DIRNIR": {
+    "maxabs": 2.503952600818593e-11,
+    "bitwise_frac": 0.45993690851735014
+   },
+   "DIFNIR": {
+    "maxabs": 1.91562321560923e-11,
+    "bitwise_frac": 0.4848580441640379
+   },
+   "SRDN": {
+    "maxabs": 1.0491476132301614e-08,
+    "bitwise_frac": 0.4861198738170347
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "45892": {
+  "jday": 227,
+  "fields": {
+   "T": {
+    "maxabs": 5.077254172647372e-09,
+    "bitwise_frac": 0.38405362776025237
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.271804078191053e-09,
+    "bitwise_frac": 0.5405478187273987
+   },
+   "TRHR": {
+    "maxabs": 4.726774704977288e-08,
+    "bitwise_frac": 0.013757020850965607
+   },
+   "RQT": {
+    "maxabs": 6.423135801014723e-09,
+    "bitwise_frac": 0.06603575184016824
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.017747308651451e-08,
+    "bitwise_frac": 0.48194006309148263
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.190869707874299e-11,
+    "bitwise_frac": 0.7425166491412548
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5536277602523659
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0179292075918056e-08,
+    "bitwise_frac": 0.4804416403785489
+   },
+   "FSRDIF": {
+    "maxabs": 9.763368780113524e-09,
+    "bitwise_frac": 0.48264984227129337
+   },
+   "DIRVIS": {
+    "maxabs": 4.1590553223613824e-10,
+    "bitwise_frac": 0.4608832807570978
+   },
+   "DIRNIR": {
+    "maxabs": 8.375309334951453e-10,
+    "bitwise_frac": 0.4479495268138801
+   },
+   "DIFNIR": {
+    "maxabs": 6.764366844436154e-10,
+    "bitwise_frac": 0.4801261829652997
+   },
+   "SRDN": {
+    "maxabs": 1.017747308651451e-08,
+    "bitwise_frac": 0.4832807570977918
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "46657": {
+  "jday": 243,
+  "fields": {
+   "T": {
+    "maxabs": 5.342542408470763e-09,
+    "bitwise_frac": 0.38509463722397475
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.3189841158455238e-09,
+    "bitwise_frac": 0.5376702315919059
+   },
+   "TRHR": {
+    "maxabs": 2.0256663901818683e-08,
+    "bitwise_frac": 0.014357159344464108
+   },
+   "RQT": {
+    "maxabs": 5.151406412551296e-09,
+    "bitwise_frac": 0.06487907465825447
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 9.943278200807981e-09,
+    "bitwise_frac": 0.4796529968454259
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.1751489498456067e-11,
+    "bitwise_frac": 0.7388713634770417
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5495268138801261
+   },
+   "SRVISSURF": {
+    "maxabs": 9.94464244286064e-09,
+    "bitwise_frac": 0.4753943217665615
+   },
+   "FSRDIF": {
+    "maxabs": 9.70891278484487e-09,
+    "bitwise_frac": 0.48170347003154573
+   },
+   "DIRVIS": {
+    "maxabs": 2.3571189444737684e-10,
+    "bitwise_frac": 0.4615141955835962
+   },
+   "DIRNIR": {
+    "maxabs": 4.652633833757136e-11,
+    "bitwise_frac": 0.44952681388012616
+   },
+   "DIFNIR": {
+    "maxabs": 9.629275155020878e-11,
+    "bitwise_frac": 0.46813880126182966
+   },
+   "SRDN": {
+    "maxabs": 9.943278200807981e-09,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "46707": {
+  "jday": 244,
+  "fields": {
+   "T": {
+    "maxabs": 7.747757990728132e-09,
+    "bitwise_frac": 0.38656940063091483
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.3208031052490696e-09,
+    "bitwise_frac": 0.5365699776871585
+   },
+   "TRHR": {
+    "maxabs": 3.0790317850915017e-08,
+    "bitwise_frac": 0.013733938601215665
+   },
+   "RQT": {
+    "maxabs": 2.4509404283890035e-08,
+    "bitwise_frac": 0.06340694006309149
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 9.941004464053549e-09,
+    "bitwise_frac": 0.48162460567823345
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.1742496691956603e-11,
+    "bitwise_frac": 0.7403084472485103
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5570977917981073
+   },
+   "SRVISSURF": {
+    "maxabs": 9.942596079781651e-09,
+    "bitwise_frac": 0.471608832807571
+   },
+   "FSRDIF": {
+    "maxabs": 9.716984550323104e-09,
+    "bitwise_frac": 0.47318611987381703
+   },
+   "DIRVIS": {
+    "maxabs": 2.255884368196348e-10,
+    "bitwise_frac": 0.4624605678233438
+   },
+   "DIRNIR": {
+    "maxabs": 2.2367885321727954e-11,
+    "bitwise_frac": 0.45394321766561513
+   },
+   "DIFNIR": {
+    "maxabs": 1.907096702780109e-11,
+    "bitwise_frac": 0.47066246056782335
+   },
+   "SRDN": {
+    "maxabs": 9.941004464053549e-09,
+    "bitwise_frac": 0.4829652996845426
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "47377": {
+  "jday": 258,
+  "fields": {
+   "T": {
+    "maxabs": 7.707171789661516e-09,
+    "bitwise_frac": 0.3908123028391167
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.3599113774253055e-09,
+    "bitwise_frac": 0.5324921135646687
+   },
+   "TRHR": {
+    "maxabs": 1.7869069779408164e-08,
+    "bitwise_frac": 0.014764945756713088
+   },
+   "RQT": {
+    "maxabs": 8.741722012928221e-09,
+    "bitwise_frac": 0.06950578338590957
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.0466067124070833e-08,
+    "bitwise_frac": 0.4749211356466877
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.1781465520120946e-11,
+    "bitwise_frac": 0.7380651945320715
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.5470031545741325
+   },
+   "SRVISSURF": {
+    "maxabs": 1.0467203992448049e-08,
+    "bitwise_frac": 0.4690851735015773
+   },
+   "FSRDIF": {
+    "maxabs": 1.0380006187915569e-08,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "DIRVIS": {
+    "maxabs": 8.71898109267022e-11,
+    "bitwise_frac": 0.4523659305993691
+   },
+   "DIRNIR": {
+    "maxabs": 1.4100010048423428e-10,
+    "bitwise_frac": 0.4444794952681388
+   },
+   "DIFNIR": {
+    "maxabs": 1.4884449228702579e-10,
+    "bitwise_frac": 0.467192429022082
+   },
+   "SRDN": {
+    "maxabs": 1.0466067124070833e-08,
+    "bitwise_frac": 0.47602523659305995
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "48097": {
+  "jday": 273,
+  "fields": {
+   "T": {
+    "maxabs": 5.517222234630026e-09,
+    "bitwise_frac": 0.3969794952681388
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.3949374988442287e-10,
+    "bitwise_frac": 0.5314149419096714
+   },
+   "TRHR": {
+    "maxabs": 2.3108157165552257e-08,
+    "bitwise_frac": 0.014534123259213664
+   },
+   "RQT": {
+    "maxabs": 4.042078671773197e-09,
+    "bitwise_frac": 0.0694006309148265
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1721112969098613e-10,
+    "bitwise_frac": 0.47618296529968457
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 8.448797217397441e-14,
+    "bitwise_frac": 0.7361373992288819
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5454258675078865
+   },
+   "SRVISSURF": {
+    "maxabs": 7.895550879766233e-11,
+    "bitwise_frac": 0.46876971608832807
+   },
+   "FSRDIF": {
+    "maxabs": 5.968558980384842e-11,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "DIRVIS": {
+    "maxabs": 1.928412984852912e-11,
+    "bitwise_frac": 0.4533123028391167
+   },
+   "DIRNIR": {
+    "maxabs": 5.923084245296195e-11,
+    "bitwise_frac": 0.444794952681388
+   },
+   "DIFNIR": {
+    "maxabs": 3.4930280889966525e-11,
+    "bitwise_frac": 0.4630914826498423
+   },
+   "SRDN": {
+    "maxabs": 9.356426744488999e-11,
+    "bitwise_frac": 0.4794952681388013
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "48147": {
+  "jday": 274,
+  "fields": {
+   "T": {
+    "maxabs": 3.7147742659726646e-09,
+    "bitwise_frac": 0.3943611987381703
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.255102688446641e-10,
+    "bitwise_frac": 0.5300915595906748
+   },
+   "TRHR": {
+    "maxabs": 1.4483276800092426e-08,
+    "bitwise_frac": 0.014557205508963608
+   },
+   "RQT": {
+    "maxabs": 7.08490688339225e-09,
+    "bitwise_frac": 0.07003154574132492
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1323209037072957e-10,
+    "bitwise_frac": 0.47854889589905364
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 2.0000667788622195e-13,
+    "bitwise_frac": 0.7358219418156327
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5369085173501578
+   },
+   "SRVISSURF": {
+    "maxabs": 7.958078640513122e-12,
+    "bitwise_frac": 0.46782334384858043
+   },
+   "FSRDIF": {
+    "maxabs": 7.844391802791506e-12,
+    "bitwise_frac": 0.47791798107255523
+   },
+   "DIRVIS": {
+    "maxabs": 5.8548721426632255e-12,
+    "bitwise_frac": 0.45488958990536277
+   },
+   "DIRNIR": {
+    "maxabs": 4.5560000216937624e-11,
+    "bitwise_frac": 0.45205047318611985
+   },
+   "DIFNIR": {
+    "maxabs": 3.879563337250147e-11,
+    "bitwise_frac": 0.4605678233438486
+   },
+   "SRDN": {
+    "maxabs": 8.424194675171748e-11,
+    "bitwise_frac": 0.48201892744479496
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "48817": {
+  "jday": 288,
+  "fields": {
+   "T": {
+    "maxabs": 6.369020866259234e-09,
+    "bitwise_frac": 0.4001577287066246
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 7.23048287909478e-11,
+    "bitwise_frac": 0.5343079172116643
+   },
+   "TRHR": {
+    "maxabs": 2.7439682526164688e-08,
+    "bitwise_frac": 0.01499576825421251
+   },
+   "RQT": {
+    "maxabs": 6.4759149154269835e-09,
+    "bitwise_frac": 0.07202944269190326
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1334577720845118e-10,
+    "bitwise_frac": 0.4830441640378549
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 9.781064846947629e-14,
+    "bitwise_frac": 0.7394321766561515
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5583596214511041
+   },
+   "SRVISSURF": {
+    "maxabs": 1.48929757415317e-11,
+    "bitwise_frac": 0.467192429022082
+   },
+   "FSRDIF": {
+    "maxabs": 9.833911462919787e-12,
+    "bitwise_frac": 0.4788643533123028
+   },
+   "DIRVIS": {
+    "maxabs": 1.1198153515579179e-11,
+    "bitwise_frac": 0.4608832807570978
+   },
+   "DIRNIR": {
+    "maxabs": 9.29389898374211e-12,
+    "bitwise_frac": 0.455205047318612
+   },
+   "DIFNIR": {
+    "maxabs": 3.100808498857077e-11,
+    "bitwise_frac": 0.46876971608832807
+   },
+   "SRDN": {
+    "maxabs": 5.377387424232438e-11,
+    "bitwise_frac": 0.4867507886435331
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "49587": {
+  "jday": 304,
+  "fields": {
+   "T": {
+    "maxabs": 5.943661562923808e-09,
+    "bitwise_frac": 0.4080283911671924
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 1.2789769243681803e-10,
+    "bitwise_frac": 0.5379626067554051
+   },
+   "TRHR": {
+    "maxabs": 2.8942849894519895e-08,
+    "bitwise_frac": 0.015111179502962223
+   },
+   "RQT": {
+    "maxabs": 6.047287115507061e-09,
+    "bitwise_frac": 0.06698212407991588
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.2391865311656147e-10,
+    "bitwise_frac": 0.48391167192429024
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 1.4828416272649747e-13,
+    "bitwise_frac": 0.7407991587802313
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5495268138801261
+   },
+   "SRVISSURF": {
+    "maxabs": 1.6370904631912708e-11,
+    "bitwise_frac": 0.47192429022082016
+   },
+   "FSRDIF": {
+    "maxabs": 5.4427573559223674e-12,
+    "bitwise_frac": 0.4801261829652997
+   },
+   "DIRVIS": {
+    "maxabs": 1.2221335055073723e-11,
+    "bitwise_frac": 0.4605678233438486
+   },
+   "DIRNIR": {
+    "maxabs": 8.071765478234738e-12,
+    "bitwise_frac": 0.4608832807570978
+   },
+   "DIFNIR": {
+    "maxabs": 1.4296119843493216e-11,
+    "bitwise_frac": 0.46845425867507884
+   },
+   "SRDN": {
+    "maxabs": 2.319211489520967e-11,
+    "bitwise_frac": 0.48738170347003157
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "49632": {
+  "jday": 305,
+  "fields": {
+   "T": {
+    "maxabs": 4.70288341603009e-09,
+    "bitwise_frac": 0.40365141955835965
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 7.321432349272072e-11,
+    "bitwise_frac": 0.5402939139801493
+   },
+   "TRHR": {
+    "maxabs": 1.5050233059810125e-08,
+    "bitwise_frac": 0.014980380087712549
+   },
+   "RQT": {
+    "maxabs": 2.8070417101844214e-09,
+    "bitwise_frac": 0.06950578338590957
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1596057447604835e-10,
+    "bitwise_frac": 0.4829652996845426
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 9.783840404509192e-14,
+    "bitwise_frac": 0.7413249211356467
+   },
+   "FSRDIR": {
+    "maxabs": 4.440892098500626e-16,
+    "bitwise_frac": 0.5548895899053627
+   },
+   "SRVISSURF": {
+    "maxabs": 6.707523425575346e-12,
+    "bitwise_frac": 0.4728706624605678
+   },
+   "FSRDIF": {
+    "maxabs": 3.637978807091713e-12,
+    "bitwise_frac": 0.4801261829652997
+   },
+   "DIRVIS": {
+    "maxabs": 3.325340003357269e-12,
+    "bitwise_frac": 0.467192429022082
+   },
+   "DIRNIR": {
+    "maxabs": 8.910205906431656e-12,
+    "bitwise_frac": 0.4577287066246057
+   },
+   "DIFNIR": {
+    "maxabs": 1.8900436771218665e-11,
+    "bitwise_frac": 0.4757097791798107
+   },
+   "SRDN": {
+    "maxabs": 2.773958840407431e-11,
+    "bitwise_frac": 0.48580441640378547
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "50307": {
+  "jday": 319,
+  "fields": {
+   "T": {
+    "maxabs": 6.201815949680167e-09,
+    "bitwise_frac": 0.4062854889589905
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.639808371895924e-10,
+    "bitwise_frac": 0.543209971531892
+   },
+   "TRHR": {
+    "maxabs": 3.019982841578894e-08,
+    "bitwise_frac": 0.01449565284296376
+   },
+   "RQT": {
+    "maxabs": 7.466354645657702e-09,
+    "bitwise_frac": 0.07539432176656151
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.1891643225681037e-10,
+    "bitwise_frac": 0.48146687697160884
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 3.815003868368194e-13,
+    "bitwise_frac": 0.7403434980722047
+   },
+   "FSRDIR": {
+    "maxabs": 5.551115123125783e-16,
+    "bitwise_frac": 0.5621451104100946
+   },
+   "SRVISSURF": {
+    "maxabs": 8.179767974070273e-11,
+    "bitwise_frac": 0.4854889589905363
+   },
+   "FSRDIF": {
+    "maxabs": 6.31530383543577e-11,
+    "bitwise_frac": 0.483596214511041
+   },
+   "DIRVIS": {
+    "maxabs": 1.864464138634503e-11,
+    "bitwise_frac": 0.4722397476340694
+   },
+   "DIRNIR": {
+    "maxabs": 3.353761712787673e-11,
+    "bitwise_frac": 0.4624605678233438
+   },
+   "DIFNIR": {
+    "maxabs": 1.7337242752546445e-11,
+    "bitwise_frac": 0.48138801261829656
+   },
+   "SRDN": {
+    "maxabs": 8.185452315956354e-11,
+    "bitwise_frac": 0.48580441640378547
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ },
+ "50787": {
+  "jday": 329,
+  "fields": {
+   "T": {
+    "maxabs": 4.734999947686447e-09,
+    "bitwise_frac": 0.4092586750788644
+   },
+   "Q": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "SRHR": {
+    "maxabs": 2.2032509150449187e-10,
+    "bitwise_frac": 0.5456874663383858
+   },
+   "TRHR": {
+    "maxabs": 1.6251192391791847e-08,
+    "bitwise_frac": 0.015618988997460953
+   },
+   "RQT": {
+    "maxabs": 5.440284667201922e-09,
+    "bitwise_frac": 0.06740273396424816
+   },
+   "KLIQ": {
+    "maxabs": 1.0,
+    "bitwise_frac": 0.9999960567823344
+   },
+   "CLDSS": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "CLDMC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   },
+   "FSF": {
+    "maxabs": 1.795115167624317e-10,
+    "bitwise_frac": 0.480993690851735
+   },
+   "TRSURF": {
+    "maxabs": 1.1368683772161603e-13,
+    "bitwise_frac": 0.8026813880126183
+   },
+   "ALB": {
+    "maxabs": 1.1418643808269735e-13,
+    "bitwise_frac": 0.7441289870311952
+   },
+   "FSRDIR": {
+    "maxabs": 6.661338147750939e-16,
+    "bitwise_frac": 0.5731861198738171
+   },
+   "SRVISSURF": {
+    "maxabs": 2.3987922759260982e-11,
+    "bitwise_frac": 0.47665615141955836
+   },
+   "FSRDIF": {
+    "maxabs": 1.7763568394002505e-11,
+    "bitwise_frac": 0.4832807570977918
+   },
+   "DIRVIS": {
+    "maxabs": 6.23856521997368e-12,
+    "bitwise_frac": 0.46813880126182966
+   },
+   "DIRNIR": {
+    "maxabs": 9.691802915767767e-11,
+    "bitwise_frac": 0.47129337539432176
+   },
+   "DIFNIR": {
+    "maxabs": 8.191136657842435e-11,
+    "bitwise_frac": 0.47854889589905364
+   },
+   "SRDN": {
+    "maxabs": 1.795115167624317e-10,
+    "bitwise_frac": 0.4842271293375394
+   },
+   "CFRAC": {
+    "maxabs": 0.0,
+    "bitwise_frac": 1.0
+   }
+  }
+ }
+}

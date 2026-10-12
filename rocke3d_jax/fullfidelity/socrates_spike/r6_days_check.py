@@ -22,9 +22,17 @@ def main(rundir, prefix, days, out=None):
     z0 = np.load("%s_0.npz" % prefix)
     f0 = day_fields(z0)
     c60 = P.unpack(z0["p60"], P.PACK60)
-    dp = D.DailyProducts(rundir, c60["plb0"][0], c60["drym2g"][0], c60["ppmv80"][0], z0["p62"][0])
+    # other configurations of the rundeck (the oracle run made with R6_I_EDIT): env R6_MASTER_YR, R6_VOLC_YR
+    kw = {}
+    if os.environ.get("R6_MASTER_YR"):
+        kw["master_yr"] = int(os.environ["R6_MASTER_YR"])
+    if os.environ.get("R6_VOLC_YR"):
+        kw["volc_yr"] = int(os.environ["R6_VOLC_YR"])
+    dp = D.DailyProducts(rundir, c60["plb0"][0], c60["drym2g"][0], c60["ppmv80"][0], z0["p62"][0], hlb0=c60["hlb0"][0], **kw)
     res = {}
-    for k, d in enumerate(days):
+    for k, dstr in enumerate(days):
+        d, _, ya = str(dstr).partition(":")                       # "jday" or "jday:years after 1950"
+        d, year = int(d), 1950 + int(ya or 0)
         z = np.load("%s_%d.npz" % (prefix, k))
         f = day_fields(z)
         il, jl = f["ilon"] - 1, f["jlat"] - 1
@@ -36,11 +44,15 @@ def main(rundir, prefix, days, out=None):
         du = dp.dust_cols(d)
         r["dtaulx"] = du[:, jl, il, :].transpose(1, 0, 2)
         r["dalbsn"] = dp.dalbsn(d)[jl, il] * 1.0
+        vt, vr = dp.volcanic(d, year)
+        r["vtaulx"], r["vreff"] = vt[jl], vr[jl]
+        if dp.volc_tables is not None:
+            r["q55h2s"] = dp.volc_tables.q55(vr[jl])
         eps = dp.epsilon(d)
         r["epl"], r["epm"], r["eph"] = eps[0][il, jl], eps[1][il, jl], eps[2][il, jl]
         fu, pp = dp.fulgas_ppmv(d, f0["ppmv80"], f0["fulgas"])
         r["fulgas"], r["ppmv80"] = fu, pp
-        r["rsdist"] = np.array(D.rsdist(d))
+        r["rsdist"] = np.array(D.rsdist(d, float(dp.year)))
         r["albvnh"] = D.albvnh(d, np.load("data/albvnd.npz")["albvnd"]).reshape(-1, order="F")
         ref = dict(f)
         ref["epl"], ref["epm"], ref["eph"] = z["static_181"][il, jl], z["static_182"][il, jl], z["static_183"][il, jl]
@@ -56,9 +68,9 @@ def main(rundir, prefix, days, out=None):
             row[key] = dict(maxabs=float(np.abs(v - w).max()), maxrel=float(np.abs(v - w).max() / max(np.abs(w).max(), 1e-300)),
                             bitwise=bool(np.array_equal(v, w)))
         # fields the reader does not produce yet: do they change with the day?
-        for key in ("vtaulx", "vreff", "q55h2s", "loc_chl", "frac_veg", "fpxco2", "solar_irrad", "cld_scaling"):
+        for key in (("q55h2s",) if dp.volc_tables is None else ()) + ("loc_chl", "frac_veg", "fpxco2", "solar_irrad", "cld_scaling"):
             row["const_" + key] = bool(np.array_equal(np.asarray(f[key]), np.asarray(f0[key])))
-        res[d] = row
+        res[str(dstr)] = row
         print(d, {k: (v if isinstance(v, str) else ("=" if v["bitwise"] else "%.1e" % v["maxabs"])) for k, v in row.items()
                   if not k.startswith("const_")}, {k[6:]: v for k, v in row.items() if k.startswith("const_")}, flush=True)
     if out:
@@ -72,4 +84,4 @@ if __name__ == "__main__":
         i = a.index("--out")
         o = a[i + 1]
         a = a[:i] + a[i + 2:]
-    main(a[0], a[1], [int(x) for x in a[2:]], o)
+    main(a[0], a[1], a[2:], o)

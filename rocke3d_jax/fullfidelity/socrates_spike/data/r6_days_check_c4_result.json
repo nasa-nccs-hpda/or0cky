@@ -20,6 +20,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -55,9 +70,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": true,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -85,6 +97,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -120,9 +147,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -150,6 +174,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -185,9 +224,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -215,6 +251,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -250,9 +301,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -280,6 +328,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -315,9 +378,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -345,6 +405,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -380,9 +455,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -410,6 +482,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -445,9 +532,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,
@@ -475,6 +559,21 @@
    "maxrel": 0.0,
    "bitwise": true
   },
+  "vtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "vreff": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "q55h2s": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
   "epl": {
    "maxabs": 0.0,
    "maxrel": 0.0,
@@ -510,9 +609,6 @@
    "maxrel": 0.0,
    "bitwise": true
   },
-  "const_vtaulx": true,
-  "const_vreff": true,
-  "const_q55h2s": true,
   "const_loc_chl": false,
   "const_frac_veg": true,
   "const_fpxco2": true,

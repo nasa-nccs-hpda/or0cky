@@ -263,6 +263,165 @@ AERNAMES = ("SUL", "SSA", "NIT", "OCA", "BCA", "BCB")
 PSF = 984.0
 
 
+def _seqsum(a, axis=0):
+    """Sum in index order (the Fortran SUM intrinsic without reassociation); numpy's pairwise sum differs in the last bit."""
+    return np.cumsum(a, axis=axis).take(-1, axis=axis)
+
+
+def reterp_apply(weights, f):
+    """RETERP (REPARTINT oper='interp'): gyl(J) = sum PART*FXL(I) / sum PART, both in accumulation order; layers without overlap are 0."""
+    out = np.zeros((len(weights),) + f.shape[1:])
+    for j, lst in enumerate(weights):
+        if not lst:
+            continue
+        s = np.zeros(f.shape[1:])
+        y = 0.0
+        for i, part in lst:
+            s = s + part * f[i]
+            y = y + part
+        out[j] = s / y
+    return out
+
+
+class VolcanicAerosol:
+    """UPDVOL2 / get_volc_column (READ_AERO.f VolcParam_mod): stratospheric aerosol optical depth per layer and effective radius per
+    latitude zone from the RADN7 file (Fortran sequential, big-endian: header record tag(80) + NVOLMON, first year, last year, JMv, LMv;
+    records VTau4(NVOLMON, JMv, LMv), VReff4(NVOLMON, JMv), HVOLKM(LMv+1), ELATVOL(JMv+1), all REAL*4).
+    hlb0: the reference layer-edge heights (km) of the radiation layering (dump tag 60 `hlb0`, 44 values, the same sense as the file's
+    layer edges); kyearvm: the range of years of the long-term mean (volc_mean, default 1850-2014).
+    at(jyearv, jjdayv): jyearv = -1 selects the long-term mean (volc_yr = -1 of the rundeck), otherwise the monthly data are interpolated to
+    jyearv + jjdayv/366.  Returns (vtau (46, nl) bottom first, vreff (46,)) for the 46 latitude zones of the 4x5 grid."""
+
+    def __init__(self, path, hlb0, kyearvm=(1850, 2014)):
+        raw = np.fromfile(path, dtype=np.uint8)
+        pos, rec = 0, []
+        while pos < len(raw):
+            n = int(np.frombuffer(raw[pos:pos + 4].tobytes(), ">u4")[0])
+            rec.append(raw[pos + 4:pos + 4 + n])
+            pos += 8 + n
+        nm, self.y0, self.y1, jm, lm = [int(v) for v in np.frombuffer(rec[0][80:100].tobytes(), ">i4")]
+        self.nmon, self.jm, self.lm = nm, jm, lm
+        f4 = lambda r: np.frombuffer(r[80:].tobytes(), ">f4").astype(np.float32)
+        self.vtau = f4(rec[1]).reshape((nm, jm, lm), order="F").astype(np.float64)
+        self.vreff = f4(rec[2]).reshape((nm, jm), order="F").astype(np.float64)
+        self.hvolkm = f4(rec[3]).astype(np.float64)
+        self.elat = f4(rec[4]).astype(np.float64)
+        e46 = np.empty(47)
+        for j in range(2, 47):
+            e46[j - 1] = -90.0 + (j - 1.5) * 180.0 / 45
+        e46[0], e46[46] = -90.0, 90.0
+        self.w_lat = repart_weights(self.elat, e46)
+        self.hlb0 = np.asarray(hlb0, dtype=np.float64)
+        self.w_h = repart_weights(self.hvolkm, self.hlb0)
+        self.kyearvm = tuple(kyearvm)
+        self._mean = None
+
+    def _mean_fields(self):
+        if self._mean is None:
+            vmi = (self.kyearvm[0] - self.y0) * 12 + 1
+            vme = (self.kyearvm[1] - self.y0 + 1) * 12
+            if self.kyearvm[0] < self.y0 or self.kyearvm[1] > self.y1:
+                raise ValueError("volc_mean %s outside the file's years %d-%d" % (self.kyearvm, self.y0, self.y1))
+            tau, reff = self.vtau.copy(), self.vreff.copy()
+            for j in range(self.jm):
+                vt = _seqsum(self.vtau[:, j, :], axis=1)                              # (nmon): sum over layers of ALL months
+                reff[0, j] = _seqsum(self.vreff[vmi - 1:vme, j] * vt[vmi - 1:vme]) / _seqsum(vt[vmi - 1:vme])
+                tau[0, j, :] = _seqsum(self.vtau[vmi - 1:vme, j, :], axis=0) / (vme - vmi + 1)
+            self._mean = (tau, reff)
+        return self._mean
+
+    def at(self, jyearv=-1, jjdayv=182):
+        tau, reff = self._mean_fields() if jyearv == -1 else (self.vtau, self.vreff)
+        xyyear = jyearv + jjdayv / 366.0
+        if xyyear < self.y0:
+            xyyear = float(self.y0)
+        xyi = (xyyear - self.y0) * 12.0 + 1.0
+        if xyi > self.nmon - 0.001:
+            xyi = self.nmon - 0.001
+        mi = int(xyi)
+        wmj = xyi - mi
+        wmi = 1.0 - wmj
+        mj = mi + 1
+        g = wmi * reff[mi - 1] + wmj * reff[mj - 1]                                   # (jm,)
+        vreffj = reterp_apply(self.w_lat, g[:, None])[:, 0]
+        gt = wmi * tau[mi - 1] + wmj * tau[mj - 1]                                    # (jm, lm)
+        vtaujl = reterp_apply(self.w_lat, gt)                                         # (46, lm)
+        vtaulx = repart_apply(self.w_h, vtaujl.T).T                                   # (46, nl)
+        return vtaulx, vreffj
+
+
+def spline4(x, f, xx, cuspwm=1.0, cuspwe=1.0, kxtrap=1):
+    """SPLINEVector (RAD_UTILS.f): 4-point cubic spline value at xx of f (axis 0 along x); f may carry further axes (NVEC)."""
+    x = np.asarray(x, float)
+    f = np.asarray(f, float)
+    nxf = len(x)
+    k = 2                                                                       # 1-based as in the Fortran
+    x2, x3 = x[k - 1], x[nxf - 2]
+    betw = (xx - x2) * (x3 - xx)
+    if betw > 0.0:                                                              # label 100/110
+        while True:
+            k += 1
+            x3 = x[k - 1]
+            betw = (xx - x2) * (x3 - xx)
+            if betw >= 0.0:
+                break
+            x2 = x3
+        f3, f4, x4 = f[k - 1], f[k], x[k]
+        f2, x2 = f[k - 2], x[k - 2]
+        f1, x1 = f[k - 3], x[k - 3]
+        x21, x31, x32, x43, x42 = x2 - x1, x3 - x1, x3 - x2, x4 - x3, x4 - x2
+        f21 = (f2 - f1) / (x21 * x21)
+        f32 = (f3 - f2) / (x32 * x32)
+        f43 = (f4 - f3) / (x43 * x43)
+        f3221 = (f32 + f21) / x31 * x21
+        f4332 = (f43 + f32) / x42 * x43
+        a = f2
+        b = x32 * f3221
+        c = 3.0 * f32 - f3221 - f3221 - f4332
+        d = (f3221 + f4332 - f32 - f32) / x32
+        xf = xx - x2
+        ffcusp = a + xf * (b + xf * (c + xf * d))
+        xe = (x3 + x2 - xx - xx) / x32
+        if xe < 0.0:
+            xe = -xe
+        xexm = xe ** 2
+        w = (1.0 - xexm) * cuspwm + xexm * cuspwe
+        fflinr = a + xf * f32 * x32
+        return ffcusp * w + fflinr * (1.0 - w)
+    raise NotImplementedError("spline4: only the interior 4-point branch is ported (the volcanic tables never leave it)")
+
+
+class VolcanicTables:
+    """GETQVA's Q55H2S (the 0.55 micron extinction efficiency of the H2SO4 aerosol at effective radius vreff, variance VEFF0 = 0.35) from the
+    Mie tables of RADN3 (miescatpar.abcdv2: DATA Q55VA1/2/3/5, REFVA1) as SETQVA builds them: spline over the variances 0.1..0.5 (M = 4 is the
+    mean of 3 and 5), then over the sizes for REFV(N) = N/10, N = 9..20."""
+
+    def __init__(self, miefile, veff0=0.35):
+        import re
+        txt = open(miefile).read()
+
+        def data(name):
+            m = re.search(r"DATA\s+" + name + r"\s*/?\s*([^/]*)/", txt)
+            return np.array([float(v) for v in re.sub(r"\n\s*[A-Z0-9]\s+", " ", m.group(1)).replace(",", " ").split()])
+        cols = {1: data("Q55VA1"), 2: data("Q55VA2"), 3: data("Q55VA3"), 5: data("Q55VA5")}
+        cols[4] = (cols[3] + cols[5]) / 2.0
+        q20 = np.stack([cols[m] for m in (1, 2, 3, 4, 5)], axis=1)                  # (20, 5)
+        rv20 = data("REFVA1")
+        v5 = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+        q55v = np.array([spline4(v5, q20[n], veff0) for n in range(20)])         # at VEFF0, original sizes rv20
+        qv20 = q55v.copy()
+        for n in range(9, 21):                                                      # sizes N/10 (N = 9..20)
+            q55v[n - 1] = spline4(rv20, qv20, n / 10.0)
+        self.q55v = q55v
+
+    def q55(self, vreff):
+        radx = np.asarray(vreff, float) * 10.0
+        radx = np.minimum(np.maximum(radx, 1.000001), 19.99999)
+        lo = radx.astype(int)
+        whi = radx - lo
+        return (1.0 - whi) * self.q55v[lo - 1] + whi * self.q55v[lo]
+
+
 class DailyProducts:
     """Per-day products on the (72, 46) radiation grid from the rundeck's input files.
     rundir: directory with the files (or links) O3file, TAero_SUL..BCB, DUSTaer, BCdalbsn, GHG, RADN8.
@@ -272,7 +431,7 @@ class DailyProducts:
     The streams use the year master_yr (a year before the first file of a decadal stream selects the first file)."""
 
     def __init__(self, rundir, plb0, drym2g, ppmv80, taucon_dust, solar_constant=None, master_yr=1850, ghg_yr=None, ghg_tab=None, ghg_day=182,
-                 albvnd=None):
+                 albvnd=None, hlb0=None, volc_yr=-1, volc_day=182, volc_mean=(1850, 2014)):
         self.dir = rundir
         self.plb0 = np.asarray(plb0, dtype=np.float64)
         self.year = master_yr
@@ -314,6 +473,13 @@ class DailyProducts:
         # XREF: GTREND at the default reference mid 1980 (SETGHG(1980, 184)), floored at 1e-6; XREF(7) = 1e-13
         xr = gtrend(self.ghg, 1980 + (184 - 0.999) / 366.0)
         self.xref = np.concatenate([np.maximum(xr, 1.0e-6), [1.0e-13]])
+        # stratospheric (volcanic) aerosol, RADN7: volc_yr = -1 long-term mean over volc_mean; > 0 the monthly data at (volc_yr, volc_day);
+        # 0 the data of the model year of the day (volcanic(jday, jyear)).  Needs hlb0 (dump tag 60) for the vertical repartition.
+        self.volc_yr, self.volc_day = volc_yr, volc_day
+        self.volc = None
+        if hlb0 is not None and os.path.exists(j("RADN7")):
+            self.volc = VolcanicAerosol(j("RADN7"), hlb0, volc_mean)
+            self.volc_tables = VolcanicTables(j("RADN3")) if os.path.exists(j("RADN3")) else None     # Q55H2S(vreff)
 
     # ------------------------------------------------------------------------------------------------------------- fields on the grid
     def ozone(self, jday):
@@ -335,6 +501,15 @@ class DailyProducts:
 
     def dalbsn(self, jday):
         return linm2m(self.bcd, jday) / 100.0                                              # (lat, lon)
+
+    def volcanic(self, jday=None, jyear=None):
+        """(vtaulx (46, nl), vreff (46,)) of the day: constant for volc_yr = -1 or > 0 (volc_day), the model day (jday, jyear) for volc_yr = 0."""
+        if self.volc is None:
+            raise RuntimeError("DailyProducts was built without hlb0 / RADN7: no volcanic reader")
+        key = ("volc", jyear, jday) if self.volc_yr == 0 else ("volc", self.volc_yr, self.volc_day)
+        if key not in self._cache:
+            self._cache[key] = self.volc.at(jyear, jday) if self.volc_yr == 0 else self.volc.at(self.volc_yr, self.volc_day)
+        return self._cache[key]
 
     def epsilon(self, jday):
         xjday = jday - 0.999
@@ -419,7 +594,7 @@ def albvnh(jday, albvnd):
     return out
 
 
-def day_dict(dp, jday, ilon, jlat, fulgas_template):
+def day_dict(dp, jday, ilon, jlat, fulgas_template, jyear=None):
     """The day-varying per-column products of day-of-year jday (keys of radia_jax.RadiaJax.DAY_KEYS) for the columns (ilon, jlat) (1-based
     72 x 46 box indices of the radiation columns)."""
     il, jl = np.asarray(ilon, int) - 1, np.asarray(jlat, int) - 1
@@ -428,8 +603,13 @@ def day_dict(dp, jday, ilon, jlat, fulgas_template):
     out = dict(o3col=dp.ozone(jday)[:, jl, il].T, ataulx=dp.aerosol(jday)[:, jl, il, :].transpose(1, 0, 2),
                dtaulx=dp.dust_cols(jday)[:, jl, il, :].transpose(1, 0, 2), dalbsn=dp.dalbsn(jday)[jl, il],
                epl=eps[0][il, jl], epm=eps[1][il, jl], eph=eps[2][il, jl], albvnh=albvnh(jday, dp.albvnd), fulgas=fu, ppmv80=pp)
+    if dp.volc is not None:
+        vt, vr = dp.volcanic(jday, jyear)
+        out["vtaulx"], out["vreff"] = vt[jl], vr[jl]
+        if dp.volc_tables is not None:
+            out["q55h2s"] = dp.volc_tables.q55(vr[jl])
     if dp.solar_constant is not None:
-        out["solar_irrad"] = np.float64(dp.solar_constant / rsdist(jday))
+        out["solar_irrad"] = np.float64(dp.solar_constant / rsdist(jday, float(dp.year)))
     return out
 
 
@@ -438,11 +618,36 @@ def jday_of_itime(itime, nsteps_per_day=48, days_per_year=365):
     return (int(itime) // nsteps_per_day) % days_per_year + 1
 
 
+def jyear_of_itime(itime, nsteps_per_day=48, days_per_year=365, year0=1949):
+    """Calendar year of the model clock `itime` (itime 0 = 1949-01-01 00:00)."""
+    return year0 + int(itime) // (nsteps_per_day * days_per_year)
+
+
 def day_products_for_run(dp, prod, itime_first, itime_last, nsteps_per_day=48):
     """(list of day dicts, day0) for the model days spanned by itime_first..itime_last, to be passed as
     RadiaJax(..., day_products=list, day0=day0); `prod` is the radia_jax.Products of the dump supplying the static content.
     One entry costs about N*(43*(1 + 6 + 7) + 5) doubles (N = 3170 columns: 16 MB); the arrays are indexed by the day inside the jit."""
     day0 = int(itime_first) // nsteps_per_day
     day1 = int(itime_last) // nsteps_per_day
-    out = [day_dict(dp, jday_of_itime(d * nsteps_per_day), prod.ilon, prod.jlat, prod.g["fulgas"]) for d in range(day0, day1 + 1)]
+    out = [day_dict(dp, jday_of_itime(d * nsteps_per_day), prod.ilon, prod.jlat, prod.g["fulgas"], jyear_of_itime(d * nsteps_per_day))
+           for d in range(day0, day1 + 1)]
     return out, day0
+
+
+class DayStream:
+    """Day products on demand for RadiaJax(day_source=...): called with the model day number (itime // 48) returns the day dict (keys of
+    RadiaJax.DAY_KEYS and, when the reader has the volcanic file, vtaulx / vreff).  Keeps the last `keep` days (a run needs one day at a time)."""
+
+    def __init__(self, dp, prod, nsteps_per_day=48, keep=3):
+        self.dp, self.prod, self.nspd, self.keep = dp, prod, nsteps_per_day, keep
+        self._cache = {}
+
+    def __call__(self, day):
+        day = int(day)
+        if day not in self._cache:
+            if len(self._cache) >= self.keep:
+                self._cache.pop(next(iter(self._cache)))
+            it = day * self.nspd
+            self._cache[day] = day_dict(self.dp, jday_of_itime(it, self.nspd), self.prod.ilon, self.prod.jlat, self.prod.g["fulgas"],
+                                        jyear_of_itime(it, self.nspd))
+        return self._cache[day]

@@ -1,0 +1,12 @@
+# V100 (jobs 37941726, 37941729-37941732), r6_trial_integration.py, R6_DAYS=run_c1 (day products), wall seconds of the hand-off step
+# full 11-step run with both callbacks (R6_STREAM=1 R6_VOLC=1 R6_LAST=33362): data/r6_trial_stream_volc_v100_result.json (first step incl. compile)
+== R6_STREAM=day (R6_LAST=33317)
+itime 33312: wall 283.3 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 5.32e-09, held steps: ['2.8e-14', '
+itime 33317: wall 7.1 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 1.39e-08, held steps: ['5.7e-14', '5.
+== R6_STREAM=zen (R6_LAST=33317)
+itime 33312: wall 387.3 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 5.32e-09, held steps: ['5.7e-14', '
+itime 33317: wall 8.8 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 1.39e-08, held steps: ['2.8e-14', '5.
+== R6_STREAM=none (R6_LAST=33317)
+itime 33312: wall 271.3 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 5.32e-09, held steps: ['5.7e-14', '
+itime 33317: wall 0.2 s, compiles 12, worst field KLIQ 1.00e+00, T_new vs recorded 1.39e-08, held steps: ['2.8e-14', '5.
+== callbacks alone (r6_callback_bench.py, job 37941729): day 0.0051 s, zenith 0.0066 s per call in a small jit

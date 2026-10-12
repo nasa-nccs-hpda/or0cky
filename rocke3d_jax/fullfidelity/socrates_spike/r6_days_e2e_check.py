@@ -20,8 +20,17 @@ import drv_zenith as Z
 
 z = np.load(sys.argv[1])
 prod = RJ.Products(z, np.load(os.environ["R6_STATIC"]) if "R6_STATIC" in os.environ else None)
-dp = DP.DailyProducts(sys.argv[4], prod.c60["plb0"][0], prod.g["drym2g"], prod.g["ppmv80"], prod.taucon_dust, solar_constant=prod.solar_constant)
-rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith())
+# env R6_MASTER_YR / R6_VOLC_YR: another configuration of the rundeck (the oracle made with r6_days_oracle R6_I_EDIT); the volcanic reader is
+# then used for vtaulx / vreff / q55h2s, the orbit year is the master year; R6_PVT_NPZ: dump (p50) of the SAME configuration after its first
+# daily update, supplying frac_veg (the land cover of the master year is not read by the reader).
+master = int(os.environ.get("R6_MASTER_YR", 1850))
+volc_yr = int(os.environ.get("R6_VOLC_YR", -1))
+dp = DP.DailyProducts(sys.argv[4], prod.c60["plb0"][0], prod.g["drym2g"], prod.g["ppmv80"], prod.taucon_dust, solar_constant=prod.solar_constant,
+                      master_yr=master, volc_yr=volc_yr, hlb0=prod.c60["hlb0"][0] if "R6_MASTER_YR" in os.environ else None)
+rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith(float(master)))
+if os.environ.get("R6_PVT_NPZ"):
+    import planet_side as PS
+    rj.prod_arrays["frac_veg"] = jnp.asarray(PS.unpack(np.load(os.environ["R6_PVT_NPZ"])["p50"], PS.PACK50)["frac_veg"])
 valid = np.zeros((72, 46), bool)
 valid[rj.ii - 1, rj.jj - 1] = True
 mv = np.nonzero(valid)
@@ -35,7 +44,7 @@ for f in files:
     it = int(os.path.basename(f).split("_")[1])
     ref = dict(np.load(f))
     jd = DP.jday_of_itime(it)
-    dd = DP.day_dict(dp, jd, prod.ilon, prod.jlat, prod.g["fulgas"])
+    dd = DP.day_dict(dp, jd, prod.ilon, prod.jlat, prod.g["fulgas"], DP.jyear_of_itime(it))
     rj.prod_arrays.update({k: jnp.asarray(v) for k, v in dd.items()})
     t0 = time.time()
     out = rj(pkt, it)
