@@ -8,7 +8,7 @@ export LD_LIBRARY_PATH=/app/netcdf4/platform/x86_64/rocky/8.10/4.9.3s/lib:$LD_LI
 R=${FORTRAN_RUNS:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax/gpu_runs/fortran}/run_$1; rm -rf $R; mkdir -p $R; cd $R
 for f in I P2SAoM40ln P2SAoM40uln runtime_opts; do cp $HS/$f .; done
 \cp $BIN P2SAoM40.bin; \cp $BIN P2SAoM40
-sed -i '109s/YEARE=1950,MONTHE=12,DATEE=1,HOURE=0,/YEARE=1950,MONTHE=11,DATEE=27,HOURE=3,/' I
+sed -i "109s/YEARE=1950,MONTHE=12,DATEE=1,HOURE=0,/YEARE=1950,MONTHE=11,DATEE=${FORT_DATEE:-27},HOURE=3,/" I
 sed -n 109p I
 cp $FF/_pristine_restarts/fort1_nov26_itime33312.nc fort.1.nc; cp $FF/_pristine_restarts/fort1_nov26_itime33312.nc fort.2.nc
 sh P2SAoM40ln > /dev/null 2>&1
