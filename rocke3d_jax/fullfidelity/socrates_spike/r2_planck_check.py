@@ -21,6 +21,9 @@ if __name__ == "__main__":
             cur[k] = x["a"]
             if k == 8:
                 pf, dp, dp2, pg = [np.asarray(v) for v in PL.band_planck(spec, band, atm[7], atm[2], atm[18])]
+                if atm[32][0] > 0.5:                                  # control%l_tile
+                    tile = dict(n_tile=int(atm[32][1]), list_tile=atm[33], frac_tile=atm[34], t_tile=atm[35])
+                    pg = PL.surface_planck(spec, band, atm[18], tile)
                 for name, m, o in (("planck_flux_band", pf, cur[5]), ("diff_planck_band", dp, cur[6]), ("diff_planck_band_2", dp2, cur[7]),
                                    ("planck_flux_surface", pg, cur[8])):
                     s = st[name]; d = np.abs(m - o)

@@ -26,3 +26,23 @@ def band_planck(spec, i_band, t_level, t, t_ground):
     dp = pf[:, 1:] - pf[:, :-1]
     dp2 = 2.0 * (pf[:, 1:] + pf[:, :-1] - 2.0 * planck(t))
     return pf, dp, dp2, planck(t_ground)
+
+
+def surface_planck(spec, i_band, t_ground, tile=None):
+    """planck_flux_ground: planck(t_ground), or with tiles (control%l_tile) the fraction-weighted sum of planck(t_tile) for the
+    profiles listed in list_tile (diff_planck_source_tbl.F90).  tile = dict(list_tile (n_point,) 1-based, frac_tile (n_point, n_tile),
+    t_tile (n_point, n_tile), n_tile)."""
+    theta = jnp.asarray(spec["theta_planck_tbl"])
+    coeff = jnp.asarray(spec["thermal_coeff"][:, i_band - 1])
+    t_ref = float(spec["planck_misc"][2])
+    planck = lambda tmp: interp1d(theta, coeff, tmp / t_ref)
+    out = np.array(planck(jnp.asarray(t_ground)))
+    if tile is not None and int(tile["n_tile"]) > 0:
+        nt = int(tile["n_tile"])
+        pt = np.asarray(planck(jnp.asarray(tile["t_tile"][:, :nt])))
+        for lp, l in enumerate(np.asarray(tile["list_tile"]).astype(int)):
+            acc = tile["frac_tile"][lp, 0] * pt[lp, 0]
+            for k in range(1, nt):
+                acc = acc + tile["frac_tile"][lp, k] * pt[lp, k]
+            out[l - 1] = acc
+    return out

@@ -42,7 +42,7 @@ def bands(recs):
 if __name__ == "__main__":
     recs = R.read(sys.argv[1])
     spec = {1: SD.load("%s/spec_sw.npz" % sys.argv[2]), 2: SD.load("%s/spec_lw.npz" % sys.argv[2])}
-    step = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    step = int(sys.argv[3]) if len(sys.argv) > 3 and not sys.argv[3].startswith('--') else 1
     st = collections.defaultdict(lambda: dict(n=0, bit=0, maxabs=0.0, maxrel=0.0, nb=0))
     cum = {}
     calls = {}
@@ -64,7 +64,8 @@ if __name__ == "__main__":
         k0 = band["terms"][0]
         alb = dict(diffuse=k0[(46, 3)], direct=k0[(47, 7)])
         phase = [dict(ph_clr=k[(40, 7)], ph=k[(40, 8)], fwd_clr=k[(49, 1)], fwd=k[(49, 2)]) for k in band["terms"]]
-        out = BC.run_band(spec[iso], iso, ib, A, B, phase, alb, l_scale_solar=bool(k0[(47, 9)].ravel()[0] > 0.5))
+        out = BC.run_band(spec[iso], iso, ib, A, B, phase, alb, l_scale_solar=bool(k0[(47, 9)].ravel()[0] > 0.5),
+                          nct=(1 if "--nct1" in sys.argv else None))
         tag = "SW" if iso == 1 else "LW"
         st[(tag, "flux_total")]["nb"] += 1
         # band flux = augment_radiance: first k-term sets, the rest add, weight_incr = weight_band * esft_weight (tag 30: down, up)

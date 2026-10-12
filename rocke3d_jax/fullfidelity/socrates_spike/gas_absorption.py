@@ -23,7 +23,8 @@ def inter_pt_lookup(p, t, p_lookup, t_lookup):
     pmax = p_lookup[nd_pre - 1] - max(abs(p_lookup[nd_pre - 1]) * EPS, EPS)
     pl = jnp.minimum(jnp.maximum(jnp.log(p), pmin), pmax)
     jp = _upper_index(jnp.asarray(p_lookup)[:, None, None], pl)
-    fp = (pl - p_lookup[jp]) / (p_lookup[jp + 1] - p_lookup[jp])
+    plj = jnp.asarray(p_lookup)
+    fp = (pl - plj[jp]) / (plj[jp + 1] - plj[jp])
     tl = jnp.asarray(t_lookup)
     nd_tmp = tl.shape[0]
 
@@ -42,7 +43,7 @@ def inter_pt_lookup(p, t, p_lookup, t_lookup):
 
 def k_esft_lookup(ip, k_lookup, i_band, i_gas, n_k):
     """k_lookup: (n_tmp, n_pre, nd_k, nd_species, nd_band) -> (n_profile, n_layer, n_k); i_band, i_gas 1-based."""
-    K = jnp.asarray(k_lookup)[:, :, :n_k, i_gas - 1, i_band - 1]
+    K = jnp.asarray(np.asarray(k_lookup)[:, :, :n_k, i_gas - 1, i_band - 1])
     jp, jt, jtt = ip["jp"], ip["jt"], ip["jtt"]
     g = lambda a, b: K[a, b]                                         # (n_profile, n_layer, n_k)
     v = (ip["fac00"][..., None] * g(jt, jp) + ip["fac10"][..., None] * g(jtt, jp + 1)
