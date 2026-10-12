@@ -49,6 +49,17 @@ class NativeHandoff:
         self.log = log
         self.aij_cols = dict(AIJ_COLS)
         self.ii, self.jj = jnp.asarray(radia.ii - 1), jnp.asarray(radia.jj - 1)
+        # the day products are selected by itime // 48 and CLIPPED to the window (no exception inside a jit): a zenith table longer than the
+        # window would silently reuse the last day's products, so say so now
+        if radia.day_arrays is not None:
+            nd = int(radia.day_arrays["o3col"].shape[0])
+            last = self.itimei + NRAD * (int(zen_table.shape[0]) - 1)
+            need = last // radia.DAY_LEN - radia.day0 + 1
+            self.day_window_ok = need <= nd
+            if not self.day_window_ok:
+                import warnings
+                warnings.warn("NativeHandoff: the zenith table reaches itime %d (day %d of the window) but only %d day products were built; "
+                              "steps after day %d will use the last day's products (build day_products for %d days)" % (last, need, nd, nd, need))
 
     def call(self, packet, itime, seed=None):
         k = (jnp.asarray(itime, jnp.int32) - self.itimei) // NRAD
