@@ -1,0 +1,19 @@
+/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai-socrates-imvi/rocke3d_jax/fullfidelity/socrates_spike/grey_opt_prop.py:93: RuntimeWarning: invalid value encountered in multiply
+  phn = np.where(ok, phk * inv, phk); fwn = np.where(ok, fwk * inv, fwk)
+bands compared: 119
+LW  forward_scatter                 5385 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  forward_scatter_clr             2664 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  k_ext_scat                      5385 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  k_ext_scat_clr                  2664 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  k_grey_tot                      5385 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  k_grey_tot_clr                  2664 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  phase_fnc(rescaled)             5385 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+LW  phase_fnc_clr(rescaled)         2664 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  forward_scatter                 1600 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  forward_scatter_clr             1056 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_ext_scat                      1600 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_ext_scat_clr                  1056 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_grey_tot                      1600 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  k_grey_tot_clr                  1056 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  phase_fnc(rescaled)             1600 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
+SW  phase_fnc_clr(rescaled)         1056 entries  bitwise  100.000 %  max abs  0.000e+00  max rel  0.000e+00
