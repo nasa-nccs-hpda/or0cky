@@ -42,6 +42,9 @@ def _pow4(x):
 _APPLY_JIT_CACHE = {}
 
 
+_TPL_OWN_PS = os.environ.get('ROCKE_TPL_OWN', '0') == '1' and os.environ.get('ROCKE_TPL_OWN_PS', '1') == '1'
+
+
 def make_apply_state(host, K):
     """host: static index arrays of jax_surface.build_template; K: post-tile statics (jax_posttile.make_static_all, numpy).  Returns a jitted function
     apply(tpl, S1, ag, ps_ij, prec, eprec, precss, dyn_prev=None, land_prev=None) -> new tpl (same pytree structure as `tpl`).
@@ -141,7 +144,10 @@ def _make_apply_state_impl(host, K, arrs):
         nsl = [one_ns(k, tpl['ns'][k], S1, ag, ps_ij, k == 0, tg1_oc, pocean, poice, evl, htl) for k in (0, 1)]
         # previous step's land state: substep-1 land PBL columns (land_chain.next_land_pbl_columns) on the template rows, and GHY start state
         if land_prev is not None:
-            nsl[0] = dict(nsl[0], pe=JS.next_land_pbl_columns(nsl[0]['pe'], land_prev))
+            pe0 = nsl[0]['pe']
+            if _TPL_OWN_PS:        # D227: the template rows of the first-step base carry the PS of step 0; the qg_sat/qg columns use PS of THIS step (the record rows hold it)
+                pe0 = pe0.at[:, 16].set(ps_ij[ei, ej])
+            nsl[0] = dict(nsl[0], pe=JS.next_land_pbl_columns(pe0, land_prev))
         # GHY precipitation forcing (identity checked on the dumps: pr = PREC/(dtsrc*rhow), htpr = EPREC/dtsrc, prs = PRECSS/(dtsrc*rhow))
         pr0 = prec[ei, ej] / (DTSRC * RHOW)
         htpr = eprec[ei, ej] / DTSRC

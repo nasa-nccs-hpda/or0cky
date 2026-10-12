@@ -58,6 +58,7 @@ FLOAT4_4375 = float(np.float32(4375.0))
 PBL_COLS = dict(zs1=5, tkv=7, ps=16, ddml=23, gusti=24, tdns=25, qdns=26, dbl=29, ug=31, vg=32, utop=37, vtop=38, qtop=39, ztop=40,
                 mdf=41, dpdxr=42, dpdyr=43, dpdxr0=44, dpdyr0=45, dtdt=46, u1aa=47, v1aa=48)
 PBL_GUSTI_OUT = 113
+_TPL_OWN_PS = os.environ.get('ROCKE_TPL_OWN', '0') == '1' and os.environ.get('ROCKE_TPL_OWN_PS', '1') == '1'      # D227
 _OWN_GHY = os.environ.get('ROCKE_OWN_GHY', '0') == '1'      # D223, default off
 _OWN_ELHX = _OWN_GHY or os.environ.get('ROCKE_TPL_OWN', '0') == '1'
 PRED_FILL_COLS = dict(zs1=5, tkv=7, dbl=29, ug=31, vg=32, utop=37, vtop=38, qtop=39, ztop=40)
@@ -581,9 +582,13 @@ def predict_ns2(r1, rows1, tpl2, ftype1, wvalid1, atm2, coriol, hostc, ta_overri
 
     wj = jnp.concatenate([hostc['wj'], hostc['wj']])
     wi = jnp.concatenate([hostc['wi'], hostc['wi']])
-    p12 = fill(tpl2['pw'], r1['pbl'], wj, wi)
-    p3 = fill(tpl2['pl'], r1['pbl_li'], hostc['lj'], hostc['li'])
-    p4 = next_land_pbl_columns(fill(tpl2['pe'], r1['pbl_land'], hostc['ej'], hostc['ei']), r1['land'])
+    pw2, pl2, pe2 = tpl2['pw'], tpl2['pl'], tpl2['pe']
+    if _TPL_OWN_PS:        # D227: PS column of the substep-2 rows from THIS step's atmosphere (the qsat columns below use it before the later override); the base rows hold the PS of step 0
+        ps2 = atm2['PEDN'][..., 0]
+        pw2, pl2, pe2 = (pw2.at[:, 16].set(ps2[wj, wi]), pl2.at[:, 16].set(ps2[hostc['lj'], hostc['li']]), pe2.at[:, 16].set(ps2[hostc['ej'], hostc['ei']]))
+    p12 = fill(pw2, r1['pbl'], wj, wi)
+    p3 = fill(pl2, r1['pbl_li'], hostc['lj'], hostc['li'])
+    p4 = next_land_pbl_columns(fill(pe2, r1['pbl_land'], hostc['ej'], hostc['ei']), r1['land'])
     # ice / land-ice ground state from the tile outputs (ocean tile unchanged in the loop)
     tg_ice = r1['tile']['tg1'][Nw:] + TF
     ice = p12[Nw:]

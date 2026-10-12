@@ -74,6 +74,11 @@ def mstcnv_new(self, R, stats=None):
     return o, err
 
 
+def tpl_own_eod(tpl, it):
+    """D227: template with the Ent end-of-day flag (ghy blocks, entf['eod'], ffg col 163 of the records) set to `it % 48 == 0`; the other leaves are shared."""
+    return dict(tpl, ghy=[dict(b, entf=dict(b['entf'], eod=jnp.full_like(b['entf']['eod'], it % 48 == 0))) if 'entf' in b else b for b in tpl['ghy']])
+
+
 def tree_dev(d):
     """nested dict of numpy leaves -> nested dict of device arrays (numeric leaves only)."""
     out = {}
@@ -428,6 +433,8 @@ class Coupled:
         """Template of a step after the first from the first-step base: the slot validity and the type fractions are refreshed from OUR sea-ice state in
         step() (_tpl_own_state); here the recorded land irrigation columns of THIS step (ffg 147, 148: the demand file is not available) are the only record read."""
         tpl, host, recs, _ = self._tpl_base
+        if os.environ.get('ROCKE_TPL_OWN_EOD', '1') == '1':     # D227: the Ent end-of-day flag of the first-step base (step 33312 % 48 == 0: True) must not be reused on every later step
+            tpl = tpl_own_eod(tpl, it)
         if IRRIG_OWN:
             return self._tpl_own_exports(tpl, host), host, recs, jnp.zeros((IM, JM))
         import ghy_compare as GC_
@@ -785,6 +792,29 @@ class Coupled:
             fin(acc)
         S2a = dict(S1a)
         S2a.update(out_s)
+        if os.environ.get('ROCKE_CELL_DUMP'):       # diagnostic: everything the SURFACE stage sees and returns for one cell (i,j), one npz per step (host read, slow)
+            ci_, cj_ = (int(x) for x in os.environ['ROCKE_CELL_DUMP'].split(','))
+            dd_ = {}
+            sel_ = {kk: np.nonzero((np.asarray(host[a_]) == ci_) & (np.asarray(host[b_]) == cj_))[0] for kk, (a_, b_) in dict(w=('wi', 'wj'), l=('li', 'lj'), e=('ei', 'ej')).items() if a_ in host and b_ in host}
+            Nw_ = int(host['Nw'])
+            if 'w' in sel_:
+                sel_['w2'] = np.concatenate([sel_['w'], sel_['w'] + Nw_])
+            for tag_, tree_ in (('tpl', tpl_m), ('out', out_s), ('acc', acc), ('S1a', {kk: S1a[kk] for kk in JS.ATM_KEYS}),
+                                ('rows1', aux['rows1']), ('rows2', aux['rows2']), ('r1', aux['r1']), ('r2', aux['r2'])):
+                for pth_, x_ in jax.tree_util.tree_flatten_with_path(tree_)[0]:
+                    a_ = np.asarray(x_)
+                    key_ = tag_ + jax.tree_util.keystr(pth_)
+                    if a_.ndim >= 2 and a_.shape[:2] == (72, 46):
+                        dd_[key_ + '@ij'] = a_[ci_, cj_]
+                    elif a_.ndim >= 2 and a_.shape[:2] == (46, 72):
+                        dd_[key_ + '@ji'] = a_[cj_, ci_]
+                    elif a_.ndim >= 1 and a_.dtype.kind == 'f':
+                        n0_ = a_.shape[0]
+                        for kk_, ix_c in sel_.items():
+                            if len(ix_c) and n0_ > ix_c.max() and n0_ in {'w': (Nw_,), 'w2': (2 * Nw_,), 'l': (len(host['li']),), 'e': (len(host['ei']),)}[kk_]:
+                                dd_[key_ + '@row_' + kk_] = a_[ix_c]
+            os.makedirs(os.environ.get('ROCKE_CELL_DUMP_DIR', '.'), exist_ok=True)
+            np.savez(os.path.join(os.environ.get('ROCKE_CELL_DUMP_DIR', '.'), f'cell_{it}.npz'), **dd_)
         if keep:
             arrays['surface'] = S2a
         itime_d = state['clock']['itime']
