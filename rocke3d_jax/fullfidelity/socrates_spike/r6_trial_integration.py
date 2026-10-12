@@ -22,10 +22,17 @@ import radia_native as RN
 import drv_zenith as Z
 
 D = rs.FF + "/nov26_day"
-ITIMES = list(range(33312, 33358, 5))
+ITIMES = list(range(33312, int(os.environ.get("R6_LAST", 33357)) + 1, 5))      # R6_LAST=33362 crosses midnight (nov27 01:00)
 z = np.load(sys.argv[1])
 prod = RJ.Products(z, np.load(os.environ["R6_STATIC"]) if "R6_STATIC" in os.environ else None)
-rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith())
+day_kw = {}
+if os.environ.get("R6_DAYS"):          # run directory of the rundeck: day products from the input files (daily_products.py), selected by itime // 48
+    import daily_products as DP
+    dp = DP.DailyProducts(os.environ["R6_DAYS"], prod.c60["plb0"][0], prod.g["drym2g"], prod.g["ppmv80"], prod.taucon_dust,
+                          solar_constant=prod.solar_constant)
+    dlist, day0 = DP.day_products_for_run(dp, prod, ITIMES[0], ITIMES[-1] + 4)
+    day_kw = dict(day_products=dlist, day0=day0)
+rj = RJ.RadiaJax(sys.argv[3], sys.argv[2], prod, zen=Z.Zenith(), **day_kw)
 tab = RN.zenith_table(Z.Zenith(), ds.ITIMEI, (ITIMES[-1] - ds.ITIMEI) // 5 + 1)
 nh = RN.NativeHandoff(rj, tab, ds.ITIMEI)
 nh.last_out = None
