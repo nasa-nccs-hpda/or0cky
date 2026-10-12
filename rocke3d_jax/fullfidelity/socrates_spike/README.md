@@ -46,3 +46,5 @@ R6 reproduction: apply `ffsoc/apply_ffsoc_r6.py SCRATCH_SOCRATES SCRATCH_MODEL` 
 
 CPU float64 is bitwise or at rounding level against the Fortran; GPU `exp`/`pow` are not bitwise. Recorded model steps exist only for nov26 and the first step of nov27; other dates are checked against the persistent server (section 14).
 Unported branches are listed in `Reports/SOCRATES_R2_DUMPS.md` sections 10 and 12.6; the daily products of other dates come from `daily_products.py` (sections 14 and 14.4; verified for master_yr 1850 and, with the volcanic file, for master_yr 1990 / volc_yr 0; land cover `PVT` is not read).
+| `daily_products.LandCover`, `r6_land_cover_check.py` | `PVT` / `frac_veg` of the master year from the VEG and CROPS files (exact on 753 land columns, 1850 and 1990); opt-in |
+| `r6_default_path_check.py` | hashes of day products, zenith table, jaxpr and two radiation calls: 24fc300 vs 373da9d default path (report 14.7) |
