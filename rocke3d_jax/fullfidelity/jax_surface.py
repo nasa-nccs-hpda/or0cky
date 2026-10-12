@@ -594,10 +594,14 @@ def predict_ns2(r1, rows1, tpl2, ftype1, wvalid1, atm2, coriol, hostc, ta_overri
     ice = p12[Nw:]
     qs = P.qsat(tg_ice, ice[:, 19], ice[:, 16])
     ice = ice.at[:, 18].set(tg_ice).at[:, 6].set(tg_ice).at[:, 8].set(qs).at[:, 9].set(qs)
+    if _TPL_OWN_PS:        # D227: PBL column 11 (tr4) of the substep-2 ice rows = the tile tr4 of the row (record: equal to tile column tr4 within float32 rounding; the base row holds step 0's)
+        ice = ice.at[:, 11].set(r1['tile']['tr4'][Nw:])
     p12 = p12.at[Nw:].set(ice)
     tg_li = r1['li']['tg1'] + TF
     qs = P.qsat(tg_li, p3[:, 19], p3[:, 16])
     p3 = p3.at[:, 18].set(tg_li).at[:, 6].set(tg_li).at[:, 8].set(qs).at[:, 9].set(qs)
+    if _TPL_OWN_PS:        # D227: land ice keeps tg2 and tr4 of substep 1 (record: unchanged within 1e-10 relative); PBL column 11 = that tr4
+        p3 = p3.at[:, 11].set(la_overridden[:, LI.IN['tr4']])
     # tile rows
     tnew = tpl2['tw']
     tj = jnp.concatenate([hostc['wj'], hostc['wj']])
@@ -613,6 +617,8 @@ def predict_ns2(r1, rows1, tpl2, ftype1, wvalid1, atm2, coriol, hostc, ta_overri
     lnew = tpl2['tl']
     lnew = lnew.at[:, LI.IN['q1']].set(e['qtop'][hostc['lj'], hostc['li']])
     lnew = lnew.at[:, LI.IN['tg1']].set(r1['li']['tg1'])
+    if _TPL_OWN_PS:
+        lnew = lnew.at[:, LI.IN['tg2']].set(la_overridden[:, LI.IN['tg2']]).at[:, LI.IN['tr4']].set(la_overridden[:, LI.IN['tr4']])
     return p12, p3, tnew, lnew, p4
 
 

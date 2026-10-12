@@ -792,7 +792,13 @@ class Coupled:
             fin(acc)
         S2a = dict(S1a)
         S2a.update(out_s)
-        if os.environ.get('ROCKE_CELL_DUMP'):       # diagnostic: everything the SURFACE stage sees and returns for one cell (i,j), one npz per step (host read, slow)
+        if os.environ.get('ROCKE_CELL_DUMP') == 'all':       # diagnostic: the post-override PBL/tile rows of both substeps of ALL slots (host read, slow) + the slot index arrays
+            dd_ = {f'{a_}_{b_}': np.asarray(aux[a_][b_]) for a_ in ('rows1', 'rows2') for b_ in ('pw', 'pl', 'pe', 'tw', 'tl')}
+            dd_.update({k_: np.asarray(host[k_]) for k_ in ('wi', 'wj', 'li', 'lj', 'ei', 'ej')})
+            dd_['wvalid'] = np.asarray(tpl['ns'][0]['wvalid'])
+            os.makedirs(os.environ.get('ROCKE_CELL_DUMP_DIR', '.'), exist_ok=True)
+            np.savez(os.path.join(os.environ.get('ROCKE_CELL_DUMP_DIR', '.'), f'rows_{it}.npz'), **dd_)
+        elif os.environ.get('ROCKE_CELL_DUMP'):       # diagnostic: everything the SURFACE stage sees and returns for one cell (i,j), one npz per step (host read, slow)
             ci_, cj_ = (int(x) for x in os.environ['ROCKE_CELL_DUMP'].split(','))
             dd_ = {}
             sel_ = {kk: np.nonzero((np.asarray(host[a_]) == ci_) & (np.asarray(host[b_]) == cj_))[0] for kk, (a_, b_) in dict(w=('wi', 'wj'), l=('li', 'lj'), e=('ei', 'ej')).items() if a_ in host and b_ in host}
