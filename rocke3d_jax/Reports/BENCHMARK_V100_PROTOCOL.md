@@ -73,3 +73,16 @@ Steady cycle: JAX 2.21 s per step against 2.28 s per step for the Fortran main l
 Amortized including the 1,208 s cold start (LABELLED EXTRAPOLATION from the measured steady day): 2 days (measured) 721 s per day; 10 days about 240 s per day; 30 days about 159 s per day; 100 days about 131 s per day. The saving is about 3.6 s per day, so the cold start is repaid only after about 335 days; the JAX run is at parity with the one-core Fortran, not faster, on this node and window.
 Caveat: JAX held steps were 2.14 s here against 1.7-1.8 s in earlier native runs (jobs native108, allfix2) on other V100 nodes; the cause was not isolated (different node and CPU count are candidates; no other load on this node). The earlier figures are not comparable with the Fortran row; this section is.
 Fidelity (`d207_score.py`, five real members, `gpu_runs/bench_native_jax/score.{md,json}`): day 1 worst ratio at steps >= 3 QCI 2.37 at step 3 (QCL 1.58 at step 3; T 1.18, U 1.24, V 1.24, Q 1.15, P 1.22), unrelaxed criterion NOT MET, same as every earlier configuration; day 2 never beyond 2x (worst QCL 1.22 at step 90, QCI 1.19), not within at every step. All 108 steps finite (flags 0). Note: the scorer's boilerplate line "radiation computed by the original Fortran" in the md is stale for this run; radiation was native.
+
+## 8.1 SECOND-NODE REPEAT (job 37941737, 2026-10-12; node gpu022, Xeon Gold 6248, exclusive, one Tesla V100; same script `gpu/benchmark_native_v100.sh`, same code as section 8)
+Purpose: separate node effect from code effect, since JAX held steps were 2.14 s on gpu020 against 1.7-1.8 s on earlier nodes. Same restart, window, flags and protocol; Fortran 3 runs then JAX native 1 run, strictly sequential.
+| quantity | Fortran, 1 core (3 runs) | JAX native, V100 (1 run) |
+|---|---|---|
+| 108 steps, wall | 250.9 / 253.0 / 254.3 s real | 1,417 s |
+| main loop | 241.3 / 242.6 / 243.1 s (mean 242.3 s, 2.24 s per step) | steps 2-107: 226.2 s (2.13 s per step) |
+| cold start | none | step 0 1,087 s + step 1 104 s = 1,191 s |
+| held steps (83) / radiation steps (21) | not timed per step | 2.06 s / 2.43 s |
+| day-boundary steps 48 and 96 | | 2.0 s and 2.2 s (0 compiles) |
+Ratio JAX / Fortran main loop per step: 0.95 (gpu022), against 0.97 on gpu020 (section 8). JAX held steps 2.06 s here against 2.14 s on gpu020; Fortran 2.24 against 2.28 s per step. So both sides were about 2-4% faster on this node and the ratio held; the 1.7-1.8 s held steps of earlier jobs were not reproduced on either node (cause not isolated). Steady day (54 steps) about 115 s JAX against about 121 s Fortran main loop; saving about 6 s per day, so the cold start is repaid after about 200 days on this node (about 335 on gpu020) - LABELLED EXTRAPOLATION.
+Fidelity (`d207_score.py`, `gpu_runs/bench_native_jax2/score.{md,json}`): day 1 worst ratio at steps >= 3 identical to section 8 (QCI 2.37 at step 3, QCL 1.58 at step 3, T 1.18, U 1.24, V 1.24, Q 1.15, P 1.22), unrelaxed NOT MET; day 2 never beyond 2x (worst QCI 1.10 at step 106, QCL 1.09, T 1.06, P 1.06). All 108 steps finite (flags 0). The md's "radiation computed by the original Fortran" boilerplate is stale for this native run.
+Reading: parity with the one-core Fortran reproduced on a second node (ratio 0.95-0.97, one JAX run per node); not faster in any way that exceeds node noise.
