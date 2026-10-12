@@ -14,14 +14,14 @@ HAVE = os.path.exists(f'{FF}/nov26_day/ffg_33359.bin') and os.path.exists(f'{FF}
 
 
 @pytest.mark.skipif(not HAVE, reason='nov26_day records / restart absent')
-def test_hook_updates_state_and_statics():
+def test_hook_updates_state_and_statics(monkeypatch):
     import jax.numpy as jnp
     import atm_step as A
     import d193_day as D
     import jax_coupled as C
     import ghy_compare as GC
     import daily_lake as DL
-    A.Real = D.DayReal
+    monkeypatch.setattr(A, 'Real', D.DayReal)
     cp = C.Coupled('nov26', nit_strict=False)
     state, _, _ = cp.initial_state()
     g = GC.load(f'{FF}/nov26_day/ffg_33359.bin')
@@ -45,7 +45,7 @@ def test_hook_updates_state_and_statics():
 
 
 @pytest.mark.skipif(not HAVE, reason='nov26_day records / restart absent')
-def test_hook_applies_land_transfer():
+def test_hook_applies_land_transfer(monkeypatch):
     """D208: with land_fractions=True the carried land state (dyn_next w, ht, fr_snow) changes in the cells whose lake fraction changed, the underwater state is kept in
     cp._land3, and nothing else of land_prev changes."""
     import jax.numpy as jnp
@@ -53,7 +53,7 @@ def test_hook_applies_land_transfer():
     import d193_day as D
     import jax_coupled as C
     import ghy_compare as GC
-    A.Real = D.DayReal
+    monkeypatch.setattr(A, 'Real', D.DayReal)
     cp = C.Coupled('nov26', nit_strict=False)
     state, _, _ = cp.initial_state()
     g = GC.load(f'{FF}/nov26_day/ffg_33359.bin')

@@ -559,6 +559,26 @@ class Coupled:
         with stage('template_apply'):
             lp = state['land_prev']
             tpl_m = apply(tpl, S1s, mid['ag'], S1a['PEDN'][0], prec, eprec, precss, None if lp is None else lp['dyn_next'], lp)
+            pcarry_b = None
+            if os.environ.get('ROCKE_PBL_CARRY', '0') == '1':      # D222: substep-1 PBL columns of this step from OUR substep-2 outputs of the previous step
+                import jax_pbl_carry as PC_
+                ix_ = PC_.index_arrays(host, tpl_m['ns'][0]['wvalid'])
+                pcarry_b = PC_.loadbl(state['pbl_carry']) if state.get('pbl_carry') is not None else PC_.empty()
+                if state.get('pbl_carry') is not None:
+                    n0 = dict(tpl_m['ns'][0])
+                    npw, npl, npe = PC_.fill_template(n0['pw'], n0['pl'], n0['pe'], pcarry_b, ix_)
+                    if os.environ.get('ROCKE_PBL_CARRY_CHECK', '0') == '1':      # diagnostic: carried columns against the RECORDED template (host read)
+                        cols = np.r_[33:36, 50:89]
+                        wv_ = np.asarray(ix_['wvalid2'])
+                        chk = {}
+                        for nm_, new_, old_, v_ in (('pw', npw, n0['pw'], wv_), ('pl', npl, n0['pl'], None), ('pe', npe, n0['pe'], None)):
+                            a_, b_ = np.asarray(new_)[:, cols], np.asarray(old_)[:, cols]
+                            if v_ is not None:
+                                a_, b_ = a_[v_], b_[v_]
+                            chk[nm_] = (float(np.abs(a_ - b_).max()) if a_.size else 0.0, int((a_ != b_).sum()), int(a_.size))
+                        print(f'  pbl_carry_check it {it}: ' + '; '.join(f'{k}: max {v[0]:.3g} n_unequal {v[1]}/{v[2]}' for k, v in chk.items()), flush=True)
+                    n0['pw'], n0['pl'], n0['pe'] = npw, npl, npe
+                    tpl_m = dict(tpl_m, ns=[n0, tpl_m['ns'][1]])
             fin(tpl_m)
         with stage('surface_tiles_land'):
             Sd = {kk: S1a[kk] for kk in JS.ATM_KEYS}
@@ -607,6 +627,9 @@ class Coupled:
             Vn = {kk: V2n[kk] for kk in ('usi', 'vsi', 'rsix', 'rsiy')}
             new = dict(S=Sf, carry=carry, ms=r['ms'], hold=r['hold'], surf=surf_n, V=Vn, land_prev=aux['r2']['land'],
                        clock=dict(itime=itime_d + 1))
+            if pcarry_b is not None:
+                r2_ = aux['r2']
+                new['pbl_carry'] = PC_.update(pcarry_b, r2_['pbl'], r2_['pbl_li'], r2_['pbl_land'], ix_)
         if keep:
             arrays['dissip'] = dict(S2a, T=extra3['T_dissip'], KEA_NEW=o3['KEA_NEW'])
             arrays['filter'] = Sf

@@ -9,4 +9,7 @@ $PY -m pytest tests -q -p no:cacheprovider "$@" || rc=1
 for f in test_dyn_jax test_dyn_jax2 test_clouds_jax; do
   RUN_XLA_FLAG_TESTS=1 $PY -m pytest tests/$f.py -q -p no:cacheprovider || rc=1
 done
+for f in test_daily_lake_hook; do
+  RUN_ISOLATED_TESTS=1 $PY -m pytest tests/$f.py -q -p no:cacheprovider || rc=1
+done
 exit $rc

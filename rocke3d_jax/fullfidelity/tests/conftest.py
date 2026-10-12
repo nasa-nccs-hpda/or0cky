@@ -9,3 +9,7 @@ and must be run each in its own process: see run_all_tests.sh (RUN_XLA_FLAG_TEST
 import os
 
 collect_ignore = [] if os.environ.get("RUN_XLA_FLAG_TESTS") else ["test_dyn_jax.py", "test_dyn_jax2.py", "test_clouds_jax.py"]
+# Files that import jax_coupled (global side effects: libimf wiring, patched modules; 2026-10-11 they made 4 later tests fail when the nov26_day records exist):
+# run in their own process, see run_all_tests.sh (RUN_ISOLATED_TESTS=1).
+if not os.environ.get("RUN_ISOLATED_TESTS"):
+    collect_ignore += ["test_daily_lake_hook.py"]
