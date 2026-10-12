@@ -15,6 +15,7 @@ MODULE ffsoc_mod
   REAL(8), SAVE :: ffsoc_acc(ffsoc_nst) = 0.0d0
   INTEGER, SAVE :: ffsoc_nacc(ffsoc_nst) = 0
   LOGICAL, SAVE :: ffsoc_spec_done(2) = .FALSE.
+  LOGICAL, SAVE :: ffsoc_light = .FALSE.     ! env FFSOC_LIGHT: dump only tag 0 (inputs), 30 (band-end fluxes) and 100 (spectral data)
   INTERFACE ffsoc_arr
     MODULE PROCEDURE ffsoc_a1, ffsoc_a2, ffsoc_a3, ffsoc_a4, ffsoc_a5, ffsoc_a6
   END INTERFACE
@@ -28,6 +29,8 @@ CONTAINS
     ffsoc_on = .TRUE.
     CALL GET_ENVIRONMENT_VARIABLE('FFSOC_STRIDE', s, status=st)
     IF (st == 0) READ(s, *, IOSTAT=ios) ffsoc_stride
+    CALL GET_ENVIRONMENT_VARIABLE('FFSOC_LIGHT', s, status=st)
+    IF (st == 0) ffsoc_light = .TRUE.
     IF (ffsoc_stride < 1) ffsoc_stride = 1
     CALL SYSTEM_CLOCK(COUNT_RATE=ffsoc_rate)
     OPEN(ffsoc_unit, FILE='ffsoc_dump.bin', ACCESS='stream', FORM='unformatted', STATUS='REPLACE')
@@ -77,6 +80,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 1, SIZE(a, 1), 0)
     WRITE(ffsoc_unit) SIZE(a, 1), LBOUND(a, 1)
     WRITE(ffsoc_unit) a
@@ -85,6 +89,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:, :)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 2, SIZE(a, 1), SIZE(a, 2))
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), LBOUND(a, 1), LBOUND(a, 2)
     WRITE(ffsoc_unit) a
@@ -93,6 +98,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:, :, :)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 3, SIZE(a, 1), SIZE(a, 2))
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3)
     WRITE(ffsoc_unit) a
@@ -101,6 +107,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:, :, :, :)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 4, SIZE(a, 1), SIZE(a, 2))
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4)
     WRITE(ffsoc_unit) a
@@ -109,6 +116,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:, :, :, :, :)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 5, SIZE(a, 1), SIZE(a, 2))
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), SIZE(a, 5), &
       LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4), LBOUND(a, 5)
@@ -118,6 +126,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: tag, isolir, i_band, k
     REAL(8), INTENT(IN) :: a(:, :, :, :, :, :)
     IF (.NOT. (ffsoc_on .AND. ffsoc_dump_now)) RETURN
+    IF (ffsoc_light .AND. tag /= 0 .AND. tag /= 30 .AND. tag /= 100) RETURN
     CALL ffsoc_hdr(tag, isolir, i_band, k, 6, SIZE(a, 1), SIZE(a, 2))
     WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), SIZE(a, 3), SIZE(a, 4), SIZE(a, 5), SIZE(a, 6), &
       LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4), LBOUND(a, 5), LBOUND(a, 6)

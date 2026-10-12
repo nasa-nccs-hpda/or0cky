@@ -16,7 +16,7 @@ if rest and rest[0] == "--stride":
     stride = rest[1]
     rest = rest[2:]
 its = [int(x) for x in rest] or [33312]
-extra = {"FFSOC": "1", "FFSOC_STRIDE": stride} if stride else {}
+extra = ({"FFSOC": "1", "FFSOC_STRIDE": stride, **({"FFSOC_LIGHT": "1"} if os.environ.get("R2_LIGHT") else {})} if stride else {})
 s = P.PersistentServer("nov26", rundir=rundir, binary=bin_, extra_env=extra).start()
 res = {}
 try:

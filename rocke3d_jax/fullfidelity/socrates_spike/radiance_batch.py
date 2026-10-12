@@ -362,6 +362,15 @@ def columns_from_calls(calls):
             out[k] = np.concatenate([c["r"][k] for c in calls], axis=0)
         else:
             out[k] = v
+    # per-column tile data (control%l_tile varies per call): flag, n_tile, frac_tile (N, 4), t_tile (N, 4) (padded)
+    flag = np.array([float(c["r"][32][0]) > 0.5 for c in calls])
+    nt = np.array([int(c["r"][32][1]) if f else 0 for c, f in zip(calls, flag)])
+    ft = np.zeros((len(calls), 4)); tt = np.ones((len(calls), 4))
+    for i, (c, f) in enumerate(zip(calls, flag)):
+        if f and 34 in c["r"]:
+            n = min(nt[i], c["r"][34].shape[1], 4)
+            ft[i, :n] = c["r"][34][0, :n]; tt[i, :n] = c["r"][35][0, :n]
+    out["tile_flag"], out["tile_n"], out["tile_frac"], out["tile_t"] = flag, nt, ft, tt
     return out
 
 
@@ -395,9 +404,15 @@ def prepare(spec, iso, r, tile=None):
             X["solar_irrad_band"][ib] = jnp.asarray(r[16]) * float(spec["solar_flux_band"][ib - 1])
         else:
             pf, dp, dp2, pg = PL.band_planck(spec, ib, jnp.asarray(r[7]), X["t"], jnp.asarray(r[18]))
-            if r[32][0] > 0.5:
-                pg = jnp.asarray(PL.surface_planck(spec, ib, np.asarray(r[18]), dict(n_tile=int(r[32][1]), list_tile=r[33],
-                                                                                        frac_tile=r[34], t_tile=r[35])))
+            if "tile_flag" in r:                                   # per-column tile surface emission (sequential sum as the Fortran)
+                th, co = jnp.asarray(spec["theta_planck_tbl"]), jnp.asarray(spec["thermal_coeff"][:, ib - 1])
+                t_ref = float(spec["planck_misc"][2])
+                acc = None
+                for k in range(4):
+                    term = jnp.asarray(r["tile_frac"][:, k]) * PL.interp1d(th, co, jnp.asarray(r["tile_t"][:, k]) / t_ref)
+                    term = jnp.where(jnp.asarray(r["tile_n"]) > k, term, 0.0)
+                    acc = term if acc is None else acc + term
+                pg = jnp.where(jnp.asarray(r["tile_flag"]), acc, pg)
             X["planck"][ib] = (pf, dp, dp2, pg)
     return X
 
