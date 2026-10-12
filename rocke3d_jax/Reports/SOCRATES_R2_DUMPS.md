@@ -122,7 +122,7 @@ Scope and honesty first. The owner asked for the SOCRATES port to be finished ov
 
 | Stage | Module | Compared with (dump tag) | Result |
 |---|---|---|---|
-| R3 gas: P/T lookup (`inter_pt_lookup`), `k_esft_layer`, power-quad scaling, `k_abs_layer`, major absorber per call | `gas_absorption.py`, `spec_data.py` | 26/1, 25/1 | **100 % bitwise**: 230,781 / 224,000 entries (LW 183,309, SW 47,472), 45 calls |
+| R3 gas: P/T lookup (`inter_pt_lookup`), `k_esft_layer`, power-quad scaling, `k_abs_layer`, major absorber per call | `gas_absorption.py`, `spec_data.py` | 26/1, 25/1 | **100 % bitwise**: `k_abs_layer` 230,781 and `k_esft_layer` 223,901 entries (LW 183,309 / 183,309, SW 47,472 / 40,592), 45 calls |
 | R3 k-equivalent absorption: `k_eqv`, `adjust_solar_ke`, IR `monochromatic_gas_flux` | `k_eqv.py` | 20/1, 47/5 | SW `adjust_solar_ke` 100 %, SW `k_eqv` 93.6 % (max rel 3e-16), LW `k_eqv` 81 % (max rel 2e-12): exp ulp |
 | R4 grey optical properties: Rayleigh, modal aerosol, self continuum, CSIW water/ice clouds, Cairns, normalisation, phase rescale | `grey_opt_prop.py` | 10/1-4, 49, 40/7-8 | **100 % bitwise** on 119 bands (LW 5,385 + SW 1,600 cloudy entries, plus clear-layer arrays) |
 | R4/R6 cloud geometry: `set_cloud_geometry`, `aggregate_cloud`, `overlap_coupled` (triple) | `cloud_geometry.py` | 44, 45/2, 46/1, 47/3 | **100 % bitwise**, 45 calls |
@@ -132,12 +132,12 @@ Scope and honesty first. The owner asked for the SOCRATES port to be finished ov
 | R5 one band end to end, per k-term fluxes | `band_chain.py` | 21, 48 | rounding level: LW 74 % bitwise, max abs 7e-8 W/m2; SW 77 %, max abs 4e-14 |
 | band flux accumulation (`augment_radiance`), IR Planck add-back, LW channel sum | `r2_band_check.py` | 30 | rounding level (LW max abs 2.5e-8, SW 3e-14) |
 | **From the model-side inputs to band fluxes** (`radiance_calc_jax.py`) | all of the above | 30 | 14 LW + 8 SW calls (every second dumped call): LW max abs 1.6e-8 W/m2 (max rel 3e-6 on near-zero upper-level fluxes), SW max abs 1.1e-13 |
-| Same with n_cloud_top = 1 for every column (the formulation needed for batching) | `--nct1` | 30 | same rounding level (LW 6e-9, SW 6e-14): the per-call cloud-top bookkeeping is not needed |
+| Same with n_cloud_top = 1 for every column (the formulation needed for batching) | `--nct1` | 30 | same rounding level on 3 calls (2 LW, 1 SW; LW 6e-9, SW 6e-14): the per-call cloud-top bookkeeping is not needed |
 
 What the instrumented dumps added in this pass (new tags): 25 (band inputs of the k-eqv solver), 26 (`k_esft_layer`, continuum, rescaled gas), 46-49 (overlap matrices, boundary terms, forward scatter, direct flux), 100 (the spectral arrays of the real reader, once per isolir), and tag 0 extended with the atmosphere, aerosol-mode, cloud and surface inputs.
 
 Findings worth keeping:
-* The two spectral files have no self-broadening and no generalised continua; gas absorption is the (T, p) lookup (`i_scale_fnc` 9) for 80 % of the band-absorber pairs and the power-quad scaling for the rest; only the self continuum (power-quad scaling) is a grey continuum.
+* The two spectral files have no self-broadening and no generalised continua; gas absorption is the (T, p) lookup (`i_scale_fnc` 9) for all 25 LW band-absorber pairs and 10 of the 14 SW pairs, and the power-quad scaling (function 2) for the other 4 SW pairs; only the self continuum (power-quad scaling) is a grey continuum (LW bands 2-8, SW bands 3-6).
 * The **major absorber of each band is chosen per call** from the last profile's column transmission (`planet_rad.F90` 2780-2842) and swapped with the first listed gas on the persistent spectrum object. Starting from the file order every time reproduced the dumped order in all 45 calls.
 * `repsilon*mol_weight_air` in the continuum amount corresponds to a water molar weight of 18.015, not 18.0153 (found from a constant ratio 1.000017 in the dumped `k_grey_tot`): a constant of this build, not of the physics.
 * The LW is a **single output channel**: tag 30 is cumulative over the bands of the call, and the Planck function is added back per band (`adjust_ir_radiance`).
