@@ -1,0 +1,652 @@
+{
+ "59": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": true,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": true,
+  "const_cld_scaling": true
+ },
+ "60": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "74": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "90": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "91": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "105": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "120": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "121": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "135": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ },
+ "151": {
+  "o3col": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ataulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dtaulx": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "dalbsn": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epl": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "epm": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "eph": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "fulgas": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "ppmv80": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "rsdist": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "albvnh": {
+   "maxabs": 0.0,
+   "maxrel": 0.0,
+   "bitwise": true
+  },
+  "const_vtaulx": true,
+  "const_vreff": true,
+  "const_q55h2s": true,
+  "const_loc_chl": false,
+  "const_frac_veg": true,
+  "const_fpxco2": true,
+  "const_solar_irrad": false,
+  "const_cld_scaling": true
+ }
+}

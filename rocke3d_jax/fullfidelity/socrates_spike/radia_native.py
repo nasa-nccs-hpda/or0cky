@@ -53,11 +53,12 @@ class NativeHandoff:
     def call(self, packet, itime, seed=None):
         k = (jnp.asarray(itime, jnp.int32) - self.itimei) // NRAD
         z = self.table[k]
-        out = self.radia._core({n: jnp.asarray(packet[n]) for n in packet}, z[0], z[1], z[2], self.radia.prod_arrays)
+        pa = self.radia.pa_for_itime(itime)
+        out = self.radia._core({n: jnp.asarray(packet[n]) for n in packet}, z[0], z[1], z[2], pa)
         res = OrderedDict((n, out[n]) for n in OUT_FIELDS)
         # AIJ increments of the four hand-off columns (RAD_DRV.f 2254-2259, 2453); only boxes I <= IMAXJ are accumulated
         valid = jnp.zeros((IM, JM), bool).at[self.ii, self.jj].set(True)
         csz2 = z[1]
-        aij = jnp.stack([out["_SNFS3"] * csz2, -out["_TNFS3"], jnp.where(valid, self.radia.prod.solar_irrad * z[0], 0.0),
+        aij = jnp.stack([out["_SNFS3"] * csz2, -out["_TNFS3"], jnp.where(valid, pa["solar_irrad"] * z[0], 0.0),
                          out["SRHR"][0] * csz2], axis=2)
         return res, aij
