@@ -178,6 +178,10 @@ class CoupledD209(C.Coupled):
     # ------------------------------------------------------------------------------------------------ D212: the 21 surface fields of the packet from OUR state
     def _static_land_rows(self, it):
         import ghy_compare as GC
+        if os.environ.get('ROCKE_TPL_OWN', '0') == '1':            # D226: only the static columns are used (i, j, top_dev, fv, soil: constant over the window): the first step's rows
+            if 'static_rows' not in OWN:
+                OWN['static_rows'] = self._static_land_rows_first()
+            return OWN['static_rows']
         g = GC.load(f"{rs_FF()}/{D.DAYDIR}/ffg_{it}.bin")          # static columns of the land rows only (cell index, top_dev, fv, soil), see the entry
         return g[len(g) // 2:]
 
@@ -314,9 +318,10 @@ class CoupledD209(C.Coupled):
             np.savez(os.path.join(HOOK['outdir'], f'land_step{k:02d}.npz'), **{kk: np.asarray(dn[kk]) for kk in ('w', 'ht', 'fr_snow')})
         if HOOK['outdir'] and 'SNOAGE' in out[0]['carry']:       # D209 diagnostic: our carried SNOAGE (CONDSE exit) vs the recorded CONDSE exit of this step
             import clouds_condse_io as cio
-            ro = np.asarray(cio.read_cse(f"{cio.FF_DEFAULT}/{D.DAYDIR}/ffc_cse_out_{33312 + k}.bin")['SNOAGE'])
-            d = np.abs(np.asarray(out[0]['carry']['SNOAGE']) - ro)
-            SNO_DRIFT.append(dict(k=k, max_abs=float(d.max()), n_diff=int((d > 0).sum()), by_type=[float(d[t].max()) for t in range(d.shape[0])]))
+            if os.path.exists(f"{cio.FF_DEFAULT}/{D.DAYDIR}/ffc_cse_out_{33312 + k}.bin"):       # diagnostic only; absent beyond the recorded window
+                ro = np.asarray(cio.read_cse(f"{cio.FF_DEFAULT}/{D.DAYDIR}/ffc_cse_out_{33312 + k}.bin")['SNOAGE'])
+                d = np.abs(np.asarray(out[0]['carry']['SNOAGE']) - ro)
+                SNO_DRIFT.append(dict(k=k, max_abs=float(d.max()), n_diff=int((d > 0).sum()), by_type=[float(d[t].max()) for t in range(d.shape[0])]))
         return out
 
 
