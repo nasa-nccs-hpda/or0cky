@@ -5,6 +5,7 @@ usage: python radiance_bench.py DUMP SPECDIR2 [NREP]"""
 import sys, time, json
 import numpy as np
 import jax; jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
 import r2_parse as R, spec_data as SD
 import radiance_batch as RB
 from r2_e2e_check import calls
@@ -47,6 +48,23 @@ for iso, ncol in ((2, 3170), (1, 1826)):
     print("%s %d columns, %d bands: compile+first %.1f s, steady %.3f s (median of %d: %s)" %
           (tag, ncol, nb, comp, float(np.median(ts)), NREP, ["%.3f" % x for x in ts]), flush=True)
     out[tag] = dict(columns=ncol, compile_first_s=comp, steady_s=float(np.median(ts)), runs=ts)
+    # whole pipeline in ONE jit (grey properties, Planck, all bands): this is the number to quote
+    COL = (1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 27, 28, 29, 30, "tile_flag", "tile_n", "tile_frac", "tile_t")
+    percol = {str(k): jnp.asarray(big[k]) for k in COL if k in big}
+    consts = {k: v for k, v in big.items() if str(k) not in percol}
+    def full(pc):
+        rr = dict(consts); rr.update({(int(k) if k.isdigit() else k): v for k, v in pc.items()})
+        XX = RB.prepare(spec[iso], iso, rr)
+        return [RB.band_fluxes(spec[iso], iso, ib_, XX, scheme) for ib_ in range(1, nb + 1)]
+    ff = jax.jit(full)
+    t1 = time.time(); o = ff(percol); jax.block_until_ready(o); first_full = time.time() - t1
+    ts2 = []
+    for _ in range(NREP):
+        t1 = time.time(); o = ff(percol); jax.block_until_ready(o); ts2.append(time.time() - t1)
+    print("%s whole pipeline in one jit: compile+first %.1f s, steady %.3f s (%s)" % (tag, first_full, float(np.median(ts2)),
+                                                                                       ["%.3f" % x for x in ts2]), flush=True)
+    out[tag]["one_jit_compile_first_s"] = first_full
+    out[tag]["one_jit_steady_s"] = float(np.median(ts2))
     # safety check on the first n0 (real) columns
     cum_d = cum_u = None
     worst_abs = 0.0

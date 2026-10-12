@@ -146,3 +146,35 @@ Findings worth keeping:
 Not ported (listed so that nothing is implied): spherical-harmonic and solar-phase-function branches, McICA, the other cloud and aerosol parametrisations and the classic (non-modal) aerosol, the other gas scaling functions, `l_orog`/`l_noscal_tau` on, `ip_overlap_*` other than `k_eqv_scl` (the `solve_band_ses/one_gas/without_gas` solvers have zero time share in the three packets); everything on the ModelE side of the interface (RADIA, `planet_rad.F90` conversions, the aerosol Mie/humidity tables that produce `mode_absorption` etc., albedo construction, the diagnostics of the 22 output fields); dates other than the nov26 radiation steps; accuracy of the column-batched version on the GPU (section 11).
 
 Remaining work against the plan (hours, the plan's own ranges): R6 interface and outputs 20-40, R7 batching/jit/GPU tuning 15-40 (a first batched formulation exists, section 11), R8 validation campaign 15-30. R3-R5 (plan: 70-155 h) were done here in one overnight session because the per-stage dumps of R2 existed; the plan's pace calibration (2-6 agent-hours per 1,000 lines) was about 10x too pessimistic for this part, which is the evidence to use when deciding R6-R8, not a promise for them (R6 has no stage-level oracle yet: the model-side inputs are only what tag 0 records).
+
+## 11. Batched, device-resident formulation (R7 first cut): whole radiation step on one V100
+
+`fullfidelity/socrates_spike/radiance_batch.py` rewrites the validated chain of section 10 for all columns at once (no per-column Python control flow, `lax.scan` over layers, k-term axis padded to the band maximum with weight 0, major absorber chosen per column with a gather). Two properties of the formulation were established by experiment, not assumed:
+
+* **n_cloud_top = 1 for every column is equivalent to the Fortran per-call cloud top, with one exception.** The exception is the Fortran special case `n_cloud_top == n_layer` (no cloud above the lowest layer; cloud-free columns included): in `solver_triple_hogan` the layer above the lowest one then uses only the clear-region albedo of the lowest layer (`theta11 = alpha11(l, i+1)`) and ignores the overlap with cloud in the lowest layer. Without that special case 12 of 1,825 solar columns of the step were off by 0.02-17 W/m2 and the longwave by up to 3 W/m2 (all of them columns with cloud only in the lowest layer); with it every column agrees. The special case is physically questionable (it underestimates the cloud effect for a cloud confined to the lowest layer) but it is what the reference does, and the port reproduces it; it is flagged for the owner as a reference-model quirk, not a port decision.
+* The sums over k-terms and the cumulative products over layers are not in the Fortran's sequential order; this costs only rounding.
+
+**Correctness against the Fortran (tag 30, band-end fluxes), all dumped columns of the radiation step of packet 33312 (stride 1, light dump):**
+
+| | columns compared | max abs diff, CPU float64 (`data/r2_batch_fullstep_cpu_result.txt`) | max abs diff, V100 float64 (`data/r2_batch_fullstep_v100_result.txt`) |
+|---|---|---|---|
+| SW (6 bands, down and up flux at 44 levels) | 1,825 | 4.8e-10 W/m2 | 6.7e-11 W/m2 |
+| LW (9 bands, cumulative channel) | 3,169 | 7.0e-8 W/m2 | 5.0e-9 W/m2 |
+
+The count is one column short of 1,826 / 3,170 in each case: one call of each type has no band-end record in the light dump (not investigated; the other 4,994 are all within the numbers above). Bitwise equality is 9-30 % of entries (rounding-level agreement, as in section 10); `max rel` of the LW downward flux is 1.5e-5 because the top-of-atmosphere downward LW flux is about 1e-9 W/m2 (the relative error of a number that is zero up to rounding).
+
+**Timing on one V100 (float64, `data/radiance_bench_v100_result.json`)**, columns tiled from the dumped real columns to the model's per-step counts (3,170 LW and 1,826 SW), steady state, `block_until_ready`, median of 3:
+
+| | bands only | whole pipeline in one `jit` (grey properties, Planck, all bands) | compile + first run |
+|---|---|---|---|
+| LW, 3,170 columns, 9 bands | 0.107 s | **0.116 s** | 50 s |
+| SW, 1,826 columns, 6 bands | 0.039 s | **0.043 s** | 32 s |
+| radiation step (LW + SW) | | **0.16 s** | |
+
+For comparison: the Fortran `radiance_calc` is 6.5 s of a 12.2 s server call (R2, single core, loaded host; section 3 above) and the server share of a radiation step is 8.2 s in the D214 hybrid measurements (`Reports/README_START_HERE.md`). The solver alone (`solver_bench.py`): 0.07-0.11 microseconds per column on the V100, bitwise equal to the Fortran on the six real columns tested (`data/solver_bench_v100_result.json`).
+
+What this timing does not include or show: (a) the model-side work that builds the inputs (R6: it is `planet_rad.F90`/RADIA, about 6,500 + 3,900 lines of which the used part is not yet known; the inputs here are the recorded tag-0 arrays) and the post-processing into the 22 output fields; (b) host-device transfers; (c) the A100 / Discover container (jax 0.6.1 vs 0.5.3 here; the V100 rule of `GPU_V100_VS_A100.md` applies: not A100-confirmed); (d) GPU memory use (not measured; the jobs ran with 48-96 GB host memory); (e) `n_order_phase`/solver options other than the rundeck's; (f) other dates; (g) the tiled columns repeat 29 / 16 real columns, so data-dependent branch behaviour on the GPU is not representative (the arithmetic is branch-free except `where`); (h) float64: no float32 test.
+
+Compile time was the first problem: the first formulation (Python-unrolled layer loops) needed 2-5 minutes per band; `lax.scan` brought the whole LW to 50 s and the SW to 32 s. A persistent compilation cache or ahead-of-time export is advisable for the model run.
+
+Status of the port after this session: the SOCRATES computation proper (R3-R5) is validated and runs at 0.16 s per radiation step on one V100 for the rundeck's options. **Not done:** R6 (the model side, with its static fields: ozone, GHG, aerosol-mode tables, albedos, orbit; and the 22 output fields), R8 (more dates and steps, a free-running comparison, GPU categories, mutation tests), the integration into `jax_radiation.py` replacing the server callback, and the open owner decisions (funding, `interp_aer` edit; A100 confirmation).
