@@ -50,6 +50,7 @@ class Products:
         self.taucon_dust = z["p62"][0]
         self.vtaulx, self.vreff, self.q55h2s = c60["vtaulx"], c60["vreff"], c60["q55h2s"]
         self.dalbsn = c60["dalbsn"]
+        self.rsdist, self.solar_constant = [float(v) for v in z["static_173"][:2]] if "static_173" in z else (None, None)
         self.loc_chl = c60["loc_chl"]
         self.frac_veg = c50["frac_veg"]
         self.fpxco2 = c60["fpxco2"]
@@ -81,7 +82,10 @@ class RadiaJax:
     """The whole step as ONE jitted function of (packet arrays, zenith grids, per-column products).  Host work per call: three zenith grids
     (drv_zenith / zenith_coszs, exact rational orbit arithmetic) and the packet -> device transfer."""
 
-    def __init__(self, specdir, static0_npz, products, zen=None):
+    DAY_KEYS = ("o3col", "ataulx", "dtaulx", "dalbsn", "epl", "epm", "eph", "albvnh", "fulgas", "ppmv80", "solar_irrad")
+    DAY_LEN = 48                                          # model steps per day (DTsrc = 1800 s)
+
+    def __init__(self, specdir, static0_npz, products, zen=None, day_products=None, day0=None):
         self.spec = {1: SD.load(os.path.join(specdir, "spec_sw.npz")), 2: SD.load(os.path.join(specdir, "spec_lw.npz"))}
         self.spec_np = {"lw": np.load(os.path.join(specdir, "spec_lw.npz")), "sw": np.load(os.path.join(specdir, "spec_sw.npz"))}
         self.s0 = dict(np.load(static0_npz)) if isinstance(static0_npz, str) else static0_npz
@@ -93,7 +97,13 @@ class RadiaJax:
         self.comp = np.array([7, 14, 30, 25, 4, 4] + [2] * pr.dtaulx.shape[2] + [6])
         self.prod_arrays = {k: jnp.asarray(v) for k, v in dict(
             o3col=pr.o3col, ataulx=pr.ataulx, dtaulx=pr.dtaulx, vtaulx=pr.vtaulx, vreff=pr.vreff, q55h2s=pr.q55h2s, dalbsn=pr.dalbsn,
-            loc_chl=pr.loc_chl, frac_veg=pr.frac_veg, fpxco2=pr.fpxco2, jlat=pr.jlat, ilon=pr.ilon, epl=pr.epl, epm=pr.epm, eph=pr.eph).items()}
+            loc_chl=pr.loc_chl, frac_veg=pr.frac_veg, fpxco2=pr.fpxco2, jlat=pr.jlat, ilon=pr.ilon, epl=pr.epl, epm=pr.epm, eph=pr.eph,
+            albvnh=pr.albvnh, fulgas=pr.g["fulgas"], ppmv80=pr.g["ppmv80"], solar_irrad=np.float64(pr.solar_irrad)).items()}
+        # day-varying products of consecutive model days (daily_products.day_arrays), first day = model day number day0 (itime // 48)
+        self.day0 = day0
+        self.day_arrays = None
+        if day_products is not None:
+            self.day_arrays = {k: jnp.stack([jnp.asarray(d[k]) for d in day_products]) for k in self.DAY_KEYS}
         self._jit = jax.jit(self._core)
 
     # ---------------------------------------------------------------------------------------------------------- host side
@@ -109,10 +119,23 @@ class RadiaJax:
                                                "CLDSS", "CLDMC", "W_CLOUD", "FRAC_ST_WATER", "FRAC_ST_ICE", "FRAC_CNV_WATER", "FRAC_CNV_ICE",
                                                "MIX_ST_WATER", "MIX_ST_ICE", "MIX_CNV_WATER", "MIX_CNV_ICE", "DIM_ST_WATER", "DIM_ST_ICE",
                                                "DIM_CNV_WATER", "DIM_CNV_ICE", "FRAC_AREA_ST", "FRAC_AREA_CNV")}
-        out = self._jit(pj, jnp.asarray(cz1), jnp.asarray(cz2), jnp.asarray(cza), self.prod_arrays)
+        out = self._jit(pj, jnp.asarray(cz1), jnp.asarray(cz2), jnp.asarray(cza), self.pa_for_itime(itime))
         if to_numpy:
             out = {k: np.asarray(v) for k, v in out.items()}
         return out
+
+    def pa_for_itime(self, itime):
+        """The per-column products of the model day containing `itime` (a Python or traced int).  Without day products: the dump's day.
+        Outside the window of the day products the first / last day is used (clipped; check on the host with `day_covers`)."""
+        if self.day_arrays is None:
+            return self.prod_arrays
+        k = jnp.clip(jnp.asarray(itime, jnp.int32) // self.DAY_LEN - self.day0, 0, self.day_arrays["o3col"].shape[0] - 1)
+        pa = dict(self.prod_arrays)
+        pa.update({n: v[k] for n, v in self.day_arrays.items()})
+        return pa
+
+    def day_covers(self, itime):
+        return self.day_arrays is None or 0 <= int(itime) // self.DAY_LEN - self.day0 < self.day_arrays["o3col"].shape[0]
 
     # ---------------------------------------------------------------------------------------------------------- device side
     def _inputs(self, pkt, cosz1_grid, cosz2_grid, cosza_grid, pa):
@@ -143,9 +166,9 @@ class RadiaJax:
         wearth = jnp.minimum(g2("BARESW"), 1.0)
         prnb, prnx = R.getsur(cosza, pa["jlat"], pa["ilon"], ageSN, pocean, poice, pearth, plice, plake, g2("DLAKE"), tgo, zoice, fmp,
                               g2("ZSNOWI"), zmp, g2("SNOWI"), snowd, g2("SNOWLI"), frsnow, wearth, g2("WSAVG"), pa["frac_veg"], pa["dalbsn"],
-                              flags, pa["loc_chl"], pr.albvnh, pr.tab, ksialb=0)
+                              flags, pa["loc_chl"], pa["albvnh"], pr.tab, ksialb=0)
         lat46 = -94.0 + 4.0 * pa["jlat"]
-        ul, _ = R.getgas_ulgas(plb, shl, lat46, pa["o3col"], pr.g["fulgas"], pr.g["ppmv80"], pr.g["plb0"], pr.g["hlb0"], pa["fpxco2"],
+        ul, _ = R.getgas_ulgas(plb, shl, lat46, pa["o3col"], pa["fulgas"], pa["ppmv80"], pr.g["plb0"], pr.g["hlb0"], pa["fpxco2"],
                                (g2("LTROPO") + 1).astype(jnp.int32))
         comp, rad, mdd, fsu, ssw, slw = R.aerosol_inputs(pa["ataulx"], pa["dtaulx"], pa["vtaulx"], pa["vreff"], pa["q55h2s"], pr.taucon_dust,
                                                         pr.redust, pr.rodust, self._c60g())
@@ -156,7 +179,7 @@ class RadiaJax:
         c = dict(p_level=plb[:, ::-1] * 1.0e+02, t_layer=tlm[:, ::-1], ulgas=ul.reshape(N, 559),
                  cldeps=R.cloudeps(plb, pa["epl"], pa["epm"], pa["eph"]),
                  prnb=jnp.transpose(prnb, (0, 2, 1)).reshape(N, 24), prnx=jnp.transpose(prnx, (0, 2, 1)).reshape(N, 24),
-                 cos_zenith=cosza, solar_irrad=jnp.full((N,), pr.solar_irrad),
+                 cos_zenith=cosza, solar_irrad=jnp.full((N,), pa["solar_irrad"]),
                  w_cloud=top("W_CLOUD"), frac_st_water=top("FRAC_ST_WATER"), frac_st_ice=top("FRAC_ST_ICE"), frac_cnv_water=top("FRAC_CNV_WATER"),
                  frac_cnv_ice=top("FRAC_CNV_ICE"), mix_st_water=top("MIX_ST_WATER"), mix_st_ice=top("MIX_ST_ICE"), mix_cnv_water=top("MIX_CNV_WATER"),
                  mix_cnv_ice=top("MIX_CNV_ICE"), dim_st_water=top("DIM_ST_WATER"), dim_st_ice=top("DIM_ST_ICE"), dim_cnv_water=top("DIM_CNV_WATER"),

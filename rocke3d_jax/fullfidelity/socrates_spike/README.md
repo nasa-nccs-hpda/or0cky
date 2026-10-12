@@ -15,6 +15,8 @@ Owner decisions: `Reports/ACCEPTANCE_CRITERIA.md` sections 12 and 12a. Results a
 | `radiance_batch.py` | batched, jit-able formulation (all columns at once, n_cloud_top = 1, per-column major absorber, padded k-terms) |
 | `planet_side.py`, `radia_cols.py`, `zenith_coszs.py`, `radia_jax.py`, `radia_native.py` | R6: planet_rad set-up and read-out, RADIA/RCOMPX set-up (albedos, gases, aerosols), COSZS, the whole radiation step as one jit, and the `NativeHandoff` drop-in for the server callback (report section 12) |
 | `r6_collect.py`, `r6_stream.py`, `r6_static0.py`, `r6_stageb_check.py`, `r6_e2e_check.py`, `r6_stagea_check.py`, `r6_radia_check.py`, `r6_native_check.py`, `radia_bench.py` | R6 reading of the dumps (streaming; per-column npz) and the checks; the V100 benchmark |
+| `daily_products.py`, `extract_albvnd.py`, `data/albvnd.npz` | the daily products for any calendar day from the rundeck's input files (ozone `ppm`, aerosol / dust / BC `linm2m`, REPART, eps, GHG, vegetation albedo, RSDIST) and the helpers to hand them to `RadiaJax(day_products=..., day0=...)` (report section 14) |
+| `r6_days_oracle.py`, `r6_days_check.py`, `r6_days_radia_check.py`, `r6_days_e2e_check.py` | oracle for other dates (the persistent server steps its clock through the day boundaries and dumps / returns its outputs), reader-vs-dump check, nov27 check against the recorded model step, whole-step check at 38 dates |
 | `ffsoc/apply_ffsoc_r6.py` | second instrumentation stage (planet_rad, RADIATION.f, RAD_DRV.f, planet_alb.F90 of the SCRATCH model copy; `FFSOC_PL=1`) |
 | `r2_*_check.py` | one oracle comparison per stage (see below); results in `data/` |
 | `radiance_bench.py`, `solver_bench.py` | device timing (V100 via `sbatch` on `gpulogin1`) |
@@ -41,5 +43,5 @@ R6 reproduction: apply `ffsoc/apply_ffsoc_r6.py SCRATCH_SOCRATES SCRATCH_MODEL` 
 
 ## Known limits
 
-CPU float64 is bitwise or at rounding level against the Fortran; GPU `exp`/`pow` are not bitwise. Only the nov26 radiation steps are available as oracle.
-Unported branches are listed in `Reports/SOCRATES_R2_DUMPS.md` sections 10 and 12.6; the daily climatology products for dates other than nov26 are not produced by this code (12.5).
+CPU float64 is bitwise or at rounding level against the Fortran; GPU `exp`/`pow` are not bitwise. Recorded model steps exist only for nov26 and the first step of nov27; other dates are checked against the persistent server (section 14).
+Unported branches are listed in `Reports/SOCRATES_R2_DUMPS.md` sections 10 and 12.6; the daily products of other dates come from `daily_products.py` (section 14; verified for the rundeck's fixed years only).

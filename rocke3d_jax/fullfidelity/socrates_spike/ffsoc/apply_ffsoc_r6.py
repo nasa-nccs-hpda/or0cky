@@ -147,7 +147,7 @@ edit(os.path.join(md, "RADIATION.f"), [
       END IF
       CALL run_planet_rad(""", 1)])
 
-# RAD_DRV.f (RADIA): static / daily records of the RADIA-level port (tags 170-181), first call only
+# RAD_DRV.f (RADIA): static / daily records of the RADIA-level port (tags 170-183; 173 and 180-183 each time the day changes (RSDIST), the others first call only
 edit(os.path.join(md, "RAD_DRV.f"), [
  ("      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n",
   "      use RADPAR, only: nintaerext,nintaersca,nintaerasy\n"
@@ -161,7 +161,7 @@ edit(os.path.join(md, "RAD_DRV.f"), [
   "      use SURF_ALBEDO, only: ffsoc_albvnh=>albvnh\n"
   "", 1),
  ("      IMPLICIT NONE\n      real*8 dz,rho\n",
-  "      IMPLICIT NONE\n      LOGICAL, SAVE :: ffsoc_stat = .FALSE.\n      real*8 dz,rho\n", 1),
+  "      IMPLICIT NONE\n      LOGICAL, SAVE :: ffsoc_stat = .FALSE.\n      REAL*8, SAVE :: ffsoc_rsd = -1.D0\n      real*8 dz,rho\n", 1),
  ("      solar_irrad = solar_constant/RSDIST\n",
   """      solar_irrad = solar_constant/RSDIST
       IF (.NOT. ffsoc_stat) THEN
@@ -169,13 +169,17 @@ edit(os.path.join(md, "RAD_DRV.f"), [
         CALL ffsoc_pl1(170, byaml00(1:LM+LM_REQ))
         CALL ffsoc_pl1(171, plb0(1:LM_REQ))
         CALL ffsoc_pl1(172, shl0(1:LM_REQ))
-        CALL ffsoc_pl1(173, (/ RSDIST, solar_constant /))
         CALL ffsoc_pl2(174, RESHAPE(ffsoc_gtau, (/ 51*11, 143 /)))
         CALL ffsoc_pl2(175, ffsoc_salbtg)
         CALL ffsoc_pl2(176, ffsoc_taugsa)
         CALL ffsoc_pl1(177, ffsoc_tautgs)
         CALL ffsoc_pl1(178, ffsoc_redust)
         CALL ffsoc_pl1(179, ffsoc_rodust)
+      END IF
+! daily records (tags 173, 180-183): whenever RSDIST (the day) changes
+      IF (RSDIST /= ffsoc_rsd) THEN
+        ffsoc_rsd = RSDIST
+        CALL ffsoc_pl1(173, (/ RSDIST, solar_constant /))
         CALL ffsoc_pl2(180, RESHAPE(ffsoc_albvnh, (/ 72, 2 /)))
         CALL ffsoc_pl2(181, ffsoc_eplow)
         CALL ffsoc_pl2(182, ffsoc_epmid)

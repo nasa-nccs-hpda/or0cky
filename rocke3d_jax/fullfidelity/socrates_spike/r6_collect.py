@@ -19,11 +19,14 @@ def main(path, out, nper=None):
     cur = None
     alb_wgt = None
     static = {}
+    static_steps = []                  # snapshot of the static/daily records after every nper columns (daily tags 173, 180-183 change by day)
     for r in S.stream(path, tags={0, 30, 50, 51, 52, 53, 54, 60, 61, 62} | set(range(101, 200))):
         t = r["tag"]
         if t == 60:
             cur = dict(p60=r["a"], lw={}, sw={}, lwend={}, swend={}, extra={})
             cols.append(cur)
+            if nper and len(cols) % nper == 0:
+                static_steps.append(dict(static))   # the daily records of a step precede its first column, so this snapshot is the step's
             continue
         if t == 54:
             alb_wgt = r["a"]
@@ -44,7 +47,7 @@ def main(path, out, nper=None):
     if nper and len(cols) > nper:                                   # several radiation steps in one dump: one npz per step
         base = out[:-4] if out.endswith(".npz") else out
         for k in range(len(cols) // nper):
-            _save(cols[k * nper:(k + 1) * nper], "%s_%d.npz" % (base, k), alb_wgt, static)
+            _save(cols[k * nper:(k + 1) * nper], "%s_%d.npz" % (base, k), alb_wgt, static_steps[k])
         return
     _save(cols, out, alb_wgt, static)
 
