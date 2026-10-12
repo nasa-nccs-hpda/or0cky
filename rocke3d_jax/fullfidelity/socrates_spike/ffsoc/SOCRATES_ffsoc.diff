@@ -1,5 +1,7 @@
+Only in socrates/src/radiance_core: ffsoc_mod.F90
+diff -u -r socrates_orig/src/radiance_core/radiance_calc.F90 socrates/src/radiance_core/radiance_calc.F90
 --- socrates_orig/src/radiance_core/radiance_calc.F90	2026-10-11 17:46:22.407415666 -0400
-+++ socrates/src/radiance_core/radiance_calc.F90	2026-10-11 18:14:09.062588918 -0400
++++ socrates/src/radiance_core/radiance_calc.F90	2026-10-11 19:45:50.871589877 -0400
 @@ -26,6 +26,7 @@
    USE def_bound,    ONLY: StrBound
    USE def_out,      ONLY: StrOut, allocate_out
@@ -68,8 +70,9 @@
    IF (ierr /= i_normal) THEN
      CALL ereport(RoutineName, ierr, cmessage)
    END IF
+diff -u -r socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90 socrates/src/radiance_core/solve_band_k_eqv_scl.F90
 --- socrates_orig/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 17:46:22.282647853 -0400
-+++ socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 18:14:09.088422060 -0400
++++ socrates/src/radiance_core/solve_band_k_eqv_scl.F90	2026-10-11 19:45:50.936938047 -0400
 @@ -102,6 +102,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -136,34 +139,9 @@
    IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
  
  END SUBROUTINE solve_band_k_eqv_scl
---- socrates_orig/src/radiance_core/solve_band_ses.F90	2026-10-11 17:46:22.438417125 -0400
-+++ socrates/src/radiance_core/solve_band_ses.F90	2026-10-11 18:14:09.073757651 -0400
-@@ -107,6 +107,7 @@
-   USE def_cld,     ONLY: StrCld
-   USE def_bound,   ONLY: StrBound
-   USE def_ss_prop
-+  USE ffsoc_mod
-   USE rad_pcf
-   USE yomhook, ONLY: lhook, dr_hook
-   USE parkind1, ONLY: jprb, jpim
-@@ -541,6 +542,7 @@
- 
- 
-   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
-+  CALL ffsoc_tic(7)
- 
- ! Set the appropriate boundary terms for the total
- ! upward and downward fluxes.
-@@ -819,6 +821,7 @@
-   END DO
- 
- 
-+  CALL ffsoc_toc(7)
-   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
- 
- END SUBROUTINE solve_band_ses
+diff -u -r socrates_orig/src/radiance_core/solve_band_one_gas.F90 socrates/src/radiance_core/solve_band_one_gas.F90
 --- socrates_orig/src/radiance_core/solve_band_one_gas.F90	2026-10-11 17:46:22.782682825 -0400
-+++ socrates/src/radiance_core/solve_band_one_gas.F90	2026-10-11 18:14:09.078707182 -0400
++++ socrates/src/radiance_core/solve_band_one_gas.F90	2026-10-11 19:45:50.916517207 -0400
 @@ -98,6 +98,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -188,8 +166,36 @@
    IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
  
  END SUBROUTINE solve_band_one_gas
+diff -u -r socrates_orig/src/radiance_core/solve_band_ses.F90 socrates/src/radiance_core/solve_band_ses.F90
+--- socrates_orig/src/radiance_core/solve_band_ses.F90	2026-10-11 17:46:22.438417125 -0400
++++ socrates/src/radiance_core/solve_band_ses.F90	2026-10-11 19:45:50.910841526 -0400
+@@ -107,6 +107,7 @@
+   USE def_cld,     ONLY: StrCld
+   USE def_bound,   ONLY: StrBound
+   USE def_ss_prop
++  USE ffsoc_mod
+   USE rad_pcf
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
+@@ -541,6 +542,7 @@
+ 
+ 
+   IF (lhook) CALL dr_hook(RoutineName,zhook_in,zhook_handle)
++  CALL ffsoc_tic(7)
+ 
+ ! Set the appropriate boundary terms for the total
+ ! upward and downward fluxes.
+@@ -819,6 +821,7 @@
+   END DO
+ 
+ 
++  CALL ffsoc_toc(7)
+   IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
+ 
+ END SUBROUTINE solve_band_ses
+diff -u -r socrates_orig/src/radiance_core/solve_band_without_gas.F90 socrates/src/radiance_core/solve_band_without_gas.F90
 --- socrates_orig/src/radiance_core/solve_band_without_gas.F90	2026-10-11 17:46:23.007639088 -0400
-+++ socrates/src/radiance_core/solve_band_without_gas.F90	2026-10-11 18:14:09.083981841 -0400
++++ socrates/src/radiance_core/solve_band_without_gas.F90	2026-10-11 19:45:50.930808528 -0400
 @@ -92,6 +92,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -214,8 +220,9 @@
    IF (lhook) CALL dr_hook(RoutineName,zhook_out,zhook_handle)
  
  END SUBROUTINE solve_band_without_gas
+diff -u -r socrates_orig/src/radiance_core/triple_column.F90 socrates/src/radiance_core/triple_column.F90
 --- socrates_orig/src/radiance_core/triple_column.F90	2026-10-11 17:46:22.508109161 -0400
-+++ socrates/src/radiance_core/triple_column.F90	2026-10-11 18:35:29.684561263 -0400
++++ socrates/src/radiance_core/triple_column.F90	2026-10-11 19:45:50.943129425 -0400
 @@ -62,6 +62,7 @@
    USE def_cld,     ONLY: StrCld
    USE def_bound,   ONLY: StrBound
@@ -224,7 +231,7 @@
    USE rad_pcf
    USE yomhook, ONLY: lhook, dr_hook
    USE parkind1, ONLY: jprb, jpim
-@@ -281,6 +282,24 @@
+@@ -281,6 +282,27 @@
    END IF
  
  
@@ -241,6 +248,9 @@
 +  CALL ffsoc_arr(45, isolir, 0, 1, frac_cloud(1:n_profile, id_ct:n_layer, 1:n_cloud_type))
 +  CALL ffsoc_arr(45, isolir, 0, 2, frac_region(1:n_profile, id_ct:n_layer, 1:n_region))
 +  CALL ffsoc_arr(45, isolir, 0, 3, REAL(i_region_cloud(1:n_cloud_type), 8))
++  CALL ffsoc_arr(46, isolir, 0, 1, cloud_overlap(1:n_profile, id_ct-1:n_layer, 1:18))
++  CALL ffsoc_arr(46, isolir, 0, 2, flux_inc_down(1:n_profile))
++  CALL ffsoc_arr(46, isolir, 0, 3, diffuse_albedo(1:n_profile))
 +  CALL ffsoc_arr(41, isolir, 0, 1, trans(1:n_profile, 1:n_layer, :))
 +  CALL ffsoc_arr(41, isolir, 0, 2, reflect(1:n_profile, 1:n_layer, :))
 +  CALL ffsoc_arr(41, isolir, 0, 3, trans_0_noscal(1:n_profile, 1:n_layer, :))
@@ -249,7 +259,7 @@
    IF (isolir == ip_infra_red) THEN
  
      DO k=1, n_region
-@@ -395,6 +414,9 @@
+@@ -395,6 +417,9 @@
        END DO
      END IF
  
@@ -259,7 +269,7 @@
  
  
    SELECT CASE (i_solver)
-@@ -535,7 +557,7 @@
+@@ -535,7 +560,7 @@
      CALL ereport(RoutineName, ierr, cmessage)
  
    END SELECT

@@ -66,6 +66,7 @@ New dump tags (all inside `triple_column`, the routine that `monochromatic_radia
 | 42 | `s_down`, `s_up` (after the cloud-region weighting) and `source_flux_ground`: the inputs of `solver_triple_hogan` |
 | 43 | `flux_total` as returned by the solver; checked equal bitwise to the tag 21 record that follows (3,634 pairs, 0 differences) |
 | 44 | `n_cloud_top`, `n_region`, `n_cloud_type`, `n_layer`: needed to know which entries of tags 41/42 are valid (strat/conv entries above the cloud top are uninitialised memory in the Fortran and are garbage, up to 1e307, in the dump) |
+| 46 (k=1..3) | `cloud_overlap(:, 0:n_layer, 1..18)` (v11..v33, u11..u33 of the triple solver), `flux_inc_down`, `diffuse_albedo` (added for the solver check, section 9). |
 Size: 74 MB for 3 requests at stride 331 (about 30 columns per request, LW and SW, 14,988 timed calls); 80,000 array records. Sanity: on the valid entries all transmissions and reflections lie in [0, 1] (7,268 records, 0 outside).
 
 Split of the former 25 % (3 requests, 14,988 `radiance_calc` calls, 21.9 s of timed `radiance_calc`; the per-call instrumentation overhead grew with the dumps):
@@ -97,3 +98,20 @@ Reading: every difference is at rounding level; the unequal entries are 1-ulp di
 `trans_0_noscal` is not compared: the Fortran computes it only when `control%l_noscal_tau` is set; the dumped entries do not match `exp(-tau_noscal*sec_0)` and look like uninitialised memory (abs differences up to 1.5e3), so I infer the flag is off in this rundeck; I did not read it from the running model.
 What this validates: the coefficient routines of kernel B (the two-stream coefficient chain, both schemes, solar and infra-red sources, the cloud-region blending) on 3,634 real k-terms. What it does not: the layer solver (`solver_triple_hogan`: the spike kernel is the homogeneous direct solver, not the triple-region Hogan solver that this rundeck runs, so tag 42/43 cannot be compared with it), GPU `exp`/`pow` (CPU only), the bands not sampled (stride 331), and any other date.
 Consequence for the projection: the coefficient work is validated and cheap; the solver that carries the rest of the 57 % (`solver_triple_hogan`, three regions with cloud overlap) is not what kernel B timed (the spike's "3 regions" timing repeated the homogeneous solver three times).
+
+## 9. The layer solver: `solver_triple_hogan` ported and compared
+
+Added after section 8, on the same terms (D3 stage R2: instrumented scratch copy, no arithmetic changed). The dump gained tag 46 (the 18 overlap-matrix elements per layer boundary, `flux_inc_down`, `diffuse_albedo`); the instrumented binary was rebuilt and is again bitwise on packets **33312, 33317, 33322** (all 21 non-AIJ fields, at stride 331 and again at stride 100000).
+
+`fullfidelity/socrates_spike/solver_triple_hogan.py` is a line-by-line port of `solver_triple_hogan.F90` (operand order kept; Python loops over the 43 layers, vectorised over columns: a validation port, not the production scan). `r2_solver_check.py` feeds it tags 41 (`trans`, `reflect`), 42 (`s_down`, `s_up`, ground source), 44, 46 and compares the result with tag 43 (`flux_total` as the Fortran returned it). Result (`data/r2_solver_check_result.txt`), CPU float64, 3,634 k-term calls (1 column each, stride 331):
+
+| | entries | bitwise | max abs diff | max rel diff |
+|---|---|---|---|---|
+| LW (2,966 calls x 88 fluxes) | 261,008 | 100.000 % | 0 | 0 |
+| SW (668 calls x 88 fluxes) | 58,784 | 99.864 % | 1.8e-308 | 1.8e-8 (denormal-size values) |
+
+The 51 SW calls with unequal entries differ only in the last bit or in denormals (the unequal entries have magnitude <= 4e-293, i.e. fluxes underflowing in the deep shadowed layers); no entry is off by a structural error. No non-finite entries on either side.
+
+What this validates: the three-region recurrence (downward sweep of albedo/source, cloud-top handling, upward sweep with the overlap matrices v, u) on real cloudy columns (`n_cloud_top` between 18 and 43; every call has non-trivial overlap matrices). Together with section 8 this means the two kernels that make up `monochromatic_radiance` for this rundeck (coefficients + triple-region solver) are reproduced on real inputs; the inputs of the solver (overlap matrices, region fractions) are taken from the Fortran dumps, not recomputed (they come from `overlap_coupled` / `cloud_maxcs_split`, part of the unported 21 % bookkeeping).
+
+What it does not show: (a) `n_cloud_top = 1` (cloud in the top layer) was never sampled (the `ELSE` branch of the surface flux and the first-layer logic are ported but unexercised); (b) CPU only, no GPU `exp`/`pow` or fused-multiply-add effects; (c) the first nov26 radiation steps only, about 30 columns per request; (d) only 1 column per k-term was dumped, so column-vectorised behaviour (a `n_cloud_top` that differs per column is impossible in the Fortran: it is one value per call) is not exercised beyond that; (e) the performance of the solver on a GPU is not measured here (next step: a `lax.scan` version and a V100 timing at 3,170 LW + 1,826 SW calls x 9/6 bands x ESFT terms).
