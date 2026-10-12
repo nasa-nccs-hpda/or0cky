@@ -15,7 +15,12 @@ MODULE ffsoc_mod
   REAL(8), SAVE :: ffsoc_acc(ffsoc_nst) = 0.0d0
   INTEGER, SAVE :: ffsoc_nacc(ffsoc_nst) = 0
   LOGICAL, SAVE :: ffsoc_spec_done(2) = .FALSE.
+  LOGICAL, SAVE :: ffsoc_pl_on = .FALSE.     ! env FFSOC_PL: planet_rad-side arrays (tags 50-53), every radiation call, not stride-gated
+  INTEGER, SAVE :: ffsoc_pl_serial = 0
   LOGICAL, SAVE :: ffsoc_light = .FALSE.     ! env FFSOC_LIGHT: dump only tag 0 (inputs), 30 (band-end fluxes) and 100 (spectral data)
+  INTERFACE ffsoc_pl
+    MODULE PROCEDURE ffsoc_pl1, ffsoc_pl2
+  END INTERFACE
   INTERFACE ffsoc_arr
     MODULE PROCEDURE ffsoc_a1, ffsoc_a2, ffsoc_a3, ffsoc_a4, ffsoc_a5, ffsoc_a6
   END INTERFACE
@@ -31,6 +36,8 @@ CONTAINS
     IF (st == 0) READ(s, *, IOSTAT=ios) ffsoc_stride
     CALL GET_ENVIRONMENT_VARIABLE('FFSOC_LIGHT', s, status=st)
     IF (st == 0) ffsoc_light = .TRUE.
+    CALL GET_ENVIRONMENT_VARIABLE('FFSOC_PL', s, status=st)
+    IF (st == 0) ffsoc_pl_on = .TRUE.
     IF (ffsoc_stride < 1) ffsoc_stride = 1
     CALL SYSTEM_CLOCK(COUNT_RATE=ffsoc_rate)
     OPEN(ffsoc_unit, FILE='ffsoc_dump.bin', ACCESS='stream', FORM='unformatted', STATUS='REPLACE')
@@ -132,4 +139,23 @@ CONTAINS
       LBOUND(a, 1), LBOUND(a, 2), LBOUND(a, 3), LBOUND(a, 4), LBOUND(a, 5), LBOUND(a, 6)
     WRITE(ffsoc_unit) a
   END SUBROUTINE ffsoc_a6
+  SUBROUTINE ffsoc_pl1(tag, a)
+    INTEGER, INTENT(IN) :: tag
+    REAL(8), INTENT(IN) :: a(:)
+    IF (.NOT. ffsoc_init_done) CALL ffsoc_init
+    IF (.NOT. (ffsoc_on .AND. ffsoc_pl_on)) RETURN
+    IF (tag == 50) ffsoc_pl_serial = ffsoc_pl_serial + 1
+    CALL ffsoc_hdr(tag, 0, 0, ffsoc_pl_serial, 1, SIZE(a, 1), 0)
+    WRITE(ffsoc_unit) SIZE(a, 1), LBOUND(a, 1)
+    WRITE(ffsoc_unit) a
+  END SUBROUTINE ffsoc_pl1
+  SUBROUTINE ffsoc_pl2(tag, a)
+    INTEGER, INTENT(IN) :: tag
+    REAL(8), INTENT(IN) :: a(:, :)
+    IF (.NOT. ffsoc_init_done) CALL ffsoc_init
+    IF (.NOT. (ffsoc_on .AND. ffsoc_pl_on)) RETURN
+    CALL ffsoc_hdr(tag, 0, 0, ffsoc_pl_serial, 2, SIZE(a, 1), SIZE(a, 2))
+    WRITE(ffsoc_unit) SIZE(a, 1), SIZE(a, 2), LBOUND(a, 1), LBOUND(a, 2)
+    WRITE(ffsoc_unit) a
+  END SUBROUTINE ffsoc_pl2
 END MODULE ffsoc_mod
