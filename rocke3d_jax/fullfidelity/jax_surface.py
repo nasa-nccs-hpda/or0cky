@@ -788,6 +788,9 @@ def make_stage(host):
             q1_ = atm1['Q'][hbase['ej'], hbase['ei'], 0]
             fl = jax.jit(lambda pe, oe, gb, dyn, q1, ma1, trup: _land(pe, oe, gb, dyn, q1, ma1, trup, ms))
             _tm('land_ghy', fl, rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
+            _r = fl(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
+            _nit = np.asarray(_r['ghy']['nit_gdtm'])
+            print('ghy substep iterations per land cell: max', int(_nit.max()), 'mean %.2f' % _nit.mean(), 'counts', np.bincount(_nit).tolist(), flush=True)
             _tdir = os.environ.get('ROCKE_SURF_PIECES_TRACE')
             if _tdir:
                 from jax import profiler as _jprof
