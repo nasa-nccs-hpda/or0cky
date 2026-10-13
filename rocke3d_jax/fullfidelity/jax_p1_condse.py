@@ -105,23 +105,27 @@ class PoleHost:
             import mstcnv_host as MH
             cf.mc.mstcnv_column = MH.column_mstcnv
         if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
-            # persistent full-size buffers (only the pole slice [0, j] is ever read or written by condse_column; everything else stays
-            # zero exactly as in the per-call np.zeros arrays): the per-call allocation and copy of ~100 MB cost about 30 ms
-            if getattr(self, '_fa', None) is None:
-                self._fa = {k: np.zeros(shp) for k, shp in self.shapes.items()}
-                self._fx = cf._fresh_outputs(self._fa)
-            A, X = self._fa, self._fx
-            for k, v in a_slices.items():
-                if k in A:
-                    _pole_put(A[k], np.asarray(v), j)
-            for k in X:
-                if k in a_slices and k in A:
-                    _pole_put(X[k], np.asarray(a_slices[k]), j)
-            for k, src in (("TLS", "T"), ("TMC", "T"), ("QLS", "Q"), ("QMC", "Q")):
-                _pole_put(X[k], np.asarray(a_slices[src]), j)
-            _pole_put(X["FSS"], 1.0, j)
+            # same values as the branch below without the ~100 MB of copies: the entry arrays are zeros plus the pole slice, so each output
+            # array (a copy of an entry array) is np.zeros (lazy pages) plus the same pole slice
+            A = {}
+            for k, shp in self.shapes.items():
+                arr = np.zeros(shp)
+                if k in a_slices:
+                    _pole_put(arr, np.asarray(a_slices[k]), j)
+                A[k] = arr
+
+            def fresh(src):
+                arr = np.zeros(self.shapes[src])
+                if src in a_slices:
+                    _pole_put(arr, np.asarray(a_slices[src]), j)
+                return arr
+            if getattr(self, '_fresh_keys', None) is None:
+                self._fresh_keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
+            X = {k: fresh(k) for k in self._fresh_keys if k not in ("TLS", "QLS", "TMC", "QMC")}
+            X["FSS"] = np.ones(self.shapes["FSS"])
+            X["TLS"], X["QLS"], X["TMC"], X["QMC"] = fresh("T"), fresh("Q"), fresh("T"), fresh("Q")
             for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
-                _pole_put(X[k], 0.0, j)
+                X[k][:, :] = 0.0
         else:
             A = {}
             for k, shp in self.shapes.items():
