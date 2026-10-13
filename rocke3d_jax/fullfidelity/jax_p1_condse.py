@@ -142,11 +142,18 @@ def pole_call(host, j, A, ms):
 def pole_eager(host, j, A, ms):
     """D214: the pole column as an explicit host step BETWEEN jitted stages (no host callback inside a jit program: on the GPU such callbacks fire only when the whole
     program has finished, which made them cost 0.1-0.5 s each).  Same inputs and outputs as pole_call."""
+    import time as _t
+    t0 = _t.perf_counter()
     sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
     sl_h, ms_h = jax.device_get((sl, ms))
+    t1 = _t.perf_counter()
     out, msout = host.run(j, sl_h, ms_h)
+    t2 = _t.perf_counter()
     out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
-    return out, {k: jnp.asarray(v) for k, v in msout.items()}
+    res = out, {k: jnp.asarray(v) for k, v in msout.items()}
+    if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
+        print(f'pole_eager j={j}: slice+d2h {t1 - t0:.3f} s  host.run {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
+    return res
 
 
 def _pole_host_mode():
