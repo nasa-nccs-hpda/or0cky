@@ -739,6 +739,7 @@ def make_stage(host):
             ma1 = atm['MA1'][hbase['ej'], hbase['ei']]
         return core(atm, rows, n['ftype'], n['wvalid'], ghy, ma1, tpl_all['trup'], dyn, tmom, qmom, pk)
 
+    _ncall = [0]
     _own_timers = os.environ.get('ROCKE_SURF_TIMERS') == '1'      # speed track diagnostic: block after each unit and print its seconds
 
     def stage(Sd, tpl_all, timers=None):
@@ -760,7 +761,16 @@ def make_stage(host):
             timers[name] = timers.get(name, 0.0) + time.perf_counter() - t0
             return o
         atm1, cell1, rows1 = T('prep1', lambda: prep1(Sd, tpl_all))
-        r1, ex1, tmom, qmom = T('core_ns1', lambda: run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK']))
+        _trace_dir = os.environ.get('ROCKE_SURF_TRACE')
+        _ncall[0] += 1
+        if _trace_dir and _ncall[0] == 8:       # speed track diagnostic: one profiler trace of the substep-1 core (kernel count / duration)
+            import jax.profiler
+            jax.block_until_ready(atm1)
+            with jax.profiler.trace(_trace_dir):
+                r1, ex1, tmom, qmom = run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK'])
+                jax.block_until_ready((r1, ex1))
+        else:
+            r1, ex1, tmom, qmom = T('core_ns1', lambda: run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK']))
         atm2, rows2 = T('between', lambda: between(Sd, atm1, cell1, rows1, r1, ex1, tpl_all))
         r2, ex2, tmom, qmom = T('core_ns2', lambda: run_core(atm2, rows2, tpl_all, 1, r1['land']['dyn_next'], tmom, qmom, Sd['PK']))
         out = T('final', lambda: final(Sd, atm2, r2, ex2, rows2, tpl_all))
