@@ -110,45 +110,73 @@ class PoleHost:
             return r
         return self._run(j, a_slices, ms_in)
 
-    def _run(self, j, a_slices, ms_in):
-        import time
-        t0 = time.perf_counter()
-        cf.set_backend('numpy')
-        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':       # pole columns: the cloud-base stage through the numba worker too
-            import mstcnv_host as MH
-            cf.mc.mstcnv_column = MH.column_mstcnv
-        if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
-            # same values as the branch below without the ~100 MB of copies: the entry arrays are zeros plus the pole slice, so each output
-            # array (a copy of an entry array) is np.zeros (lazy pages) plus the same pole slice
-            A = {}
-            for k, shp in self.shapes.items():
-                arr = np.zeros(shp)
-                if k in a_slices:
-                    _pole_put(arr, np.asarray(a_slices[k]), j)
-                A[k] = arr
+    def _slow_build(self, j, a_slices):
+        A = {}
+        for k, shp in self.shapes.items():
+            arr = np.zeros(shp)
+            if k in a_slices:
+                _pole_put(arr, np.asarray(a_slices[k]), j)
+            A[k] = arr
+        X = cf._fresh_outputs(A)
+        for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
+            X[k][:, :] = 0.0
+        return A, X
 
-            def fresh(src):
-                arr = np.zeros(self.shapes[src])
-                if src in a_slices:
-                    _pole_put(arr, np.asarray(a_slices[src]), j)
-                return arr
-            if getattr(self, '_fresh_keys', None) is None:
-                self._fresh_keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
-            X = {k: fresh(k) for k in self._fresh_keys if k not in ("TLS", "QLS", "TMC", "QMC")}
-            X["FSS"] = np.ones(self.shapes["FSS"])
-            X["TLS"], X["QLS"], X["TMC"], X["QMC"] = fresh("T"), fresh("Q"), fresh("T"), fresh("Q")
-            for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
-                X[k][:, :] = 0.0
-        else:
-            A = {}
-            for k, shp in self.shapes.items():
-                arr = np.zeros(shp)
-                if k in a_slices:
-                    _pole_put(arr, np.asarray(a_slices[k]), j)
-                A[k] = arr
-            X = cf._fresh_outputs(A)
-            for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
-                X[k][:, :] = 0.0
+    def _zeros_build(self, j, a_slices):
+        """ROCKE_POLE_FAST=1: same values as _slow_build without the ~100 MB of copies (the entry arrays are zeros plus the pole slice)."""
+        A = {}
+        for k, shp in self.shapes.items():
+            arr = np.zeros(shp)
+            if k in a_slices:
+                _pole_put(arr, np.asarray(a_slices[k]), j)
+            A[k] = arr
+
+        def fresh(src):
+            arr = np.zeros(self.shapes[src])
+            if src in a_slices:
+                _pole_put(arr, np.asarray(a_slices[src]), j)
+            return arr
+        if getattr(self, '_fresh_keys', None) is None:
+            self._fresh_keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
+        X = {k: fresh(k) for k in self._fresh_keys if k not in ("TLS", "QLS", "TMC", "QMC")}
+        X["FSS"] = np.ones(self.shapes["FSS"])
+        X["TLS"], X["QLS"], X["TMC"], X["QMC"] = fresh("T"), fresh("Q"), fresh("T"), fresh("Q")
+        for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
+            X[k][:, :] = 0.0
+        return A, X
+
+    def _persist_build(self, j, a_slices):
+        """ROCKE_POLE_FAST=2: persistent full-size buffers, restored after each call (condse_column writes X only at [.., 0, j] and the whole small
+        UKMSP/VKMSP/UKMNP/VKMNP arrays; A is read only)."""
+        if getattr(self, '_pa', None) is None:
+            self._pa = {k: np.zeros(shp) for k, shp in self.shapes.items()}
+            keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
+            self._px = {k: np.zeros(self.shapes[{"TLS": "T", "TMC": "T", "QLS": "Q", "QMC": "Q"}.get(k, k)]) for k in keys}
+            self._px["FSS"] = np.ones(self.shapes["FSS"])
+            self._pa_put, self._px_put = [], []
+        A, X = self._pa, self._px
+        for k, v in a_slices.items():
+            if k in A:
+                _pole_put(A[k], np.asarray(v), j)
+                self._pa_put.append(k)
+        for k in X:
+            src = {"TLS": "T", "TMC": "T", "QLS": "Q", "QMC": "Q"}.get(k, k)
+            if src in a_slices:
+                _pole_put(X[k], np.asarray(a_slices[src]), j)
+        return A, X
+
+    def _persist_restore(self, j):
+        for k in self._pa_put:
+            _pole_put(self._pa[k], 0.0, j)
+        self._pa_put = []
+        for k, arr in self._px.items():
+            v = 1.0 if k == "FSS" else 0.0
+            if arr.size <= 20000:
+                arr[...] = v
+            else:
+                _pole_put(arr, v, j)
+
+    def _exec(self, A, X, j, ms_in):
         ms = dict(S={k: (list(np.asarray(ms_in[k], float)) if k in ("dqlsc", "lhp", "prebar1") else np.array(ms_in[k], float)) for k in MS_KEYS})
         cnt = cf.new_counts()
         if os.environ.get('ROCKE_POLE_PROFILE') == '1' and self.calls == 6:      # speed track diagnostic: cProfile of one steady pole call
@@ -162,8 +190,36 @@ class PoleHost:
             pstats.Stats(pr).sort_stats('tottime').print_stats(14)
         else:
             cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+        return ms, cnt
+
+    def _run(self, j, a_slices, ms_in):
+        import time
+        t0 = time.perf_counter()
+        cf.set_backend('numpy')
+        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':       # pole columns: the cloud-base stage through the numba worker too
+            import mstcnv_host as MH
+            cf.mc.mstcnv_column = MH.column_mstcnv
+        mode = os.environ.get('ROCKE_POLE_FAST', '0')
+        if mode == '2':
+            A, X = self._persist_build(j, a_slices)
+        elif mode == '1':
+            A, X = self._zeros_build(j, a_slices)
+        else:
+            A, X = self._slow_build(j, a_slices)
+        ms, cnt = self._exec(A, X, j, ms_in)
         out = {k: np.array(pole_slice(X[k], j), dtype=np.float64, copy=True) for k in a_slices if k in X}
         msout = {k: np.asarray(ms['S'][k], dtype=np.float64) for k in MS_KEYS}
+        if mode == '2':
+            self._persist_restore(j)
+            if self.calls < 3:         # self-check against the plain construction on the first calls (exact equality of everything returned)
+                A2, X2 = self._slow_build(j, a_slices)
+                ms2, _ = self._exec(A2, X2, j, ms_in)
+                out2 = {k: np.array(pole_slice(X2[k], j), dtype=np.float64, copy=True) for k in a_slices if k in X2}
+                ok = set(out) == set(out2) and all(np.array_equal(out[k], out2[k], equal_nan=True) for k in out) and \
+                    all(np.array_equal(msout[k], np.asarray(ms2['S'][k], dtype=np.float64), equal_nan=True) for k in MS_KEYS)
+                print(f'pole_fast self-check call {self.calls} pole {j}: {"equal" if ok else "MISMATCH"}', flush=True)
+                if not ok:
+                    raise RuntimeError('ROCKE_POLE_FAST=2 self-check failed')
         dt = time.perf_counter() - t0
         self.calls += 1
         self.seconds += dt
@@ -193,7 +249,7 @@ def pole_eager(host, j, A, ms):
     program has finished, which made them cost 0.1-0.5 s each).  Same inputs and outputs as pole_call."""
     import time as _t
     t0 = _t.perf_counter()
-    if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
+    if os.environ.get('ROCKE_POLE_FAST', '0') in ('1', '2'):
         keys = tuple(k for k in POLE_KEYS if k in A)
         fn = _POLE_SLICE_JIT.get((j, keys))
         if fn is None:
@@ -205,7 +261,7 @@ def pole_eager(host, j, A, ms):
     t1 = _t.perf_counter()
     out, msout = host.run(j, sl_h, ms_h)
     t2 = _t.perf_counter()
-    if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
+    if os.environ.get('ROCKE_POLE_FAST', '0') in ('1', '2'):
         out = jax.device_put({k: v for k, v in out.items() if k in host.out_keys})
         res = out, jax.device_put(dict(msout))
     else:
