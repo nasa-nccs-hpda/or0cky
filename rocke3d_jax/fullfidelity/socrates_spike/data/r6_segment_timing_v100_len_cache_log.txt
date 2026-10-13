@@ -1,0 +1,12 @@
+=== A: one 120-day segment, no cache
+segment day0 694: build 13.7 s, first call (compile + run) 274.1 s
+{"day0": 694, "ndays": 120, "rad_steps": 1152, "build_s": 13.723996581044048, "first_call_s": 274.13239688100293, "rad_step_median_s": 0.16421093372628093, "rad_step_mean_s": 0.16426167939769365, "rad_step_max_s": 0.16807084437459707, "finite": true, "mem": {"bytes_in_use": 2138776576, "peak_bytes_in_use": 4983938816, "bytes_lim
+=== B1: one 30-day segment, persistent cache (empty)
+segment day0 694: build 5.0 s, first call (compile + run) 272.9 s
+{"day0": 694, "ndays": 30, "rad_steps": 288, "build_s": 4.968980364035815, "first_call_s": 272.85265213716775, "rad_step_median_s": 0.16487982915714383, "rad_step_mean_s": 0.1648743343052782, "rad_step_max_s": 0.16733733098953962, "finite": true, "mem": {"bytes_in_use": 586684160, "peak_bytes_in_use": 3431661824, "bytes_limit": 
+=== B2: same, second process (cache should hit)
+segment day0 694: build 3.1 s, first call (compile + run) 30.0 s
+{"day0": 694, "ndays": 30, "rad_steps": 288, "build_s": 3.0822983770631254, "first_call_s": 30.00492808688432, "rad_step_median_s": 0.16413954505696893, "rad_step_mean_s": 0.16420768423635473, "rad_step_max_s": 0.16818549996241927, "finite": true, "mem": {"bytes_in_use": 586684160, "peak_bytes_in_use": 3431661824, "bytes_limit":
+481M	/panfs/ccds02/nobackup/people/gtamkin/.nccstmp/claude-855113861/-panfs-ccds02-nobackup-people-gtamkin-dev-ilab-agentic-ai-ilab-agentic-ai-projects-imvi-rocke3d-jax/8fd22a28-e2ef-448a-902b-35964613ecf3/scratchpad/jaxcache
+
+[exited with code 0]
