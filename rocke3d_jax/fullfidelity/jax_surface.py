@@ -763,6 +763,31 @@ def make_stage(host):
         atm1, cell1, rows1 = T('prep1', lambda: prep1(Sd, tpl_all))
         _trace_dir = os.environ.get('ROCKE_SURF_TRACE')
         _ncall[0] += 1
+        if os.environ.get('ROCKE_SURF_PIECES') == '1' and _ncall[0] == 8:     # speed track diagnostic: the pieces of the substep-1 core, each as its own jit, 5 timed repeats
+            def _tm(name, f, *a):
+                jax.block_until_ready(f(*a))
+                ts = []
+                for _ in range(5):
+                    t0 = time.perf_counter()
+                    jax.block_until_ready(f(*a))
+                    ts.append(time.perf_counter() - t0)
+                print(f'surface_piece {name}: median {sorted(ts)[2]:.4f} s', flush=True)
+            n0, g0 = tpl_all['ns'][0], tpl_all['ghy'][0]
+            allp = jnp.concatenate([rows1['pw'], rows1['pl'], rows1['pe']], axis=0)
+            Nw_, Nl_ = hbase['Nw'], hbase['Nl']
+            fp = jax.jit(_pbl_batch)
+            out_ = fp(allp)
+            _tm('pbl_batch', fp, allp)
+            o_w = {k: v[:2 * Nw_] for k, v in out_.items()}
+            o_l = {k: v[2 * Nw_:2 * Nw_ + Nl_] for k, v in out_.items()}
+            o_e = {k: v[2 * Nw_ + Nl_:] for k, v in out_.items()}
+            _tm('tiles_water', jax.jit(_tiles_water), rows1['pw'], rows1['tw'], o_w)
+            _tm('tiles_landice', jax.jit(_tiles_landice), rows1['pl'], rows1['tl'], o_l)
+            ma1_ = atm1['MA1'][hbase['ej'], hbase['ei']] if _OWN_GHY else tpl_all['ma1_land']
+            ghy_ = dict(g0, forcing=dict(g0['forcing'], pres=rows1['pe'][:, 16])) if _OWN_GHY else g0
+            q1_ = atm1['Q'][hbase['ej'], hbase['ei'], 0]
+            fl = jax.jit(lambda pe, oe, gb, dyn, q1, ma1, trup: _land(pe, oe, gb, dyn, q1, ma1, trup, ms))
+            _tm('land_ghy', fl, rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
         if _trace_dir and _ncall[0] == 8:       # speed track diagnostic: one profiler trace of the substep-1 core (kernel count / duration)
             from jax import profiler as _jprof
             jax.block_until_ready(atm1)
