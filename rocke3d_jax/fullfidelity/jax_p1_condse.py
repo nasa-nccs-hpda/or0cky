@@ -240,6 +240,8 @@ class CondseDevice:
     def mstcnv(self, R, stats=None):
         """clouds_mstcnv_jax.mstcnv_jax with the cloud-base loop unchanged and the 'negative cloud cover' error accumulated on the device (returned as a flag)
         instead of a per-iteration host read.  The per-iteration host read of the column mask (compaction) remains."""
+        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':
+            return self._mstcnv_host(R, stats)
         c = self.cfg['tune']
         N = self.N
         lmcm = int(self.cfg['lmcm'])
@@ -274,6 +276,29 @@ class CondseDevice:
             stats['lmin_host_syncs'] = syncs
         o = mj._post(Kj, S, Sc, I_, aux)
         return o, err_all
+
+    def _mstcnv_host(self, R, stats=None):
+        """ROCKE_MSTCNV_HOST=1: the whole cloud-base stage on the host through the numba port (mstcnv_host), one
+        device->host copy of R and one host->device copy of the outputs; no per-LMIN host loop on the device."""
+        import mstcnv_host as MH
+        if getattr(self, '_mh', None) is None:
+            self._mh = MH.MstcnvHost(self.N, nks=int(np.asarray(R['ra']).shape[0]))
+        v = self._mh.run(R, self.cfg)
+        o = {}
+        for i, n in enumerate(MH.OUT_SC[:14]):
+            a = np.array(v['o_sc'][i])
+            o[n] = jnp.asarray(a.astype(np.int64) if n in MH.INT_SC else a)
+        for i, n in enumerate(MH.OUT_L):
+            o[n] = jnp.asarray(np.array(v['o_l'][i]))
+        o['lhp'] = jnp.asarray(np.array(v['o_l1'][0]))
+        o['precnvl'] = jnp.asarray(np.array(v['o_l1'][1]))
+        o['smom'], o['qmom'] = jnp.asarray(np.array(v['o_m'][0])), jnp.asarray(np.array(v['o_m'][1]))
+        o['um'], o['vm'] = jnp.asarray(np.array(v['o_k'][0])), jnp.asarray(np.array(v['o_k'][1]))
+        err = jnp.asarray(bool(v['o_sc'][14].any()))
+        if stats is not None:
+            stats['events'] = int((np.asarray(v['o_sc'][13]) > 0).sum())
+            stats['lmin_host_syncs'] = 0
+        return o, err
 
     # ---------------------------------------------------------------- unit 3: post-processing
     def _post_fn(self, A, W0, o, ms_s, Xs, Kls, until_pole=False):
