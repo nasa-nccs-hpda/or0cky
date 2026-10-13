@@ -115,7 +115,17 @@ class PoleHost:
             X[k][:, :] = 0.0
         ms = dict(S={k: (list(np.asarray(ms_in[k], float)) if k in ("dqlsc", "lhp", "prebar1") else np.array(ms_in[k], float)) for k in MS_KEYS})
         cnt = cf.new_counts()
-        cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+        if os.environ.get('ROCKE_POLE_PROFILE') == '1' and self.calls == 6:      # speed track diagnostic: cProfile of one steady pole call
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
+            cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+            pr.disable()
+            print('pole_profile (call 6, pole j=%d)' % j, flush=True)
+            pstats.Stats(pr).sort_stats('tottime').print_stats(14)
+        else:
+            cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
         out = {k: np.array(pole_slice(X[k], j), dtype=np.float64, copy=True) for k in a_slices if k in X}
         msout = {k: np.asarray(ms['S'][k], dtype=np.float64) for k in MS_KEYS}
         dt = time.perf_counter() - t0
