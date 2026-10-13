@@ -13,6 +13,7 @@ Two execution modes of the SAME code: eager (each kernel is one jit dispatch on 
 Needs the XLA flags of clouds_jax_env_fast (imported first).  Libm mode (numpy-pow semantics via jnp.power); the Intel libimf is not used.
 """
 import clouds_jax_env_fast  # noqa: F401  (XLA flags BEFORE jax)
+import os
 import numpy as np
 import jax
 jax.config.update("jax_enable_x64", True)
@@ -34,6 +35,17 @@ DTLF = 2. * DT
 # dynamics outputs returned to the caller (atm_step.DYN_OUT + PEK)
 OUT_KEYS = ('U', 'V', 'T', 'Q', 'QCL', 'QCI', 'MA', 'PEDN', 'PMID', 'PK', 'P', 'MASUM', 'TMOM', 'QMOM', 'MUS', 'MVS', 'MWS', 'GZ',
             'KEA', 'PTROPO', 'LTROPO', 'WSAVE', 'DPDX', 'DPDY', 'DPDX0', 'DPDY0', 'PHI', 'PMIDOLD', 'PDSIG')
+_ZDUMP = os.environ.get('ROCKE_ZEXTRA_DUMP')
+_ZN = [0]
+
+
+def _zextra_write(lmin, lmax, ncyc, mw, mu, mv, ma, q):
+    os.makedirs(_ZDUMP, exist_ok=True)
+    np.savez(os.path.join(_ZDUMP, 'zextra_%04d.npz' % _ZN[0]), lminzij=np.asarray(lmin), lmaxzij=np.asarray(lmax), ncyc=int(ncyc), mw=np.asarray(mw),
+             mu=np.asarray(mu), mv=np.asarray(mv), ma=np.asarray(ma), q=np.asarray(q))
+    _ZN[0] += 1
+
+
 FLAG_KEYS = ('sdrag_bad', 'advecm_exc2', 'aadvt_bad', 'qdynam_err', 'qdynam_do_z_extra')
 
 
@@ -187,6 +199,9 @@ class DynDevice:
                 w['MUS'], w['MVS'], w['MWS'] = q0['mu'], q0['mv'], q0['mw']
                 fl['qdynam_err'] = jnp.maximum(fl['qdynam_err'], q0['err'].astype(jnp.int32))
                 fl['qdynam_do_z_extra'] = jnp.maximum(fl['qdynam_do_z_extra'], q0['do_z_extra'].astype(jnp.int32))
+                if _ZDUMP:                                   # D231: opt-in diagnostic (ROCKE_ZEXTRA_DUMP=dir): the columns of the extra-z branch, written only on steps where it fires
+                    jax.lax.cond(q0['do_z_extra'], lambda a: jax.debug.callback(_zextra_write, *a), lambda a: None,
+                                 (q0['lminzij'], q0['lmaxzij'], q0['ncyc'], q0['mw'], q0['mu'], q0['mv'], w['MA'], w['Q']))
             elif kd == 'se_final':
                 w['SEFINAL'] = k('conserv_se', G.conserv_se)(w['MA'], w['MASUM'], w['PK'], w['T'], w['Q'], w['QCI'], K)
             elif kd == 'ke_final':
