@@ -176,6 +176,10 @@ def worker(path, N, nks, here):
                             v['scal'], v['tune'], v['o_sc'], v['o_l'], v['o_l1'], v['o_m'], v['o_k'])
             out.write('done\n')
             out.flush()
+    try:                                    # parent gone (EOF) or quit: remove the shared file even if the parent crashed
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--worker':
