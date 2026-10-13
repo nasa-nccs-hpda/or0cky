@@ -18,6 +18,7 @@ cohort has converged).
 """
 import jax
 import jax.numpy as jnp
+import os
 import numpy as np
 
 import ent_ff as E
@@ -254,6 +255,37 @@ def _sunshd(L, Lc, crp):
     return Al, gl, Rl, ci2, f1 | f2
 
 
+_ENT_SKIP = os.environ.get('ROCKE_ENT_SKIP', '0') == '1'
+
+
+def _qsimp_iter(L, crp, Xlim, Bc, A0, IT, layers, MAXIT, ERRLIM, c):
+    """One qsimp iteration IT >= 2 (the body of the loop in _qsimp) as a function of the carried values."""
+    (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail) = c
+    Cn = Xlim.shape[0]
+    DEL = (Xlim - A0) / float(layers)
+    X = A0[:, None] + 0.5 * DEL[:, None] + DEL[:, None] * jnp.arange(layers, dtype=jnp.float64)[None, :]
+    Al, gl, Rl, ci, f = _sunshd(L, X, crp)
+    sm = smg = smr = jnp.zeros(Cn)
+    for k in range(layers):                               # sequential accumulation, as the Fortran loop
+        sm, smg, smr = sm + Al[:, k], smg + gl[:, k], smr + Rl[:, k]
+    RCL = float(layers)
+    ST = 0.5 * (ST + (Xlim - A0) * sm / RCL)
+    STg = 0.5 * (STg + (Xlim - A0) * smg / RCL)
+    STr = 0.5 * (STr + (Xlim - A0) * smr / RCL)
+    ci_it = ci[:, layers - 1]
+    fail = fail | f
+    S = (4.0 * ST - OST) / 3.0
+    Sg = (4.0 * STg - OSTg) / 3.0
+    Sr = (4.0 * STr - OSTr) / 3.0
+    conv = jnp.abs(S - OS) < ERRLIM
+    take = active & (conv | (IT == MAXIT))
+    resS, resSg, resSr = (jnp.where(take, v, r) for v, r in ((S, resS), (Sg, resSg), (Sr, resSr)))
+    ci_last = jnp.where(take, ci_it, ci_last)
+    active = active & ~take
+    OS, OST, OSTg, OSTr = S, ST, STg, STr
+    return (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail)
+
+
 def _qsimp(L, crp, Xlim, Bc):
     """ent_ff.qsimp for all cohorts at once: S, Sg, Sr, Si, ci of the last leaf call, failure flag"""
     MAXIT, ERRLIM = 6, 0.1
@@ -267,6 +299,16 @@ def _qsimp(L, crp, Xlim, Bc):
     layers = 1
     A0 = jnp.zeros(Cn)
     for IT in range(1, MAXIT + 1):
+        if IT > 1 and _ENT_SKIP:
+            # speed track (ROCKE_ENT_SKIP=1): when every cohort has converged the iteration changes nothing that is kept (take = active & ..., results
+            # and ci are only written where `take`), so it is skipped; only the `fail` diagnostic would no longer see the leaf calls of converged cohorts
+            def _it(c, IT=IT, layers=layers):
+                return _qsimp_iter(L, crp, Xlim, Bc, A0, IT, layers, MAXIT, ERRLIM, c)
+            carry = (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail)
+            carry = jax.lax.cond(jnp.any(active), _it, lambda c: c, carry)
+            (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail) = carry
+            layers *= 2
+            continue
         if IT == 1:
             Lc = jnp.stack([A0, Xlim], axis=1)
             Al, gl, Rl, ci, f = _sunshd(L, Lc, crp)

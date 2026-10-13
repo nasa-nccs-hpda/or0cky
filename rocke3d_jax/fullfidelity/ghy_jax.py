@@ -1547,6 +1547,7 @@ def retp(static, w, ht, wsn, hsn):
 # the last lane then takes the remainder dtr in one step and `nit_exhausted` flags it (the Fortran would stop the model there).
 # Extra outputs: nit_gdtm (iterations per cell), nit_exhausted.
 GDTM_WIDTH = 40
+_ENT_SKIP = os.environ.get('ROCKE_ENT_SKIP', '0') == '1'     # speed track, default off (see advnc_gdtm)
 
 
 def _ep(tp, forcing):
@@ -1654,10 +1655,24 @@ def advnc_gdtm(static0, dynamic0, forcing, ent_dts, ent_cnc, ent_betadl, ent_lai
             fE = dict(TairC=forcing["ts"] - TFRZ, TcanopyC=tcan, Qf=carry["qf"], P_mbar=forcing["pres"],
                       Ca=ef["Ca"] * 1.0e-06 * forcing["pres"] * 100.0 / EJ.GASC / (tcan + TFRZ), Ch=forcing["ch"], U=forcing["vs"],
                       IPARdif=ef["vis"] - ef["dvis"], IPARdir=ef["dvis"], CosZen=ef["cosz1"], fwet=fw, Soilmoist=smoist, fice=fi_v)
-            est2, ex = EJ.ent_step(ent['const'], carry["est"], fE, dts, ef["eod"] & (carry["nit"] == 0), active_i & pv_)
-            cnc = jnp.where(pv_, ex["cnc"], 0.0)
-            betadl = jnp.where(pv_[:, None], ex["betadl"], 0.0)
-            lai = jnp.where(pv_, ex["lai"], 0.0)
+            upd_day = ef["eod"] & (carry["nit"] == 0)
+            if _ENT_SKIP:
+                # speed track (ROCKE_ENT_SKIP=1): the Ent step only when some vegetated lane is still active.  Otherwise its exports are not used
+                # (cnc / betadl / lai are zero where ~process_vege and every carry field is masked by active_i) and, with no active lane, ent_step
+                # leaves its state unchanged (all state updates are masked by `active`), so the carried state is passed through.
+                def _do_ent(_):
+                    e2, x = EJ.ent_step(ent['const'], carry["est"], fE, dts, upd_day, active_i & pv_)
+                    return e2, x["cnc"], x["betadl"], x["lai"]
+
+                def _no_ent(_):
+                    return carry["est"], jnp.zeros(N), jnp.zeros((N, 6)), jnp.zeros(N)
+                est2, ex_cnc, ex_bet, ex_lai = jax.lax.cond(jnp.any(active_i & pv_), _do_ent, _no_ent, 0)
+            else:
+                est2, ex = EJ.ent_step(ent['const'], carry["est"], fE, dts, upd_day, active_i & pv_)
+                ex_cnc, ex_bet, ex_lai = ex["cnc"], ex["betadl"], ex["lai"]
+            cnc = jnp.where(pv_, ex_cnc, 0.0)
+            betadl = jnp.where(pv_[:, None], ex_bet, 0.0)
+            lai = jnp.where(pv_, ex_lai, 0.0)
         evap_out = evap_limits(static, w, theta, hydra_out["d"], tp, fice, tsn1, nsn, wsn, fr_snow, dt_run, forcing["pr"], betadl, cnc, forcing["ch"],
                                  forcing["vs"], forcing["rho"], forcing["pres"], forcing["qs"], forcing["gusti"], forcing["qprime"], forcing["qm1"], lai, fm)
         epb, epv = _ep(tp, forcing)
