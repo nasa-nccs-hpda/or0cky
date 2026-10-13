@@ -5,6 +5,9 @@ import pickle, sys, time
 import numpy as np
 import clouds_mstcnv_ff as mc
 import clouds_mstcnv_nb as nb
+import os
+if os.environ.get('ROCKE_MSTCNV_IMF') == '1':
+    mc.set_backend('imf')            # the NumPy port with Intel libimf exp/pow, the reference of the imf variant of the numba port
 d = pickle.load(open(sys.argv[1], 'rb')); R, cfg = d['R'], d['cfg']
 stride = int(sys.argv[2]) if len(sys.argv) > 2 else 40
 tune = cfg['tune']

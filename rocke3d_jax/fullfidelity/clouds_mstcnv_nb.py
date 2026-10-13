@@ -43,6 +43,35 @@ ZM = np.array([2, 5, 8, 7], dtype=np.int64)           # MZ MZZ MYZ MZX
 # ZDIR = (MZ, MY, MX, MZZ, MYY, MXX, MYZ, MXY, MZX) -> local (mx,my,mz,mxx,myy,mzz,mxy,myz,mzx)
 Z_MX, Z_MY, Z_MZ, Z_MXX, Z_MYY, Z_MZZ, Z_MXY, Z_MYZ, Z_MZX = 2, 1, 0, 5, 4, 3, 8, 6, 7
 
+
+# ---- exp / pow: libm (default) or Intel libimf through ctypes (ROCKE_MSTCNV_IMF=1: the arithmetic of clouds_mstcnv_ff.set_backend('imf'), which is what
+# reproduces the Fortran bitwise).  A ctypes function pointer cannot be cached by numba, so the imf variant is compiled afresh in every process.
+import os as _os
+USE_IMF = _os.environ.get('ROCKE_MSTCNV_IMF', '0') == '1'
+_CACHE = not USE_IMF
+if USE_IMF:
+    _lib = src._imf()
+    if not _lib:
+        raise RuntimeError('ROCKE_MSTCNV_IMF=1 but Intel libimf is not available')
+    _c_exp, _c_pow = _lib.exp, _lib.pow
+    POW222 = float(_c_pow(222.0, float(F20_33)))
+
+    @njit(error_model='numpy')
+    def _exp(x):
+        return _c_exp(x)
+
+    @njit(error_model='numpy')
+    def _pow(x, y):
+        return _c_pow(x, y)
+else:
+    @njit(cache=_CACHE, error_model='numpy')
+    def _exp(x):
+        return math.exp(x)
+
+    @njit(cache=_CACHE, error_model='numpy')
+    def _pow(x, y):
+        return math.pow(x, y)
+
 OUT_SC = ("ierr lerr lmcmin lmcmax prcpmc cldslwij clddepij airxl prheat wmsum wmctwp wmclwp fmc1 mccont "
           "negcover").split()
 OUT_L = ("tl sm qm fssl cldmcl taumcl svlatl svlat1 svwmxl csizel condpt vsubl tpsav mcflx dgdsm dgdeep dgshlw "
@@ -53,24 +82,24 @@ TUNE_NAMES = ("entrainment_cont1 entrainment_cont2 radiusl_multiplier radiusi_mu
 
 
 # ------------------------------------------------------------------------------------------------ helpers
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def qsat(tm, lh, pr):
-    return QSAT_A * math.exp(lh * (QSAT_B - QSAT_C / max(130.0, tm))) / pr
+    return QSAT_A * _exp(lh * (QSAT_B - QSAT_C / max(130.0, tm))) / pr
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def dqsatdt(tm, lh):
     return lh * QSAT_C / (tm * tm)
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def thbar(x, y):
     q = x / y
     al = (TH_A + q * (TH_B + q * (TH_C + q * (TH_D + q)))) / (TH_E + q * (TH_F + TH_G * q))
     return x * al
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def adjust(sm, qm, plk, mass, lhx, pl, sign):
     slh = lhx * BYSHA
     qmt = qm
@@ -85,7 +114,7 @@ def adjust(sm, qm, plk, mass, lhx, pl, sign):
     return dqsum
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def get_dq_cond(sm, qm, plk, mass, lhx, pl):
     dq = adjust(sm, qm, plk, mass, lhx, pl, 1.0)
     dq = max(0.0, min(dq, qm))
@@ -95,7 +124,7 @@ def get_dq_cond(sm, qm, plk, mass, lhx, pl):
     return 0.0, 0.0
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def get_dq_evap(sm, qm, plk, mass, lhx, pl, cond):
     dq = adjust(sm, qm, plk, mass, lhx, pl, -1.0)
     dq = max(0.0, min(dq, cond))
@@ -105,7 +134,7 @@ def get_dq_evap(sm, qm, plk, mass, lhx, pl, cond):
     return 0.0, 0.0
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def mass_flux(lhx, qmo1, qmo2, smo1, smo2, slh, wmdn, wmup, wmedg, airm0, airm1, byam0, byam1, byam2, sm2, qm2,
               plk0, plk1, pl0, pl1):
     fplume = 0.25
@@ -169,10 +198,10 @@ def mass_flux(lhx, qmo1, qmo2, smo1, smo2, slh, wmdn, wmup, wmedg, airm0, airm1,
     return fplume, fmp2, dqsum
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def dcw_search(wv, pl, ddcw, wmax, nmax):
     dcw = 0.0
-    pfac = (1000.0 / pl) ** 0.4
+    pfac = _pow(1000.0 / pl, 0.4)
     for k in range(nmax):
         vt = (-0.267 + dcw * (5.15e3 - dcw * (1.0225e6 - 7.55e7 * dcw))) * pfac
         if vt >= 0.0 and vt >= wv:
@@ -183,24 +212,24 @@ def dcw_search(wv, pl, ddcw, wmax, nmax):
     return dcw
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def dcg(wv, pl):
-    return min(((wv / F193) * (pl / 1000.0) ** F04) ** F27, 1e-2)
+    return min(_pow((wv / F193) * _pow(pl / 1000.0, F04), F27), 1e-2)
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def dci(wv, pl):
-    return min(((wv / F1172) * (pl / 1000.0) ** F04) ** F2439, 1e-2)
+    return min(_pow((wv / F1172) * _pow(pl / 1000.0, F04), F2439), 1e-2)
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def precip_mp(rho, flam, dc, cn):
-    f4p = math.pow(flam, 4.0)
-    return (rho * (PI * BY6) * cn * math.exp(-flam * dc)
+    f4p = _pow(flam, 4.0)
+    return (rho * (PI * BY6) * cn * _exp(-flam * dc)
             * (dc * dc * dc / flam + 3.0 * dc * dc / (flam * flam) + 6.0 * dc / (flam * flam * flam) + 6.0 / f4p))
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def conv_micro(pl, wcu, dwcu, lfrz, wcufrz, tp, ti, pland, flamw, flamg, flami, tlmin, tlmin1, condip_in, condgp_in):
     wv = max(wcu - dwcu, 0.0)
     wvu = wcu + dwcu
@@ -248,7 +277,7 @@ def conv_micro(pl, wcu, dwcu, lfrz, wcufrz, tp, ti, pland, flamw, flamg, flami, 
     return condp, condp1, cip_u, cgp_u
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def cloud_fraction(L, tl, pl, ccm, wcu, plemin, plel2, plemax, ccmmin, wcumin, lmin, lmax, dtsrc):
     rho = pl / (RGAS * tl)
     fcloud = CCMUL * ccm / (rho * GRAV * wcu * dtsrc + TEENY)
@@ -267,7 +296,7 @@ def cloud_fraction(L, tl, pl, ccm, wcu, plemin, plel2, plemax, ccmmin, wcumin, l
     return fcloud
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def precip_phase(L, airm, fevap, lhp1, prcp, told, told1, vlat, cond, lmin, heat1_in, mc_revp):
     heat1 = heat1_in
     if mc_revp == 0:
@@ -288,10 +317,10 @@ def precip_phase(L, airm, fevap, lhp1, prcp, told, told1, vlat, cond, lmin, heat
     return lhp, mcloud, heat1
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def anvil(svlatl, rcldlx, rcldix, mcdncw, mcdnci, rimax, bybr, fcld, tem, wtem):
-    r_liq = rcldlx * 100.0 * (wtem / (2.0 * BY3 * TWOPI * mcdncw)) ** BY3
-    r_ice = rcldix * 100.0 * (wtem / (2.0 * BY3 * TWOPI * mcdnci)) ** BY3
+    r_liq = rcldlx * 100.0 * _pow(wtem / (2.0 * BY3 * TWOPI * mcdncw), BY3)
+    r_ice = rcldix * 100.0 * _pow(wtem / (2.0 * BY3 * TWOPI * mcdnci), BY3)
     r_ice = min(r_ice, rimax)
     if svlatl == LHE:
         rcld = r_liq
@@ -304,7 +333,7 @@ def anvil(svlatl, rcldlx, rcldix, mcdncw, mcdnci, rimax, bybr, fcld, tem, wtem):
     return rcld, taumc
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def limitq(anm1, an, fnm1, fn, sn, sx, sxx):
     ierr = 0
     if anm1 >= 0. and an <= 0.:
@@ -396,7 +425,7 @@ def limitq(anm1, an, fnm1, fn, sn, sx, sxx):
     return fnm1, fn, sx, sxx, ierr
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def adv1d_z(s, smom, mass, dm, nx, qlimit):
     """One cyclic line, ZDIR, in place on s (nx), smom (9, nx), mass (nx); dm (nx) read only.
     Returns (ierr, nerr).  Mirrors dyn_adv1d_ff.adv1d on a single line."""
@@ -502,7 +531,7 @@ def adv1d_z(s, smom, mass, dm, nx, qlimit):
 
 
 # ------------------------------------------------------------------------------------------------ the column
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def _pad1(x, n):
     a = np.zeros(LM + 2)
     for i in range(n):
@@ -510,7 +539,7 @@ def _pad1(x, n):
     return a
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def _padm(x, nr):
     a = np.zeros((nr, LM + 2))
     for q in range(nr):
@@ -519,7 +548,7 @@ def _padm(x, nr):
     return a
 
 
-@njit(cache=True, error_model='numpy')
+@njit(cache=_CACHE, error_model='numpy')
 def mstcnv_col(pearth, pland, dcl, lmcm, xmass, bydtsrc, dtsrc, bybr, pl_i, ple_i, plk_i, airm_i, byam_i, etal_i,
                tl_i, tvl_i, sm_i, qm_i, qcll_i, qcil_i, sdl_i, wturb_i, gzl_i, smom_i, qmom_i, ra, um_i, vm_i,
                u0_i, v0_i, tune, nks, o_sc, o_l, o_l1, o_m, o_k):
@@ -935,9 +964,9 @@ def mstcnv_col(pearth, pland, dcl, lmcm, xmass, bydtsrc, dtsrc, bybr, pl_i, ple_
                         cdheat[L] = cdheat[L] - (vlat[L - 1] - vlat[L]) * condv[L - 1] * BYSHA
                         cdhsum = cdhsum - (vlat[L - 1] - vlat[L]) * condv[L - 1] * BYSHA
                     condmu = 100. * cond[L] * pl[L] / (ccm[L - 1] * tl[L] * RGAS)
-                    flamw = (1000.0 * PI * CN0 / (condmu + TEENY)) ** .25
-                    flamg = (400.0 * PI * CN0G / (condmu + TEENY)) ** .25
-                    flami = (100.0 * PI * CN0I / (condmu + TEENY)) ** .25
+                    flamw = _pow(1000.0 * PI * CN0 / (condmu + TEENY), .25)
+                    flamg = _pow(400.0 * PI * CN0G / (condmu + TEENY), .25)
+                    flami = _pow(100.0 * PI * CN0I / (condmu + TEENY), .25)
                     taumc1[L] = taumc1[L] + cond[L] * fmc1
                     tvp = (smp / mplume) * plk[L] * (1. + DELTX * qmp / mplume)
                     buoy[L] = (tvp - tvl[L]) / tvl[L] - cond[L] / mplume
@@ -1679,7 +1708,7 @@ def mstcnv_col(pearth, pland, dcl, lmcm, xmass, bydtsrc, dtsrc, bybr, pl_i, ple_
         o_l1[1, L] = precnvl[L + 1]
 
 
-@njit(parallel=True, cache=True, error_model='numpy')
+@njit(parallel=True, cache=_CACHE, error_model='numpy')
 def mstcnv_batch(pearth, pland, dcl, pl, ple, plk, airm, byam, etal, tl, tvl, sm, qm, qcll, qcil, sdl, wturb, gzl,
                  smom, qmom, ra, um, vm, u0, v0, scal, tune, o_sc, o_l, o_l1, o_m, o_k):
     """Column-last inputs as the device set-up produces them: pearth/pland/dcl (N,), pl.. (LM,N), ple (LM+1,N),
