@@ -23,6 +23,7 @@ def empty():
     return c
 
 
+@jax.jit
 def loadbl(c):
     """Tiles whose ipbl is 0 take the state of the first donor type with ipbl == 1 (all from the entry state: the conditions are exclusive)."""
     old = c['ipbl']
@@ -72,12 +73,20 @@ def update(c, o_w, o_l, o_e, ix):
     return out
 
 
+_IX_CACHE = {}
+
+
 def index_arrays(host, wvalid):
-    """host: build_template host dict; wvalid: (2, Nw) bool validity of the water slots of the substep."""
+    """host: build_template host dict; wvalid: (2, Nw) bool validity of the water slots of the substep.
+    The index arrays depend on `host` only; they are uploaded once per host dict (the step used to upload eight arrays every step)."""
     import numpy as np
-    Nw = host['Nw']
-    wj, wi = np.asarray(host['wj']), np.asarray(host['wi'])
-    return dict(tw=jnp.asarray(np.concatenate([np.zeros(Nw, int), np.ones(Nw, int)])),
-                wj2=jnp.asarray(np.concatenate([wj, wj])), wi2=jnp.asarray(np.concatenate([wi, wi])),
-                wvalid2=jnp.asarray(wvalid).reshape(-1),
-                lj=jnp.asarray(host['lj']), li=jnp.asarray(host['li']), ej=jnp.asarray(host['ej']), ei=jnp.asarray(host['ei']))
+    hit = _IX_CACHE.get(id(host))
+    if hit is None or hit[0] is not host:
+        Nw = host['Nw']
+        wj, wi = np.asarray(host['wj']), np.asarray(host['wi'])
+        base = dict(tw=jnp.asarray(np.concatenate([np.zeros(Nw, int), np.ones(Nw, int)])),
+                    wj2=jnp.asarray(np.concatenate([wj, wj])), wi2=jnp.asarray(np.concatenate([wi, wi])),
+                    lj=jnp.asarray(host['lj']), li=jnp.asarray(host['li']), ej=jnp.asarray(host['ej']), ei=jnp.asarray(host['ei']))
+        _IX_CACHE.clear()
+        _IX_CACHE[id(host)] = hit = (host, base)
+    return dict(hit[1], wvalid2=jnp.asarray(wvalid).reshape(-1))
