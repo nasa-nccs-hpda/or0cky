@@ -1,0 +1,22 @@
+{
+ "device": "cuda:0",
+ "jax": "0.5.3",
+ "segments": [
+  {
+   "day0": 694,
+   "ndays": 30,
+   "rad_steps": 288,
+   "build_s": 4.968980364035815,
+   "first_call_s": 272.85265213716775,
+   "rad_step_median_s": 0.16487982915714383,
+   "rad_step_mean_s": 0.1648743343052782,
+   "rad_step_max_s": 0.16733733098953962,
+   "finite": true,
+   "mem": {
+    "bytes_in_use": 586684160,
+    "peak_bytes_in_use": 3431661824,
+    "bytes_limit": 25554419712
+   }
+  }
+ ]
+}

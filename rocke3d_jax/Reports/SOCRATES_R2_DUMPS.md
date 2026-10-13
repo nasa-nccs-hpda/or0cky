@@ -340,5 +340,17 @@ Two consecutive segments of 30 model days (days 694-723 and 724-753 of the 1949 
 | days 724-753 | 3.3 s | 264.5 s | 0.165 / 0.170 s | 0.58 / 3.43 GB |
 
 * **One compilation per segment, ~265 s (4.4 min)**, as estimated; the second segment recompiles (the day stack is a constant of the trace). Host build is seconds. A 30-day segment adds 288 x 0.165 s = 48 s of radiation work.
-* **A model year** (365 days) is 13 segments of <= 30 days: ~57 min of compilation + ~9 min of radiation work (radiation step only; the coupled step time is the port session's 2.1-2.5 s per step). The per-segment stack uses 0.59 GB, so longer segments fit in memory (a 120-day segment ~2.3 GB, 4 compilations per year); **not tested**: whether the compile time grows with the stack size, and whether a persistent compilation cache would remove the 13 compilations.
+* **A model year** (365 days) is 13 segments of <= 30 days: ~57 min of compilation + ~9 min of radiation work (radiation step only; the coupled step time is the port session's 2.1-2.5 s per step). The per-segment stack uses 0.59 GB, so longer segments fit in memory (a 120-day segment ~2.3 GB, 4 compilations per year); see the follow-up below.
 * Same-state timing: the radiation step is the same program at every date; this does not time the dynamics or the held steps.
+
+**Follow-up (job 37941836, same script; `data/r6_segment_timing_v100_{120d,cache1,cache2}_result.json`, `r6_segment_timing_v100_len_cache_log.txt`).**
+
+| run | segment | host build | first call (compile + run) | per radiation step | device memory in use / peak |
+|---|---|---|---|---|---|
+| A | 120 days, 1152 radiation steps | 13.7 s | 274.1 s | 0.164 s | 2.14 / 4.98 GB |
+| B1 | 30 days, persistent cache empty | 5.0 s | 272.9 s | 0.165 s | 0.59 / 3.43 GB |
+| B2 | same, second process, cache hit | 3.1 s | **30.0 s** | 0.164 s | 0.59 / 3.43 GB |
+
+* **Compile time does not depend on segment length** (274 s for 120 days vs 265-273 s for 30): the day stack is a data constant, not code. Use long segments: a model year is 4 segments of 120 days (~18 min of compilation) instead of 13 (~57 min). Memory scales with the stack (in use 2.1 GB at 120 days, peak 5.0 GB of 25.6 GB); a 365-day single segment would be ~6.5 GB in use by extrapolation (**not run**), so check it before relying on it.
+* **Persistent compilation cache** (`JAX_COMPILATION_CACHE_DIR`, `JAX_PERSISTENT_CACHE_MIN_COMPILE_TIME_SECS=0`, 481 MB for one segment): a rerun of the SAME segment compiles in 30 s instead of 273 s. It does not help new segments (each has different constants), so it pays for restarts and repeated runs (benchmarks, reruns of a failed job), not for the first pass of a year.
+

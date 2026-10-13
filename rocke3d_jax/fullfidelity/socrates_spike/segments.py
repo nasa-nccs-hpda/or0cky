@@ -2,7 +2,8 @@
 
 The day products are a 16 MB stack per model day and the zenith table 80 kB per radiation step; both are constants of the compiled hand-off
 step (the host-callback alternative costs 6-9 s per radiation step on the V100).  A long run is therefore cut into segments of at most
-`max_days` model days; each segment gets its own products, table and `make_handoff_step` (one compilation per segment: ~4.5 min on a V100).
+`max_days` model days; each segment gets its own products, table and `make_handoff_step` (one compilation per segment: ~4.5 min on a V100,
+independent of the length: report 14.9 timed 30 and 120 days; use max_days=120 for a year in 4 segments, 16 MB of device memory per day).
 
     plan = segment_plan(itime_first, itime_last, max_days=30)
     for seg in plan:
