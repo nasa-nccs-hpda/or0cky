@@ -36,7 +36,7 @@ Diagnostics (no effect on results): `ROCKE_DYN_TIMERS`, `ROCKE_SURF_TIMERS`, `RO
 | cold start (step 0) | 1,090 s | 925 s |
 | day-1 worst ratio (steps >= 3) | 2.37 QCI step 3 | 2.47 QCI step 3 |
 | day-2 worst ratio | 1.19 | 1.11 |
-The band is NOT bitwise unchanged: the failing step and field are the baseline's (QCI at step 3, 2x criterion not met), the ratio moves by about 0.1 (2.37 -> 2.46/2.47) as soon as the arithmetic of the cloud-base stage is the NumPy port's rather than the XLA GPU program's; "beyond" counts per field are the baseline's in the imf variant. The owner decides whether this counts as "band unchanged".
+The band is NOT bitwise unchanged: the failing step and field are the baseline's (QCI at step 3, 2x criterion not met), the ratio moves by about 0.1 (2.37 -> 2.46/2.47) as soon as the arithmetic of the cloud-base stage is the NumPy port's rather than the XLA GPU program's; "beyond" counts per field are the baseline's in the imf variant. Owner decision 2026-10-13: acceptable for now.
 
 ## Requirements and risks
 * numba-capable interpreter for the worker (`ROCKE_MSTCNV_PY`); first call compiles for about 80 s (cached beside the source for the libm variant, not for the imf variant). The worker is a child process: a crash of the parent removes its shared file at EOF.
