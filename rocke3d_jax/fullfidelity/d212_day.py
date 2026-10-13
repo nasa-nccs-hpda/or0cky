@@ -156,7 +156,33 @@ def _native_handoff():
     tab = RN.zenith_table(zen, it0, nrad)
     nh = RN.NativeHandoff(rj, tab, it0)
     nh.log = NativeLog()
+    sd_ = os.environ.get('ROCKE_SHADOW_DIR')
+    if sd_:                                             # D230: opt-in shadow dump (default off): the packet and the native outputs of every ROCKE_SHADOW_EVERY-th radiation step go to
+        _install_shadow_dump(nh, sd_, int(os.environ.get('ROCKE_SHADOW_EVERY', '4')))       # host files; shadow_compare.py feeds the same packets to the Fortran server afterwards
     return nh
+
+
+def _install_shadow_dump(nh, outdir, every):
+    import jax
+    import jax.numpy as jnp
+    os.makedirs(outdir, exist_ok=True)
+    call0 = nh.call
+
+    def _write(it, seed, pk, res):
+        it = int(it)
+        np.savez(os.path.join(outdir, f'shadow_{it}.npz'), itime=it, seed=int(seed),
+                 **{'in_' + k: np.asarray(v) for k, v in pk.items()}, **{'out_' + k: np.asarray(v) for k, v in res.items()})
+
+    def call(packet, itime, seed=None):
+        res, aij = call0(packet, itime, seed)
+        it32 = jnp.asarray(itime, jnp.int32)
+        sample = (((it32 - nh.itimei) // 5) % every) == 0
+        sd = jnp.asarray(0 if seed is None else seed, jnp.int32)
+        pk = {k: jnp.asarray(packet[k]) for k in packet}
+        jax.lax.cond(sample, lambda a: jax.debug.callback(_write, *a), lambda a: None, (it32, sd, pk, dict(res)))
+        return res, aij
+
+    nh.call = call
 
 
 class CoupledD209(C.Coupled):
