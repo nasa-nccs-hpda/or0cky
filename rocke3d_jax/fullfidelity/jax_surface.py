@@ -739,7 +739,18 @@ def make_stage(host):
             ma1 = atm['MA1'][hbase['ej'], hbase['ei']]
         return core(atm, rows, n['ftype'], n['wvalid'], ghy, ma1, tpl_all['trup'], dyn, tmom, qmom, pk)
 
+    _own_timers = os.environ.get('ROCKE_SURF_TIMERS') == '1'      # speed track diagnostic: block after each unit and print its seconds
+
     def stage(Sd, tpl_all, timers=None):
+        if timers is None and _own_timers:
+            timers = {}
+            try:
+                return _stage(Sd, tpl_all, timers)
+            finally:
+                print('surface_units_s ' + ' '.join(f'{k}={v:.4f}' for k, v in timers.items()), flush=True)
+        return _stage(Sd, tpl_all, timers)
+
+    def _stage(Sd, tpl_all, timers=None):
         def T(name, f):
             if timers is None:
                 return f()
