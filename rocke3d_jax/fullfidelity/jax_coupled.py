@@ -139,7 +139,7 @@ class Coupled:
         self.log = log
         FX.set_mode('libimf')
         t0 = time.perf_counter()
-        self.ph = W.make_phase1(date, rad='replay')
+        self.ph = W.make_phase1(date, rad='replay', fused_dyn=os.environ.get('ROCKE_FUSED_DYN', '0') == '1')
         if mstcnv == 'dev':
             self.ph.cs.mstcnv = types.MethodType(mstcnv_new, self.ph.cs)
         self.mstcnv = mstcnv
