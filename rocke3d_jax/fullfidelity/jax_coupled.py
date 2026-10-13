@@ -192,10 +192,19 @@ class Coupled:
         if not (mode == '1' or (mode is None and jax.default_backend() != 'cpu')):
             return jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b'))
         subs = [jax.jit((lambda fn: (lambda s, fx, Kb: fn(K, Kb, s, fx)))(f)) for _, f in JO.STAGES[5:]]
+        names = [n for n, _ in JO.STAGES[5:]]
+        _otm = os.environ.get('ROCKE_OCEAN_TIMERS') == '1'      # speed track diagnostic: seconds of each ocean_b sub-jit (blocks after each)
 
         def ob(oc, fx, Kb):
-            for j in subs:
+            tms = []
+            for n_, j in zip(names, subs):
+                t0 = time.perf_counter()
                 oc = j(oc, fx, Kb)
+                if _otm:
+                    jax.block_until_ready(oc)
+                    tms.append(f'{n_}={time.perf_counter() - t0:.4f}')
+            if _otm:
+                print('ocean_b_units_s ' + ' '.join(tms), flush=True)
             return oc
         return ob
 
