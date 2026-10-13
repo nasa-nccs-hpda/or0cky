@@ -357,6 +357,15 @@ class CondseDevice:
 
     def setup(self, A, ms):
         if _pole_host_mode():
+            if os.environ.get('ROCKE_POLE_ASYNC', '0') == '1':
+                # speed track: the south pole column (host NumPy, independent of the interior columns' MSTCNV; its module-array result is only
+                # read by the post stage) runs in a worker thread while the set-up jit and the MSTCNV stage proceed; post() resolves the future
+                import concurrent.futures as _cf
+                if getattr(self, '_pole_pool', None) is None:
+                    self._pole_pool = _cf.ThreadPoolExecutor(max_workers=1)
+                fut = self._pole_pool.submit(pole_eager, self.host, 0, A, ms)
+                R, W0 = self._setup_np(A, ms)
+                return R, W0, fut, fut
             Xs, ms_s = pole_eager(self.host, 0, A, ms)           # south pole first (Fortran order), on the host, before the set-up jit
             R, W0 = self._setup_np(A, ms)
             return R, W0, Xs, ms_s
@@ -661,6 +670,8 @@ class CondseDevice:
         return arr.at[:, 0, j, :].set(sl) if arr.shape[1:3] == (IM, JM) else arr.at[:, :, 0, j].set(sl)
 
     def post(self, A, W0, o, ms_s, Xs):
+        if hasattr(Xs, 'result'):                                # ROCKE_POLE_ASYNC: the south pole column of setup()
+            Xs, ms_s = Xs.result()
         if _pole_host_mode():
             X, ms_b, flags, extra = self._post_a(A, W0, o, ms_s, Xs, self.Kls)
             Xn, ms_n = pole_eager(self.host, JM - 1, A, ms_b)    # north pole on the host between the two halves of the post unit
