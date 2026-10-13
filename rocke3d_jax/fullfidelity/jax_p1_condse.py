@@ -101,6 +101,9 @@ class PoleHost:
         import time
         t0 = time.perf_counter()
         cf.set_backend('numpy')
+        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':       # pole columns: the cloud-base stage through the numba worker too
+            import mstcnv_host as MH
+            cf.mc.mstcnv_column = MH.column_mstcnv
         A = {}
         for k, shp in self.shapes.items():
             arr = np.zeros(shp)

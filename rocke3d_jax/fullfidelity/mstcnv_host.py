@@ -105,10 +105,51 @@ class MstcnvHost:
         v['tune'][:] = [float(c[k]) for k in TUNE_NAMES]
         v['scal'][:] = [float(cfg['lmcm']), float(cfg['xmass']), float(cfg['bydtsrc']), float(cfg['dtsrc']),
                         float(cfg['bybr'])]
+        self._go()
+        return v
+
+    def _go(self):
         self.p.stdin.write(b'go\n')
         self.p.stdin.flush()
         self._expect(b'done')
-        return v
+
+
+_COL = {}
+
+
+def column_mstcnv(r, c, ck=None, br=None, mut=None):
+    """Drop-in for clouds_mstcnv_ff.mstcnv_column (no checkpoints / mutations): one column through a one-column
+    worker (N=1, one thread).  Used by the pole columns of the host CONDSE path (`ROCKE_MSTCNV_HOST=1`)."""
+    assert ck is None and not mut
+    ra = np.asarray(r['ra'], dtype=np.float64)
+    h = _COL.get(ra.shape[0])
+    if h is None:
+        h = _COL[ra.shape[0]] = MstcnvHost(1, nks=ra.shape[0], threads=1)
+    v = h.v
+    v['pearth'][0], v['pland'][0], v['dcl'][0] = float(r['pearth']), float(r['pland']), int(r['dcl'])
+    v['ple'][:, 0] = np.asarray(r['ple'], dtype=np.float64)
+    v['ra'][:, 0] = ra
+    for n in IN_L:
+        v[n][:, 0] = np.asarray(r[n], dtype=np.float64)
+    for n in IN_M:
+        v[n][:, :, 0] = np.asarray(r[n], dtype=np.float64)
+    for n in IN_K:
+        v[n][:, :, 0] = np.asarray(r[n], dtype=np.float64)
+    v['tune'][:] = [float(c[k]) for k in TUNE_NAMES]
+    v['scal'][:] = [float(r['lmcm']), float(r['xmass']), float(r['bydtsrc']), float(r['dtsrc']), float(r['bybr'])]
+    h._go()
+    o = {}
+    for i, n in enumerate(OUT_SC[:14]):
+        x = float(v['o_sc'][i, 0])
+        o[n] = int(x) if n in INT_SC else x
+    if v['o_sc'][14, 0]:
+        raise RuntimeError('MSTCNV: negative cloud cover')
+    for i, n in enumerate(OUT_L):
+        o[n] = np.array(v['o_l'][i, 0])
+    o['lhp'], o['precnvl'] = np.array(v['o_l1'][0, 0]), np.array(v['o_l1'][1, 0])
+    o['smom'], o['qmom'] = np.array(v['o_m'][0, 0]), np.array(v['o_m'][1, 0])
+    o['um'], o['vm'] = np.array(v['o_k'][0, 0]), np.array(v['o_k'][1, 0])
+    return o
 
 
 def worker(path, N, nks, here):
