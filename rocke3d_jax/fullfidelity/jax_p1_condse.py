@@ -98,6 +98,19 @@ class PoleHost:
         self.log = []
 
     def run(self, j, a_slices, ms_in):
+        if os.environ.get('ROCKE_POLE_PROFILE') == '2' and self.calls == 6:      # speed track diagnostic: cProfile of one whole steady host call
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
+            r = self._run(j, a_slices, ms_in)
+            pr.disable()
+            print('pole_profile_run (call 6, pole j=%d)' % j, flush=True)
+            pstats.Stats(pr).sort_stats('tottime').print_stats(16)
+            return r
+        return self._run(j, a_slices, ms_in)
+
+    def _run(self, j, a_slices, ms_in):
         import time
         t0 = time.perf_counter()
         cf.set_backend('numpy')
