@@ -156,6 +156,10 @@ def worker(path, N, nks, here):
     sys.path.insert(0, here)
     import clouds_mstcnv_nb as nb
     mm, v = views(path, N, nks, False)
+    import numba
+    ch = int(os.environ.get('MSTCNV_HOST_CHUNK', '8'))       # dynamic scheduling: convective columns are clustered, static chunks would leave threads idle
+    if ch > 0 and N > 1:
+        numba.set_parallel_chunksize(ch)
     # warm-up on the current (zero) inputs would divide by zero in every column; compile on a benign column set
     out = sys.stdout
     out.write('ready\n')
