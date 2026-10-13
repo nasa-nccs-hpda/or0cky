@@ -12,6 +12,9 @@ reach and which the D144 module runs as a NumPy fallback, is NOT executed here: 
 Two execution modes of the SAME code: eager (each kernel is one jit dispatch on device arrays) and fused (`make_fused`: the whole block traced under one jax.jit).
 Needs the XLA flags of clouds_jax_env_fast (imported first).  Libm mode (numpy-pow semantics via jnp.power); the Intel libimf is not used.
 """
+import os
+import time
+
 import clouds_jax_env_fast  # noqa: F401  (XLA flags BEFORE jax)
 import os
 import numpy as np
@@ -121,8 +124,15 @@ class DynDevice:
         w['DUT'] = jnp.zeros((IM, JM, LM))
         w['DVT'] = jnp.zeros((IM, JM, LM))
         fl = {n: jnp.zeros((), jnp.int32) for n in FLAG_KEYS}
+        _tm = {} if os.environ.get('ROCKE_DYN_TIMERS') == '1' else None       # speed track diagnostic: block after each plan step, seconds by kind
+        _t_prev = [None]
         for st in self.plan(itime):
             kd, a = st.kind, st.a
+            if _tm is not None:
+                if _t_prev[0] is not None:
+                    jax.block_until_ready(w)
+                    _tm[_t_prev[0][0]] = _tm.get(_t_prev[0][0], 0.0) + time.perf_counter() - _t_prev[0][1]
+                _t_prev[0] = (kd, time.perf_counter())
             if kd == 'save_old':
                 w['MAOLD'] = w['MA']
                 w['PMIDOLD'] = w['PMID']
@@ -218,6 +228,10 @@ class DynDevice:
                 raise ValueError(kd)
         out = {n: w[n] for n in OUT_KEYS}
         out['PEK'] = k('pek', G.pek_of)(w['PEDN'], K)
+        if _tm is not None:
+            jax.block_until_ready(w)
+            _tm[_t_prev[0][0]] = _tm.get(_t_prev[0][0], 0.0) + time.perf_counter() - _t_prev[0][1]
+            print('dyn_kind_s ' + ' '.join(f'{k_}={v:.4f}' for k_, v in sorted(_tm.items(), key=lambda kv: -kv[1])), flush=True)
         return out, fl
 
     def make_fused(self, itime):

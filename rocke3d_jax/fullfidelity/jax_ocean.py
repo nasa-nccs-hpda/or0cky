@@ -284,6 +284,10 @@ def _seqsum(x):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+_seqsum = _SF.wrap(_seqsum)
+
+
 def oconv_columns(K, s, fx):
     """ocean_step.oconv_columns on device arrays.  Returns the argument dict of hbl_loop."""
     Ko = K['oc']

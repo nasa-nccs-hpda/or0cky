@@ -47,6 +47,7 @@ jax.config.update("jax_enable_x64", True)
 
 import os as _os
 
+WIN = _os.environ.get('ROCKE_MSTCNV_WIN', '0') == '1'    # speed/step-time: ascent step on per-level windows (default off)
 UNROLL = int(_os.environ.get('ROCKE_MSTCNV_UNROLL', '1'))   # D214 experiment: unroll of the static-trip fori loops of the event block (same arithmetic and order; fewer loop iterations)
 
 
@@ -430,7 +431,7 @@ def _event_dev(K, lmin, ic, fmp0, fmp2, valid, S, Sc, I, V, KC):
 
         def asc_body(c):
             L, a, Tc = c
-            Tn, a = _ascent_step_dev(k, Tc, L, a, lmin, contce, ic, K, I, KC, cols, n)
+            Tn, a = (_ascent_step_win if WIN else _ascent_step_dev)(k, Tc, L, a, lmin, contce, ic, K, I, KC, cols, n)
             return L + 1, a, Tn
 
         L0 = jnp.asarray(lmin + 1, I64)
@@ -1094,6 +1095,364 @@ def _ascent_step_dev(k, T, L, a, lmin, contce, ic, K, I, KC, cols, n):
     s.mplume, s.smp, s.qmp, s.fplume, s.ump, s.vmp = mplume, smp, qmp, fplume, ump, vmp
     s.cdhsum, s.cdhsum1, s.cdhdrt, s.etadn, s.ddraft = cdhsum, cdhsum1, cdhdrt, etadn, ddraft
     return vars(s), a
+
+
+# ---- ROCKE_MSTCNV_WIN=1 (speed/step-time, 2026-10-12): the ascent step on per-level WINDOWS of the level-indexed state.  The original step reads s.X[L], s.X[L-1] and writes
+# s.X.at[L].set(...) on ~40 whole [LM+1, n] arrays: about 1,000 tiny kernels per iteration (one block 21.7k kernels, 53 ms, median kernel 1.6 us, job 37941794).  Here each such array is
+# sliced ONCE per iteration into its two levels (L-1, L) and written back once, so the arithmetic between is one elementwise region XLA can fuse.  Same arithmetic, same order; the
+# kernel grouping (and with it FMA contraction on the GPU) differs, so the result is judged by the band, not bitwise.
+_WIN_LEVEL3 = ('dsmom', 'dqmom', 'dsmomr', 'dqmomr', 'dum', 'dvm', 'smomdnl', 'qmomdnl', 'umdnl', 'vmdnl')     # [comp, LM+1, n]
+_WIN_XY = ('dsmom', 'dqmom', 'smomdnl', 'qmomdnl')            # only the XYMa component rows are read/written: window holds those rows only
+_WIN_LEVEL2 = ('buoy', 'ccm', 'cdheat', 'cond', 'condgp', 'condip', 'condmmr', 'condp', 'condp1', 'condv', 'ddr', 'det', 'dm', 'dmr', 'dqm', 'dqmr', 'dsm', 'dsmr',
+               'ent', 'qmdnl', 'smdnl', 'taumc1', 'tpsav', 'u00l', 'vlat', 'wcu', 'wcu2')                                            # [LM+1, n]
+_WIN_VEC = ('smomp', 'qmomp')                                  # [NMOM, n], only the XYMa rows are used by this step
+
+
+class _LevelWin:
+    def __init__(self, full, L, Lm, name):
+        self.full, self.L, self.Lm, self.name, self.dirty = full, L, Lm, name, False
+        if name in _WIN_LEVEL3:
+            ax = 1
+            if name in _WIN_XY:
+                self.w = [lax.dynamic_index_in_dim(full, Lm, 1, keepdims=False)[XYMa], lax.dynamic_index_in_dim(full, L, 1, keepdims=False)[XYMa]]
+            else:
+                self.w = [lax.dynamic_index_in_dim(full, Lm, 1, keepdims=False), lax.dynamic_index_in_dim(full, L, 1, keepdims=False)]
+        else:
+            self.w = [lax.dynamic_index_in_dim(full, Lm, 0, keepdims=False), lax.dynamic_index_in_dim(full, L, 0, keepdims=False)]
+        self.xy = name in _WIN_XY
+
+    def _split(self, idx):
+        t = idx if isinstance(idx, tuple) else (idx,)
+        for pos, e in enumerate(t):
+            if e is self.L or e is self.Lm:
+                return (1 if e is self.L else 0), t[:pos] + t[pos + 1:]
+        return None, t
+
+    def __getitem__(self, idx):
+        lev, rest = self._split(idx)
+        if lev is None:                                          # s.wcu[s.lfrz, cols]: gather at an arbitrary level (overlay of the two windows on the carried array)
+            lf, cols = idx
+            g = self.full[lf, cols]
+            g = jnp.where(lf == self.L, self.w[1][cols], g)
+            return jnp.where(lf == self.Lm, self.w[0][cols], g)
+        if self.xy:
+            return self.w[lev]                                   # rest is (XYMa,): the window holds exactly those rows
+        return self.w[lev][rest] if rest and not (len(rest) == 1 and isinstance(rest[0], slice)) else self.w[lev]
+
+    @property
+    def at(self):
+        return _WinAt(self)
+
+
+class _WinAt:
+    def __init__(self, p):
+        self.p = p
+
+    def __getitem__(self, idx):
+        self.idx = idx
+        return self
+
+    def set(self, v):
+        p = self.p
+        p.dirty = True
+        if isinstance(p, _VecWin):
+            p.x = v
+            return p
+        lev, rest = p._split(self.idx)
+        if p.xy or not rest or (len(rest) == 1 and isinstance(rest[0], slice)):
+            p.w[lev] = v
+        else:
+            p.w[lev] = p.w[lev].at[rest].set(v)
+        return p
+
+
+class _VecWin:
+    """[NMOM, n] moment vector of the plume: the XYMa rows are carried as a [5, n] array (this step reads and writes only those rows)."""
+
+    def __init__(self, full, name):
+        self.base, self.name, self.x, self.dirty = full, name, full[XYMa], False
+
+    def __getitem__(self, idx):
+        return self.x
+
+    @property
+    def at(self):
+        return _WinAt(self)
+
+    def full(self):
+        return self.base.at[XYMa].set(self.x)
+
+
+class _WinNS:
+    def __init__(self, T, L, Lm):
+        d = object.__getattribute__(self, '__dict__')
+        d['_T'], d['_L'], d['_Lm'], d['_w'] = dict(T), L, Lm, {}
+
+    def __getattr__(self, name):
+        d = object.__getattribute__(self, '__dict__')
+        if name in d['_w']:
+            return d['_w'][name]
+        if name in _WIN_LEVEL2 or name in _WIN_LEVEL3:
+            d['_w'][name] = _LevelWin(d['_T'][name], d['_L'], d['_Lm'], name)
+            return d['_w'][name]
+        if name in _WIN_VEC:
+            d['_w'][name] = _VecWin(d['_T'][name], name)
+            return d['_w'][name]
+        return d['_T'][name]
+
+    def __setattr__(self, name, v):
+        d = object.__getattribute__(self, '__dict__')
+        if name in _WIN_LEVEL2 or name in _WIN_LEVEL3 or name in _WIN_VEC:
+            assert v is d['_w'].get(name) or isinstance(v, (_LevelWin, _VecWin)), name        # only the proxy's own .at[...].set result is assigned back
+            return
+        d['_T'][name] = v
+
+    def _out(self):
+        d = object.__getattribute__(self, '__dict__')
+        out = dict(d['_T'])
+        for name, w in d['_w'].items():
+            if not w.dirty:
+                continue
+            if isinstance(w, _VecWin):
+                out[name] = w.full()
+            elif name in _WIN_LEVEL3:
+                blk = jnp.stack(w.w, axis=1)
+                if w.xy:
+                    cur = lax.dynamic_slice_in_dim(w.full, d['_Lm'], 2, axis=1)
+                    blk = cur.at[XYMa].set(blk)
+                out[name] = lax.dynamic_update_slice_in_dim(w.full, blk, d['_Lm'], axis=1)
+            else:
+                out[name] = lax.dynamic_update_slice_in_dim(w.full, jnp.stack(w.w, axis=0), d['_Lm'], axis=0)
+        return out
+
+
+
+def _ascent_step_win(k, T, L, a, lmin, contce, ic, K, I, KC, cols, n):
+    Lm, Lp = L - 1, L + 1
+    s = _WinNS(T, L, Lm)          # level-indexed state as two per-level windows (L-1, L): one slice in, one update out per array per iteration
+    wb = jnp.where
+    pl, ple, plk, airm, byam = I["pl"], I["ple"], I["plk"], I["airm"], I["byam"]
+    tl, tvl, qcll, qcil, gzl, u_0, v_0 = I["tl"], I["tvl"], I["qcll"], I["qcil"], I["gzl"], I["u_0"], I["v_0"]
+    smom, qmom = s.smom, s.qmom
+    pland, dwcu = KC["pland"], KC["dwcu"]
+    sm1, qm1 = s.sm1, s.qm1
+    mplume = s.mplume
+    a = a & ~(mplume <= k.f001 * airm[L])
+    sdn = s.smp / mplume
+    sup = sm1[L] * byam[L]
+    qdn = s.qmp / mplume
+    qup = qm1[L] * byam[L]
+    wmdn = 0.0
+    wmup = qcll[L] + qcil[L]
+    svdn = sdn * (1. + k.DELTX * qdn - wmdn)
+    svup = sup * (1. + k.DELTX * qup - wmup)
+    a = a & ~(plk[Lm] * (svup - svdn) + k.SLHE * (qup - qdn) >= 0.)
+    s.tpsav = s.tpsav.at[L].set(wb(a & (s.tpsav[L] == 0), s.smp * plk[L] / mplume, s.tpsav[L]))
+    tp = s.tpsav[L]
+    s.lfrz = wb(a & (s.tpsav[Lm] >= k.TF) & (s.tpsav[L] < k.TF), Lm, s.lfrz)
+    lhx0 = wb(tp < k.TI, k.LHS, k.LHE)
+    # ---- callback CB0 (all requests below depend only on values known here; lane mask = a BEFORE the saturation test, see the module doc)
+    ms_s = a & (tp < k.TF) & (lhx0 == k.LHE)
+    lhx_s = wb(ms_s, k.LHS, lhx0)
+    lhx_s = wb(a & (s.vlat[L] == k.LHS), k.LHS, lhx_s)
+    cap_s = a & (mplume > k.f95 * airm[L])
+    delta_s = (mplume - k.f95 * airm[L]) / mplume
+    mpl_s = wb(cap_s, k.f95 * airm[L], mplume)
+    smp_s = wb(cap_s, s.smp * (1. - delta_s), s.smp)
+    qmp_s = wb(cap_s, s.qmp * (1. - delta_s), s.qmp)
+    cb0 = FX.fx([("e", qarg(k, tp, lhx0), a), ("e", qarg(k, sup * plk[L], lhx_s), a),
+                 ("e", qarg(k, smp_s * plk[L] / mpl_s, lhx_s), a & (qmp_s > 0)),
+                 ("p", pl[L] / 1000.0, k.F04, a), ("p", 1000.0 / pl[L], k.P4, a)], "asc_cb0")
+    qsatmp = mplume * (k.QA_ * cb0[0] / pl[L])
+    a = a & ~(s.qmp < qsatmp)
+    ms_ = a & (tp < k.TF) & (lhx0 == k.LHE)
+    lhx = wb(ms_, k.LHS, lhx0)
+    lhx = wb(a & (s.vlat[L] == k.LHS), k.LHS, lhx)
+    s.vlat = s.vlat.at[L].set(wb(a, lhx, s.vlat[L]))
+    slh = lhx * k.BYSHA
+    s.u00l = s.u00l.at[L].set(wb(a & (tl[L] >= k.TF) & (s.u00l[L] != k.u00a), k.u00_mc, s.u00l[L]))
+    s.mccont = wb(a, s.mccont + 1, s.mccont)
+    s.mc1 = s.mc1 | (a & (s.mccont == 1))
+    cap = a & (mplume > k.f95 * airm[L])
+    delta = (mplume - k.f95 * airm[L]) / mplume
+    s.dm = s.dm.at[Lm].set(wb(cap, s.dm[Lm] + delta * mplume, s.dm[Lm]))
+    mplume = wb(cap, k.f95 * airm[L], mplume)
+    s.dsm = s.dsm.at[Lm].set(wb(cap, s.dsm[Lm] + delta * s.smp, s.dsm[Lm]))
+    smp = wb(cap, s.smp * (1. - delta), s.smp)
+    s.dsmom = s.dsmom.at[XYMa, Lm].set(wb(cap, s.dsmom[XYMa, Lm] + delta * s.smomp[XYMa], s.dsmom[XYMa, Lm]))
+    s.smomp = s.smomp.at[XYMa].set(wb(cap, s.smomp[XYMa] * (1. - delta), s.smomp[XYMa]))
+    s.dqm = s.dqm.at[Lm].set(wb(cap, s.dqm[Lm] + delta * s.qmp, s.dqm[Lm]))
+    qmp = wb(cap, s.qmp * (1. - delta), s.qmp)
+    s.dqmom = s.dqmom.at[XYMa, Lm].set(wb(cap, s.dqmom[XYMa, Lm] + delta * s.qmomp[XYMa], s.dqmom[XYMa, Lm]))
+    s.qmomp = s.qmomp.at[XYMa].set(wb(cap, s.qmomp[XYMa] * (1. - delta), s.qmomp[XYMa]))
+    s.dum = s.dum.at[:, Lm].set(wb(cap, s.dum[:, Lm] + s.ump * delta, s.dum[:, Lm]))
+    s.dvm = s.dvm.at[:, Lm].set(wb(cap, s.dvm[:, Lm] + s.vmp * delta, s.dvm[:, Lm]))
+    ump = wb(cap, s.ump - s.ump * delta, s.ump)
+    vmp = wb(cap, s.vmp - s.vmp * delta, s.vmp)
+    wk = mplume * (sup - sdn) * (plk[Lm] - plk[L]) / plk[Lm]
+    s.dsm = s.dsm.at[Lm].set(wb(a, s.dsm[Lm] - wk, s.dsm[Lm]))
+    s.ccm = s.ccm.at[Lm].set(wb(a, mplume, s.ccm[Lm]))
+    dqsum, fqcond = dq_dev(k, "c", smp, qmp, plk[L], mplume, lhx, pl[L], None, a & (qmp > 0), e_first=cb0[2], tag="asc_dq")
+    m3 = a & (dqsum > 0.) & (qmp > k.TEENY)
+    s.qmomp = s.qmomp.at[XYMa].set(wb(m3, s.qmomp[XYMa] * (1. - fqcond), s.qmomp[XYMa]))
+    smp = wb(m3, smp + slh * dqsum / plk[L], smp)
+    qmp = wb(m3, qmp - dqsum, qmp)
+    cond_L = wb(a, dqsum, s.cond[L])
+    s.condmmr = s.condmmr.at[L].set(wb(a, s.condmmr[L] + cond_L * byam[L] * s.fmc1, s.condmmr[L]))
+    cdheat_L = wb(a, slh * cond_L, s.cdheat[L])
+    cdhsum = wb(a, s.cdhsum + cdheat_L, s.cdhsum)
+    cond_L = wb(a, cond_L + s.condv[Lm], cond_L)
+    mv = a & (s.vlat[Lm] != s.vlat[L])
+    smp = wb(mv, smp - (s.vlat[Lm] - s.vlat[L]) * s.condv[Lm] * k.BYSHA / plk[L], smp)
+    cdheat_L = wb(mv, cdheat_L - (s.vlat[Lm] - s.vlat[L]) * s.condv[Lm] * k.BYSHA, cdheat_L)
+    cdhsum = wb(mv, cdhsum - (s.vlat[Lm] - s.vlat[L]) * s.condv[Lm] * k.BYSHA, cdhsum)
+    condmu = 100. * cond_L * pl[L] / (s.ccm[Lm] * tl[L] * k.RGAS)
+    s.taumc1 = s.taumc1.at[L].set(wb(a, s.taumc1[L] + cond_L * s.fmc1, s.taumc1[L]))
+    tvp = (smp / mplume) * plk[L] * (1. + k.DELTX * qmp / mplume)
+    buoy_L = wb(a, (tvp - tvl[L]) / tvl[L] - cond_L / mplume, s.buoy[L])
+    s.buoy = s.buoy.at[L].set(buoy_L)
+    ent_L = wb(a, .16667 * contce * k.GRAV * buoy_L / (s.wcu[Lm] * s.wcu[Lm] + k.TEENY), s.ent[L])
+    ng = a & (ent_L < 0.)
+    det_L = wb(ng, -ent_L, s.det[L])
+    ent_L = wb(ng, 0., ent_L)
+    pe = a & (ent_L > 0.)
+    fplume = s.fplume
+    fentr = 1000. * ent_L * gzl[L] * fplume
+    cap2 = pe & (fentr + fplume > 1.)
+    fentr = wb(cap2, 1. - fplume, fentr)
+    ent_L = wb(cap2, 0.001 * fentr / (gzl[L] * fplume), ent_L)
+    ee = pe & (fentr >= k.TEENY)
+    mpold, fpold = mplume, fplume
+    etal1 = fentr / (fplume + k.TEENY)
+    eplume = mplume * etal1
+    cap3 = ee & (eplume > airm[L] * 0.975 - mplume)
+    eplume = wb(cap3, airm[L] * 0.975 - mplume, eplume)
+    mplume = wb(ee, mplume + eplume, mplume)
+    etal1 = eplume / mpold
+    fentr = wb(ee, etal1 * fpold, fentr)
+    ent_L = wb(ee, 0.001 * fentr / (gzl[L] * fpold), ent_L)
+    fplume = wb(ee, mplume * byam[L], fplume)          # mc_entr_mass_lim_plume = 1 (asserted by the driver)
+    fentra = eplume * byam[L]
+    s.dsmr = s.dsmr.at[L].set(wb(ee, s.dsmr[L] - eplume * sup, s.dsmr[L]))
+    s.dsmomr = s.dsmomr.at[:, L].set(wb(ee, s.dsmomr[:, L] - smom[:, L] * fentra, s.dsmomr[:, L]))
+    s.dqmr = s.dqmr.at[L].set(wb(ee, s.dqmr[L] - eplume * qup, s.dqmr[L]))
+    s.dqmomr = s.dqmomr.at[:, L].set(wb(ee, s.dqmomr[:, L] - qmom[:, L] * fentra, s.dqmomr[:, L]))
+    s.dmr = s.dmr.at[L].set(wb(ee, s.dmr[L] - eplume, s.dmr[L]))
+    smp = wb(ee, smp + eplume * sup, smp)
+    s.smomp = s.smomp.at[XYMa].set(wb(ee, s.smomp[XYMa] + smom[XYMa, L] * fentra, s.smomp[XYMa]))
+    qmp = wb(ee, qmp + eplume * qup, qmp)
+    s.qmomp = s.qmomp.at[XYMa].set(wb(ee, s.qmomp[XYMa] + qmom[XYMa, L] * fentra, s.qmomp[XYMa]))
+    umtemp = k.pgrad * (mplume * mplume) * (u_0[:, Lp] - u_0[:, L]) / (pl[L] - pl[Lp])
+    vmtemp = k.pgrad * (mplume * mplume) * (v_0[:, Lp] - v_0[:, L]) / (pl[L] - pl[Lp])
+    ump = wb(ee, ump + u_0[:, L] * eplume + umtemp, ump)
+    s.dum = s.dum.at[:, L].set(wb(ee, s.dum[:, L] - u_0[:, L] * eplume - umtemp, s.dum[:, L]))
+    vmp = wb(ee, vmp + v_0[:, L] * eplume + vmtemp, vmp)
+    s.dvm = s.dvm.at[:, L].set(wb(ee, s.dvm[:, L] - v_0[:, L] * eplume - vmtemp, s.dvm[:, L]))
+    dd = a & (det_L > 0.)
+    delta = 1000. * det_L * gzl[L]
+    cap4 = dd & (delta > .95)
+    delta = wb(cap4, 0.95, delta)
+    det_L = wb(cap4, .001 * delta / gzl[L], det_L)
+    s.dm = s.dm.at[L].set(wb(dd, s.dm[L] + delta * mplume, s.dm[L]))
+    mplume = wb(dd, mplume * (1. - delta), mplume)
+    s.dsm = s.dsm.at[L].set(wb(dd, s.dsm[L] + delta * smp, s.dsm[L]))
+    smp = wb(dd, smp * (1. - delta), smp)
+    s.dsmom = s.dsmom.at[XYMa, L].set(wb(dd, s.dsmom[XYMa, L] + delta * s.smomp[XYMa], s.dsmom[XYMa, L]))
+    s.smomp = s.smomp.at[XYMa].set(wb(dd, s.smomp[XYMa] * (1. - delta), s.smomp[XYMa]))
+    s.dqm = s.dqm.at[L].set(wb(dd, s.dqm[L] + delta * qmp, s.dqm[L]))
+    qmp = wb(dd, qmp * (1. - delta), qmp)
+    s.dqmom = s.dqmom.at[XYMa, L].set(wb(dd, s.dqmom[XYMa, L] + delta * s.qmomp[XYMa], s.dqmom[XYMa, L]))
+    s.qmomp = s.qmomp.at[XYMa].set(wb(dd, s.qmomp[XYMa] * (1. - delta), s.qmomp[XYMa]))
+    umtemp = k.pgrad * (mplume * mplume) * (u_0[:, Lp] - u_0[:, L]) / (pl[L] - pl[Lp])
+    vmtemp = k.pgrad * (mplume * mplume) * (v_0[:, Lp] - v_0[:, L]) / (pl[L] - pl[Lp])
+    s.dum = s.dum.at[:, L].set(wb(dd, s.dum[:, L] + ump * delta - umtemp, s.dum[:, L]))
+    s.dvm = s.dvm.at[:, L].set(wb(dd, s.dvm[:, L] + vmp * delta - vmtemp, s.dvm[:, L]))
+    ump = wb(dd, ump - ump * delta + umtemp, ump)
+    vmp = wb(dd, vmp - vmp * delta + vmtemp, vmp)
+    # ---- downdraft trigger (only for L - lmin > 1)
+    gate = (L - lmin) > 1
+    smix = .5 * (sup + smp / mplume)
+    qmix = .5 * (qup + qmp / mplume)
+    wmix = .5 * (wmup + cond_L / mplume)
+    svmix = smix * (1. + k.DELTX * qmix - wmix)
+    svup = sup * (1. + k.DELTX * qup - wmup)
+    dmmix = (svup - svmix) * plk[L] + k.SLHE * (k.QA_ * cb0[1] / pl[L] - qmix)
+    cdhdrt = wb(gate & a & (dmmix < 1e-10), s.cdhdrt + cdheat_L, s.cdhdrt)
+    tr = gate & a & (dmmix >= 1e-10)
+    s.ldraft = wb(tr, L, s.ldraft)
+    etad = F(1.0) / F(3.0)
+    etadn = wb(tr, etad, s.etadn)
+    fleft = 1. - .5 * etad
+    ddraft = wb(tr, etad * mplume, s.ddraft)
+    s.ddr = s.ddr.at[L].set(wb(tr, ddraft, s.ddr[L]))
+    cdhsum1 = wb(tr, s.cdhsum1 + cdhdrt * .5 * etad, s.cdhsum1)
+    cdhdrt = wb(tr, cdhdrt - cdhdrt * .5 * etad + cdheat_L, cdhdrt)
+    fddp = .5 * ddraft
+    fddp = fddp / mplume
+    fddl = .5 * ddraft * byam[L]
+    mplume = wb(tr, fleft * mplume, mplume)
+    s.smdnl = s.smdnl.at[L].set(wb(tr, ddraft * smix, s.smdnl[L]))
+    s.smomdnl = s.smomdnl.at[XYMa, L].set(wb(tr, smom[XYMa, L] * fddl + s.smomp[XYMa] * fddp, s.smomdnl[XYMa, L]))
+    smp = wb(tr, fleft * smp, smp)
+    s.smomp = s.smomp.at[XYMa].set(wb(tr, s.smomp[XYMa] * fleft, s.smomp[XYMa]))
+    s.qmdnl = s.qmdnl.at[L].set(wb(tr, ddraft * qmix, s.qmdnl[L]))
+    s.qmomdnl = s.qmomdnl.at[XYMa, L].set(wb(tr, qmom[XYMa, L] * fddl + s.qmomp[XYMa] * fddp, s.qmomdnl[XYMa, L]))
+    qmp = wb(tr, fleft * qmp, qmp)
+    s.qmomp = s.qmomp.at[XYMa].set(wb(tr, s.qmomp[XYMa] * fleft, s.qmomp[XYMa]))
+    s.dmr = s.dmr.at[L].set(wb(tr, s.dmr[L] - .5 * ddraft, s.dmr[L]))
+    s.dsmr = s.dsmr.at[L].set(wb(tr, s.dsmr[L] - .5 * ddraft * sup, s.dsmr[L]))
+    s.dsmomr = s.dsmomr.at[:, L].set(wb(tr, s.dsmomr[:, L] - smom[:, L] * fddl, s.dsmomr[:, L]))
+    s.dqmr = s.dqmr.at[L].set(wb(tr, s.dqmr[L] - .5 * ddraft * qup, s.dqmr[L]))
+    s.dqmomr = s.dqmomr.at[:, L].set(wb(tr, s.dqmomr[:, L] - qmom[:, L] * fddl, s.dqmomr[:, L]))
+    s.umdnl = s.umdnl.at[:, L].set(wb(tr, .5 * (etad * ump + ddraft * u_0[:, L]), s.umdnl[:, L]))
+    ump = wb(tr, ump * fleft, ump)
+    s.dum = s.dum.at[:, L].set(wb(tr, s.dum[:, L] - .5 * ddraft * u_0[:, L], s.dum[:, L]))
+    s.vmdnl = s.vmdnl.at[:, L].set(wb(tr, .5 * (etad * vmp + ddraft * v_0[:, L]), s.vmdnl[:, L]))
+    vmp = wb(tr, vmp * fleft, vmp)
+    s.dvm = s.dvm.at[:, L].set(wb(tr, s.dvm[:, L] - .5 * ddraft * v_0[:, L], s.dvm[:, L]))
+    # ---- cloud-top velocity
+    w2tem = .16667 * k.GRAV * buoy_L - s.wcu[Lm] * s.wcu[Lm] * (.66667 * det_L + ent_L)
+    hdep = airm[L] * tl[L] * k.RGAS / (k.GRAV * pl[L])
+    wcu2_L = wb(a, s.wcu2[Lm] + 2. * hdep * w2tem, s.wcu2[L])
+    s.wcu2 = s.wcu2.at[L].set(wcu2_L)
+    wl = wb(wcu2_L > 0., jnp.sqrt(wb(wcu2_L > 0., wcu2_L, 1.0)), 0.)
+    wl = wb(wl >= 0., pymin(50., wl), wl)
+    wl = wb(wl < 0., pymax(-50., wl), wl)
+    wcu_L = wb(a, wl, s.wcu[L])
+    s.wcu = s.wcu.at[L].set(wcu_L)
+    s.smpmax = wb(a, smp, s.smpmax)
+    s.smompmax = wb(a, s.smomp.full(), s.smompmax)
+    s.qmpmax = wb(a, qmp, s.qmpmax)
+    s.qmompmax = wb(a, s.qmomp.full(), s.qmompmax)
+    s.mpmax = wb(a, mplume, s.mpmax)
+    s.lmax = wb(a, s.lmax + 1, s.lmax)
+    a = a & ~(wcu2_L < 0.)
+    # ---- convective microphysics
+    wcufrz = wb(s.lfrz > 0, s.wcu[s.lfrz, cols], 0.0)
+    cp, cp1, cip, cgp = conv_micro_dev(k, pl[L], wcu_L, dwcu, s.lfrz.astype(jnp.float64), wcufrz, tp, pland, condmu, I["tl"][lmin],
+                                       I["tl"][lmin + 1], s.condip[L], s.condgp[L], a, cb0[3], cb0[4])
+    condp_L = wb(a, cp, s.condp[L])
+    condp1_L = wb(a, cp1, s.condp1[L])
+    s.condip = s.condip.at[L].set(wb(a, cip, s.condip[L]))
+    s.condgp = s.condgp.at[L].set(wb(a, cgp, s.condgp[L]))
+    condp_L = wb(a, .01 * condp_L * s.ccm[Lm] * tl[L] * k.RGAS / pl[L], condp_L)
+    condp1_L = wb(a, .01 * condp1_L * s.ccm[Lm] * tl[L] * k.RGAS / pl[L], condp1_L)
+    condp1_L = wb(a & (condp1_L > cond_L), cond_L, condp1_L)
+    condp_L = wb(a & (condp_L > condp1_L), condp1_L, condp_L)
+    condv_L = wb(a, cond_L - condp1_L, s.condv[L])
+    cond_L = wb(a, cond_L - condv_L, cond_L)
+    taumc1_L = wb(a, s.taumc1[L] - condv_L * s.fmc1, s.taumc1[L])
+    s.condp = s.condp.at[L].set(condp_L)
+    s.condp1 = s.condp1.at[L].set(condp1_L)
+    s.condv = s.condv.at[L].set(condv_L)
+    s.cond = s.cond.at[L].set(cond_L)
+    s.taumc1 = s.taumc1.at[L].set(taumc1_L)
+    s.cdheat = s.cdheat.at[L].set(cdheat_L)
+    s.ent = s.ent.at[L].set(ent_L)
+    s.det = s.det.at[L].set(det_L)
+    s.mplume, s.smp, s.qmp, s.fplume, s.ump, s.vmp = mplume, smp, qmp, fplume, ump, vmp
+    s.cdhsum, s.cdhsum1, s.cdhdrt, s.etadn, s.ddraft = cdhsum, cdhsum1, cdhdrt, etadn, ddraft
+    return s._out(), a
 
 
 # ---------------------------------------------------------------------------------------------- set-up, base test, post stage, driver

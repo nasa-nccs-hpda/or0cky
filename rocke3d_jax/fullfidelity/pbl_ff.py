@@ -14,6 +14,8 @@ for N calls (vmapped). Dump-record layout: see instrumentation (ffp_*.bin, 154 d
 import numpy as np
 import jax
 import jax.numpy as jnp
+import os as _os
+_NEWTON_UNROLL = int(_os.environ.get('ROCKE_NEWTON_UNROLL', '1'))
 from jax import lax
 import aturb_ff as A          # enables x64; shares SOCPBL closure constants
 
@@ -197,7 +199,20 @@ def _newton(fg, a, b, accuracy):
 
     st = (root0, dxold0, dxold0, xa0, xb0, f0, df0, jnp.zeros((), bool))
     # early-exit loop (data dependent, <=100 iterations like NewtonMethod's maxNumIterations)
-    st = lax.while_loop(lambda c: (~c[1][7]) & (c[0] < 100), lambda c: (c[0] + 1, body(c[0], c[1])), (0, st))[1]
+    cond = lambda c: (~c[1][7]) & (c[0] < 100)
+    step = lambda c: (c[0] + 1, body(c[0], c[1]))
+    if _NEWTON_UNROLL > 1:
+        # speed track (ROCKE_NEWTON_UNROLL=K, default off): K masked iterations per while step -- each inner iteration is applied only where the
+        # loop condition still holds, so the per-lane result is that of the plain loop; one host-visible loop test per K iterations instead of one per iteration
+        def multi(c):
+            for _ in range(_NEWTON_UNROLL):
+                go = cond(c)
+                c2 = step(c)
+                c = jax.tree_util.tree_map(lambda a, b: jnp.where(go, b, a), c, c2)
+            return c
+        st = lax.while_loop(cond, multi, (0, st))[1]
+    else:
+        st = lax.while_loop(cond, step, (0, st))[1]
     return st[0]
 
 

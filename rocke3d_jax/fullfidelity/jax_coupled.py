@@ -31,6 +31,8 @@ import d187_imf_p1 as W                 # imports jax_atm_phase1 first (executio
 INST = W.install()
 import jax  # noqa: E402
 import jax.numpy as jnp  # noqa: E402
+import scan_unroll as _SU  # noqa: E402  (ROCKE_SCAN_UNROLL, speed track, default off)
+_SU.install()
 import jax_atm_phase1 as P1  # noqa: E402
 import drv_radcols_dev as DD  # noqa: E402
 import jax_p1_count as CNT  # noqa: E402
@@ -53,6 +55,14 @@ import d190_util as U  # noqa: E402
 
 IM, JM, LM = 72, 46, 40
 F = np.float64
+
+
+@jax.jit
+def _tos_jit(sp, rsi, wi, wj):
+    p = S181.tile_ptype(sp, rsi, jnp)
+    wv = jnp.stack([p[0][wi, wj] > 0.0, p[1][wi, wj] > 0.0])
+    ft = jnp.stack([p[t].T.reshape(-1) for t in range(4)], axis=1)
+    return wv, ft
 
 
 def mstcnv_new(self, R, stats=None):
@@ -139,8 +149,8 @@ class Coupled:
         self.log = log
         FX.set_mode('libimf')
         t0 = time.perf_counter()
-        self.ph = W.make_phase1(date, rad='replay')
-        if mstcnv == 'dev':
+        self.ph = W.make_phase1(date, rad='replay', fused_dyn=os.environ.get('ROCKE_FUSED_DYN', '0') == '1')
+        if mstcnv == 'dev' and os.environ.get('ROCKE_MSTCNV_HOST', '0') != '1':    # ROCKE_MSTCNV_HOST=1: CondseDevice.mstcnv -> host numba worker
             self.ph.cs.mstcnv = types.MethodType(mstcnv_new, self.ph.cs)
         self.mstcnv = mstcnv
         self.ctx = self.ph.ctx
@@ -182,10 +192,19 @@ class Coupled:
         if not (mode == '1' or (mode is None and jax.default_backend() != 'cpu')):
             return jax.jit(lambda oc, fx, Kb: JO.ocean_stages(K, Kb, oc, fx, which='b'))
         subs = [jax.jit((lambda fn: (lambda s, fx, Kb: fn(K, Kb, s, fx)))(f)) for _, f in JO.STAGES[5:]]
+        names = [n for n, _ in JO.STAGES[5:]]
+        _otm = os.environ.get('ROCKE_OCEAN_TIMERS') == '1'      # speed track diagnostic: seconds of each ocean_b sub-jit (blocks after each)
 
         def ob(oc, fx, Kb):
-            for j in subs:
+            tms = []
+            for n_, j in zip(names, subs):
+                t0 = time.perf_counter()
                 oc = j(oc, fx, Kb)
+                if _otm:
+                    jax.block_until_ready(oc)
+                    tms.append(f'{n_}={time.perf_counter() - t0:.4f}')
+            if _otm:
+                print('ocean_b_units_s ' + ' '.join(tms), flush=True)
             return oc
         return ob
 
@@ -480,6 +499,12 @@ class Coupled:
 
     def _tpl_own_state(self, tpl, host, rsi):
         """Slot validity and type fractions of both substeps from OUR RSI (jax_state_d181.tile_ptype: [(1-RSI) FWATER, RSI FWATER, FLICE, FEARTH])."""
+        if os.environ.get('ROCKE_GLUE_JIT', '0') == '1':               # speed track: the same selections as one jitted program (about 20 eager dispatches)
+            c_ = getattr(self, '_tos_idx', None)
+            if c_ is None or c_[0] is not host:
+                c_ = self._tos_idx = (host, jnp.asarray(host['wi']), jnp.asarray(host['wj']))
+            wv, ft = _tos_jit(self.sp181, rsi, c_[1], c_[2])
+            return dict(tpl, ns=[dict(d, wvalid=wv, ftype=ft) for d in tpl['ns']])
         p = S181.tile_ptype(self.sp181, rsi, jnp)                      # (4, IM, JM)
         wi, wj = jnp.asarray(host['wi']), jnp.asarray(host['wj'])
         wv = jnp.stack([p[0][wi, wj] > 0.0, p[1][wi, wj] > 0.0])
@@ -553,10 +578,23 @@ class Coupled:
         info = dict(k=k, itime=it, jit_by_stage={}, eager_by_stage={})
         arrays = {}
 
+        _st_tr = os.environ.get('ROCKE_STAGE_TRACE')       # speed track diagnostic: 'name:dir[:k]' = profiler trace of stage `name` at the k-th call (default 8)
+        _st_tr = _st_tr.split(':') if _st_tr else None
+
         @contextlib.contextmanager
         def stage(name):
+            _tr = None
+            if _st_tr is not None and name == _st_tr[0]:
+                self._stage_calls = getattr(self, '_stage_calls', 0) + 1
+                if self._stage_calls == (int(_st_tr[2]) if len(_st_tr) > 2 else 8):
+                    from jax import profiler as _jprof
+                    jax.block_until_ready((S, SS))
+                    _tr = _jprof.trace(_st_tr[1])
+                    _tr.__enter__()
             with sr.time(name), CNT.stage(name) as res:
                 yield
+            if _tr is not None:
+                _tr.__exit__(None, None, None)
             info['jit_by_stage'][name] = info['jit_by_stage'].get(name, 0) + (res.get('jit_calls') or 0)
             info['eager_by_stage'][name] = info['eager_by_stage'].get(name, 0) + (res.get('eager_primitive_calls') or 0)
 

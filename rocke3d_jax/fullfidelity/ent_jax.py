@@ -18,6 +18,7 @@ cohort has converged).
 """
 import jax
 import jax.numpy as jnp
+import os
 import numpy as np
 
 import ent_ff as E
@@ -149,7 +150,8 @@ def _rtsafe(x1, x2, xacc, Ra, b, K, gamol, ca, a1, f1, Rd):
         return dict(rts=u(rts_new, rts), dxold=u(dxold_new, dxold), dx=u(dx_new, dx), xl=u(jnp.where(conv, xl, xl_new), xl), xh=u(jnp.where(conv, xh, xh_new), xh),
                     f=u(fn, f), df=u(dfn, df), done=done | (act & conv), result=jnp.where(act & conv, rts_new, result), j=c['j'] + 1)
 
-    c = jax.lax.while_loop(cond, body, dict(rts=rts, dxold=dxold, dx=dx, xl=xl, xh=xh, f=f, df=df, done=done, result=result, j=jnp.zeros((), dtype=jnp.int32)))
+    import while_unroll as _WU      # ROCKE_WHILE_UNROLL (default 1: the plain lax.while_loop)
+    c = _WU.while_loop(cond, body, dict(rts=rts, dxold=dxold, dx=dx, xl=xl, xh=xh, f=f, df=df, done=done, result=result, j=jnp.zeros((), dtype=jnp.int32)))
     return c['result'], ~c['done']
 
 
@@ -244,8 +246,15 @@ def _canopy_rad(Lc, crp):
 
 def _sunshd(L, Lc, crp):
     Isl, Ish, fsl = _canopy_rad(Lc, crp)
-    ci1, gs1, A1, f1 = _leaf(L, Isl)
-    ci2, gs2, A2, f2 = _leaf(L, Ish)
+    if _ENT_BATCH:                                    # sunlit and shaded leaves in one batched call (one rtsafe loop instead of two)
+        n = Isl.shape[1]
+        ci_, gs_, A_, f_ = _leaf(L, jnp.concatenate([Isl, Ish], axis=1))
+        ci1, gs1, A1 = ci_[:, :n], gs_[:, :n], A_[:, :n]
+        ci2, gs2, A2 = ci_[:, n:], gs_[:, n:], A_[:, n:]
+        f1 = f2 = f_
+    else:
+        ci1, gs1, A1, f1 = _leaf(L, Isl)
+        ci2, gs2, A2, f2 = _leaf(L, Ish)
     Rd = L.Rd[:, None]
     Al = fsl * A1 + (1.0 - fsl) * A2
     gl = fsl * gs1 + (1.0 - fsl) * gs2
@@ -253,8 +262,98 @@ def _sunshd(L, Lc, crp):
     return Al, gl, Rl, ci2, f1 | f2
 
 
+_ENT_SKIP = os.environ.get('ROCKE_ENT_SKIP', '0') == '1'
+
+
+def _qsimp_iter(L, crp, Xlim, Bc, A0, IT, layers, MAXIT, ERRLIM, c):
+    """One qsimp iteration IT >= 2 (the body of the loop in _qsimp) as a function of the carried values."""
+    (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail) = c
+    Cn = Xlim.shape[0]
+    DEL = (Xlim - A0) / float(layers)
+    X = A0[:, None] + 0.5 * DEL[:, None] + DEL[:, None] * jnp.arange(layers, dtype=jnp.float64)[None, :]
+    Al, gl, Rl, ci, f = _sunshd(L, X, crp)
+    sm = smg = smr = jnp.zeros(Cn)
+    for k in range(layers):                               # sequential accumulation, as the Fortran loop
+        sm, smg, smr = sm + Al[:, k], smg + gl[:, k], smr + Rl[:, k]
+    RCL = float(layers)
+    ST = 0.5 * (ST + (Xlim - A0) * sm / RCL)
+    STg = 0.5 * (STg + (Xlim - A0) * smg / RCL)
+    STr = 0.5 * (STr + (Xlim - A0) * smr / RCL)
+    ci_it = ci[:, layers - 1]
+    fail = fail | f
+    S = (4.0 * ST - OST) / 3.0
+    Sg = (4.0 * STg - OSTg) / 3.0
+    Sr = (4.0 * STr - OSTr) / 3.0
+    conv = jnp.abs(S - OS) < ERRLIM
+    take = active & (conv | (IT == MAXIT))
+    resS, resSg, resSr = (jnp.where(take, v, r) for v, r in ((S, resS), (Sg, resSg), (Sr, resSr)))
+    ci_last = jnp.where(take, ci_it, ci_last)
+    active = active & ~take
+    OS, OST, OSTg, OSTr = S, ST, STg, STr
+    return (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail)
+
+
+_ENT_BATCH = os.environ.get('ROCKE_ENT_BATCH', '0') == '1'
+
+
+def _qsimp_batched(L, crp, Xlim, Bc):
+    """_qsimp with the leaf evaluations of all six refinement levels done in ONE batched call (speed track, ROCKE_ENT_BATCH=1).  The leaf
+    evaluations at the abscissae of different refinement levels do not depend on each other (only the convergence tests do), and every element
+    of the batched rtsafe / leaf arithmetic is independent, so the values are those of the level-by-level version; the 12 sequential while
+    loops (about 150 host-driven iterations per ent_step) become 2."""
+    MAXIT, ERRLIM = 6, 0.1
+    Cn = Xlim.shape[0]
+    A0 = jnp.zeros(Cn)
+    pts = [jnp.stack([A0, Xlim], axis=1)]
+    sizes = [2]
+    layers = 1
+    for IT in range(2, MAXIT + 1):
+        DEL = (Xlim - A0) / float(layers)
+        pts.append(A0[:, None] + 0.5 * DEL[:, None] + DEL[:, None] * jnp.arange(layers, dtype=jnp.float64)[None, :])
+        sizes.append(layers)
+        layers *= 2
+    Alla, glla, Rlla, cia, fall = _sunshd(L, jnp.concatenate(pts, axis=1), crp)
+    OST = OS = OSTg = OSTr = jnp.full(Cn, -1.0e30)
+    ST = STg = STr = jnp.zeros(Cn)
+    active = jnp.ones(Cn, dtype=bool)
+    resS = resSg = resSr = jnp.zeros(Cn)
+    ci_last = jnp.zeros(Cn)
+    off = 0
+    for IT in range(1, MAXIT + 1):
+        n = sizes[IT - 1]
+        Al, gl, Rl, ci = (a[:, off:off + n] for a in (Alla, glla, Rlla, cia))
+        off += n
+        if IT == 1:
+            ST = 0.5 * (Bc - A0) * (Al[:, 0] + Al[:, 1])
+            STg = 0.5 * (Bc - A0) * (gl[:, 0] + gl[:, 1])
+            STr = 0.5 * (Bc - A0) * (Rl[:, 0] + Rl[:, 1])
+            ci_it = ci[:, 1]
+        else:
+            lay = n
+            sm = smg = smr = jnp.zeros(Cn)
+            for k in range(lay):                               # sequential accumulation, as the Fortran loop
+                sm, smg, smr = sm + Al[:, k], smg + gl[:, k], smr + Rl[:, k]
+            RCL = float(lay)
+            ST = 0.5 * (ST + (Xlim - A0) * sm / RCL)
+            STg = 0.5 * (STg + (Xlim - A0) * smg / RCL)
+            STr = 0.5 * (STr + (Xlim - A0) * smr / RCL)
+            ci_it = ci[:, lay - 1]
+        S = (4.0 * ST - OST) / 3.0
+        Sg = (4.0 * STg - OSTg) / 3.0
+        Sr = (4.0 * STr - OSTr) / 3.0
+        conv = jnp.abs(S - OS) < ERRLIM
+        take = active & (conv | (IT == MAXIT))
+        resS, resSg, resSr = (jnp.where(take, v, r) for v, r in ((S, resS), (Sg, resSg), (Sr, resSr)))
+        ci_last = jnp.where(take, ci_it, ci_last)
+        active = active & ~take
+        OS, OST, OSTg, OSTr = S, ST, STg, STr
+    return resS, resSg, resSr, ci_last, fall
+
+
 def _qsimp(L, crp, Xlim, Bc):
     """ent_ff.qsimp for all cohorts at once: S, Sg, Sr, Si, ci of the last leaf call, failure flag"""
+    if _ENT_BATCH:
+        return _qsimp_batched(L, crp, Xlim, Bc)
     MAXIT, ERRLIM = 6, 0.1
     Cn = Xlim.shape[0]
     OST = OS = OSTg = OSTr = OSTi = jnp.full(Cn, -1.0e30)
@@ -266,6 +365,16 @@ def _qsimp(L, crp, Xlim, Bc):
     layers = 1
     A0 = jnp.zeros(Cn)
     for IT in range(1, MAXIT + 1):
+        if IT > 1 and _ENT_SKIP:
+            # speed track (ROCKE_ENT_SKIP=1): when every cohort has converged the iteration changes nothing that is kept (take = active & ..., results
+            # and ci are only written where `take`), so it is skipped; only the `fail` diagnostic would no longer see the leaf calls of converged cohorts
+            def _it(c, IT=IT, layers=layers):
+                return _qsimp_iter(L, crp, Xlim, Bc, A0, IT, layers, MAXIT, ERRLIM, c)
+            carry = (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail)
+            carry = jax.lax.cond(jnp.any(active), _it, lambda c: c, carry)
+            (ST, STg, STr, OS, OST, OSTg, OSTr, resS, resSg, resSr, ci_last, active, fail) = carry
+            layers *= 2
+            continue
         if IT == 1:
             Lc = jnp.stack([A0, Xlim], axis=1)
             Al, gl, Rl, ci, f = _sunshd(L, Lc, crp)

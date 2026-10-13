@@ -37,6 +37,10 @@ def seqsum(a, axis=0):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum = _SF.wrap(seqsum)
+
+
 # ------------------------------------------------------------------------------------------ adv1d kernels
 def _next(a, ax, cyclic):
     if cyclic:
