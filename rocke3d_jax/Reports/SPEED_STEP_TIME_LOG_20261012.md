@@ -77,3 +77,34 @@ Owner direction 2026-10-13: bar now 0.6 s per held step, "try everything includi
 Timed run 37941842 (24 steps, `--timed 1`, held steps): condse_mstcnv 0.924 -> **0.085 s**; wall median 0.729 s. Stage table of that run (median s): dyn 0.180, surface_tiles_land 0.133, condse_mstcnv 0.085, condse_post 0.074, condse_setup 0.065, post_a 0.061, ocean_b 0.044, melt_si_dev 0.017, ocean_a 0.012, rest < 0.02.
 
 **Band.** Same failing step and field as the baseline (QCI at step 3), ratio 2.46 against 2.37; day-1 "beyond" counts U 1, P 2 (baseline 1), QCL 2, QCI 1; "within" counts per field are higher than the baseline's (e.g. T 43 vs 11 of 54). The host path is bitwise equal to the NumPy port, which is not bitwise equal to the GPU device port (XLA fusion/FMA), so this is a rounding-level change of the same class as the existing noise floor; it is NOT bitwise equal to the flag-off run and the 2x criterion remains NOT MET exactly where it was. The owner decides whether this counts as "band unchanged". Files: `gpu_runs/host_full/d207.md`, `gpu_runs/full_win_u2_pc/d207.md`.
+
+## 9. Level-batched QUS moisture advection, pole fast path (2026-10-13)
+Hybrid boundary unchanged. Per-unit timers (flags `ROCKE_DYN_TIMERS`, `ROCKE_SURF_TIMERS`, `ROCKE_MSTCNV_HOST_TIMING`, `ROCKE_POLE_PROFILE`, `ROCKE_STAGE_TRACE`, `ROCKE_SURF_TRACE`; diagnostics only, default off) located the remaining held-step time (job 37941845, host MSTCNV on, `--timed 1`, median steady steps):
+* `dyn` 0.18 s, of which `qdynam` 0.105 s (the QUS moisture advection: per cycle a 41-iteration level loop with the y/x sweeps nested inside), aflux 0.021, aadvt 0.013, trop 0.009.
+* `surface_tiles_land` 0.133 s = `core_ns1` 0.06 + `core_ns2` 0.06 (the same compiled program twice) + 0.01 glue.
+* pole columns: each call 0.062 s = slice + device_get 0.021 + `host.run` 0.033 + upload 0.008; cProfile of the column itself: 0.004 s. The 33 ms is `np.zeros` + `_fresh_outputs` copies of about 100 full-size arrays (job 37941846).
+* `post_a` 0.061 s: trace (job 37941850) 30,659 GPU kernels, 23,000 of them `loop_add_fusion*` = the left-to-right `seqsum` scans of `jax_dynsi` (sea-ice dynamics iteration, 3,404-element sums, up to 20 iterations); device busy 0.041 s inside a 0.131 s span.
+* `ocean_b` 0.044 s: trace (job 37941851) 12,247 GPU kernels (scatter fusions, memcpy), 4 host callbacks.
+
+Changes (all default off, each checked on CPU):
+| flag | change | check |
+|---|---|---|
+| `ROCKE_QDYN_VMAP=1` | `dyn_jax_qdynam.make_cycle_vmap`: y/x sweeps and z checkflux of all 40 levels as one vmap over the level axis (a level's own sweeps and checkflux precede every interface sweep that touches it), only the interface sweep keeps its sequential carry | `speed_qdyn_vmap_test.py`: q and qmom bitwise equal to the level loop and to the Fortran `fin` record on 2 recorded calls (132,480 of 132,480 q values exact) |
+| `ROCKE_POLE_FAST=1` | pole columns: entry/output arrays built as zeros plus the pole slice (no copies), the slicing of the ~100 entry arrays as one jit, `device_put` of the results | synthetic equality test of the built X dict for both poles |
+| `ROCKE_SEQSUM_BLK=N` | `seqsum_fast.py`: the scan `c + x` over blocks of N written out in order (fused into one kernel), tail added in order | `speed_seqsum_test.py`: bitwise equal for 1-D/2-D, several lengths and axes |
+| `ROCKE_GLUE_JIT=1` | `_tpl_own_state` as one jit | not yet measured |
+Job 37941847 (`ROCKE_QDYN_VMAP=1`, `--timed 1`): `qdynam` 0.105 -> **0.0085 s**; held wall 0.7 s timed.
+
+**Full 108 steps (job 37941849: host MSTCNV + QDYN_VMAP + POLE_FAST, untimed; NOTE the node was shared with three other jobs of this session from about step 25 on, so the log walls after step 24 are inflated by I/O and CPU contention; the step_walls.json times below measure `Coupled.step` only)**:
+| | baseline (37941820) | host MSTCNV (37941843) | + QDYN_VMAP + POLE_FAST (37941849) |
+|---|---|---|---|
+| held step median (n=85) | 1.71 s | 0.735 s | **0.568 s** (min 0.522, max 0.701) |
+| radiation step median (n=21) | 1.88 s | 0.898 s | 0.731 s |
+| steps 2-107 total | 185.1 s | 81.8 s | **64.0 s** (0.604 s mean per step, radiation steps included) |
+| step 0 (cold) | 1,090 s | 982 s | 930 s |
+| day-1 worst ratio (steps >= 3) | 2.37 QCI step 3 | 2.46 QCI step 3 | 2.46 QCI step 3 |
+| day-1 "beyond" counts (U/P/QCL/QCI) | 1/1/2/1 | 1/2/2/1 | 1/2/2/3 |
+| day-2 worst ratio | 1.19 | 1.105 | 1.104 (QCI step 68) |
+The failing step and field are the baseline's (QCI at step 3); QCI has two more "beyond" steps than the baseline, within-counts per field are higher than the baseline's. As in section 8 this is a rounding-level change (QDYN_VMAP changes XLA fusion, the host MSTCNV is the NumPy-port arithmetic), judged by the band score, not bitwise; the owner decides whether it counts as "band unchanged". Files: `gpu_runs/pf_full/d207.md`.
+
+Caution for anyone repeating timings: run one job per node (`V100_EXTRA='--exclusive'`); four of this session's jobs shared gpu012 and the later steps of 37941849 show it.
