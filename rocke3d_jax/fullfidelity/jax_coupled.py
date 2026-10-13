@@ -140,7 +140,7 @@ class Coupled:
         FX.set_mode('libimf')
         t0 = time.perf_counter()
         self.ph = W.make_phase1(date, rad='replay', fused_dyn=os.environ.get('ROCKE_FUSED_DYN', '0') == '1')
-        if mstcnv == 'dev':
+        if mstcnv == 'dev' and os.environ.get('ROCKE_MSTCNV_HOST', '0') != '1':    # ROCKE_MSTCNV_HOST=1: CondseDevice.mstcnv -> host numba worker
             self.ph.cs.mstcnv = types.MethodType(mstcnv_new, self.ph.cs)
         self.mstcnv = mstcnv
         self.ctx = self.ph.ctx
