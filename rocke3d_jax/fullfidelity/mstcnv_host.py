@@ -28,6 +28,8 @@ INT_SC = ('ierr', 'lerr', 'lmcmin', 'lmcmax', 'mccont')
 OUT_L = ('tl sm qm fssl cldmcl taumcl svlatl svlat1 svwmxl csizel condpt vsubl tpsav mcflx dgdsm dgdeep dgshlw '
          'dphase dphadeep dphashlw dtotw dqcond dgdqm dqmtotal dqmshlw dqmdeep dqctotal dqcshlw dqcdeep ddmflx '
          'tdnl qdnl u00l qlmc qimc cnvmmrl condmmr').split()
+# output fields read by CondseDevice._post_fn (jax_p1_condse) beyond the scalar block
+POST_KEYS = ('cldmcl cnvmmrl csizel ddmflx fssl qdnl qimc qlmc qm sm svlat1 svlatl svwmxl taumcl tdnl u00l vsubl').split()
 TUNE_NAMES = ('entrainment_cont1 entrainment_cont2 radiusl_multiplier radiusi_multiplier u00a u00b wmu_multiplier '
               'rwcldox rimax mc_fddrt mc_entr_mass_lim_plume mc_new_ddrft_thetav mc_revp_abv_cldbase').split()
 

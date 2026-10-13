@@ -411,20 +411,38 @@ class CondseDevice:
             self._mh = MH.MstcnvHost(self.N, nks=int(np.asarray(R['ra']).shape[0]))
         import time as _t
         t0 = _t.perf_counter()
-        Rn = {n_: np.asarray(R[n_]) for n_ in R}          # device->host (blocks until the set-up stage is done)
+        io2 = os.environ.get('ROCKE_MSTCNV_HOST_IO', '0') == '1'       # one batched async device_get / device_put, only the output fields the post stage reads
+        if io2:
+            Rn = jax.device_get(dict(R))
+        else:
+            Rn = {n_: np.asarray(R[n_]) for n_ in R}          # device->host (blocks until the set-up stage is done)
         t1 = _t.perf_counter()
         v = self._mh.run(Rn, self.cfg)
         t2 = _t.perf_counter()
         o = {}
-        for i, n in enumerate(MH.OUT_SC[:14]):
-            a = np.array(v['o_sc'][i])
-            o[n] = jnp.asarray(a.astype(np.int64) if n in MH.INT_SC else a)
-        for i, n in enumerate(MH.OUT_L):
-            o[n] = jnp.asarray(np.array(v['o_l'][i]))
-        o['lhp'] = jnp.asarray(np.array(v['o_l1'][0]))
-        o['precnvl'] = jnp.asarray(np.array(v['o_l1'][1]))
-        o['smom'], o['qmom'] = jnp.asarray(np.array(v['o_m'][0])), jnp.asarray(np.array(v['o_m'][1]))
-        o['um'], o['vm'] = jnp.asarray(np.array(v['o_k'][0])), jnp.asarray(np.array(v['o_k'][1]))
+        if io2:
+            need = set(MH.POST_KEYS)
+            h = {}
+            for i, n in enumerate(MH.OUT_SC[:14]):
+                a = np.array(v['o_sc'][i])
+                h[n] = a.astype(np.int64) if n in MH.INT_SC else a
+            for i, n in enumerate(MH.OUT_L):
+                if n in need:
+                    h[n] = np.array(v['o_l'][i])
+            h['lhp'], h['precnvl'] = np.array(v['o_l1'][0]), np.array(v['o_l1'][1])
+            h['smom'], h['qmom'] = np.array(v['o_m'][0]), np.array(v['o_m'][1])
+            h['um'], h['vm'] = np.array(v['o_k'][0]), np.array(v['o_k'][1])
+            o = jax.device_put(h)
+        else:
+            for i, n in enumerate(MH.OUT_SC[:14]):
+                a = np.array(v['o_sc'][i])
+                o[n] = jnp.asarray(a.astype(np.int64) if n in MH.INT_SC else a)
+            for i, n in enumerate(MH.OUT_L):
+                o[n] = jnp.asarray(np.array(v['o_l'][i]))
+            o['lhp'] = jnp.asarray(np.array(v['o_l1'][0]))
+            o['precnvl'] = jnp.asarray(np.array(v['o_l1'][1]))
+            o['smom'], o['qmom'] = jnp.asarray(np.array(v['o_m'][0])), jnp.asarray(np.array(v['o_m'][1]))
+            o['um'], o['vm'] = jnp.asarray(np.array(v['o_k'][0])), jnp.asarray(np.array(v['o_k'][1]))
         err = jnp.asarray(bool(v['o_sc'][14].any()))
         if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
             print(f'mstcnv_host: d2h {t1 - t0:.3f} s  copy+worker {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
