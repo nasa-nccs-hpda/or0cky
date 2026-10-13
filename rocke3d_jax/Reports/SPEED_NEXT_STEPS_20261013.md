@@ -26,10 +26,11 @@ surface_tiles_land 0.086 (GHY 0.030 per substep x2, PBL 0.0075), condse_mstcnv 0
 3. Time on exclusive nodes only (a shared node inflated steps 25-107 of job 37941849).
 4. Make `ROCKE_SEQSUM_BLK`, `ROCKE_GLUE_JIT`, `ROCKE_QDYN_VMAP` defaults only if the owner wants them as the benchmark; they are bitwise-equal paths (seqsum, vmap) or selections only (glue).
 
-## Merge check, 2026-10-13 (local only, nothing pushed)
+## Merge check, 2026-10-13 (merge `1996ef1` is on origin/full-fidelity-port; QCI decision still open)
 `speed/step-time` was merged into `full-fidelity-port` as merge commit `1996ef1` (parents `da186de` and the scratch merge `3411b3c`). All speed flags default off.
 * **Regression on `3411b3c` (scratch worktree, flags off):** 3329 passed, 16 skipped, 1 failed (`test_libimf_fused::test_dq_dev_and_conv_micro_dev_bitwise_vs_cmj_libm_and_mutation`, the known order-dependent test; passes alone, 5 passed). Not re-run on `1996ef1`: the two commits it adds (`54969e4`, `da186de`) only add two JSON files and `build_briefing_decks_20261013.py`.
 * **54-step native check on `1996ef1` (job 37942050, V100, flags off, `nov26_day2`):** 54 steps, median 2.0 s per step (release parity), `flags 0`, `mask_mismatch [0, 0]`. Score: `gpu_runs/merge1996ef1_54/score.{md,json}`.
 * **Band, worst ratio at steps >= 3:** QCI 2.37 (step 3), QCL 1.58 (step 3), U 1.24, V 1.24, P 1.22, T 1.18, Q 1.15. The worst ratios match the scratch-merge run (`3411b3c`, job 37941881) and the release. Strict criterion still NOT MET (QCI at step 3, same cause).
 * **Not identical to the scratch-merge run:** the within/near counts differ for U, V, Q, P, QCL and QCI (for example V 18/36/0 against 13/41/0), and the step of the worst T ratio moved (7 against 14); the beyond counts are the same. Cause not investigated. Raw `FSF` arrays in `native_rad_outputs.npz` also differ between 54-step runs by 150-460 W/m2 (also against the tag control); not traced.
+* **Scratch-merge run `3411b3c` (job 37941881, port-driver rocke3d-jax-91), recorded for completeness:** 54 steps, flags off, `nov26_day2`; within/near/beyond T 12/42/0, U 12/41/1, V 13/41/0, Q 26/28/0, P 17/36/1, QCL 35/17/2, QCI 16/37/1; worst ratio at steps >= 3 QCI 2.37 (step 3). Regression wall time 6275 s (1:44:35). Score, run json and log: `gpu_runs/merge_scratch3411b3c/` (gitignored, local).
 * **Open:** the merge into `full-fidelity-port` is local; pushing, and the owner's decision on the QCI step 3 shift 2.37 -> 2.47 noted above (the flags-off run shows 2.37), remain with the owner / port-driver session.
