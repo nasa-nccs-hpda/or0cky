@@ -1,0 +1,966 @@
+{
+ "['coriol']": {
+  "shape": [
+   46,
+   72
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['dt']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 56.04796632568787
+ },
+ "['ghy'][0]['dyn0']['dzsn']": {
+  "shape": [
+   753,
+   4,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.10691333507647693
+ },
+ "['ghy'][0]['dyn0']['fr_snow']": {
+  "shape": [
+   753,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.83580113398571
+ },
+ "['ghy'][0]['dyn0']['hsn']": {
+  "shape": [
+   753,
+   3,
+   2
+  ],
+  "constant": false,
+  "max_change": 9217319.302612022
+ },
+ "['ghy'][0]['dyn0']['ht']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 14363366.525701746
+ },
+ "['ghy'][0]['dyn0']['nsn']": {
+  "shape": [
+   753,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['dyn0']['w']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.030336906488770077
+ },
+ "['ghy'][0]['dyn0']['wsn']": {
+  "shape": [
+   753,
+   3,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.026784355746532984
+ },
+ "['ghy'][0]['ebet']": {
+  "shape": [
+   753,
+   11,
+   6
+  ],
+  "constant": false,
+  "max_change": 0.18897228009985556
+ },
+ "['ghy'][0]['ecnc']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 0.028364225764790852
+ },
+ "['ghy'][0]['edts']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 873.9591175950104
+ },
+ "['ghy'][0]['elai']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 0.11016031102681056
+ },
+ "['ghy'][0]['forcing']['ch']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.061606108739979244
+ },
+ "['ghy'][0]['forcing']['fb']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['forcing']['fv']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['forcing']['geothermal_heat']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['forcing']['gusti']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 3.072253403128401
+ },
+ "['ghy'][0]['forcing']['htirrig']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.02291845320317851
+ },
+ "['ghy'][0]['forcing']['htpr']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 172.42238825926214
+ },
+ "['ghy'][0]['forcing']['htprs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 167.62493239376357
+ },
+ "['ghy'][0]['forcing']['irrig']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.666992313199936e-10
+ },
+ "['ghy'][0]['forcing']['pr']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 1.3089276965306312e-06
+ },
+ "['ghy'][0]['forcing']['pres']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 28.15574598201181
+ },
+ "['ghy'][0]['forcing']['prs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 1.2689599372896737e-06
+ },
+ "['ghy'][0]['forcing']['qm1']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.1782933586125917
+ },
+ "['ghy'][0]['forcing']['qprime']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.0043628304371449
+ },
+ "['ghy'][0]['forcing']['qs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.010629477393035058
+ },
+ "['ghy'][0]['forcing']['rho']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.20150789576872818
+ },
+ "['ghy'][0]['forcing']['srht']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 996.7846541137674
+ },
+ "['ghy'][0]['forcing']['tprime']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.2021047058800605
+ },
+ "['ghy'][0]['forcing']['trht']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 162.20220103958764
+ },
+ "['ghy'][0]['forcing']['ts']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 30.839297693304076
+ },
+ "['ghy'][0]['forcing']['vs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 5.366824008550994
+ },
+ "['ghy'][0]['forcing']['vs0']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 5.366824008550994
+ },
+ "['ghy'][0]['nsub']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['snowm']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.01071976539175079
+ },
+ "['ghy'][0]['static']['dz']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['fb']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['fv']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['kmask']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['n']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['process_bare']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['process_vege']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['q']": {
+  "shape": [
+   753,
+   5,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['qk']": {
+  "shape": [
+   753,
+   5,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['shc']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['sl']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['thetm']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['thets']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['ws']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 1.1016031102681063e-05
+ },
+ "['ghy'][0]['static']['xsh']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['xsha']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['zb']": {
+  "shape": [
+   753,
+   7
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][0]['static']['zc']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['dt']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 85.94271185995729
+ },
+ "['ghy'][1]['dyn0']['dzsn']": {
+  "shape": [
+   753,
+   4,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.10701412394890031
+ },
+ "['ghy'][1]['dyn0']['fr_snow']": {
+  "shape": [
+   753,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.8357800854525134
+ },
+ "['ghy'][1]['dyn0']['hsn']": {
+  "shape": [
+   753,
+   3,
+   2
+  ],
+  "constant": false,
+  "max_change": 9222971.649451524
+ },
+ "['ghy'][1]['dyn0']['ht']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 14345327.725337684
+ },
+ "['ghy'][1]['dyn0']['nsn']": {
+  "shape": [
+   753,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['dyn0']['w']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.03049212187965579
+ },
+ "['ghy'][1]['dyn0']['wsn']": {
+  "shape": [
+   753,
+   3,
+   2
+  ],
+  "constant": false,
+  "max_change": 0.026804347462613537
+ },
+ "['ghy'][1]['ebet']": {
+  "shape": [
+   753,
+   11,
+   6
+  ],
+  "constant": false,
+  "max_change": 0.1885183976183998
+ },
+ "['ghy'][1]['ecnc']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 0.02909255429410674
+ },
+ "['ghy'][1]['edts']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 877.444178475577
+ },
+ "['ghy'][1]['elai']": {
+  "shape": [
+   753,
+   11
+  ],
+  "constant": false,
+  "max_change": 0.11016031102681056
+ },
+ "['ghy'][1]['forcing']['ch']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.06160783067896491
+ },
+ "['ghy'][1]['forcing']['fb']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['forcing']['fv']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['forcing']['geothermal_heat']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['forcing']['gusti']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 3.072253403128401
+ },
+ "['ghy'][1]['forcing']['htirrig']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.02291845320317851
+ },
+ "['ghy'][1]['forcing']['htpr']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 172.42238825926214
+ },
+ "['ghy'][1]['forcing']['htprs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 167.62493239376357
+ },
+ "['ghy'][1]['forcing']['irrig']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.666992313199936e-10
+ },
+ "['ghy'][1]['forcing']['pr']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 1.3089276965306312e-06
+ },
+ "['ghy'][1]['forcing']['pres']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 28.15574598201181
+ },
+ "['ghy'][1]['forcing']['prs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 1.2689599372896737e-06
+ },
+ "['ghy'][1]['forcing']['qm1']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.1665433242227663
+ },
+ "['ghy'][1]['forcing']['qprime']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.004727324472244731
+ },
+ "['ghy'][1]['forcing']['qs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.013892871130656724
+ },
+ "['ghy'][1]['forcing']['rho']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.20130736458266552
+ },
+ "['ghy'][1]['forcing']['srht']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 996.7846541137674
+ },
+ "['ghy'][1]['forcing']['tprime']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 2.518445591154716
+ },
+ "['ghy'][1]['forcing']['trht']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 162.20220103958764
+ },
+ "['ghy'][1]['forcing']['ts']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 30.798200219081792
+ },
+ "['ghy'][1]['forcing']['vs']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 5.7785319328071285
+ },
+ "['ghy'][1]['forcing']['vs0']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 5.7785319328071285
+ },
+ "['ghy'][1]['nsub']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['snowm']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 0.01071976539175079
+ },
+ "['ghy'][1]['static']['dz']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['fb']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['fv']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['kmask']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['n']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['process_bare']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['process_vege']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['q']": {
+  "shape": [
+   753,
+   5,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['qk']": {
+  "shape": [
+   753,
+   5,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['shc']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['sl']": {
+  "shape": [
+   753
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['thetm']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['thets']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['ws']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": false,
+  "max_change": 1.1016031102681063e-05
+ },
+ "['ghy'][1]['static']['xsh']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['xsha']": {
+  "shape": [
+   753,
+   7,
+   2
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['zb']": {
+  "shape": [
+   753,
+   7
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ghy'][1]['static']['zc']": {
+  "shape": [
+   753,
+   6
+  ],
+  "constant": true,
+  "max_change": 0.0
+ },
+ "['ma1_land']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 6.885100879219834
+ },
+ "['ns'][0]['ftype']": {
+  "shape": [
+   3312,
+   4
+  ],
+  "constant": false,
+  "max_change": 0.26705959308116367
+ },
+ "['ns'][0]['pe']": {
+  "shape": [
+   753,
+   154
+  ],
+  "constant": false,
+  "max_change": 3063309213.992841
+ },
+ "['ns'][0]['pl']": {
+  "shape": [
+   346,
+   154
+  ],
+  "constant": false,
+  "max_change": 737309705098.804
+ },
+ "['ns'][0]['pw']": {
+  "shape": [
+   5462,
+   154
+  ],
+  "constant": false,
+  "max_change": 12697053851938.639
+ },
+ "['ns'][0]['tl']": {
+  "shape": [
+   346,
+   60
+  ],
+  "constant": false,
+  "max_change": 1373085877.0014324
+ },
+ "['ns'][0]['tw']": {
+  "shape": [
+   5462,
+   90
+  ],
+  "constant": false,
+  "max_change": 7.056945826058202e+19
+ },
+ "['ns'][0]['wvalid']": {
+  "shape": [
+   2,
+   2731
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['ns'][1]['ftype']": {
+  "shape": [
+   3312,
+   4
+  ],
+  "constant": false,
+  "max_change": 0.26705959308116367
+ },
+ "['ns'][1]['pe']": {
+  "shape": [
+   753,
+   154
+  ],
+  "constant": false,
+  "max_change": 3085396364.0527287
+ },
+ "['ns'][1]['pl']": {
+  "shape": [
+   346,
+   154
+  ],
+  "constant": false,
+  "max_change": 1373085877.0014324
+ },
+ "['ns'][1]['pw']": {
+  "shape": [
+   5462,
+   154
+  ],
+  "constant": false,
+  "max_change": 241337650132.9914
+ },
+ "['ns'][1]['tl']": {
+  "shape": [
+   346,
+   60
+  ],
+  "constant": false,
+  "max_change": 1373085877.0014324
+ },
+ "['ns'][1]['tw']": {
+  "shape": [
+   5462,
+   90
+  ],
+  "constant": false,
+  "max_change": 7.056945826058202e+19
+ },
+ "['ns'][1]['wvalid']": {
+  "shape": [
+   2,
+   2731
+  ],
+  "constant": false,
+  "max_change": 0.0
+ },
+ "['trup']": {
+  "shape": [
+   753
+  ],
+  "constant": false,
+  "max_change": 175.38560924452526
+ }
+}
