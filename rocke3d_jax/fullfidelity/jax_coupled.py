@@ -31,6 +31,8 @@ import d187_imf_p1 as W                 # imports jax_atm_phase1 first (executio
 INST = W.install()
 import jax  # noqa: E402
 import jax.numpy as jnp  # noqa: E402
+import scan_unroll as _SU  # noqa: E402  (ROCKE_SCAN_UNROLL, speed track, default off)
+_SU.install()
 import jax_atm_phase1 as P1  # noqa: E402
 import drv_radcols_dev as DD  # noqa: E402
 import jax_p1_count as CNT  # noqa: E402
