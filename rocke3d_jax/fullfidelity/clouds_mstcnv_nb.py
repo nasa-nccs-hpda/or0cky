@@ -1683,7 +1683,7 @@ def mstcnv_col(pearth, pland, dcl, lmcm, xmass, bydtsrc, dtsrc, bybr, pl_i, ple_
 def mstcnv_batch(pearth, pland, dcl, pl, ple, plk, airm, byam, etal, tl, tvl, sm, qm, qcll, qcil, sdl, wturb, gzl,
                  smom, qmom, ra, um, vm, u0, v0, scal, tune, o_sc, o_l, o_l1, o_m, o_k):
     """Column-last inputs as the device set-up produces them: pearth/pland/dcl (N,), pl.. (LM,N), ple (LM+1,N),
-    smom/qmom (9,LM,N), um/vm/u0/v0 (nks,LM,N), ra (nks,); scal = (lmcm, xmass, bydtsrc, dtsrc, bybr); tune (13,).
+    smom/qmom (9,LM,N), um/vm/u0/v0 (nks,LM,N), ra (nks,N); scal = (lmcm, xmass, bydtsrc, dtsrc, bybr); tune (13,).
     Outputs (written column by column): o_sc (15,N), o_l (37,N,LM), o_l1 (2,N,LM+1), o_m (2,N,9,LM),
     o_k (2,N,nks,LM) -- the shapes the device post-processing consumes after a transpose-free read."""
     n = pl.shape[1]
@@ -1692,6 +1692,6 @@ def mstcnv_batch(pearth, pland, dcl, pl, ple, plk, airm, byam, etal, tl, tvl, sm
     for j in prange(n):
         mstcnv_col(pearth[j], pland[j], dcl[j], lmcm, scal[1], scal[2], scal[3], scal[4], pl[:, j], ple[:, j],
                    plk[:, j], airm[:, j], byam[:, j], etal[:, j], tl[:, j], tvl[:, j], sm[:, j], qm[:, j],
-                   qcll[:, j], qcil[:, j], sdl[:, j], wturb[:, j], gzl[:, j], smom[:, :, j], qmom[:, :, j], ra,
+                   qcll[:, j], qcil[:, j], sdl[:, j], wturb[:, j], gzl[:, j], smom[:, :, j], qmom[:, :, j], ra[:, j],
                    um[:, :, j], vm[:, :, j], u0[:, :, j], v0[:, :, j], tune, nks, o_sc[:, j], o_l[:, j, :],
                    o_l1[:, j, :], o_m[:, j], o_k[:, j])

@@ -36,7 +36,7 @@ def layout(N, nks):
     """[(name, dtype, shape)] of the shared file, inputs then outputs."""
     f8, i8 = np.float64, np.int64
     L = [('pearth', f8, (N,)), ('pland', f8, (N,)), ('dcl', i8, (N,)), ('ple', f8, (LM + 1, N)),
-         ('ra', f8, (nks,)), ('scal', f8, (5,)), ('tune', f8, (13,))]
+         ('ra', f8, (nks, N)), ('scal', f8, (5,)), ('tune', f8, (13,))]
     L += [(n, f8, (LM, N)) for n in IN_L]
     L += [(n, f8, (NMOM, LM, N)) for n in IN_M]
     L += [(n, f8, (nks, LM, N)) for n in IN_K]

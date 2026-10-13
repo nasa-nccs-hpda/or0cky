@@ -9,7 +9,7 @@ reps = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 N = R['pl'].shape[1]
 Rh = dict(R)
 ra = np.asarray(R['ra'])
-Rh['ra'] = ra[:, 0] if ra.ndim == 2 else ra
+Rh['ra'] = ra
 t = time.perf_counter(); h = H.MstcnvHost(N, nks=Rh['ra'].shape[0]); print(f'worker start {time.perf_counter()-t:.1f} s')
 t = time.perf_counter(); v = h.run(Rh, cfg); print(f'first run {time.perf_counter()-t:.1f} s (includes numba compile or cache load)')
 ts = []
@@ -22,7 +22,6 @@ tune = cfg['tune']
 bad = {}
 for j in range(0, N, max(1, N // ncmp)):
     r = {k: np.asarray(R[k][..., j]) for k in R}
-    r['ra'] = Rh['ra']       # the device set-up shares one (nks,) ra for all columns (self.ra); the capture has per-column copies
     r.update(lmcm=cfg['lmcm'], xmass=cfg['xmass'], bydtsrc=cfg['bydtsrc'], dtsrc=cfg['dtsrc'], bybr=cfg['bybr'], dcl=int(R['dcl'][j]))
     ref = mc.mstcnv_column(r, tune)
     for i, n in enumerate(H.OUT_L):
