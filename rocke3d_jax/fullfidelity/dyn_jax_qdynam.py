@@ -21,6 +21,7 @@ exponent a traced argument).  Needs the FMA-free XLA flag (dyn_jax_env).
 qdynam_jax(qgeo, q, qmom, maold, mus, mvs, mws) -> dict(q, qmom, mus, mvs, mws, ncyc, ncycxy, nstepx, do_z_extra, err)
 (numpy arrays in, numpy arrays out; err is None or the numpy port's QusError text, raised by the caller).
 """
+import os
 import numpy as np
 import dyn_jax_env  # noqa: F401  (XLA flag, before jax)
 import jax
@@ -449,9 +450,50 @@ def _tables(mu, mv, mw, imaxj):
     return my, mz
 
 
+def make_cycle_vmap(imaxj, byim, c3):
+    """Same function as make_cycle with the level loop restructured (speed track, ROCKE_QDYN_VMAP=1): the y/x sweeps
+    (checkflux + aadvqy + aadvqx, `ncycxy[l]` times) and the z checkflux of every level depend only on that level's own
+    state and are independent of the interface sweeps of other levels at the moment they run in the sequential order
+    (level l is first touched by the interface sweep at L = l+2, after its own sweeps and checkflux), so they are done
+    for all levels at once (vmap over the level axis: elementwise identical operations, per-level trip counts become
+    batched while loops); only the interface sweep with its carry stays a sequential loop over L = 2..LM+1."""
+    act = jnp.arange(IM)[:, None] < imaxj[None, :]
+
+    def cycle(rm, rmom, mma, pu, pv, sd, nstepx, ncycxy, my, mz):
+        def xy_one(rm_l, rmom_l, mma_l, pu_l, pv_l, nstepx_l, ncycxy_l, my_l):
+            def one(k, s):
+                r, mo, ma = s
+                aml = jnp.roll(pv_l, 1, axis=1)
+                a, b, _ = checkflux(aml, pv_l, ma, r, mo[MY], mo[MYY])
+                mo = mo.at[MY].set(jnp.where(my_l, a, mo[MY])).at[MYY].set(jnp.where(my_l, b, mo[MYY]))
+                r, mo, ma = aadvqy_j(r, mo, ma, pv_l, byim, c3)
+                r, mo, ma = aadvqx_j(r, mo, ma, pu_l, nstepx_l, c3)
+                return r, mo, ma
+            return lax.fori_loop(0, ncycxy_l, one, (rm_l, rmom_l, mma_l))
+        rm, rmom, mma = jax.vmap(xy_one)(rm, rmom, mma, pu, pv, nstepx, ncycxy, my)
+        ls = jnp.arange(1, LM - 1)                      # zcheck(l) ran for L = 2..LM-1, i.e. levels 1..LM-2
+        a, b, _ = checkflux(sd[ls - 1], sd[ls], mma[ls], rm[ls], rmom[ls, MZ], rmom[ls, MZZ])
+        m_ = mz[ls]
+        rmom = rmom.at[ls, MZ].set(jnp.where(m_, a, rmom[ls, MZ])).at[ls, MZZ].set(jnp.where(m_, b, rmom[ls, MZZ]))
+        zero = jnp.zeros((IM, JM))
+        carry0 = (zero, zero, zero, jnp.zeros((9, IM, JM)))
+
+        def body(L, c):
+            (rm, rmom, mma), carry = c
+            l1 = L - 2
+            l2 = jnp.minimum(L - 1, LM - 1)
+            r1, mo1, m1, carry = aadvqz_j(rm[l1], rmom[l1], mma[l1], rm[l2], rmom[l2], mma[l2], sd[l1], carry, act, c3)
+            return (rm.at[l1].set(r1), rmom.at[l1].set(mo1), mma.at[l1].set(m1)), carry
+        (rm, rmom, mma), _ = lax.fori_loop(2, LM + 2, body, ((rm, rmom, mma), carry0))
+        return rm, rmom, mma
+    return cycle
+
+
 def make_cycle(imaxj, byim, c3):
     """Returns cycle(rm, rmom, mma, pu, pv, sd, nstepx, ncycxy, mask_y, mask_z): one nc cycle of AADVQ on level-leading
     arrays rm (LM,IM,JM), rmom (LM,9,IM,JM), mma (LM,IM,JM), pu/pv/sd (LM,IM,JM), nstepx (LM,JM), ncycxy (LM,)."""
+    if os.environ.get('ROCKE_QDYN_VMAP', '0') == '1':
+        return make_cycle_vmap(imaxj, byim, c3)
     act = jnp.arange(IM)[:, None] < imaxj[None, :]
 
     def cycle(rm, rmom, mma, pu, pv, sd, nstepx, ncycxy, my, mz):
