@@ -30,6 +30,10 @@ def seqsum(a, axis=0):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum = _SF.wrap(seqsum)
+
+
 _GEO_VEC = ('dyp', 'dxv', 'dxyp', 'bydxyp', 'mfix', 'mfrac')
 _GEO_SC = ('polwt', 'byim', 'dt', 'mfixs', 'kg2mb', 'mtop', 'kapa')
 

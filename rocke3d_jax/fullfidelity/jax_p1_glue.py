@@ -27,6 +27,10 @@ def seqsum(a, axis=0):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum = _SF.wrap(seqsum)
+
+
 def global_sum_ij(a):
     return seqsum(seqsum(a, axis=0), axis=0)
 

@@ -21,6 +21,10 @@ def seqsum_jax(a, axis=0):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum_jax = _SF.wrap(seqsum_jax)
+
+
 def _shapiro_x(q):
     x = q
     for _ in range(NSHAP):

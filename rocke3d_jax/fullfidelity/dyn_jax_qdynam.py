@@ -53,6 +53,10 @@ def seqsum(a, axis=0):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum = _SF.wrap(seqsum)
+
+
 def seqacc(init, xs, sign=1.0):
     """init + xs[0] + xs[1] + ... (sign=1) or init - xs[0] - xs[1] ... (sign=-1), left to right."""
     if sign > 0:
