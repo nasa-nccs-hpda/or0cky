@@ -788,6 +788,16 @@ def make_stage(host):
             q1_ = atm1['Q'][hbase['ej'], hbase['ei'], 0]
             fl = jax.jit(lambda pe, oe, gb, dyn, q1, ma1, trup: _land(pe, oe, gb, dyn, q1, ma1, trup, ms))
             _tm('land_ghy', fl, rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
+            _tdir = os.environ.get('ROCKE_SURF_PIECES_TRACE')
+            if _tdir:
+                from jax import profiler as _jprof
+                with _jprof.trace(_tdir):
+                    jax.block_until_ready(fl(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup']))
+            try:
+                _hlo = fl.lower(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup']).compile().as_text()
+                print('land_ghy HLO: while ops', _hlo.count(' while('), ' fusion ops', _hlo.count(' fusion('), ' lines', _hlo.count('\n'), flush=True)
+            except Exception as e_:
+                print('land_ghy HLO text failed', repr(e_)[:120], flush=True)
         if _trace_dir and _ncall[0] == 8:       # speed track diagnostic: one profiler trace of the substep-1 core (kernel count / duration)
             from jax import profiler as _jprof
             jax.block_until_ready(atm1)
