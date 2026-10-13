@@ -108,3 +108,19 @@ Job 37941847 (`ROCKE_QDYN_VMAP=1`, `--timed 1`): `qdynam` 0.105 -> **0.0085 s**;
 The failing step and field are the baseline's (QCI at step 3); QCI has two more "beyond" steps than the baseline, within-counts per field are higher than the baseline's. As in section 8 this is a rounding-level change (QDYN_VMAP changes XLA fusion, the host MSTCNV is the NumPy-port arithmetic), judged by the band score, not bitwise; the owner decides whether it counts as "band unchanged". Files: `gpu_runs/pf_full/d207.md`.
 
 Caution for anyone repeating timings: run one job per node (`V100_EXTRA='--exclusive'`); four of this session's jobs shared gpu012 and the later steps of 37941849 show it.
+
+## 10. Everything-on run on an exclusive node (job 37941856, 2026-10-13)
+Flags: `ROCKE_MSTCNV_HOST=1 ROCKE_QDYN_VMAP=1 ROCKE_POLE_FAST=2 ROCKE_SEQSUM_BLK=32 ROCKE_GLUE_JIT=1` on top of the frozen set; `V100_EXTRA='--exclusive'`, 8 CPUs; 108 steps, untimed. Hybrid boundary unchanged (five step-0 dump files, nov26 only, irrigation year 1850).
+| | baseline (37941820) | host MSTCNV (37941843) | + VMAP/POLE_FAST (37941849, shared node) | **all five flags (37941856)** |
+|---|---|---|---|---|
+| held step median | 1.71 s | 0.735 s | 0.568 s | **0.449 s** (min 0.406) |
+| radiation step median | 1.88 s | 0.898 s | 0.731 s | 0.612 s |
+| steps 2-107 total / mean per step | 185.1 s / 1.75 s | 81.8 s / 0.77 s | 64.0 s / 0.60 s | **52.5 s / 0.495 s** |
+| step 0 (cold) | 1,090 s | 982 s | 930 s | 895 s |
+| day-1 worst ratio (steps >= 3) | 2.37 QCI step 3 | 2.46 QCI step 3 | 2.46 QCI step 3 | 2.46 QCI step 3 |
+| day-1 "beyond" counts U/P/QCL/QCI | 1/1/2/1 | 1/2/2/1 | 1/2/2/3 | 1/2/2/1 |
+| day-2 worst ratio | 1.19 | 1.105 | 1.104 | 1.143 (QCI step 75) |
+Held-step max 1.805 s is the day-boundary step (daily lake / Ent update). Cycle arithmetic against the Fortran (labelled arithmetic, not a matched benchmark): 0.495 s mean per step against the Fortran's 2.24-2.28 s on its node is about 4.5x; the matched Fortran benchmark has not been rerun for this branch.
+Stage table of the matching timed diagnostic (job 37941854, held steps, median s, ROCKE_NEWTON_UNROLL=4 also on, no effect): surface_tiles_land 0.138, condse_mstcnv 0.085, dyn 0.063, ocean_b 0.043, condse_post 0.027, post_a 0.019, condse_setup 0.017, ocean_a 0.013, melt_si_dev 0.008; timed wall median 0.477 s.
+Effects measured one at a time (timed diagnostics, held median s): SEQSUM_BLK=32 post_a 0.061 -> 0.019, dyn 0.081 -> 0.063, melt_si_dev 0.016 -> 0.009 (job 37941853); POLE_FAST=2 condse_setup 0.040 -> 0.017, condse_post 0.051 -> 0.027 (self-check on the first three calls: results equal to the plain construction); NEWTON_UNROLL=4: no change in `core` (0.060 / 0.063).
+Surface `core` (0.06 s per substep) is 0.051 s GHY (`_land`): PBL 0.007, water and land-ice tiles 0.0004 each (job 37941855). The GHY loop runs up to GDTM_WIDTH = 40 sub-iterations (the slowest land cell), each with the Ent photosynthesis `rtsafe` while loops (<= 100 iterations); the core trace shows 1,677 device->host predicate copies. `ROCKE_WHILE_UNROLL` (masked K-iteration body, `while_unroll.py`) is applied to `rtsafe`; measurement pending (job 37941858).
