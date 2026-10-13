@@ -329,3 +329,16 @@ The port session saw the merged default path differ from the release from step 2
 **Assumption stated:** the cold-shrub height h_ent(9) <= 0.5 (the model decides tundra vs shrub from the plant heights); true for all 753 land boxes for both years. A different VEG / height file needs the test repeated. The reader is opt-in (`rj.prod_arrays["frac_veg"] = ...` in the checks; the default path is unchanged). Unit test: `test_land_cover_matches_model_values` (13 tests now).
 
 **Scope of validity (what to state in release notes).** Validated: master_yr = 1850 (the restart's cover) over a 365-day cycle of the external forcing (14.6), master_yr = 1990 with time-varying volcanics and the land-cover reader at ten dates (14.4, this section), the V100 whole step at 38 dates (14.3), parity in speed (port benchmark). Not validated: a free-running year (port session's coupled run), master years other than 1850 and 1990 (the readers are general, not tested), the A100 / float32, AIJ diagnostics, other VEG / height files.
+
+### 14.9 Segmented long run on one V100: timing (job 37941826, 2026-10-12; `r6_segment_timing.py`, `data/r6_segment_timing_v100_result.json`)
+
+Two consecutive segments of 30 model days (days 694-723 and 724-753 of the 1949 clock, 288 radiation steps each; float64, jax 0.5.3, `CLOUDS_JAX_KEEP_ALGSIMP=1`, volcanic reader on). Per segment: host build of the 30 day products and the zenith table (`build_segment`), `make_handoff_step`, then every radiation step through the jitted hand-off step with the recorded nov26 state (timing only; the numbers are not compared with the Fortran here, outputs finite).
+
+| segment | host build | first call (compile + run) | per radiation step (median / max) | device memory (in use / peak) |
+|---|---|---|---|---|
+| days 694-723 | 5.2 s | 268.3 s | 0.165 / 0.169 s | 0.59 / 3.43 GB of 25.6 |
+| days 724-753 | 3.3 s | 264.5 s | 0.165 / 0.170 s | 0.58 / 3.43 GB |
+
+* **One compilation per segment, ~265 s (4.4 min)**, as estimated; the second segment recompiles (the day stack is a constant of the trace). Host build is seconds. A 30-day segment adds 288 x 0.165 s = 48 s of radiation work.
+* **A model year** (365 days) is 13 segments of <= 30 days: ~57 min of compilation + ~9 min of radiation work (radiation step only; the coupled step time is the port session's 2.1-2.5 s per step). The per-segment stack uses 0.59 GB, so longer segments fit in memory (a 120-day segment ~2.3 GB, 4 compilations per year); **not tested**: whether the compile time grows with the stack size, and whether a persistent compilation cache would remove the 13 compilations.
+* Same-state timing: the radiation step is the same program at every date; this does not time the dynamics or the held steps.

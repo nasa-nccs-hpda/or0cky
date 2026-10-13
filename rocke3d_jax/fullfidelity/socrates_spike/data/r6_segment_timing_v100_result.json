@@ -1,0 +1,38 @@
+{
+ "device": "cuda:0",
+ "jax": "0.5.3",
+ "segments": [
+  {
+   "day0": 694,
+   "ndays": 30,
+   "rad_steps": 288,
+   "build_s": 5.161608351860195,
+   "first_call_s": 268.3403631011024,
+   "rad_step_median_s": 0.16499839071184397,
+   "rad_step_mean_s": 0.16503124749158163,
+   "rad_step_max_s": 0.16872183233499527,
+   "finite": true,
+   "mem": {
+    "bytes_in_use": 586684160,
+    "peak_bytes_in_use": 3431661824,
+    "bytes_limit": 25554419712
+   }
+  },
+  {
+   "day0": 724,
+   "ndays": 30,
+   "rad_steps": 288,
+   "build_s": 3.2643829099833965,
+   "first_call_s": 264.4680532272905,
+   "rad_step_median_s": 0.1654123906046152,
+   "rad_step_mean_s": 0.16540703981569627,
+   "rad_step_max_s": 0.17045223293825984,
+   "finite": true,
+   "mem": {
+    "bytes_in_use": 584848128,
+    "peak_bytes_in_use": 3431786752,
+    "bytes_limit": 25554419712
+   }
+  }
+ ]
+}
