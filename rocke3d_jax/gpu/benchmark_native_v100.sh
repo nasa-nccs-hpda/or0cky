@@ -6,5 +6,6 @@ P=${ROCKE_PROJ:-/explore/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agenti
 echo "node $(hostname) cpu $(lscpu | grep 'Model name' | cut -c1-90) load $(cut -d' ' -f1-3 /proc/loadavg)"
 for i in $(seq 1 ${NFORT:-3}); do FORT_DATEE=28 bash $P/gpu/fortran_day.sh ${FTAG:-n}$i ${FCORE:-0}; done
 cd $P/fullfidelity
-ROCKE_TPL_OWN=1 ROCKE_OWN_GHY=1 ROCKE_IRRIG_OWN=1 ROCKE_PBL_CARRY=1 ROCKE_REC_LAZY=1 ROCKE_CSE_IN_OWN=1 ROCKE_CARRY_CSE_OUT=1 ROCKE_ENT_LIVE=1 ROCKE_RADCOLS=1 ROCKE_STAGE_ARGS=1 \
-GPU_DAYDIR=nov26_day2 GPU_DAY_DRIVER=d212_day python -u gpu_day_run.py $P/gpu_runs/${JAXOUT:-bench_native_jax} --rad native --surf-fields computed --seed computed --cosz computed --nsteps 108 --timed 0
+# SPEED_FLAGS (speed track, default empty = the frozen benchmark): extra environment words, e.g. 'ROCKE_MSTCNV_HOST=1 ROCKE_QDYN_VMAP=1 ...'
+env ROCKE_TPL_OWN=1 ROCKE_OWN_GHY=1 ROCKE_IRRIG_OWN=1 ROCKE_PBL_CARRY=1 ROCKE_REC_LAZY=1 ROCKE_CSE_IN_OWN=1 ROCKE_CARRY_CSE_OUT=1 ROCKE_ENT_LIVE=1 ROCKE_RADCOLS=1 ROCKE_STAGE_ARGS=1 \
+GPU_DAYDIR=nov26_day2 GPU_DAY_DRIVER=d212_day $SPEED_FLAGS python -u gpu_day_run.py $P/gpu_runs/${JAXOUT:-bench_native_jax} --rad native --surf-fields computed --seed computed --cosz computed --nsteps 108 --timed 0

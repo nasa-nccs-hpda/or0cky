@@ -36,6 +36,10 @@ def seqsum(x):
     return s
 
 
+import seqsum_fast as _SF  # noqa: E402  (ROCKE_SEQSUM_BLK, default off)
+seqsum = _SF.wrap(seqsum)
+
+
 def np_sum72(x):
     """np.sum of a contiguous float64 vector of length 72 (NumPy's pairwise sum: 8 interleaved accumulators over the blocks of 8, then
     ((r0+r1)+(r2+r3)) + ((r4+r5)+(r6+r7)); there is no remainder for n = 72)."""

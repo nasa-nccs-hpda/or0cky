@@ -293,7 +293,16 @@ class Phase1:
             surf = {k: jnp.zeros(rs.INPUT_FIELDS[k]) for k in JR.SURF_IN}      # replay: the 21 surface fields are zeros (unused by the replay server; declared)
         else:
             surf = {k: jnp.asarray(self.live_packet[k]) for k in JR.SURF_IN}
-        T, Q, hold_new, cosz = self._hstep(pk_state, surf, hold, jnp.int32(itime), jnp.int32(rec['seed']) if rec else jnp.int32(0), dev['rad']['COSZ1'])
+        _rt = os.environ.get('ROCKE_RADIA_TRACE')              # speed track diagnostic: 'dir[:k]' profiler trace of the k-th (default 4th) call of the hand-off step
+        self._radia_calls = getattr(self, '_radia_calls', 0) + 1
+        if _rt and self._radia_calls == (int(_rt.split(':')[1]) if ':' in _rt else 4):
+            from jax import profiler as _jprof
+            jax.block_until_ready((pk_state, hold))
+            with _jprof.trace(_rt.split(':')[0]):
+                T, Q, hold_new, cosz = self._hstep(pk_state, surf, hold, jnp.int32(itime), jnp.int32(rec['seed']) if rec else jnp.int32(0), dev['rad']['COSZ1'])
+                jax.block_until_ready((T, Q, hold_new))
+        else:
+            T, Q, hold_new, cosz = self._hstep(pk_state, surf, hold, jnp.int32(itime), jnp.int32(rec['seed']) if rec else jnp.int32(0), dev['rad']['COSZ1'])
         S = dict(S)
         S['T'], S['Q'] = T, Q
         S['SRHR'], S['TRHR'], S['COSZ1'] = hold_new['SRHR'], hold_new['TRHR'], cosz

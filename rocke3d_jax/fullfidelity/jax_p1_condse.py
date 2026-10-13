@@ -98,9 +98,19 @@ class PoleHost:
         self.log = []
 
     def run(self, j, a_slices, ms_in):
-        import time
-        t0 = time.perf_counter()
-        cf.set_backend('numpy')
+        if os.environ.get('ROCKE_POLE_PROFILE') == '2' and self.calls == 6:      # speed track diagnostic: cProfile of one whole steady host call
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
+            r = self._run(j, a_slices, ms_in)
+            pr.disable()
+            print('pole_profile_run (call 6, pole j=%d)' % j, flush=True)
+            pstats.Stats(pr).sort_stats('tottime').print_stats(16)
+            return r
+        return self._run(j, a_slices, ms_in)
+
+    def _slow_build(self, j, a_slices):
         A = {}
         for k, shp in self.shapes.items():
             arr = np.zeros(shp)
@@ -110,11 +120,106 @@ class PoleHost:
         X = cf._fresh_outputs(A)
         for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
             X[k][:, :] = 0.0
+        return A, X
+
+    def _zeros_build(self, j, a_slices):
+        """ROCKE_POLE_FAST=1: same values as _slow_build without the ~100 MB of copies (the entry arrays are zeros plus the pole slice)."""
+        A = {}
+        for k, shp in self.shapes.items():
+            arr = np.zeros(shp)
+            if k in a_slices:
+                _pole_put(arr, np.asarray(a_slices[k]), j)
+            A[k] = arr
+
+        def fresh(src):
+            arr = np.zeros(self.shapes[src])
+            if src in a_slices:
+                _pole_put(arr, np.asarray(a_slices[src]), j)
+            return arr
+        if getattr(self, '_fresh_keys', None) is None:
+            self._fresh_keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
+        X = {k: fresh(k) for k in self._fresh_keys if k not in ("TLS", "QLS", "TMC", "QMC")}
+        X["FSS"] = np.ones(self.shapes["FSS"])
+        X["TLS"], X["QLS"], X["TMC"], X["QMC"] = fresh("T"), fresh("Q"), fresh("T"), fresh("Q")
+        for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
+            X[k][:, :] = 0.0
+        return A, X
+
+    def _persist_build(self, j, a_slices):
+        """ROCKE_POLE_FAST=2: persistent full-size buffers, restored after each call (condse_column writes X only at [.., 0, j] and the whole small
+        UKMSP/VKMSP/UKMNP/VKMNP arrays; A is read only)."""
+        if getattr(self, '_pa', None) is None:
+            self._pa = {k: np.zeros(shp) for k, shp in self.shapes.items()}
+            keys = list(cf._fresh_outputs({k: np.zeros(1) for k in self.shapes}).keys())
+            self._px = {k: np.zeros(self.shapes[{"TLS": "T", "TMC": "T", "QLS": "Q", "QMC": "Q"}.get(k, k)]) for k in keys}
+            self._px["FSS"] = np.ones(self.shapes["FSS"])
+            self._pa_put, self._px_put = [], []
+        A, X = self._pa, self._px
+        for k, v in a_slices.items():
+            if k in A:
+                _pole_put(A[k], np.asarray(v), j)
+                self._pa_put.append(k)
+        for k in X:
+            src = {"TLS": "T", "TMC": "T", "QLS": "Q", "QMC": "Q"}.get(k, k)
+            if src in a_slices:
+                _pole_put(X[k], np.asarray(a_slices[src]), j)
+        return A, X
+
+    def _persist_restore(self, j):
+        for k in self._pa_put:
+            _pole_put(self._pa[k], 0.0, j)
+        self._pa_put = []
+        for k, arr in self._px.items():
+            v = 1.0 if k == "FSS" else 0.0
+            if arr.size <= 20000:
+                arr[...] = v
+            else:
+                _pole_put(arr, v, j)
+
+    def _exec(self, A, X, j, ms_in):
         ms = dict(S={k: (list(np.asarray(ms_in[k], float)) if k in ("dqlsc", "lhp", "prebar1") else np.array(ms_in[k], float)) for k in MS_KEYS})
         cnt = cf.new_counts()
-        cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+        if os.environ.get('ROCKE_POLE_PROFILE') == '1' and self.calls == 6:      # speed track diagnostic: cProfile of one steady pole call
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
+            cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+            pr.disable()
+            print('pole_profile (call 6, pole j=%d)' % j, flush=True)
+            pstats.Stats(pr).sort_stats('tottime').print_stats(14)
+        else:
+            cf.condse_column(X, A, self.G, self.cfg, 0, j, ms, cnt)
+        return ms, cnt
+
+    def _run(self, j, a_slices, ms_in):
+        import time
+        t0 = time.perf_counter()
+        cf.set_backend('numpy')
+        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':       # pole columns: the cloud-base stage through the numba worker too
+            import mstcnv_host as MH
+            cf.mc.mstcnv_column = MH.column_mstcnv
+        mode = os.environ.get('ROCKE_POLE_FAST', '0')
+        if mode == '2':
+            A, X = self._persist_build(j, a_slices)
+        elif mode == '1':
+            A, X = self._zeros_build(j, a_slices)
+        else:
+            A, X = self._slow_build(j, a_slices)
+        ms, cnt = self._exec(A, X, j, ms_in)
         out = {k: np.array(pole_slice(X[k], j), dtype=np.float64, copy=True) for k in a_slices if k in X}
         msout = {k: np.asarray(ms['S'][k], dtype=np.float64) for k in MS_KEYS}
+        if mode == '2':
+            self._persist_restore(j)
+            if self.calls < 3:         # self-check against the plain construction on the first calls (exact equality of everything returned)
+                A2, X2 = self._slow_build(j, a_slices)
+                ms2, _ = self._exec(A2, X2, j, ms_in)
+                out2 = {k: np.array(pole_slice(X2[k], j), dtype=np.float64, copy=True) for k in a_slices if k in X2}
+                ok = set(out) == set(out2) and all(np.array_equal(out[k], out2[k], equal_nan=True) for k in out) and \
+                    all(np.array_equal(msout[k], np.asarray(ms2['S'][k], dtype=np.float64), equal_nan=True) for k in MS_KEYS)
+                print(f'pole_fast self-check call {self.calls} pole {j}: {"equal" if ok else "MISMATCH"}', flush=True)
+                if not ok:
+                    raise RuntimeError('ROCKE_POLE_FAST=2 self-check failed')
         dt = time.perf_counter() - t0
         self.calls += 1
         self.seconds += dt
@@ -136,14 +241,35 @@ def pole_call(host, j, A, ms):
     return jax.pure_callback(cb, out_spec, sl, ms)
 
 
+_POLE_SLICE_JIT = {}
+
+
 def pole_eager(host, j, A, ms):
     """D214: the pole column as an explicit host step BETWEEN jitted stages (no host callback inside a jit program: on the GPU such callbacks fire only when the whole
     program has finished, which made them cost 0.1-0.5 s each).  Same inputs and outputs as pole_call."""
-    sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
+    import time as _t
+    t0 = _t.perf_counter()
+    if os.environ.get('ROCKE_POLE_FAST', '0') in ('1', '2'):
+        keys = tuple(k for k in POLE_KEYS if k in A)
+        fn = _POLE_SLICE_JIT.get((j, keys))
+        if fn is None:
+            fn = _POLE_SLICE_JIT[(j, keys)] = jax.jit(lambda Ad, _j=j, _k=keys: {k: pole_slice(Ad[k], _j) for k in _k})
+        sl = fn({k: A[k] for k in keys})
+    else:
+        sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
     sl_h, ms_h = jax.device_get((sl, ms))
+    t1 = _t.perf_counter()
     out, msout = host.run(j, sl_h, ms_h)
-    out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
-    return out, {k: jnp.asarray(v) for k, v in msout.items()}
+    t2 = _t.perf_counter()
+    if os.environ.get('ROCKE_POLE_FAST', '0') in ('1', '2'):
+        out = jax.device_put({k: v for k, v in out.items() if k in host.out_keys})
+        res = out, jax.device_put(dict(msout))
+    else:
+        out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
+        res = out, {k: jnp.asarray(v) for k, v in msout.items()}
+    if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
+        print(f'pole_eager j={j}: slice+d2h {t1 - t0:.3f} s  host.run {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
+    return res
 
 
 def _pole_host_mode():
@@ -231,6 +357,15 @@ class CondseDevice:
 
     def setup(self, A, ms):
         if _pole_host_mode():
+            if os.environ.get('ROCKE_POLE_ASYNC', '0') == '1':
+                # speed track: the south pole column (host NumPy, independent of the interior columns' MSTCNV; its module-array result is only
+                # read by the post stage) runs in a worker thread while the set-up jit and the MSTCNV stage proceed; post() resolves the future
+                import concurrent.futures as _cf
+                if getattr(self, '_pole_pool', None) is None:
+                    self._pole_pool = _cf.ThreadPoolExecutor(max_workers=1)
+                fut = self._pole_pool.submit(pole_eager, self.host, 0, A, ms)
+                R, W0 = self._setup_np(A, ms)
+                return R, W0, fut, fut
             Xs, ms_s = pole_eager(self.host, 0, A, ms)           # south pole first (Fortran order), on the host, before the set-up jit
             R, W0 = self._setup_np(A, ms)
             return R, W0, Xs, ms_s
@@ -240,6 +375,8 @@ class CondseDevice:
     def mstcnv(self, R, stats=None):
         """clouds_mstcnv_jax.mstcnv_jax with the cloud-base loop unchanged and the 'negative cloud cover' error accumulated on the device (returned as a flag)
         instead of a per-iteration host read.  The per-iteration host read of the column mask (compaction) remains."""
+        if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':
+            return self._mstcnv_host(R, stats)
         c = self.cfg['tune']
         N = self.N
         lmcm = int(self.cfg['lmcm'])
@@ -274,6 +411,54 @@ class CondseDevice:
             stats['lmin_host_syncs'] = syncs
         o = mj._post(Kj, S, Sc, I_, aux)
         return o, err_all
+
+    def _mstcnv_host(self, R, stats=None):
+        """ROCKE_MSTCNV_HOST=1: the whole cloud-base stage on the host through the numba port (mstcnv_host), one
+        device->host copy of R and one host->device copy of the outputs; no per-LMIN host loop on the device."""
+        import mstcnv_host as MH
+        if getattr(self, '_mh', None) is None:
+            self._mh = MH.MstcnvHost(self.N, nks=int(np.asarray(R['ra']).shape[0]))
+        import time as _t
+        t0 = _t.perf_counter()
+        io2 = os.environ.get('ROCKE_MSTCNV_HOST_IO', '0') == '1'       # one batched async device_get / device_put, only the output fields the post stage reads
+        if io2:
+            Rn = jax.device_get(dict(R))
+        else:
+            Rn = {n_: np.asarray(R[n_]) for n_ in R}          # device->host (blocks until the set-up stage is done)
+        t1 = _t.perf_counter()
+        v = self._mh.run(Rn, self.cfg)
+        t2 = _t.perf_counter()
+        o = {}
+        if io2:
+            need = set(MH.POST_KEYS)
+            h = {}
+            for i, n in enumerate(MH.OUT_SC[:14]):
+                a = np.array(v['o_sc'][i])
+                h[n] = a.astype(np.int64) if n in MH.INT_SC else a
+            for i, n in enumerate(MH.OUT_L):
+                if n in need:
+                    h[n] = np.array(v['o_l'][i])
+            h['lhp'], h['precnvl'] = np.array(v['o_l1'][0]), np.array(v['o_l1'][1])
+            h['smom'], h['qmom'] = np.array(v['o_m'][0]), np.array(v['o_m'][1])
+            h['um'], h['vm'] = np.array(v['o_k'][0]), np.array(v['o_k'][1])
+            o = jax.device_put(h)
+        else:
+            for i, n in enumerate(MH.OUT_SC[:14]):
+                a = np.array(v['o_sc'][i])
+                o[n] = jnp.asarray(a.astype(np.int64) if n in MH.INT_SC else a)
+            for i, n in enumerate(MH.OUT_L):
+                o[n] = jnp.asarray(np.array(v['o_l'][i]))
+            o['lhp'] = jnp.asarray(np.array(v['o_l1'][0]))
+            o['precnvl'] = jnp.asarray(np.array(v['o_l1'][1]))
+            o['smom'], o['qmom'] = jnp.asarray(np.array(v['o_m'][0])), jnp.asarray(np.array(v['o_m'][1]))
+            o['um'], o['vm'] = jnp.asarray(np.array(v['o_k'][0])), jnp.asarray(np.array(v['o_k'][1]))
+        err = jnp.asarray(bool(v['o_sc'][14].any()))
+        if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
+            print(f'mstcnv_host: d2h {t1 - t0:.3f} s  copy+worker {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
+        if stats is not None:
+            stats['events'] = int((np.asarray(v['o_sc'][13]) > 0).sum())
+            stats['lmin_host_syncs'] = 0
+        return o, err
 
     # ---------------------------------------------------------------- unit 3: post-processing
     def _post_fn(self, A, W0, o, ms_s, Xs, Kls, until_pole=False):
@@ -485,6 +670,8 @@ class CondseDevice:
         return arr.at[:, 0, j, :].set(sl) if arr.shape[1:3] == (IM, JM) else arr.at[:, :, 0, j].set(sl)
 
     def post(self, A, W0, o, ms_s, Xs):
+        if hasattr(Xs, 'result'):                                # ROCKE_POLE_ASYNC: the south pole column of setup()
+            Xs, ms_s = Xs.result()
         if _pole_host_mode():
             X, ms_b, flags, extra = self._post_a(A, W0, o, ms_s, Xs, self.Kls)
             Xn, ms_n = pole_eager(self.host, JM - 1, A, ms_b)    # north pole on the host between the two halves of the post unit

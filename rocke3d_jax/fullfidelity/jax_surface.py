@@ -739,7 +739,19 @@ def make_stage(host):
             ma1 = atm['MA1'][hbase['ej'], hbase['ei']]
         return core(atm, rows, n['ftype'], n['wvalid'], ghy, ma1, tpl_all['trup'], dyn, tmom, qmom, pk)
 
+    _ncall = [0]
+    _own_timers = os.environ.get('ROCKE_SURF_TIMERS') == '1'      # speed track diagnostic: block after each unit and print its seconds
+
     def stage(Sd, tpl_all, timers=None):
+        if timers is None and _own_timers:
+            timers = {}
+            try:
+                return _stage(Sd, tpl_all, timers)
+            finally:
+                print('surface_units_s ' + ' '.join(f'{k}={v:.4f}' for k, v in timers.items()), flush=True)
+        return _stage(Sd, tpl_all, timers)
+
+    def _stage(Sd, tpl_all, timers=None):
         def T(name, f):
             if timers is None:
                 return f()
@@ -749,7 +761,54 @@ def make_stage(host):
             timers[name] = timers.get(name, 0.0) + time.perf_counter() - t0
             return o
         atm1, cell1, rows1 = T('prep1', lambda: prep1(Sd, tpl_all))
-        r1, ex1, tmom, qmom = T('core_ns1', lambda: run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK']))
+        _trace_dir = os.environ.get('ROCKE_SURF_TRACE')
+        _ncall[0] += 1
+        if os.environ.get('ROCKE_SURF_PIECES') == '1' and _ncall[0] == 8:     # speed track diagnostic: the pieces of the substep-1 core, each as its own jit, 5 timed repeats
+            def _tm(name, f, *a):
+                jax.block_until_ready(f(*a))
+                ts = []
+                for _ in range(5):
+                    t0 = time.perf_counter()
+                    jax.block_until_ready(f(*a))
+                    ts.append(time.perf_counter() - t0)
+                print(f'surface_piece {name}: median {sorted(ts)[2]:.4f} s', flush=True)
+            n0, g0 = tpl_all['ns'][0], tpl_all['ghy'][0]
+            allp = jnp.concatenate([rows1['pw'], rows1['pl'], rows1['pe']], axis=0)
+            Nw_, Nl_ = hbase['Nw'], hbase['Nl']
+            fp = jax.jit(_pbl_batch)
+            out_ = fp(allp)
+            _tm('pbl_batch', fp, allp)
+            o_w = {k: v[:2 * Nw_] for k, v in out_.items()}
+            o_l = {k: v[2 * Nw_:2 * Nw_ + Nl_] for k, v in out_.items()}
+            o_e = {k: v[2 * Nw_ + Nl_:] for k, v in out_.items()}
+            _tm('tiles_water', jax.jit(_tiles_water), rows1['pw'], rows1['tw'], o_w)
+            _tm('tiles_landice', jax.jit(_tiles_landice), rows1['pl'], rows1['tl'], o_l)
+            ma1_ = atm1['MA1'][hbase['ej'], hbase['ei']] if _OWN_GHY else tpl_all['ma1_land']
+            ghy_ = dict(g0, forcing=dict(g0['forcing'], pres=rows1['pe'][:, 16])) if _OWN_GHY else g0
+            q1_ = atm1['Q'][hbase['ej'], hbase['ei'], 0]
+            fl = jax.jit(lambda pe, oe, gb, dyn, q1, ma1, trup: _land(pe, oe, gb, dyn, q1, ma1, trup, ms))
+            _tm('land_ghy', fl, rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
+            _r = fl(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup'])
+            _nit = np.asarray(_r['ghy']['nit_gdtm'])
+            print('ghy substep iterations per land cell: max', int(_nit.max()), 'mean %.2f' % _nit.mean(), 'counts', np.bincount(_nit).tolist(), flush=True)
+            _tdir = os.environ.get('ROCKE_SURF_PIECES_TRACE')
+            if _tdir:
+                from jax import profiler as _jprof
+                with _jprof.trace(_tdir):
+                    jax.block_until_ready(fl(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup']))
+            try:
+                _hlo = fl.lower(rows1['pe'], o_e, ghy_, g0['dyn0'], q1_, ma1_, tpl_all['trup']).compile().as_text()
+                print('land_ghy HLO: while ops', _hlo.count(' while('), ' fusion ops', _hlo.count(' fusion('), ' lines', _hlo.count('\n'), flush=True)
+            except Exception as e_:
+                print('land_ghy HLO text failed', repr(e_)[:120], flush=True)
+        if _trace_dir and _ncall[0] == 8:       # speed track diagnostic: one profiler trace of the substep-1 core (kernel count / duration)
+            from jax import profiler as _jprof
+            jax.block_until_ready(atm1)
+            with _jprof.trace(_trace_dir):
+                r1, ex1, tmom, qmom = run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK'])
+                jax.block_until_ready((r1, ex1))
+        else:
+            r1, ex1, tmom, qmom = T('core_ns1', lambda: run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK']))
         atm2, rows2 = T('between', lambda: between(Sd, atm1, cell1, rows1, r1, ex1, tpl_all))
         r2, ex2, tmom, qmom = T('core_ns2', lambda: run_core(atm2, rows2, tpl_all, 1, r1['land']['dyn_next'], tmom, qmom, Sd['PK']))
         out = T('final', lambda: final(Sd, atm2, r2, ex2, rows2, tpl_all))
