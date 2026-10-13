@@ -246,8 +246,15 @@ def _canopy_rad(Lc, crp):
 
 def _sunshd(L, Lc, crp):
     Isl, Ish, fsl = _canopy_rad(Lc, crp)
-    ci1, gs1, A1, f1 = _leaf(L, Isl)
-    ci2, gs2, A2, f2 = _leaf(L, Ish)
+    if _ENT_BATCH:                                    # sunlit and shaded leaves in one batched call (one rtsafe loop instead of two)
+        n = Isl.shape[1]
+        ci_, gs_, A_, f_ = _leaf(L, jnp.concatenate([Isl, Ish], axis=1))
+        ci1, gs1, A1 = ci_[:, :n], gs_[:, :n], A_[:, :n]
+        ci2, gs2, A2 = ci_[:, n:], gs_[:, n:], A_[:, n:]
+        f1 = f2 = f_
+    else:
+        ci1, gs1, A1, f1 = _leaf(L, Isl)
+        ci2, gs2, A2, f2 = _leaf(L, Ish)
     Rd = L.Rd[:, None]
     Al = fsl * A1 + (1.0 - fsl) * A2
     gl = fsl * gs1 + (1.0 - fsl) * gs2
