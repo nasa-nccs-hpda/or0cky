@@ -1,6 +1,6 @@
 # Start here: where the work is recorded
 
-**Current status (2026-10-11): read `STATUS_2026-10-11.md` first** (hybrid boundary, switches, V100 numbers against the Fortran, fidelity statuses, open decisions). The blocks below are older records.
+**Current status (2026-10-13): read `STATUS_2026-10-13.md` first** (`STATUS_2026-10-11.md` is superseded) (hybrid boundary, switches, V100 numbers against the Fortran, fidelity statuses, open decisions). The blocks below are older records.
 
 This is the `full-fidelity-port` branch's index. It exists because the branch's own three
 tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
