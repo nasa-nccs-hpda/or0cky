@@ -286,7 +286,12 @@ class CondseDevice:
         import mstcnv_host as MH
         if getattr(self, '_mh', None) is None:
             self._mh = MH.MstcnvHost(self.N, nks=int(np.asarray(R['ra']).shape[0]))
-        v = self._mh.run(R, self.cfg)
+        import time as _t
+        t0 = _t.perf_counter()
+        Rn = {n_: np.asarray(R[n_]) for n_ in R}          # device->host (blocks until the set-up stage is done)
+        t1 = _t.perf_counter()
+        v = self._mh.run(Rn, self.cfg)
+        t2 = _t.perf_counter()
         o = {}
         for i, n in enumerate(MH.OUT_SC[:14]):
             a = np.array(v['o_sc'][i])
@@ -298,6 +303,8 @@ class CondseDevice:
         o['smom'], o['qmom'] = jnp.asarray(np.array(v['o_m'][0])), jnp.asarray(np.array(v['o_m'][1]))
         o['um'], o['vm'] = jnp.asarray(np.array(v['o_k'][0])), jnp.asarray(np.array(v['o_k'][1]))
         err = jnp.asarray(bool(v['o_sc'][14].any()))
+        if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
+            print(f'mstcnv_host: d2h {t1 - t0:.3f} s  copy+worker {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
         if stats is not None:
             stats['events'] = int((np.asarray(v['o_sc'][13]) > 0).sum())
             stats['lmin_host_syncs'] = 0
