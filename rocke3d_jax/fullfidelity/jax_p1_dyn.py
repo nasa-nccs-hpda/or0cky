@@ -1,4 +1,3 @@
-import time
 """D186 (stage S2): the DYNAMICS block of phase 1 (atm_phase1 ATM_DRV.f:88-235) as a DEVICE-RESIDENT program.
 
 The plan of dyn_step.step_plan (the real call order, ~130 stages) is executed on a workspace dict of DEVICE arrays; nothing is copied to the host between
@@ -13,6 +12,9 @@ reach and which the D144 module runs as a NumPy fallback, is NOT executed here: 
 Two execution modes of the SAME code: eager (each kernel is one jit dispatch on device arrays) and fused (`make_fused`: the whole block traced under one jax.jit).
 Needs the XLA flags of clouds_jax_env_fast (imported first).  Libm mode (numpy-pow semantics via jnp.power); the Intel libimf is not used.
 """
+import os
+import time
+
 import clouds_jax_env_fast  # noqa: F401  (XLA flags BEFORE jax)
 import numpy as np
 import jax
