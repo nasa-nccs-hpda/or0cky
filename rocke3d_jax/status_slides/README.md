@@ -1,5 +1,19 @@
 # Status slide deck: filesystem record
 
+## ROCKE-3D / JAX briefing decks (2026-10-13)
+
+Two concise, source-cited PDFs distinguish the tagged near-parity release from the unmerged fast candidate:
+
+- `management_briefing_20261013.pdf` (5 slides): project goal and progression, evidence and limits, management decisions, and proposed qualification gates.
+- `technical_briefing_20261013.pdf` (6 slides): matched benchmark scope and arithmetic, optimization changes, fidelity/test status, and technical gates.
+
+Build both decks and PNG previews with:
+```
+cd status_slides
+python3 build_briefing_decks_20261013.py
+```
+The previews are written to `preview_management/` and `preview_technical/`. The 4.4x result is explicitly scoped to one optimized fast-branch steady-state benchmark; neither deck presents it as a release or short-run wall-time claim.
+
 **Current deck (refreshed 2026-10-08):** `status_deck.pdf` (19 slides, 16:9): chronology of the whole project and
 its findings, as of HEAD `ec36779` and ledger entry D198 (there is no D199). Owner: G. Tamkin. Drafted by a
 Claude Code agent on 2026-10-08 from the repository documents only; every slide footer names its sources
