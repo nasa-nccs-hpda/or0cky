@@ -553,10 +553,23 @@ class Coupled:
         info = dict(k=k, itime=it, jit_by_stage={}, eager_by_stage={})
         arrays = {}
 
+        _st_tr = os.environ.get('ROCKE_STAGE_TRACE')       # speed track diagnostic: 'name:dir[:k]' = profiler trace of stage `name` at the k-th call (default 8)
+        _st_tr = _st_tr.split(':') if _st_tr else None
+
         @contextlib.contextmanager
         def stage(name):
+            _tr = None
+            if _st_tr is not None and name == _st_tr[0]:
+                self._stage_calls = getattr(self, '_stage_calls', 0) + 1
+                if self._stage_calls == (int(_st_tr[2]) if len(_st_tr) > 2 else 8):
+                    import jax.profiler
+                    jax.block_until_ready((S, SS))
+                    _tr = jax.profiler.trace(_st_tr[1])
+                    _tr.__enter__()
             with sr.time(name), CNT.stage(name) as res:
                 yield
+            if _tr is not None:
+                _tr.__exit__(None, None, None)
             info['jit_by_stage'][name] = info['jit_by_stage'].get(name, 0) + (res.get('jit_calls') or 0)
             info['eager_by_stage'][name] = info['eager_by_stage'].get(name, 0) + (res.get('eager_primitive_calls') or 0)
 
