@@ -104,15 +104,34 @@ class PoleHost:
         if os.environ.get('ROCKE_MSTCNV_HOST', '0') == '1':       # pole columns: the cloud-base stage through the numba worker too
             import mstcnv_host as MH
             cf.mc.mstcnv_column = MH.column_mstcnv
-        A = {}
-        for k, shp in self.shapes.items():
-            arr = np.zeros(shp)
-            if k in a_slices:
-                _pole_put(arr, np.asarray(a_slices[k]), j)
-            A[k] = arr
-        X = cf._fresh_outputs(A)
-        for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
-            X[k][:, :] = 0.0
+        if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
+            # persistent full-size buffers (only the pole slice [0, j] is ever read or written by condse_column; everything else stays
+            # zero exactly as in the per-call np.zeros arrays): the per-call allocation and copy of ~100 MB cost about 30 ms
+            if getattr(self, '_fa', None) is None:
+                self._fa = {k: np.zeros(shp) for k, shp in self.shapes.items()}
+                self._fx = cf._fresh_outputs(self._fa)
+            A, X = self._fa, self._fx
+            for k, v in a_slices.items():
+                if k in A:
+                    _pole_put(A[k], np.asarray(v), j)
+            for k in X:
+                if k in a_slices and k in A:
+                    _pole_put(X[k], np.asarray(a_slices[k]), j)
+            for k, src in (("TLS", "T"), ("TMC", "T"), ("QLS", "Q"), ("QMC", "Q")):
+                _pole_put(X[k], np.asarray(a_slices[src]), j)
+            _pole_put(X["FSS"], 1.0, j)
+            for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
+                _pole_put(X[k], 0.0, j)
+        else:
+            A = {}
+            for k, shp in self.shapes.items():
+                arr = np.zeros(shp)
+                if k in a_slices:
+                    _pole_put(arr, np.asarray(a_slices[k]), j)
+                A[k] = arr
+            X = cf._fresh_outputs(A)
+            for k in ("AIRX", "DDM1", "DDMS", "DDML", "TDN1", "QDN1"):
+                X[k][:, :] = 0.0
         ms = dict(S={k: (list(np.asarray(ms_in[k], float)) if k in ("dqlsc", "lhp", "prebar1") else np.array(ms_in[k], float)) for k in MS_KEYS})
         cnt = cf.new_counts()
         if os.environ.get('ROCKE_POLE_PROFILE') == '1' and self.calls == 6:      # speed track diagnostic: cProfile of one steady pole call
@@ -149,18 +168,32 @@ def pole_call(host, j, A, ms):
     return jax.pure_callback(cb, out_spec, sl, ms)
 
 
+_POLE_SLICE_JIT = {}
+
+
 def pole_eager(host, j, A, ms):
     """D214: the pole column as an explicit host step BETWEEN jitted stages (no host callback inside a jit program: on the GPU such callbacks fire only when the whole
     program has finished, which made them cost 0.1-0.5 s each).  Same inputs and outputs as pole_call."""
     import time as _t
     t0 = _t.perf_counter()
-    sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
+    if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
+        keys = tuple(k for k in POLE_KEYS if k in A)
+        fn = _POLE_SLICE_JIT.get((j, keys))
+        if fn is None:
+            fn = _POLE_SLICE_JIT[(j, keys)] = jax.jit(lambda Ad, _j=j, _k=keys: {k: pole_slice(Ad[k], _j) for k in _k})
+        sl = fn({k: A[k] for k in keys})
+    else:
+        sl = {k: pole_slice(A[k], j) for k in POLE_KEYS if k in A}
     sl_h, ms_h = jax.device_get((sl, ms))
     t1 = _t.perf_counter()
     out, msout = host.run(j, sl_h, ms_h)
     t2 = _t.perf_counter()
-    out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
-    res = out, {k: jnp.asarray(v) for k, v in msout.items()}
+    if os.environ.get('ROCKE_POLE_FAST', '0') == '1':
+        out = jax.device_put({k: v for k, v in out.items() if k in host.out_keys})
+        res = out, jax.device_put(dict(msout))
+    else:
+        out = {k: jnp.asarray(v) for k, v in out.items() if k in host.out_keys}
+        res = out, {k: jnp.asarray(v) for k, v in msout.items()}
     if os.environ.get('ROCKE_MSTCNV_HOST_TIMING') == '1':
         print(f'pole_eager j={j}: slice+d2h {t1 - t0:.3f} s  host.run {t2 - t1:.3f} s  h2d {_t.perf_counter() - t2:.3f} s', flush=True)
     return res
