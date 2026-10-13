@@ -764,9 +764,9 @@ def make_stage(host):
         _trace_dir = os.environ.get('ROCKE_SURF_TRACE')
         _ncall[0] += 1
         if _trace_dir and _ncall[0] == 8:       # speed track diagnostic: one profiler trace of the substep-1 core (kernel count / duration)
-            import jax.profiler
+            from jax import profiler as _jprof
             jax.block_until_ready(atm1)
-            with jax.profiler.trace(_trace_dir):
+            with _jprof.trace(_trace_dir):
                 r1, ex1, tmom, qmom = run_core(atm1, rows1, tpl_all, 0, tpl_all['ghy'][0]['dyn0'], Sd['TMOM'], Sd['QMOM'], Sd['PK'])
                 jax.block_until_ready((r1, ex1))
         else:

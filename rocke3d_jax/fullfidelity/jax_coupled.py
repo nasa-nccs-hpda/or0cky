@@ -562,9 +562,9 @@ class Coupled:
             if _st_tr is not None and name == _st_tr[0]:
                 self._stage_calls = getattr(self, '_stage_calls', 0) + 1
                 if self._stage_calls == (int(_st_tr[2]) if len(_st_tr) > 2 else 8):
-                    import jax.profiler
+                    from jax import profiler as _jprof
                     jax.block_until_ready((S, SS))
-                    _tr = jax.profiler.trace(_st_tr[1])
+                    _tr = _jprof.trace(_st_tr[1])
                     _tr.__enter__()
             with sr.time(name), CNT.stage(name) as res:
                 yield
