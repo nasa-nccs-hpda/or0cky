@@ -55,6 +55,14 @@ IM, JM, LM = 72, 46, 40
 F = np.float64
 
 
+@jax.jit
+def _tos_jit(sp, rsi, wi, wj):
+    p = S181.tile_ptype(sp, rsi, jnp)
+    wv = jnp.stack([p[0][wi, wj] > 0.0, p[1][wi, wj] > 0.0])
+    ft = jnp.stack([p[t].T.reshape(-1) for t in range(4)], axis=1)
+    return wv, ft
+
+
 def mstcnv_new(self, R, stats=None):
     """CondseDevice.mstcnv with the cloud-base loop on the device (clouds_mstcnv_dev, D189); same function as d189_hybrid_phase1.mstcnv_new (instance-level
     replacement, no file edited)."""
@@ -480,6 +488,12 @@ class Coupled:
 
     def _tpl_own_state(self, tpl, host, rsi):
         """Slot validity and type fractions of both substeps from OUR RSI (jax_state_d181.tile_ptype: [(1-RSI) FWATER, RSI FWATER, FLICE, FEARTH])."""
+        if os.environ.get('ROCKE_GLUE_JIT', '0') == '1':               # speed track: the same selections as one jitted program (about 20 eager dispatches)
+            c_ = getattr(self, '_tos_idx', None)
+            if c_ is None or c_[0] is not host:
+                c_ = self._tos_idx = (host, jnp.asarray(host['wi']), jnp.asarray(host['wj']))
+            wv, ft = _tos_jit(self.sp181, rsi, c_[1], c_[2])
+            return dict(tpl, ns=[dict(d, wvalid=wv, ftype=ft) for d in tpl['ns']])
         p = S181.tile_ptype(self.sp181, rsi, jnp)                      # (4, IM, JM)
         wi, wj = jnp.asarray(host['wi']), jnp.asarray(host['wj'])
         wv = jnp.stack([p[0][wi, wj] > 0.0, p[1][wi, wj] > 0.0])
