@@ -149,7 +149,8 @@ def _rtsafe(x1, x2, xacc, Ra, b, K, gamol, ca, a1, f1, Rd):
         return dict(rts=u(rts_new, rts), dxold=u(dxold_new, dxold), dx=u(dx_new, dx), xl=u(jnp.where(conv, xl, xl_new), xl), xh=u(jnp.where(conv, xh, xh_new), xh),
                     f=u(fn, f), df=u(dfn, df), done=done | (act & conv), result=jnp.where(act & conv, rts_new, result), j=c['j'] + 1)
 
-    c = jax.lax.while_loop(cond, body, dict(rts=rts, dxold=dxold, dx=dx, xl=xl, xh=xh, f=f, df=df, done=done, result=result, j=jnp.zeros((), dtype=jnp.int32)))
+    import while_unroll as _WU      # ROCKE_WHILE_UNROLL (default 1: the plain lax.while_loop)
+    c = _WU.while_loop(cond, body, dict(rts=rts, dxold=dxold, dx=dx, xl=xl, xh=xh, f=f, df=df, done=done, result=result, j=jnp.zeros((), dtype=jnp.int32)))
     return c['result'], ~c['done']
 
 
