@@ -2,6 +2,8 @@
 
 **Current status (2026-10-13): read `STATUS_2026-10-13.md` first** (`STATUS_2026-10-11.md` is superseded) (hybrid boundary, switches, V100 numbers against the Fortran, fidelity statuses, open decisions). The blocks below are older records.
 
+**Addendum 2026-10-14: `REPEATABILITY_AND_FLAGS_REGRESSION_20261014.md`** (flags-on regression, GPU repeatability, native-radiation same-code differences, review package).
+
 This is the `full-fidelity-port` branch's index. It exists because the branch's own three
 tracking documents (`FULL_FIDELITY_PLAN.md`, `FULL_FIDELITY_DELTAS.md`,
 `fullfidelity/PHASE0_LOG.md`) are exhaustive working records, not a fast way to answer "what is
