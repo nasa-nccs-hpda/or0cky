@@ -49,6 +49,27 @@ decision to turn the speed flags on by default.
 * Consequence: bitwise run-to-run comparison cannot validate a code change on this path; use the statistical score. The score itself is stable across
   repeats.
 
+### 3.1 Localization: the staged own-input flags, not native radiation (same day, later)
+
+2 x 2 factors, 11 steps (itime 33312-33322), `--surf-fields computed --seed computed --cosz computed`, V100 exclusive nodes, HEAD `061486d`, each config
+run twice (jobs 37942866-37942873, outputs `gpu_runs/loc_*`, gitignored). Per-step state files (`ours_d193/step_<it>.npz`) compared bitwise:
+
+| config | radiation | staged flags | repeats bitwise equal (11 steps) | first differing step |
+|---|---|---|---|---|
+| Non | native | on (all ten) | NO (8 of 11 steps differ, max 1.44) | 33315 (U, V) |
+| Noff | native | off | YES | none |
+| Ron | replayed | on, `ROCKE_REC_LAZY` off | NO (5 of 11 steps differ, max 1.32) | 33318 (T, U, V, Q) |
+| Roff | replayed | off | YES | none |
+
+* Reading: the difference follows the staged own-input flags (`ROCKE_TPL_OWN`, `ROCKE_OWN_GHY`, `ROCKE_IRRIG_OWN`, `ROCKE_PBL_CARRY`, `ROCKE_REC_LAZY`,
+  `ROCKE_CSE_IN_OWN`, `ROCKE_CARRY_CSE_OUT`, `ROCKE_ENT_LIVE`, `ROCKE_RADCOLS`, `ROCKE_STAGE_ARGS`) and NOT native radiation: replayed radiation with the flags on
+  also differs, native radiation with the flags off does not. The native radiation `FSF` differences of section 3 are downstream of that.
+* With every staged flag off the day-run path is bitwise reproducible on this V100 window (native and replay). 11 steps only; longer windows not run.
+* Ron differs from Non by one flag (`ROCKE_REC_LAZY` is off in Ron because it needs a server-radiation setup the replay mode does not enforce); the
+  first differing step also moves (33318 against 33315), so the flag set matters, not only the on/off split.
+* Not known: which of the ten flags (or which pair) causes it, and why (device reductions, host threads, a read of an uninitialized slot). Next: halve the
+  flag set (five and five), then single flags, same windows, two repeats each.
+
 ## 4. Review package (for the science expert)
 
 `/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261014/` (and `.tar`, 5.37 GB, with `.sha256`; `MANIFEST.sha256`

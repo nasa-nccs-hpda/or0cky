@@ -1,5 +1,5 @@
 #!/bin/bash
-# Full regression with the nine speed flags ON (SPEED_RUN_RECIPE_20261013.md). Wraps run_all_tests.sh; flags-off baseline: 3329 passed, 1 failed (known order-dependent libimf test), 16 skipped, 1 h 42 min.
+# Full regression with the nine speed flags ON (SPEED_RUN_RECIPE_20261013.md). Wraps run_all_tests.sh and run_speed_flag_tests.sh; flags-off baseline: 3329 passed, 1 failed (known order-dependent libimf test), 16 skipped, 1 h 42 min.
 # Run from fullfidelity/ :   bash run_all_tests_flags_on.sh [pytest args]     (log: tests_flags_on_<date>.log, summary at the end)
 # STAGED=1 also sets the ten staged/standalone flags of the recipe command (default: speed flags only).
 # Expected by design, not defects: tests that assert bitwise equality with the level-by-level Ent (ROCKE_ENT_BATCH: ~1e-15 in 16-36 of 1,146 cells).
@@ -15,6 +15,9 @@ echo "flags-on regression start $(date -Is) host $(hostname) git $(git rev-parse
 env | grep '^ROCKE_' | sort | tee -a "$LOG"
 bash run_all_tests.sh "$@" 2>&1 | tee -a "$LOG"
 rc=${PIPESTATUS[0]}
+# flag-specific checks of the adopted speed flags (standalone scripts, not in tests/); their own logs speed_flag_test_*.log
+bash run_speed_flag_tests.sh 2>&1 | tee -a "$LOG"
+[ ${PIPESTATUS[0]} -eq 0 ] || rc=1
 echo "flags-on regression end $(date -Is) rc=$rc" | tee -a "$LOG"
 grep -E "passed|failed|FAILED|ERROR" "$LOG" | tail -40
 exit $rc
