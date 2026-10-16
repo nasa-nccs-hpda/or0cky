@@ -2,7 +2,7 @@
 import sys, os, json
 import numpy as np
 
-PKG = '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261016'
+PKG = os.environ.get('REVIEW_PKG', '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261016')
 sys.path.insert(0, PKG + '/scoring_tool')
 import atm_day_report as RP
 
