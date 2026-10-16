@@ -50,7 +50,7 @@ Bitwise agreement is not expected beyond the first step (chaos; threshold flips)
 ## 5. What a result must NOT claim
 
 - It must not claim to reproduce the published 100-year equilibrated climate of `P2SAoM40_003`: our reference run is a one-year cold start (`PROVENANCE_MANIFEST.md`), and the identity of the two runs is not established. The configuration match (source, rundeck template) is established; the climate match is not tested.
-- It must not describe radiation as ported to JAX.
+- It must say which radiation a result used: the Fortran radiation callback (RADIA through the radiation server, `--rad server`) or the SOCRATES JAX port (`--rad native`, `fullfidelity/socrates_spike/`). It may describe radiation as ported to JAX only for results run with `--rad native`, and only within the limits recorded for that port (sections 12-12f). (Amended 2026-10-16 after the SOCRATES port of 2026-10-12; the earlier wording was: "It must not describe radiation as ported to JAX.")
 - It must not call a step "end-to-end JAX" if any item of section 1 fails; it says which items fail.
 
 ## 6. Performance report (separate from correctness)
