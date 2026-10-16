@@ -79,7 +79,7 @@ The scorer was run from the package alone and reproduced the table above. Outsid
 
 Additions of 2026-10-16 (outside git, in the package; the `.tar` and `.tar.sha256` were rebuilt and verified against `MANIFEST.sha256`):
 * `plots/`: five quick-look figures of the JAX run against the Fortran reference (maps of the lowest layer and layer 13 at step 53, zonal-mean cross sections, per-step rms difference against the one-ulp member band, zonal profiles at steps 0 and 53) and `make_plots.py`; README section 8 describes them. They are a visual sanity check, not a score. Limits: no units labelled, layers not mapped to pressure, pole rows masked, grid axes assumed 5 x 4 degrees. The same script is kept in the repo as `fullfidelity/review_package_plots.py` (run with `REVIEW_PKG=<package dir>`).
-* `ACCEPTANCE_CRITERIA.md` in the package and in `Reports/` (commit `d24ed88`): section 5 now allows describing radiation as ported to JAX for `--rad native` results and requires saying which radiation a result used. Section 1 item 4 and lines 36 and 44 (radiation "by the callback") were not changed and still describe the callback.
+* `ACCEPTANCE_CRITERIA.md` in the package and in `Reports/` (commit `d24ed88`): section 5 now allows describing radiation as ported to JAX for `--rad native` results and requires saying which radiation a result used. Lines 36 and 44 (coupled-step coverage and window) were amended the same day to name both radiation options (Fortran callback or `--rad native`). Section 1 item 4 ("SOCRATES is not ported") was not changed and still describes the callback only.
 * Not done: no fresh run of the JAX code from the package alone.
 
 ## 5. Not done

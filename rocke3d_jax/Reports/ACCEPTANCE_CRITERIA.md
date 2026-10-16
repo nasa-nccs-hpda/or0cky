@@ -33,7 +33,7 @@ Categories, stated in advance by the project plan (`scoping/ATM_STEP_PLAN.md` se
 
 The step is **met** only if, for the start state used, every prognostic field of the end state is in A or B, except a short list of named exception columns (at most 10 columns per field, each at most 1e-9 of scale, listed with their coordinates). **Partly met:** the step runs end to end with named exceptions in B or C and the first failing stage identified. **Not met:** otherwise.
 
-What the step must cover for "coupled": atmosphere (dynamics, surface fluxes, boundary layer, clouds and convection), land, ocean, sea ice and lakes, through the surface loop, with radiation by the callback. The start states are the three existing dates (`nov26`, `dec01`, `jan01`); the gate is reported per date, not pooled.
+What the step must cover for "coupled": atmosphere (dynamics, surface fluxes, boundary layer, clouds and convection), land, ocean, sea ice and lakes, through the surface loop, with radiation by the Fortran callback or, from the SOCRATES port of 2026-10-12, by the SOCRATES JAX port (`--rad native`); a result says which (amended 2026-10-16). The start states are the three existing dates (`nov26`, `dec01`, `jan01`); the gate is reported per date, not pooled.
 
 Libm: bitwise (A) results require the Intel libimf runtime on the host (`intel_libm_ff.py`); without it the comparison is reported at B or C and says so.
 
@@ -41,7 +41,7 @@ Libm: bitwise (A) results require the Intel libimf runtime on the host (`intel_l
 
 Bitwise agreement is not expected beyond the first step (chaos; threshold flips). The comparison is against the real model's own noise floor:
 
-- **Window and start:** 54 steps (one model day) from `nov26` first, then longer windows as the cost allows; the radiation callback every fifth step.
+- **Window and start:** 54 steps (one model day) from `nov26` first, then longer windows as the cost allows; the radiation call (Fortran callback, or `--rad native`) every fifth step (amended 2026-10-16).
 - **Reference spread:** the five real one-ulp members of the nov26 day (D151) for the day; for longer windows the 8 real JAN1950 members (D165), with the scoring tool of D172 (calibrated leave-one-out).
 - **Criterion for the day:** for T, U, V, Q, P and the cloud condensates, the difference from the real run stays within the real members' own spread at every step, and never exceeds 2 times the largest member distance (the D151/D157 convention; "within", "near", "beyond" as defined there). Reported per field and per step, with the worst ratio.
 - **Criterion for longer windows:** the per-field statistics of the D172 scoring tool must lie inside the range obtained when each real member is scored against the others (leave-one-out). The plan's earlier rule ">= 95% of zonal bins within 2 sigma" is **not used** because the leave-one-out test shows true members fail it with 7 to 8 reference members.
