@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-PKG = os.environ.get('REVIEW_PKG', '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261014')
+PKG = os.environ.get('REVIEW_PKG', '/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261016')
 # usage: REVIEW_PKG=<package dir> python review_package_plots.py <outdir>   (numpy, matplotlib; about 1.5 minutes)
 sys.path.insert(0, PKG + '/scoring_tool')
 import atm_day_report as RP
