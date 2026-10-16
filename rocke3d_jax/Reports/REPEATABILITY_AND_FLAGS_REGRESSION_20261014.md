@@ -73,9 +73,14 @@ run twice (jobs 37942866-37942873, outputs `gpu_runs/loc_*`, gitignored). Per-st
 ## 4. Review package (for the science expert)
 
 `/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/rocke3d_review_package_20261014/` (and `.tar`, 5.37 GB, with `.sha256`; `MANIFEST.sha256`
-inside, 543 files). Contents: the Fortran control and five one-ulp members and real end states for itime 33312-33365, the restart, the step-0 records, the run
+inside, 549 files after the 2026-10-16 additions below). Contents: the Fortran control and five one-ulp members and real end states for itime 33312-33365, the restart, the step-0 records, the run
 deck and I-file (`inputs/rundeck/`), the instrumented binary with build patches, the 54-step JAX run (A1), the scoring tool, and a README with limits.
 The scorer was run from the package alone and reproduced the table above. Outside git (data directory). The owner is copying it to the expert's directory (the expert's account is not in group ilab).
+
+Additions of 2026-10-16 (outside git, in the package; the `.tar` and `.tar.sha256` were rebuilt and verified against `MANIFEST.sha256`):
+* `plots/`: five quick-look figures of the JAX run against the Fortran reference (maps of the lowest layer and layer 13 at step 53, zonal-mean cross sections, per-step rms difference against the one-ulp member band, zonal profiles at steps 0 and 53) and `make_plots.py`; README section 8 describes them. They are a visual sanity check, not a score. Limits: no units labelled, layers not mapped to pressure, pole rows masked, grid axes assumed 5 x 4 degrees. The same script is kept in the repo as `fullfidelity/review_package_plots.py` (run with `REVIEW_PKG=<package dir>`).
+* `ACCEPTANCE_CRITERIA.md` in the package and in `Reports/` (commit `d24ed88`): section 5 now allows describing radiation as ported to JAX for `--rad native` results and requires saying which radiation a result used. Section 1 item 4 and lines 36 and 44 (radiation "by the callback") were not changed and still describe the callback.
+* Not done: no fresh run of the JAX code from the package alone.
 
 ## 5. Not done
 
