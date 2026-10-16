@@ -48,6 +48,8 @@ Owner: G. Tamkin. Written by a Claude Code session (rocke3d-jax-c8) for a QA dev
 
 ## 6. How to re-run what is described here
 
+**Start with `fullfidelity/qa_20261016/ENVIRONMENT.md`**: it says which python to use (the site anaconda base python, no personal conda environment, tested from an empty environment), how to point the scripts at the package (`REVIEW_PKG`), and what the V100 jobs need (`gpu/environment-graphcast-env.yml`, rebuild untested). The commands below assume that setup.
+
 * Package scoring: `cd <package>/scoring_tool && python d207_score.py --ours ../jax_run/ours_d193 --ff ../fortran_reference --daydir nov26_day2 --nsteps 54 --md out.md` (README section 5).
 * Plots: `REVIEW_PKG=<package dir> python fullfidelity/review_package_plots.py <outdir>` (about 1.5 minutes; numpy and matplotlib, graphcast-env python).
 * Items 4-6 of section 3: `fullfidelity/qa_20261016/{spread_rmse,localize_qc,follow_columns}.py` (hard-coded package path; `spread_rmse.py` and `localize_qc.py` take an output directory; graphcast-env python; 1-3 minutes each).
