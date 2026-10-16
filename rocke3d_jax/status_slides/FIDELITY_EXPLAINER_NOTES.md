@@ -20,3 +20,34 @@ Placement when the decks are next rebuilt (`build_briefing_decks_20261014.py` or
 - `Reports/ACCEPTANCE_CRITERIA.md` s2-4 (reference spread, criterion), s9-10 (strict and relaxed rules)
 - Project memory note `project-slides-add-fidelity-explainer` (user request and corrections, 2026-10-14)
 - GPU baseline of 2026-10-13/14 (jobs 37942390, 37942591): deterministic across nodes at `061486d`; its A/B/C/D counts are a precision diagnostic only.
+
+## Prompt for the fidelity-report agent (revised 2026-10-16)
+
+Purpose: have an agent re-explain the fidelity assessment with fidelity (ensemble-spread ratio) kept separate from the A/B/C/D precision diagnostic. Drafted by a Claude Code agent after an expert reader found the report's A/B/C/D section confusing. The prompt has not been run, and the section numbers of `ACCEPTANCE_CRITERIA.md` beyond s2-4 and s9-10 were not checked.
+
+```
+Re-explain the fidelity assessment of the JAX port, separating two different questions. Use only what is documented in the repo (mainly Reports/ACCEPTANCE_CRITERIA.md) or in your own run outputs. Where something is not documented, say so and don't infer it.
+
+1. FIDELITY (primary question): does the JAX model reproduce the Fortran model's behavior, including its physics?
+   - Fortran is chaotic, so a tiny perturbation to the initial state grows into a different end state after N days. The Fortran model's own variation is the yardstick.
+   - State the documented criterion first, before any results, quoting the source section:
+     a. Reference spread: how it is built (the five real one-ulp Fortran members for the nov26 day; the longer-window members if used), and which variables and fields are scored.
+     b. The ratio: JAX distance from the reference run divided by the largest member distance.
+     c. The strict rule (never beyond 2x at every step and every scored field) and the relaxed experiment rule (at most 3x for steps >= 3, owner decision 2026-10-11, always shown beside the strict status). Say who set each rule and where it is recorded.
+     d. If anything you used is NOT in the documented criteria (your own thresholds, an envelope test, a different ratio definition), label it as yours and say so plainly.
+   - Then report the result. For every ratio give the field, the step, and the run it comes from. Interpret a ratio such as "QCI 2.37" correctly: cloud ice differs from the reference by 2.37 times the reference spread; it does NOT mean 2.37 times more ice. State against which rule (strict or relaxed) each figure is judged, and by how much it passes or fails.
+   - Say what this test can and cannot detect. In particular, state whether it would reveal a missing piece of physics, and what other checks would be needed.
+
+2. ACCURACY / PRECISION (separate diagnostic, clearly labeled as not a fidelity measure):
+   - The A/B/C/D categories compare ONE JAX end state against ONE Fortran or CPU reference end state from an identical start state (A bitwise, B rel <= 1e-12, C <= 1e-6, D worse). They are the single-step gate (port consistency, C1), not the fidelity test against the real Fortran members (C2).
+   - State plainly that this measures numerical agreement, such as precision, device exp/pow rounding, and operation order, and that large D counts after several steps are expected when ulp-level differences are amplified by chaos.
+   - Do not use these categories as evidence for or against fidelity. If an earlier statement did, correct it.
+
+3. Format: put the fidelity criterion and result first, then the accuracy diagnostic, then open questions and what you could not determine. Name the source file or run for every number.
+
+4. SLIDE EXPLAINER: write one short paragraph (about 80-120 words) for a slide, in plain language for a reader who is not a modeler.
+   - Say what "fidelity" means here: does the port behave like the original model, including its physics?
+   - Use the chaos idea: the original model gives slightly different answers if you nudge its starting point, so we measure that natural spread and ask how far the port's answer is from the original run compared with that spread (the rule is that it never exceeds about twice the spread).
+   - Say in one sentence that matching to many decimal places (accuracy) is a different, secondary check, and why the two can disagree.
+   - Use no jargon (no "ulp", "category D", "bitwise") and do not state any result that is not in your section 1. If the result is not settled, say the check is still open instead of giving a verdict.
+```
