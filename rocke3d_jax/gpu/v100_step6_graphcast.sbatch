@@ -4,7 +4,7 @@
 # Cluster facts as found 2026-10-13: partition compute, feature v100 (gpu_a100 / rome / the QEFM container path in run_gpu_job.sbatch do not exist here).
 # Run at 061486d: jobs 37942390 and 37942591 (different nodes) gave bitwise-identical step 0 and step 5 end states, steady mean about 2.6 s/step, about 12-13 min wall.
 # Outputs go to gpu_runs/ (git-ignored); compare with: python fullfidelity/gpu_step_run.py --compare CAND.npz REF.npz OUTDIR
-#SBATCH --job-name=v100_rerun6
+#SBATCH --job-name=v100_step6_graphcast
 #SBATCH --partition=compute
 #SBATCH --constraint=v100
 #SBATCH --gres=gpu:1
@@ -12,10 +12,10 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
 #SBATCH --time=01:00:00
-#SBATCH --output=/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax/gpu_runs/v100_rerun6_%j.out
+#SBATCH --output=/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax/gpu_runs/v100_step6_graphcast_%j.out
 PROJ=/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/ilab-agentic-ai/projects/imvi/rocke3d_jax
 CONDA=/panfs/ccds02/app/modules/anaconda/platform/x86_64/rhel/8.6/3-2022.05/bin/conda
-OUT=$PROJ/gpu_runs/v100_rerun6_${SLURM_JOB_ID}
+OUT=$PROJ/gpu_runs/v100_step6_graphcast_${SLURM_JOB_ID}
 mkdir -p $OUT
 export FF_DATA=$PROJ/ff_data
 export MODELE_PROD_INPUT=$PROJ/modelE2_planet_2.0/ModelE_Support/prod_input_files
