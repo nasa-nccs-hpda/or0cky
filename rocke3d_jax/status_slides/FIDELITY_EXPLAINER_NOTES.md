@@ -8,6 +8,14 @@ Placement when the decks are next rebuilt (`build_briefing_decks_20261014.py` or
 
 **How we measure fidelity.** Fidelity asks whether the new JAX version of the model behaves like the original Fortran model, including its physics. The climate model is chaotic, so even a one-digit nudge to its starting point gives a slightly different answer later. We use that natural variation as our ruler: we re-run the original model from five such nudged starts and measure how far apart the answers spread. Then we ask how far the JAX answer is from the original run, compared with that spread. Our rule is that it never exceeds about twice the spread. Matching to many decimal places is a separate, secondary check, because tiny rounding differences grow over time without meaning any physics is missing.
 
+## Goal statement (from an agent reply relayed by the user, 2026-10-16; wording not yet reviewed by the owner)
+
+"Verify that JAX implements the intended physics, then assess whether its multi-day results remain within the accepted variability of the Fortran model."
+
+- The one-step A/B/C/D categories are a diagnostic for numerical agreement, not the definition of overall fidelity.
+- Neither the one-step check nor the multi-day spread check proves the physics is complete. Physics coverage needs its own explicit check; whether one exists in the repo has not been established.
+- The same reply said the strict threshold is not met because QCI exceeds the allowed spread at step 3. That is the agent's statement and is unverified here. Under the documented rules, a ratio of 2.37 would fail the strict rule (2x) and pass the relaxed rule (3x, steps >= 3); report both.
+
 ## Points the paragraph deliberately leaves out (carry in speaker comments, not on the slide)
 
 - A ratio such as "QCI 2.37" means cloud ice differs from the reference by 2.37 times the reference spread. It does NOT mean 2.37 times more ice (user correction 2026-10-14).
