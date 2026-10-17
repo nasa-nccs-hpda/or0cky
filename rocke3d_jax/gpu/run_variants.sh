@@ -2,7 +2,7 @@
 # Submit every variant of the evidence set as SLURM jobs, in parallel across nodes, and one dependent job that scores and writes one summary table.
 #   pair_release / pair_fast : EXCLUSIVE V100 node each; Fortran x3 (one core) then JAX on the SAME node, strictly sequential (gpu/benchmark_native_v100.sh), 108 steps (the two-day window fixed in benchmark_native_v100.sh). Timing only.
 #   fid_release / fid_fast   : V100, not exclusive; JAX 54 steps (one model day) for the fidelity score. Not timed.
-#   tests_off / tests_on     : CPU (JAX_PLATFORMS=cpu and the XLA_FLAGS of run_all_tests.sh, which the bitwise tests need: a job without --gres may still land on a GPU node, where the CUDA plugin fails to start); sharded regression with the speed flags off / the nine flags on.
+#   tests_off / tests_on     : CPU (JAX_PLATFORMS=cpu and the XLA_FLAGS of run_all_tests.sh, which the bitwise tests need, and NumPy's AVX-512 paths off (they change pow in the last bit on the Xeon Gold nodes; the tests were written on a non-AVX-512 host): a job without --gres may still land on a GPU node, where the CUDA plugin fails to start); sharded regression with the speed flags off / the nine flags on.
 #   summary                  : runs after ALL of the above end (afterany, so a failed variant is reported, not silently dropped); scores both fidelity runs against the five one-ulp
 #                              members and writes SUMMARY.md (gpu/summarize_variants.py).
 # Needs at least three GPU nodes at once (two exclusive) plus CPU slots. Repeats are not bitwise (native radiation): read ratios against the member spread, not equality.
@@ -93,7 +93,7 @@ if want tests_off; then
   f=$JOBS/tests_off.sbatch
   { header tests_off "${TIME_TESTS:-04:00:00}" "--cpus-per-task=6" "--mem=48G"
     echo "cd $P/fullfidelity"
-    echo "env JAX_PLATFORMS=cpu XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' JOBS=4 LOGDIR=$RUN/tests_off $RUNIN bash run_all_tests_sharded.sh"
+    echo "env JAX_PLATFORMS=cpu NPY_DISABLE_CPU_FEATURES='AVX512F AVX512CD AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL' XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' JOBS=4 LOGDIR=$RUN/tests_off $RUNIN bash run_all_tests_sharded.sh"
     echo "echo \"exit: \$?  end: \$(date -Is)\""
   } > "$f"
   ID[tests_off]=$(submit "$f") || exit 1
@@ -102,7 +102,7 @@ if want tests_on; then
   f=$JOBS/tests_on.sbatch
   { header tests_on "${TIME_TESTS:-04:00:00}" "--cpus-per-task=6" "--mem=48G"
     echo "cd $P/fullfidelity"
-    echo "env JAX_PLATFORMS=cpu XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' ROCKE_MSTCNV_HOST=1 ROCKE_MSTCNV_IMF=1 ROCKE_MSTCNV_HOST_IO=1 ROCKE_QDYN_VMAP=1 ROCKE_POLE_FAST=2 ROCKE_POLE_ASYNC=1 ROCKE_SEQSUM_BLK=32 ROCKE_GLUE_JIT=1 ROCKE_ENT_BATCH=1 ROCKE_MSTCNV_PY=$ROCKE_MSTCNV_PY JOBS=4 LOGDIR=$RUN/tests_on $RUNIN bash run_all_tests_sharded.sh"
+    echo "env JAX_PLATFORMS=cpu NPY_DISABLE_CPU_FEATURES='AVX512F AVX512CD AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL' XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' ROCKE_MSTCNV_HOST=1 ROCKE_MSTCNV_IMF=1 ROCKE_MSTCNV_HOST_IO=1 ROCKE_QDYN_VMAP=1 ROCKE_POLE_FAST=2 ROCKE_POLE_ASYNC=1 ROCKE_SEQSUM_BLK=32 ROCKE_GLUE_JIT=1 ROCKE_ENT_BATCH=1 ROCKE_MSTCNV_PY=$ROCKE_MSTCNV_PY JOBS=4 LOGDIR=$RUN/tests_on $RUNIN bash run_all_tests_sharded.sh"
     echo "echo \"exit: \$?  end: \$(date -Is)\""
   } > "$f"
   ID[tests_on]=$(submit "$f") || exit 1
