@@ -48,7 +48,7 @@ Owner: G. Tamkin. Written by a Claude Code session (rocke3d-jax-c8) for a QA dev
 
 2. Rebuild the tar, re-verify, and tell the owner that the copy on Discover is stale (or send only the changed files: `README.md`, `MANIFEST.sha256`).
 3. Verify the Discover copy against the `.sha256` (owner, from Discover) and that the SME can read it.
-4. Owner review of the amended `ACCEPTANCE_CRITERIA.md`: section 1 item 4 (both radiation options, own required sentence), lines 36 and 44 (both options named; the "every fifth step" cadence for `--rad native` was not confirmed) and section 5 (radiation may be described as ported to JAX for `--rad native`). The wording was written by the agent; the owner has not signed it off. The older lines in the file that say "SOCRATES is not ported" outside these places were not searched for.
+4. Owner review of the amended `ACCEPTANCE_CRITERIA.md`: section 1 item 4 (both radiation options, own required sentence), lines 36 and 44 (both options named; the "every fifth step" cadence for `--rad native` was not confirmed) and section 5 (radiation may be described as ported to JAX for `--rad native`). The wording was written by the agent. SIGNED OFF by the owner on 2026-10-17 (option 2): with the section 4 "Always reported" line naming both radiation sentences, and the `--rad native` cadence marked unconfirmed in the file. Not searched: other reports. The older lines in the file that say "SOCRATES is not ported" outside these places were not searched for.
 5. The status of the separate fidelity-report agent whose output the owner pasted is unknown to this session. Whether an explicit physics-coverage check exists in the repo was not searched for.
 6. The SME has not replied to the package yet.
 
