@@ -6,6 +6,8 @@ Review by: when the GPU host is named, or when the owner changes a criterion.
 
 Direction fixed by the owner on 2026-10-07 (see `GOAL.md`): end-to-end JAX first, validated components second; success is one coupled step first, then a multi-day run; a Fortran radiation callback is acceptable but must be noted in every result that uses it; match `P2SAoM40` first.
 
+Owner sign-off, 2026-10-17: the 2026-10-16 amendments (section 1 item 4, the coupled-step coverage line, the window line and section 5) are approved by G. Tamkin with two changes made the same day: the section 4 "Always reported" line now names both radiation sentences, and the `--rad native` radiation cadence is marked unconfirmed. Older "SOCRATES is not ported" wording elsewhere in `Reports/` was not searched.
+
 ## 1. What "JAX-driven" means here
 
 A step counts as JAX-driven only if ALL of these hold; each one is reported as a line in the result file:
@@ -41,11 +43,11 @@ Libm: bitwise (A) results require the Intel libimf runtime on the host (`intel_l
 
 Bitwise agreement is not expected beyond the first step (chaos; threshold flips). The comparison is against the real model's own noise floor:
 
-- **Window and start:** 54 steps (one model day) from `nov26` first, then longer windows as the cost allows; the radiation call (Fortran callback, or `--rad native`) every fifth step (amended 2026-10-16).
+- **Window and start:** 54 steps (one model day) from `nov26` first, then longer windows as the cost allows; the radiation call (Fortran callback, or `--rad native`) every fifth step (amended 2026-10-16; the every-fifth-step cadence for `--rad native` is not confirmed and is not a criterion until it is).
 - **Reference spread:** the five real one-ulp members of the nov26 day (D151) for the day; for longer windows the 8 real JAN1950 members (D165), with the scoring tool of D172 (calibrated leave-one-out).
 - **Criterion for the day:** for T, U, V, Q, P and the cloud condensates, the difference from the real run stays within the real members' own spread at every step, and never exceeds 2 times the largest member distance (the D151/D157 convention; "within", "near", "beyond" as defined there). Reported per field and per step, with the worst ratio.
 - **Criterion for longer windows:** the per-field statistics of the D172 scoring tool must lie inside the range obtained when each real member is scored against the others (leave-one-out). The plan's earlier rule ">= 95% of zonal bins within 2 sigma" is **not used** because the leave-one-out test shows true members fail it with 7 to 8 reference members.
-- **Always reported:** the number of recorded inputs, whether the surface was replayed or computed, and the radiation callback sentence of section 1.
+- **Always reported:** the number of recorded inputs, whether the surface was replayed or computed, and the radiation sentence of section 1 item 4 (the Fortran-callback sentence for `--rad server`, the SOCRATES sentence for `--rad native`).
 
 ## 5. What a result must NOT claim
 
