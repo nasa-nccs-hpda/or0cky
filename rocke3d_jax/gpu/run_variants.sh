@@ -16,6 +16,10 @@ P=${ROCKE_PROJ:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 for v in FF_DATA MODELE_PROD_INPUT ROCKE_SOCRATES_DIR FORTRAN_HUGE_SPACE FORTRAN_RUNS ROCKE_MSTCNV_PY CONDA_BIN; do
   [ -n "${!v:-}" ] || { echo "run_variants.sh: set $v (see fullfidelity/qa_20261016/ENVIRONMENT.md)" >&2; exit 2; }
 done
+# pre-flight: fail here, not 30 s into a GPU job (MODELE_PROD_INPUT must be the COMPLETE ModelE_Support/prod_input_files; a partial copy lacks S72x460098M.ext.nc)
+for f in "$MODELE_PROD_INPUT/S72x460098M.ext.nc" "$FORTRAN_HUGE_SPACE/P2SAoM40.bin" "$FF_DATA/_pristine_restarts/fort1_nov26_itime33312.nc" "$ROCKE_SOCRATES_DIR" "$ROCKE_MSTCNV_PY" "$CONDA_BIN"; do
+  [ -e "$f" ] || { echo "run_variants.sh: missing $f" >&2; exit 2; }
+done
 ENVN=${ROCKE_ENV:-graphcast-env}
 PART=${PARTITION:-compute}
 CONS=${GPU_CONSTRAINT:-v100}
