@@ -89,24 +89,21 @@ for kind in release fast; do
   fi
 done
 
-if want tests_off; then
-  f=$JOBS/tests_off.sbatch
-  { header tests_off "${TIME_TESTS:-04:00:00}" "--cpus-per-task=6" "--mem=48G"
+TESTENV="JAX_PLATFORMS=cpu NPY_DISABLE_CPU_FEATURES='AVX512F AVX512CD AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL' XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover'"
+for cfg in off on; do
+  want tests_$cfg || continue
+  f=$JOBS/tests_$cfg.sbatch
+  extra=""; [ $cfg = on ] && extra="ROCKE_MSTCNV_HOST=1 ROCKE_MSTCNV_IMF=1 ROCKE_MSTCNV_HOST_IO=1 ROCKE_QDYN_VMAP=1 ROCKE_POLE_FAST=2 ROCKE_POLE_ASYNC=1 ROCKE_SEQSUM_BLK=32 ROCKE_GLUE_JIT=1 ROCKE_ENT_BATCH=1 ROCKE_MSTCNV_PY=$ROCKE_MSTCNV_PY"
+  { header tests_$cfg "${TIME_TESTS:-04:00:00}" "--cpus-per-task=6" "--mem=48G"
     echo "cd $P/fullfidelity"
-    echo "env JAX_PLATFORMS=cpu NPY_DISABLE_CPU_FEATURES='AVX512F AVX512CD AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL' XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' JOBS=4 LOGDIR=$RUN/tests_off $RUNIN bash run_all_tests_sharded.sh"
-    echo "echo \"exit: \$?  end: \$(date -Is)\""
+    echo "env $TESTENV $extra JOBS=4 LOGDIR=$RUN/tests_$cfg $RUNIN bash run_all_tests_sharded.sh"
+    echo "rc=\$?"
+    # the two files that need their own process (RUN_ISOLATED_TESTS, see tests/conftest.py and run_all_tests.sh); logs and rc go beside the sharded ones
+    echo "for t in test_daily_lake_hook test_d187_imf_p1; do env $TESTENV $extra RUN_ISOLATED_TESTS=1 $RUNIN python -m pytest tests/\$t.py -q -p no:cacheprovider > $RUN/tests_$cfg/iso_\$t.log 2>&1; r=\$?; echo \"iso_\$t rc=\$r\" >> $RUN/tests_$cfg/rc.txt; [ \$r -eq 0 ] || rc=1; done"
+    echo "echo \"exit: \$rc  end: \$(date -Is)\""
   } > "$f"
-  ID[tests_off]=$(submit "$f") || exit 1
-fi
-if want tests_on; then
-  f=$JOBS/tests_on.sbatch
-  { header tests_on "${TIME_TESTS:-04:00:00}" "--cpus-per-task=6" "--mem=48G"
-    echo "cd $P/fullfidelity"
-    echo "env JAX_PLATFORMS=cpu NPY_DISABLE_CPU_FEATURES='AVX512F AVX512CD AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL' XLA_FLAGS='--xla_cpu_max_isa=AVX --xla_disable_hlo_passes=algsimp,reshape-mover' ROCKE_MSTCNV_HOST=1 ROCKE_MSTCNV_IMF=1 ROCKE_MSTCNV_HOST_IO=1 ROCKE_QDYN_VMAP=1 ROCKE_POLE_FAST=2 ROCKE_POLE_ASYNC=1 ROCKE_SEQSUM_BLK=32 ROCKE_GLUE_JIT=1 ROCKE_ENT_BATCH=1 ROCKE_MSTCNV_PY=$ROCKE_MSTCNV_PY JOBS=4 LOGDIR=$RUN/tests_on $RUNIN bash run_all_tests_sharded.sh"
-    echo "echo \"exit: \$?  end: \$(date -Is)\""
-  } > "$f"
-  ID[tests_on]=$(submit "$f") || exit 1
-fi
+  ID[tests_$cfg]=$(submit "$f") || exit 1
+done
 
 dep=""
 for k in "${!ID[@]}"; do dep="${dep:+$dep:}${ID[$k]}"; done
