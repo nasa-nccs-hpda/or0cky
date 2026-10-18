@@ -9,7 +9,7 @@
 # usage:  gpu/run_variants.sh [NAME]          DRY_RUN=1 writes the batch files and prints them, submits nothing.
 # Required environment (see fullfidelity/qa_20261016/ENVIRONMENT.md):
 #   FF_DATA, MODELE_PROD_INPUT, ROCKE_SOCRATES_DIR, FORTRAN_HUGE_SPACE, FORTRAN_RUNS, ROCKE_MSTCNV_PY (numba python for the fast configuration), CONDA_BIN (path of the conda executable)
-# Optional: MODELE_SRC (default: two levels above MODELE_PROD_INPUT), ROCKE_PROJ (default: this checkout), ROCKE_ENV (conda env, default graphcast-env), SBATCH_HOST (e.g. gpulogin1: submit over ssh when the local host has no SLURM client),
+# Optional: MODELE_SRC (default: two levels above MODELE_PROD_INPUT), ROCKE_PROJ (default: this checkout), ROCKE_ENV (conda env name or absolute path, default graphcast-env), SBATCH_HOST (e.g. gpulogin1: submit over ssh when the local host has no SLURM client),
 #   PARTITION (compute), GPU_CONSTRAINT (v100), NSTEPS_FID (54), ONLY="pair_release fid_fast ..." (submit a subset; the summary still runs), TIME_PAIR/TIME_FID/TIME_TESTS (HH:MM:SS).
 set -u
 P=${ROCKE_PROJ:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
@@ -63,7 +63,8 @@ echo "host: \$(hostname)  git: \$(cd $P && git log --oneline -1 | cut -c1-60)  d
 EOF
 }
 gpu_lines=("--constraint=$CONS" "--gres=gpu:1" "--cpus-per-task=8" "--mem=64G")
-RUNIN="$CONDA_BIN run --no-capture-output -n $ENVN"
+case "$ENVN" in /*) ENVSEL="-p $ENVN";; *) ENVSEL="-n $ENVN";; esac      # ROCKE_ENV may be an environment name or an absolute path
+RUNIN="$CONDA_BIN run --no-capture-output $ENVSEL"
 
 declare -A ID
 want() { case " $ONLY " in *" $1 "*) return 0;; esac; return 1; }
