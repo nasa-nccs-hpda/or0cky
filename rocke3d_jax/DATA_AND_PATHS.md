@@ -12,8 +12,8 @@ Owner: G. Tamkin. Written by a Claude Code session from the paths used in the ru
 | `FORTRAN_HUGE_SPACE` | Prebuilt production, hook-free Fortran binary `P2SAoM40.bin` with its run files (`I`, `P2SAoM40ln`, `P2SAoM40uln`, `runtime_opts`) | 1.4 GB | `.../modelE2_planet_2.0/ModelE_Support/huge_space/P2SAoM40` |
 | `ROCKE_SOCRATES_DIR` | SOCRATES products for `--rad native`: `products_day0.npz`, `static0.npz`, `spec/spec_{lw,sw}.npz` | 0.5 GB | `/panfs/ccds02/nobackup/people/gtamkin/dev/ilab-agentic-ai/gpu_data_stage/socrates_nov26` |
 | `FORTRAN_RUNS` | Writable scratch for the Fortran timing runs | a few GB per pair | any writable directory (the runs used `gpu_runs/fortran`, which is git-ignored) |
-| `ROCKE_MSTCNV_PY` | Python with numba, for the fast configuration only | | the author's `DEV-Kernel` conda env (numba 0.60, NumPy 2.0.2); `graphcast-env` cannot import numba |
-| `CONDA_BIN`, `ROCKE_ENV` | conda executable and the JAX environment (`graphcast-env`: jax 0.5.3, NumPy 2.2.4, Python 3.10) | | conda from the NCCS module `anaconda/3-2022.05`; the environment lives in the author's home |
+| `ROCKE_MSTCNV_PY` | Python with numba, for the fast configuration only | | `/panfs/ccds02/app/modules/jupyter/ilab/dev/pytorch-kernel-copy_20260408/bin/python` (Python 3.12.11, numba 0.60.0, NumPy 2.0.2; owner `iluser`, group `ilab`, readable by `ilab`). The JAX environment cannot import numba |
+| `CONDA_BIN`, `ROCKE_ENV` | conda executable and the JAX environment (jax 0.5.3, NumPy 2.2.4, Python 3.10.16, mpmath 1.3.0) | | conda from the NCCS module: `/panfs/ccds02/app/modules/anaconda/platform/x86_64/rhel/8.6/3-2022.05/bin/conda`; environment (absolute path, group `ilab`, read-only): `/explore/nobackup/projects/ilab/conda/envs/rocke3d-jax`. It is a `conda-pack` copy of the author's `graphcast-env` plus `mpmath`, made 2026-10-18 |
 
 The `ff_data` and `modelE2_planet_2.0` links in a checkout are git-ignored. Access today is by membership of the Unix group `ilab`; I did not check who is in it.
 
@@ -39,8 +39,10 @@ export MODELE_PROD_INPUT=<modelE2_planet_2.0>/ModelE_Support/prod_input_files
 export FORTRAN_HUGE_SPACE=<modelE2_planet_2.0>/ModelE_Support/huge_space/P2SAoM40
 export ROCKE_SOCRATES_DIR=<socrates_nov26>
 export FORTRAN_RUNS=<writable directory>
-export ROCKE_MSTCNV_PY=<python with numba>
-export CONDA_BIN=<conda executable>                      # ROCKE_ENV defaults to graphcast-env
+export ROCKE_MSTCNV_PY=/panfs/ccds02/app/modules/jupyter/ilab/dev/pytorch-kernel-copy_20260408/bin/python
+export CONDA_BIN=/panfs/ccds02/app/modules/anaconda/platform/x86_64/rhel/8.6/3-2022.05/bin/conda
+export ROCKE_ENV=/explore/nobackup/projects/ilab/conda/envs/rocke3d-jax     # a name also works; an absolute path is passed to conda run -p
+export PYTHONNOUSERSITE=1                                # recommended: a personal ~/.local must not change results
 export SBATCH_HOST=gpulogin1                             # when the local host has no sbatch
 bash gpu/run_variants.sh <run-name>                      # DRY_RUN=1 writes the batch files only; ONLY="fid_fast tests_off" submits a subset
 ```
@@ -49,6 +51,7 @@ The script checks the key files before submitting and stops with a message if on
 
 ## 5. Not verified
 
-* That `gpu/environment-graphcast-env.yml` rebuilds a working environment (`mpmath==1.3.0` was added by hand; the author's environment got it from `~/.local`).
-* That anyone other than the author can read these directories and run the script end to end.
-* That the numba environment can be rebuilt from anything but the author's copy; there is no export of it in the repository.
+* That `gpu/environment-graphcast-env.yml` rebuilds a working environment: two attempts from the file stalled on HTTP 429 (rate limit) from `repo.anaconda.com` and never got to a test. The shared environment was made by `conda-pack` instead, not from the file.
+* The shared environment `rocke3d-jax` passed the 6-step V100 gate (job 37943470, 2026-10-18, run as the author with the user site off): step 0 (561 fields) and step 5 (572 fields) bitwise identical to job 37943287. It has NOT been used by another person, and the full runner (`gpu/run_variants.sh`) has not been run with it.
+* That anyone other than the author can read these directories and run the script end to end. The data trees were made group-readable on 2026-10-18 (0 unreadable files found afterwards).
+* The numba Python is shared and readable by `ilab`; it was not rebuilt or tested here beyond the author's earlier fast-configuration runs.

@@ -65,3 +65,7 @@ The recipe calls `conda run -n graphcast-env`, which resolves to the submitting 
 ## 6. Hidden dependency found by the import gate (2026-10-16)
 
 `advsi_ff.py` imports `mpmath` at module level (REAL*16 reference), and `jax_coupled`, `gpu_step_run`, `d193_day`, `d212_day`, `gpu_day_run`, `cpu_day_run_imf` and others import it through that. The author's `graphcast-env` did not contain it: it came from `~/.local/lib/python3.10/site-packages` (mpmath 1.3.0), so the env export did not reproduce the working setup. `gpu/environment-graphcast-env.yml` now lists `mpmath==1.3.0` (edit untested; rebuild still untested).
+
+## 7. Shared environment (2026-10-18)
+
+A copy of the working JAX environment is at `/explore/nobackup/projects/ilab/conda/envs/rocke3d-jax` (group `ilab`, read-only): Python 3.10.16, jax 0.5.3, NumPy 2.2.4, mpmath 1.3.0. It was made with `conda-pack` from the author's `graphcast-env` (5.3 GB tar), unpacked, relocated with `conda-unpack`, and `mpmath==1.3.0` installed. It passed the 6-step V100 gate bitwise (job 37943470). `conda create --clone` and `conda env create -f gpu/environment-graphcast-env.yml` both stalled on HTTP 429 from `repo.anaconda.com`, so the yml rebuild remains untested. The numba Python for `ROCKE_MSTCNV_PY` is `/panfs/ccds02/app/modules/jupyter/ilab/dev/pytorch-kernel-copy_20260408/bin/python`. Use `PYTHONNOUSERSITE=1`: with the user site on, a personal `~/.local` supplied `mpmath` to the author's environment and hid the missing dependency.
