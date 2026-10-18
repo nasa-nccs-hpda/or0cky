@@ -9,7 +9,7 @@
 # usage:  gpu/run_variants.sh [NAME]          DRY_RUN=1 writes the batch files and prints them, submits nothing.
 # Required environment (see fullfidelity/qa_20261016/ENVIRONMENT.md):
 #   FF_DATA, MODELE_PROD_INPUT, ROCKE_SOCRATES_DIR, FORTRAN_HUGE_SPACE, FORTRAN_RUNS, ROCKE_MSTCNV_PY (numba python for the fast configuration), CONDA_BIN (path of the conda executable)
-# Optional: ROCKE_PROJ (default: this checkout), ROCKE_ENV (conda env, default graphcast-env), SBATCH_HOST (e.g. gpulogin1: submit over ssh when the local host has no SLURM client),
+# Optional: MODELE_SRC (default: two levels above MODELE_PROD_INPUT), ROCKE_PROJ (default: this checkout), ROCKE_ENV (conda env, default graphcast-env), SBATCH_HOST (e.g. gpulogin1: submit over ssh when the local host has no SLURM client),
 #   PARTITION (compute), GPU_CONSTRAINT (v100), NSTEPS_FID (54), ONLY="pair_release fid_fast ..." (submit a subset; the summary still runs), TIME_PAIR/TIME_FID/TIME_TESTS (HH:MM:SS).
 set -u
 P=${ROCKE_PROJ:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
@@ -56,6 +56,7 @@ header() {   # header <jobname> <time> <extra #SBATCH lines...>
 #SBATCH --output=$RUN/$nm.out
 $(for l in "$@"; do echo "#SBATCH $l"; done)
 export FF_DATA="$FF_DATA" MODELE_PROD_INPUT="$MODELE_PROD_INPUT" ROCKE_SOCRATES_DIR="$ROCKE_SOCRATES_DIR"
+export MODELE_SRC="${MODELE_SRC:-$(dirname "$(dirname "$MODELE_PROD_INPUT")")}"      # the ModelE checkout; tests that need its source skip without it
 export FORTRAN_HUGE_SPACE="$FORTRAN_HUGE_SPACE" FORTRAN_RUNS="$FORTRAN_RUNS" ROCKE_PROJ="$P" OMP_NUM_THREADS=1
 unset JAX_COMPILATION_CACHE_DIR CLOUDS_JAX_CACHE XLA_FLAGS
 echo "host: \$(hostname)  git: \$(cd $P && git log --oneline -1 | cut -c1-60)  dirty: \$(cd $P && git status --short | grep -v '^??' | wc -l)  start: \$(date -Is)"
