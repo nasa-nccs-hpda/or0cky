@@ -8,6 +8,7 @@ JAX port of ROCKE-3D (ModelE) used to run and score the nov26 model day against 
 * Run a day: `fullfidelity/gpu_day_run.py` (GPU) or `fullfidelity/cpu_day_run_imf.py` (CPU, libimf); recipes in `gpu/` and `Reports/SPEED_RUN_RECIPE_20261013.md`, `Reports/RELEASE_NATIVE_RADIATION_20261012.md`.
 * Everything at once: `gpu/run_variants.sh` submits the Fortran/JAX timing pairs, the fidelity runs, the regression subset and a summary job (`gpu_runs/<name>/SUMMARY.md`). Setup and required variables: `DATA_AND_PATHS.md`. Results of the first two runs are in `STATUS_20261016.md` section 5.
 * Score a day: `fullfidelity/d207_score.py`. Tests: `fullfidelity/run_all_tests_sharded.sh` (and `run_all_tests_flags_on.sh`).
+* Briefings (PDF, 2026-10-19): `status_slides/` has a management, a science and a developer briefing of the whole project (draft, see its README).
 * Criteria: `Reports/ACCEPTANCE_CRITERIA.md` (the 2026-10-16 amendments were signed off by the owner on 2026-10-17; see the note at the top of that file).
 
 Owner: G. Tamkin. Data (`ff_data/`, the ModelE tree) is not in the repository; see `DATA_AND_PATHS.md`.
