@@ -8,6 +8,8 @@ Ratios are JAX distance from the Fortran run divided by the spread of the five o
 """
 import glob, json, os, re, statistics, subprocess, sys
 
+# the runs use --rad native; the scorer's own default sentence names the Fortran callback (ACCEPTANCE_CRITERIA section 4 asks for the radiation actually used)
+NATIVE_SENTENCE = 'radiation computed by the JAX port of RADIA + SOCRATES (socrates_spike, NativeHandoff)'
 run = os.path.abspath(sys.argv[1])
 name = os.path.basename(run)
 runs_dir = os.environ.get('FORTRAN_RUNS', '')
@@ -43,6 +45,7 @@ w()
 w('## Fidelity (day 1, 54 steps, nov26): worst ratio at steps >= 3')
 w()
 rows = {}
+rule = {}
 for kind in ('release', 'fast'):
     ours = os.path.join(run, 'fid_%s_jax' % kind, 'ours_d193')
     md = os.path.join(run, 'score_%s.md' % kind)
@@ -50,7 +53,7 @@ for kind in ('release', 'fast'):
         rows[kind] = None
         continue
     r = subprocess.run([sys.executable, 'd207_score.py', '--ours', ours, '--daydir', 'nov26_day2', '--nsteps', '54', '--md', md],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, env={**os.environ, 'SCORE_RADIATION_SENTENCE': NATIVE_SENTENCE})
     open(os.path.join(run, 'score_%s.out' % kind), 'w').write(r.stdout + r.stderr)
     t = read(md)
     if r.returncode != 0 or t is None:
@@ -60,6 +63,8 @@ for kind in ('release', 'fast'):
     d = {}
     for m in re.finditer(r'^\| (T|U|V|Q|P|QCL|QCI) \| (\d+) \| (\d+) \| (\d+) \| ([\d.]+) \| (\d+) \|', sec, re.M):
         d[m.group(1)] = (float(m.group(5)), int(m.group(6)))
+    mb = re.search(r'\(b\) never beyond 2x of the largest member: (\w+) \(steps >= 3 only: (\w+)\)', t)
+    rule[kind] = (mb.group(1), mb.group(2)) if mb else None
     rows[kind] = d
 w('| field | release | at step | fast | at step |')
 w('|---|---|---|---|---|')
@@ -74,11 +79,21 @@ worst = {}
 for kind, d in rows.items():
     if d:
         worst[kind] = max(v[0] for v in d.values())
+
+
+def met(x):
+    return {'True': 'MET', 'False': 'NOT MET'}.get(x, 'UNKNOWN')
+
+
 for kind in ('release', 'fast'):
-    w('* %s: %s' % (kind, ('strict 2x rule (never beyond 2 at steps >= 3) %s; worst ratio %.2f' % ('MET' if worst[kind] <= 2 else 'NOT MET', worst[kind]))
-                    if kind in worst else 'MISSING (run absent or scorer failed; see score_%s.out)' % kind))
+    if kind in worst and rule.get(kind):
+        allsteps, k3 = rule[kind]
+        w('* %s: approved pass rule (never beyond 2x the largest member distance, every step 0-53, every scored field): %s. Secondary line, steps >= 3 only: %s; worst ratio at steps >= 3 is %.2f. Relaxed experiment rule (ratio part only: steps >= 3 within 3x): %s; its other condition, all steps finite, is not checked here.'
+          % (kind, met(allsteps), met(k3), worst[kind], 'MET' if worst[kind] <= 3 else 'NOT MET'))
+    else:
+        w('* %s: MISSING (run absent or scorer failed; see score_%s.out)' % (kind, kind))
 w('* Job status: fid_release: %s; fid_fast: %s.' % (job_log('fid_release'), job_log('fid_fast')))
-w('* The scorer prints a fixed line "radiation computed by the original Fortran (hybrid component)" even for `--rad native` runs; these runs used `--rad native`. Reference values from the earlier packages: release T 1.18-1.20, U 1.24, V 1.23-1.24, Q 1.15, P 1.21-1.22, QCL 1.58, QCI 2.37; fast T 1.06, U 1.07, V 1.05, Q 1.04, P 1.05, QCL 1.59, QCI 2.47.')
+w('* The scorer was given the native-radiation sentence for these runs (`--rad native`). Reference values from the earlier packages: release T 1.18-1.20, U 1.24, V 1.23-1.24, Q 1.15, P 1.21-1.22, QCL 1.58, QCI 2.37; fast T 1.06, U 1.07, V 1.05, Q 1.04, P 1.05, QCL 1.59, QCI 2.47.')
 w()
 
 # ---- timing -------------------------------------------------------------------------------------------------------------------------------------------------------

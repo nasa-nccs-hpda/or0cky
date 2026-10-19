@@ -36,7 +36,8 @@ NSTEPS_DAY = 54
 MEMBERS = ('p1', 'p2', 'p3', 'p4', 'p5')
 SCORED = ('T', 'U', 'V', 'Q', 'P', 'QCL', 'QCI')
 LABEL_SHORT_WINDOW = 'SHORT WINDOW (fewer than 54 steps): not the one-model-day criterion of ACCEPTANCE 4'
-RADIATION_SENTENCE = 'radiation computed by the original Fortran (hybrid component)'
+# SCORE_RADIATION_SENTENCE: the sentence printed with the score (ACCEPTANCE_CRITERIA section 4: it must name the radiation actually used); the default is the Fortran-callback sentence
+RADIATION_SENTENCE = os.environ.get('SCORE_RADIATION_SENTENCE', 'radiation computed by the original Fortran (hybrid component)')
 K_MIN_RATIO = 3  # ratios of steps >= 3 are quoted as "largest ratio" in D157/D171
 
 
