@@ -3,3 +3,4 @@ rocke3d_jax/modelE2_planet_2.0
 rocke3d_jax/gpu_runs/
 __pycache__/
 *.pyc
+rocke3d_jax/status_slides/preview_*/
