@@ -99,17 +99,17 @@ w()
 # ---- timing -------------------------------------------------------------------------------------------------------------------------------------------------------
 w('## Timing (matched pairs, 108 steps, one exclusive node each; node-dependent, not merged)')
 w()
-w('| pair | node | Fortran wall per run (3 runs) | JAX step 0 (cold) | JAX steps 1+ median | JAX steps 1+ mean | completed |')
-w('|---|---|---|---|---|---|---|')
+w('| pair | node | Fortran wall per run (3 runs) | JAX step 0 (cold) | JAX step 1 (compile) | JAX steps 2+ median | JAX steps 2+ mean | completed |')
+w('|---|---|---|---|---|---|---|---|')
 for kind in ('release', 'fast'):
     js = os.path.join(run, 'pair_%s_jax' % kind, 'd193_run.json')
     try:
         d = json.load(open(js))
         st = [s['wall'] for s in d['steps']]
         node = (d.get('header', {}).get('host', {}) or {}).get('hostname', '?')
-        jax = ('%.1f s' % st[0], '%.3f s' % statistics.median(st[1:]), '%.3f s' % statistics.mean(st[1:]), '%s/%s' % (d.get('completed'), d.get('nsteps_requested')))
+        jax = ('%.1f s' % st[0], '%.1f s' % st[1], '%.3f s' % statistics.median(st[2:]), '%.3f s' % statistics.mean(st[2:]), '%s/%s' % (d.get('completed'), d.get('nsteps_requested')))
     except (OSError, ValueError, KeyError, IndexError):
-        node, jax = '?', ('MISSING',) * 3 + ('',)
+        node, jax = '?', ('MISSING',) * 4 + ('',)
     fw = []
     for i in (1, 2, 3):
         t = read(os.path.join(runs_dir, 'run_%s_%s%d' % (name, kind, i), 'run.time')) if runs_dir else None
@@ -117,7 +117,7 @@ for kind in ('release', 'fast'):
         fw.append('%.0f s' % (int(m.group(1)) * 60 + float(m.group(2))) if m else 'MISSING')
     w('| %s | %s | %s | %s |' % (kind, node, ', '.join(fw), ' | '.join(jax)))
 w()
-w('* Fortran wall is the whole process (`time`), including start-up; divide by 108 only as an upper bound on seconds per step. The frozen benchmark quoted 2.285 s/step for Fortran and 0.524 s/step for the fast JAX configuration (job 37941875); this table is a new measurement, not a confirmation of it.')
+w('* Fortran wall is the whole process (`time`), including start-up; divide by 108 only as an upper bound on seconds per step. The frozen benchmark quoted 2.285 s/step for Fortran and 0.524 s/step for the fast JAX configuration (job 37941875); this table is a new measurement, not a confirmation of it. The fast configuration has run at 0.52 s and at 0.80-0.84 s per step (steps 2+) in different jobs on exclusive nodes, cause not identified (STATUS_20261016.md section 5): read one run as one sample.')
 w('* Job status: pair_release: %s; pair_fast: %s.' % (job_log('pair_release'), job_log('pair_fast')))
 w()
 
