@@ -19,3 +19,10 @@ Results (the numbers are in zonal_vertical_<kind>.txt, one line per field and st
 Reading: from step 11 the upper-level differences are within the members' own differences, and one member (p1) shows the same structure in the step-53 U map.
         At steps 1-3 upper-level T (and some U) is beyond the members; that is the same early-step excess behind the failed steps 0-2 of the approved rule. Its cause is not identified.
 Not covered: day 2 and later (the member data allow steps 54-107; not run), later-day evolution, other fields, area weighting. Only the fast step-53 U map was viewed as an image.
+
+DAY 2 ADDENDUM (2026-10-20, 108-step states of the matched timing pairs, run variants_20261018_e/pair_<kind>_jax/ours_d193; steps 53, 54, 59, 71, 89, 107; members p1-p5 continue the day-1 curves, they are not re-perturbed at step 54)
+Command: as above with --ours <run>/pair_<kind>_jax/ours_d193 --steps 53,54,59,71,89,107   Results: zonal_vertical_day2_<kind>.txt, zonal_profile_{U,T}_day2_<kind>.png
+  Upper levels 26-40, median ratio, fast: U 0.81, 0.94, 0.92, 0.84, 0.72, 0.69; T 0.86, 1.06, 0.90, 0.86, 0.76, 0.83 (steps 53, 54, 59, 71, 89, 107). Maximum in 26-40: 1.02-1.26 (fast), 0.78-1.26 (release); no level beyond 2 at any of these steps in either configuration.
+  Vertical second difference above level 25, JAX / member p1: fast U 1.22 at step 53 falling to 0.77 at step 107, T 1.39 falling to 0.92; release 0.56-0.90 throughout.
+  Reading: no growing upper-level offset or vertical-structure difference over day 2 at these six steps; JAX stays inside the members. Only six steps were sampled, only U and T, rms over latitude of the zonal mean; the 30-day shadow run is invalid after step 1288 and nothing past step 107 was checked. Plots of the day-2 maps were not viewed as images.
+  (The step-53 values here come from the pair run, not the fidelity run of the day-1 analysis; the runs are not bitwise repeatable, so they differ slightly.)

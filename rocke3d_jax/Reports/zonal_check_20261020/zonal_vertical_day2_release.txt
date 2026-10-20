@@ -1,0 +1,27 @@
+zonal-mean per-level check; ours=../gpu_runs/variants_20261018_e/pair_release_jax/ours_d193; daydir=nov26_day2; levels are 1-based (1 = bottom layer in the model's own ordering)
+
+U step 53: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.86, levels 26-40: 0.81; max in 26-40: 1.07 at level 38; levels with ratio>2: []
+T step 53: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.80, levels 26-40: 0.84; max in 26-40: 1.13 at level 35; levels with ratio>2: []
+U step 54: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.82, levels 26-40: 0.79; max in 26-40: 1.18 at level 38; levels with ratio>2: []
+T step 54: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.78, levels 26-40: 0.84; max in 26-40: 1.26 at level 37; levels with ratio>2: []
+U step 59: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.83, levels 26-40: 0.81; max in 26-40: 1.00 at level 28; levels with ratio>2: []
+T step 59: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.80, levels 26-40: 0.72; max in 26-40: 0.78 at level 27; levels with ratio>2: []
+U step 71: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.75, levels 26-40: 0.67; max in 26-40: 0.92 at level 33; levels with ratio>2: []
+T step 71: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.84, levels 26-40: 0.69; max in 26-40: 0.93 at level 37; levels with ratio>2: []
+U step 89: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.81, levels 26-40: 0.63; max in 26-40: 0.86 at level 34; levels with ratio>2: []
+T step 89: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.92, levels 26-40: 0.70; max in 26-40: 0.94 at level 30; levels with ratio>2: []
+U step 107: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.80, levels 26-40: 0.79; max in 26-40: 0.90 at level 32; levels with ratio>2: []
+T step 107: rms-over-lat ratio (JAX/max member) median levels 1-25: 0.83, levels 26-40: 0.67; max in 26-40: 0.93 at level 31; levels with ratio>2: []
+
+U step 53: vertical second-difference rms above level 25, JAX 0.0089, member p1 0.0129 (ratio 0.69)
+U step 54: vertical second-difference rms above level 25, JAX 0.00942, member p1 0.0139 (ratio 0.68)
+U step 59: vertical second-difference rms above level 25, JAX 0.0114, member p1 0.0192 (ratio 0.60)
+U step 71: vertical second-difference rms above level 25, JAX 0.0218, member p1 0.035 (ratio 0.62)
+U step 89: vertical second-difference rms above level 25, JAX 0.0415, member p1 0.0636 (ratio 0.65)
+U step 107: vertical second-difference rms above level 25, JAX 0.0646, member p1 0.0912 (ratio 0.71)
+T step 53: vertical second-difference rms above level 25, JAX 0.0121, member p1 0.0134 (ratio 0.90)
+T step 54: vertical second-difference rms above level 25, JAX 0.0132, member p1 0.0147 (ratio 0.90)
+T step 59: vertical second-difference rms above level 25, JAX 0.015, member p1 0.0184 (ratio 0.82)
+T step 71: vertical second-difference rms above level 25, JAX 0.016, member p1 0.0265 (ratio 0.60)
+T step 89: vertical second-difference rms above level 25, JAX 0.0247, member p1 0.0444 (ratio 0.56)
+T step 107: vertical second-difference rms above level 25, JAX 0.0318, member p1 0.0434 (ratio 0.73)
