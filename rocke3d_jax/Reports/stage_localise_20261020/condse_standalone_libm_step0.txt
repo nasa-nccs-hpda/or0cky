@@ -1,0 +1,66 @@
+== nov26 itime 33312 [libm] columns 3170  109.0 s (34.4 ms/column)
+   random: RNDSS exact True, seed exact True
+   setup vs MSTCNV records: 1087 columns, 0 field mismatches {}
+   lsin vs LSCOND records : 317 columns, 28 field mismatches {'vsubl': 6, 'svwmxl': 7, 'taumcl': 8, 'in_qcix': 7}
+   counts: columns=3170 convecting=2022 mc_ierr=0 ls_ierr=0 snow_age=1021 ddml_exit_early=1420 ddml_full_loop=602 st_water=10796 st_ice=3417 cnv_water=6696 cnv_ice=6771 cnv_zero_mmr=850 cnv_none=113333 lhp1_ice=1015 tprcp_pos=1553 tprcp_neg=469
+   fields: exact 10, bound 16, FAIL 42  (of 68)
+     T               FAIL  inexact 518/132480 maxabs 0.00192 (scale 451) first failing cell (3, 22, 1) nbad 74
+     Q               FAIL  inexact 1040/132480 maxabs 3.97e-06 (scale 0.0195) first failing cell (3, 22, 1) nbad 70
+     QCL             FAIL  inexact 453/132480 maxabs 9.59e-06 (scale 0.00314) first failing cell (3, 22, 13) nbad 17
+     QCI             bound inexact 133/132480 maxabs 1.47e-16 (scale 0.018)
+     U               FAIL  inexact 2172/132480 maxabs 5.86e-08 (scale 87.8) first failing cell (3, 19, 3) nbad 24
+     V               FAIL  inexact 2416/132480 maxabs 4.03e-08 (scale 63.2) first failing cell (3, 19, 3) nbad 24
+     TMC             bound inexact 921/132480 maxabs 9.45e-13 (scale 451)
+     QMC             bound inexact 1291/132480 maxabs 2.37e-15 (scale 0.0196)
+     TMOM            FAIL  inexact 10896/1192320 maxabs 6.83e-08 (scale 48.5) first failing cell (1, 4, 19, 7) nbad 41
+     QMOM            FAIL  inexact 11014/1192320 maxabs 2.24e-06 (scale 0.0165) first failing cell (1, 3, 22, 13) nbad 162
+     TTOLD           FAIL  inexact 156/132480 maxabs 0.00307 (scale 451) first failing cell (1, 3, 22) nbad 74
+     QTOLD           FAIL  inexact 407/132480 maxabs 6.33e-06 (scale 0.0195) first failing cell (1, 3, 22) nbad 70
+     SVLHX           FAIL  inexact 2/132480 maxabs 2.5e+06 (scale 2.83e+06) first failing cell (15, 3, 22) nbad 2
+     RHSAV           FAIL  inexact 806/132480 maxabs 0.00279 (scale 1.36) first failing cell (1, 3, 22) nbad 74
+     CLDSAV          FAIL  inexact 190/132480 maxabs 0.131 (scale 1) first failing cell (1, 19, 12) nbad 21
+     CLDSAV1         FAIL  inexact 190/132480 maxabs 0.118 (scale 1) first failing cell (1, 19, 12) nbad 21
+     TAUSS           FAIL  inexact 578/132480 maxabs 9.51 (scale 100) first failing cell (1, 19, 12) nbad 20
+     TAUSSIP         FAIL  inexact 341/132480 maxabs 0.0295 (scale 100) first failing cell (8, 31, 33) nbad 10
+     TAUMC           FAIL  inexact 472/132480 maxabs 4.23 (scale 100) first failing cell (1, 3, 26) nbad 14
+     CLDSS           FAIL  inexact 197/132480 maxabs 0.118 (scale 1) first failing cell (3, 4, 19) nbad 20
+     CLDMC           FAIL  inexact 929/132480 maxabs 0.0379 (scale 0.9) first failing cell (1, 3, 26) nbad 7
+     CSIZMC          FAIL  inexact 326/132480 maxabs 9.91 (scale 128) first failing cell (12, 3, 24) nbad 26
+     CSIZSS          FAIL  inexact 505/132480 maxabs 8.06 (scale 128) first failing cell (1, 19, 12) nbad 21
+     CSIZSSIP        FAIL  inexact 1417/132480 maxabs 121 (scale 128) first failing cell (3, 40, 2) nbad 155
+     QLSS            FAIL  inexact 454/132480 maxabs 9.59e-06 (scale 0.00314) first failing cell (3, 4, 19) nbad 17
+     QISS            FAIL  inexact 548/132480 maxabs 2.78e-06 (scale 0.0195) first failing cell (8, 31, 33) nbad 15
+     QLMC            FAIL  inexact 485/132480 maxabs 1.33e-15 (scale 0.00045) first failing cell (11, 3, 24) nbad 2
+     QIMC            bound inexact 713/132480 maxabs 7.62e-16 (scale 0.00413)
+     W_CLOUD         FAIL  inexact 963/132480 maxabs 0.115 (scale 1) first failing cell (3, 4, 19) nbad 21
+     FRAC_ST_WATER   FAIL  inexact 269/132480 maxabs 0.804 (scale 1) first failing cell (3, 4, 19) nbad 18
+     FRAC_ST_ICE     FAIL  inexact 108/132480 maxabs 3.1e-12 (scale 1) first failing cell (22, 68, 22) nbad 1
+     FRAC_CNV_WATER  FAIL  inexact 36/132480 maxabs 5.98e-05 (scale 1) first failing cell (3, 4, 19) nbad 5
+     FRAC_CNV_ICE    FAIL  inexact 386/132480 maxabs 0.804 (scale 1) first failing cell (8, 31, 33) nbad 14
+     MIX_ST_WATER    FAIL  inexact 437/132480 maxabs 9.59e-06 (scale 0.00314) first failing cell (3, 4, 19) nbad 17
+     MIX_ST_ICE      bound inexact 133/132480 maxabs 1.47e-16 (scale 0.018)
+     MIX_CNV_WATER   bound inexact 447/132480 maxabs 1.42e-16 (scale 0.00109)
+     MIX_CNV_ICE     bound inexact 953/132480 maxabs 7.05e-16 (scale 0.00099)
+     DIM_ST_WATER    FAIL  inexact 410/132480 maxabs 8.07e-06 (scale 9.84e-05) first failing cell (1, 19, 12) nbad 19
+     DIM_ST_ICE      FAIL  inexact 95/132480 maxabs 4.93e-14 (scale 0.000128) first failing cell (3, 40, 2) nbad 2
+     DIM_CNV_WATER   bound inexact 5/132480 maxabs 6.27e-20 (scale 1e-05)
+     DIM_CNV_ICE     FAIL  inexact 320/132480 maxabs 9.91e-06 (scale 0.000128) first failing cell (12, 3, 24) nbad 26
+     FRAC_AREA_ST    FAIL  inexact 197/132480 maxabs 0.118 (scale 1) first failing cell (3, 4, 19) nbad 20
+     FRAC_AREA_CNV   FAIL  inexact 924/132480 maxabs 1.26e-12 (scale 0.9) first failing cell (12, 3, 24) nbad 2
+     P_ACC           FAIL  inexact 12/3312 maxabs 0.00292 (scale 6.93e+03) first failing cell (3, 22) nbad 5
+     PM_ACC          bound inexact 9/3312 maxabs 2.27e-13 (scale 3.02e+03)
+     PREC            FAIL  inexact 205/3312 maxabs 0.00292 (scale 2.36) first failing cell (3, 22) nbad 5
+     EPREC           bound inexact 19/3312 maxabs 2.71e-10 (scale 2.57e+05)
+     PRECSS          FAIL  inexact 133/3312 maxabs 0.00292 (scale 2.28) first failing cell (3, 22) nbad 5
+     DDM1            bound inexact 10/3312 maxabs 3.47e-17 (scale 0.0449)
+     DDMS            bound inexact 51/3312 maxabs 1.87e-15 (scale 0.0769)
+     TDN1            bound inexact 39/3312 maxabs 4.55e-13 (scale 301)
+     QDN1            bound inexact 62/3312 maxabs 5.55e-17 (scale 0.0162)
+     AIRX            bound inexact 112/3312 maxabs 18.8 (scale 1.15e+14)
+     SNOAGE          bound inexact 21/9936 maxabs 1.78e-15 (scale 50)
+     UKM             FAIL  inexact 2401/529920 maxabs 5.86e-08 (scale 1.7) first failing cell (1, 3, 4, 19) nbad 24
+     VKM             FAIL  inexact 2651/529920 maxabs 4.03e-08 (scale 2.74) first failing cell (1, 3, 4, 19) nbad 24
+     UALIJ           FAIL  inexact 2937/126800 maxabs 4.21e-08 (scale 78.5) first failing cell (3, 3, 18) nbad 54
+     VALIJ           FAIL  inexact 3404/126800 maxabs 1.44e-08 (scale 52.7) first failing cell (3, 3, 18) nbad 54
+   columns: inexact 1171/3170, flipped (beyond bound) 151  first: [(1, 26), (2, 26), (3, 22), (3, 24), (3, 26), (4, 19), (4, 20), (4, 22)]
+TOTAL steps 1 failing fields 42

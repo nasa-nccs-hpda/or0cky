@@ -1,0 +1,34 @@
+stage localisation; c1dir=../gpu_runs/stage4/rel_c1; daydir=nov26_day2; rms over valid cells; "worst" = (i,j,level) 0-based and the signed difference
+
+== step 0 (it 33312)
+T   member spread at step end 9.97e-05 | dyn 5.65e-14 (29,31,39 +6.25e-13) | condse 1.17e-04 (70,24,4 -1.68e-02) | radia 1.24e-04 (61,19,4 +1.41e-02) | surface 1.18e-04 (17,27,4 +1.31e-02) | dissip 1.18e-04 (17,27,4 +1.31e-02) | filter 1.18e-04 (17,27,4 +1.31e-02)
+U   member spread at step end 4.69e-04 | dyn 1.31e-12 (31,43,0 -3.23e-11) | condse 4.13e-04 (61,19,4 -7.04e-02) | radia 4.13e-04 (61,19,4 -7.04e-02) | surface 2.77e-04 (60,19,4 -5.17e-02) | dissip 2.77e-04 (60,19,4 -5.17e-02) | filter 2.77e-04 (60,19,4 -5.17e-02)
+V   member spread at step end 8.35e-04 | dyn 1.14e-12 (45,2,0 -2.00e-11) | condse 1.78e-04 (47,15,1 -2.57e-02) | radia 1.78e-04 (47,15,1 -2.57e-02) | surface 1.54e-04 (47,15,2 +1.99e-02) | dissip 1.54e-04 (47,15,2 +1.99e-02) | filter 1.54e-04 (47,15,2 +1.99e-02)
+Q   member spread at step end 8.83e-07 | dyn 5.77e-18 (58,18,2 +2.97e-16) | condse 1.02e-06 (61,19,4 -2.03e-04) | radia 1.02e-06 (61,19,4 -2.03e-04) | surface 9.42e-07 (61,19,5 +1.67e-04) | dissip 9.42e-07 (61,19,5 +1.67e-04) | filter 9.42e-07 (61,19,5 +1.67e-04)
+QCL member spread at step end 2.90e-07 | dyn 3.00e-20 (42,32,0 +3.04e-18) | condse 2.54e-07 (70,24,4 -4.72e-05) | radia 2.54e-07 (70,24,4 -4.72e-05) | surface 2.54e-07 (70,24,4 -4.72e-05) | dissip 2.54e-07 (70,24,4 -4.72e-05) | filter 2.54e-07 (70,24,4 -4.72e-05)
+QCI member spread at step end 3.37e-08 | dyn 3.29e-20 (19,27,21 +1.04e-17) | condse 2.37e-08 (5,35,12 -7.14e-06) | radia 2.37e-08 (5,35,12 -7.14e-06) | surface 2.37e-08 (5,35,12 -7.14e-06) | dissip 2.37e-08 (5,35,12 -7.14e-06) | filter 2.37e-08 (5,35,12 -7.14e-06)
+
+== step 1 (it 33313)
+T   member spread at step end 2.53e-04 | dyn 1.11e-04 (70,24,4 -1.25e-02) | condse 4.34e-04 (3,19,14 -1.05e-01) | radia 4.33e-04 (3,19,14 -1.03e-01) | surface 4.26e-04 (3,19,14 -1.03e-01) | dissip 4.25e-04 (3,19,14 -1.03e-01) | filter 4.25e-04 (3,19,14 -1.03e-01)
+U   member spread at step end 6.70e-04 | dyn 2.67e-04 (60,19,4 -4.01e-02) | condse 2.48e-03 (3,19,15 +2.49e-01) | radia 2.48e-03 (3,19,15 +2.49e-01) | surface 2.26e-03 (3,19,15 +2.49e-01) | dissip 2.26e-03 (3,19,15 +2.49e-01) | filter 2.26e-03 (3,19,15 +2.49e-01)
+V   member spread at step end 9.14e-04 | dyn 1.74e-04 (47,15,2 +1.53e-02) | condse 1.64e-03 (16,27,4 -1.97e-01) | radia 1.64e-03 (16,27,4 -1.97e-01) | surface 1.39e-03 (26,26,12 -1.44e-01) | dissip 1.39e-03 (26,26,12 -1.44e-01) | filter 1.39e-03 (26,26,12 -1.44e-01)
+Q   member spread at step end 1.35e-06 | dyn 9.18e-07 (61,19,5 +1.64e-04) | condse 2.51e-06 (27,25,12 +3.77e-04) | radia 2.51e-06 (27,25,12 +3.77e-04) | surface 2.38e-06 (27,25,12 +3.77e-04) | dissip 2.38e-06 (27,25,12 +3.77e-04) | filter 2.38e-06 (27,25,12 +3.77e-04)
+QCL member spread at step end 4.06e-07 | dyn 2.54e-07 (70,24,4 -4.72e-05) | condse 3.19e-06 (3,19,15 -8.79e-04) | radia 3.19e-06 (3,19,15 -8.79e-04) | surface 3.19e-06 (3,19,15 -8.79e-04) | dissip 3.19e-06 (3,19,15 -8.79e-04) | filter 3.19e-06 (3,19,15 -8.79e-04)
+QCI member spread at step end 4.22e-07 | dyn 2.37e-08 (5,35,12 -7.14e-06) | condse 5.07e-08 (6,37,13 +1.23e-05) | radia 5.07e-08 (6,37,13 +1.23e-05) | surface 5.07e-08 (6,37,13 +1.23e-05) | dissip 5.07e-08 (6,37,13 +1.23e-05) | filter 5.06e-08 (6,37,13 +1.23e-05)
+
+== step 2 (it 33314)
+T   member spread at step end 6.36e-04 | dyn 4.08e-04 (3,19,14 -7.76e-02) | condse 6.05e-04 (65,25,14 -9.81e-02) | radia 6.13e-04 (65,25,14 -9.81e-02) | surface 5.73e-04 (65,25,14 -9.81e-02) | dissip 5.72e-04 (65,25,14 -9.78e-02) | filter 5.72e-04 (65,25,14 -9.78e-02)
+U   member spread at step end 3.22e-03 | dyn 2.22e-03 (2,19,14 -2.65e-01) | condse 4.69e-03 (27,30,13 -4.60e-01) | radia 4.69e-03 (27,30,13 -4.60e-01) | surface 4.14e-03 (27,30,13 -4.59e-01) | dissip 4.14e-03 (27,30,13 -4.59e-01) | filter 4.14e-03 (27,30,13 -4.59e-01)
+V   member spread at step end 1.46e-03 | dyn 1.41e-03 (26,26,12 -1.18e-01) | condse 2.20e-03 (26,26,12 -2.66e-01) | radia 2.20e-03 (26,26,12 -2.66e-01) | surface 2.07e-03 (26,26,12 -2.64e-01) | dissip 2.07e-03 (26,26,12 -2.64e-01) | filter 2.07e-03 (26,26,12 -2.64e-01)
+Q   member spread at step end 2.76e-06 | dyn 2.26e-06 (27,25,12 +3.53e-04) | condse 3.75e-06 (27,25,12 +7.29e-04) | radia 3.75e-06 (27,25,12 +7.29e-04) | surface 3.50e-06 (27,25,12 +7.29e-04) | dissip 3.50e-06 (27,25,12 +7.29e-04) | filter 3.50e-06 (27,25,12 +7.29e-04)
+QCL member spread at step end 7.61e-07 | dyn 3.20e-06 (3,19,15 -8.79e-04) | condse 3.42e-06 (3,19,15 -6.93e-04) | radia 3.42e-06 (3,19,15 -6.93e-04) | surface 3.42e-06 (3,19,15 -6.93e-04) | dissip 3.42e-06 (3,19,15 -6.93e-04) | filter 3.42e-06 (3,19,15 -6.93e-04)
+QCI member spread at step end 3.94e-07 | dyn 5.06e-08 (6,37,13 +1.23e-05) | condse 1.17e-07 (30,37,16 +2.68e-05) | radia 1.17e-07 (30,37,16 +2.68e-05) | surface 1.17e-07 (30,37,16 +2.68e-05) | dissip 1.17e-07 (30,37,16 +2.68e-05) | filter 1.17e-07 (30,37,16 +2.68e-05)
+
+== step 3 (it 33315)
+T   member spread at step end 7.87e-04 | dyn 5.52e-04 (65,25,14 -9.25e-02) | condse 8.63e-04 (27,30,0 +8.75e-02) | radia 8.67e-04 (27,30,0 +8.75e-02) | surface 8.07e-04 (26,25,7 -8.05e-02) | dissip 8.07e-04 (26,25,7 -8.04e-02) | filter 8.07e-04 (26,25,7 -8.04e-02)
+U   member spread at step end 5.62e-03 | dyn 4.05e-03 (27,30,13 -4.24e-01) | condse 6.71e-03 (27,30,11 +7.60e-01) | radia 6.71e-03 (27,30,11 +7.60e-01) | surface 6.35e-03 (27,30,11 +7.58e-01) | dissip 6.35e-03 (27,30,11 +7.58e-01) | filter 6.35e-03 (27,30,11 +7.58e-01)
+V   member spread at step end 3.12e-03 | dyn 1.97e-03 (26,26,12 -2.33e-01) | condse 3.43e-03 (26,26,12 -2.35e-01) | radia 3.43e-03 (26,26,12 -2.35e-01) | surface 3.45e-03 (27,20,2 -2.43e-01) | dissip 3.45e-03 (27,20,2 -2.43e-01) | filter 3.45e-03 (27,20,2 -2.43e-01)
+Q   member spread at step end 5.15e-06 | dyn 3.33e-06 (27,25,12 +6.84e-04) | condse 5.80e-06 (27,25,12 +6.85e-04) | radia 5.80e-06 (27,25,12 +6.85e-04) | surface 5.62e-06 (27,25,12 +6.85e-04) | dissip 5.62e-06 (27,25,12 +6.85e-04) | filter 5.62e-06 (27,25,12 +6.85e-04)
+QCL member spread at step end 2.56e-06 | dyn 3.42e-06 (3,19,15 -6.93e-04) | condse 4.03e-06 (63,31,15 -7.95e-04) | radia 4.03e-06 (63,31,15 -7.95e-04) | surface 4.03e-06 (63,31,15 -7.95e-04) | dissip 4.03e-06 (63,31,15 -7.95e-04) | filter 4.03e-06 (63,31,15 -7.95e-04)
+QCI member spread at step end 7.36e-07 | dyn 1.17e-07 (30,37,16 +2.67e-05) | condse 1.74e-06 (4,20,18 +6.15e-04) | radia 1.74e-06 (4,20,18 +6.15e-04) | surface 1.74e-06 (4,20,18 +6.15e-04) | dissip 1.74e-06 (4,20,18 +6.15e-04) | filter 1.74e-06 (4,20,18 +6.15e-04)
+
