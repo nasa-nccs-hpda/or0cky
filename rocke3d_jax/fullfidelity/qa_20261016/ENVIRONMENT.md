@@ -8,9 +8,12 @@ Owner: G. Tamkin. Written by a Claude Code session on 2026-10-16. Project-local.
 |---|---|---|
 | Package scoring (`scoring_tool/d207_score.py`), `qa_20261016/spread_rmse.py`, `localize_qc.py`, `follow_columns.py`, `review_package_plots.py` | Python 3 with numpy (plots also matplotlib); reads only the review package | Clean environment, site anaconda base python (below): all four scripts that were rerun finished with exit code 0; the localization and spread JSON files are identical to the first runs. The original runs used the author's `graphcast-env`. |
 | `clouds_condse_compare.py` (CONDSE against the real Fortran) | numpy only; reads `ff_data/`. `--imf` also needs the Intel libimf runtime (default search directory in `intel_libm_ff.py`, override `INTEL_LIBIMF_DIR`) | Clean environment, step 0: no libimf 151 flipped columns and with `--imf` 6, both with the same flipped-column lists as the first runs. |
+| CPU model runs (`cpu_day_run_imf.py`, `d212_day.py`, `d193_day.py`, `jax_coupled`; scoring with `d207_score.py` when the CPU XLA flags are exported) | JAX 0.5.3 (jaxlib 0.5.3), Python 3.10, NumPy 2.2.4, Intel libimf for libimf mode. The CPU XLA flag `--xla_cpu_max_isa=AVX` (set by `clouds_jax_env`) is NOT recognised by the site python's JAX 0.4.30: XLA aborts at start (`Unknown flags in XLA_FLAGS`). Do not use the site python for these. | Author's `graphcast-env` (`/home/<user>/.conda/envs/graphcast-env/bin/python`) on forest204, CPU backend: start-up checks passed 2026-10-21. The site python was tried the same day and aborted. A full day on CPU had not finished when this was written. |
 | V100 jobs (`gpu/v100_step6_graphcast.sbatch`) | JAX 0.5.3 with the CUDA 12 plugin, Python 3.10, access to `gpulogin1` and a `compute` V100 node | Author's `graphcast-env` only. |
 
-## 2. The CPU tests: use the site python, an empty environment
+## 2. The scoring and analysis scripts: use the site python, an empty environment
+
+This section covers only the scripts in the first two rows of section 1 (numpy only). The CPU model runs (third row) need JAX 0.5.3 and the graphcast-env python; the site python cannot run them (corrected 2026-10-21; this file earlier implied the site python was enough for all CPU work).
 
 The site anaconda base python on panfs is shared and needs no personal environment:
 
@@ -34,7 +37,7 @@ Notes:
 
 ## 3. The V100 jobs
 
-They need JAX with CUDA, which the site python does not have. The author's `graphcast-env` is described by `gpu/environment-graphcast-env.yml` (jax/jaxlib 0.5.3, `jax-cuda12-plugin` and `jax-cuda12-pjrt` 0.5.3, the `nvidia-*-cu12` wheels, numpy 2.2.4, scipy 1.15.2, Python 3.10.16, netcdf4, xarray). To build your own, untested:
+They need JAX with CUDA, which the site python does not have; the CPU model runs also need the 0.5.3 environment described below. The author's `graphcast-env` is described by `gpu/environment-graphcast-env.yml` (jax/jaxlib 0.5.3, `jax-cuda12-plugin` and `jax-cuda12-pjrt` 0.5.3, the `nvidia-*-cu12` wheels, numpy 2.2.4, scipy 1.15.2, Python 3.10.16, netcdf4, xarray). To build your own, untested:
 
     CONDA=/panfs/ccds02/app/modules/anaconda/platform/x86_64/rhel/8.6/3-2022.05/bin/conda
     $CONDA env create -n graphcast-env -f gpu/environment-graphcast-env.yml      # needs network access to the conda and pip indexes
@@ -47,5 +50,6 @@ The recipe calls `conda run -n graphcast-env`, which resolves to the submitting 
 ## 4. Known gaps
 
 * The env export has not been used to rebuild an environment, and the CUDA wheels depend on the node driver (580.x on the V100 nodes the author used).
+* The CPU model runs were tried only in the author's `graphcast-env`, not in a freshly built environment.
 * The clean-environment check covered the scripts listed in section 1 (CONDSE compare at step 0 only), not the V100 jobs.
 * `gpu/v100_step6_graphcast.sbatch` and `fullfidelity/qa_20261016/rebuild_review_package_tar.sh` still contain the author's absolute paths.
